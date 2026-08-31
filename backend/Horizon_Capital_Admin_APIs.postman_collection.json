@@ -1,0 +1,1219 @@
+{
+  "info": {
+    "_postman_id": "horizon-capital-admin-apis-v1",
+    "name": "Horizon Capital - Super Admin REST APIs",
+    "description": "Complete Super Admin Backend API Collection for Horizon Capital Dashboard. Includes Authentication, Dashboard KPIs, Plans CRUD, Payment Gateways, Transactions Approval, Users Management, Referrals, Ranks, News Broadcasts, and Support Tickets.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5002",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication & Admin Settings",
+      "item": [
+        {
+          "name": "Admin Login (Get Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set('admin_token', jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@horizoncap.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Admin Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "auth", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update Admin Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alexander Wright (Super Admin)\",\n  \"avatar\": \"\",\n  \"recoveryEmail\": \"recovery@horizoncap.com\",\n  \"twoFactorEnabled\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "auth", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Change Admin Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"admin123\",\n  \"newPassword\": \"admin12345\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "auth", "change-password"]
+            }
+          }
+        },
+        {
+          "name": "Get Platform Alert Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/auth/settings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "auth", "settings"]
+            }
+          }
+        },
+        {
+          "name": "Update Platform Alert Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"automatedAlerts\": {\n    \"autoDepositApproval\": true,\n    \"autoRoiStreaming\": true,\n    \"autoDailyPayout\": true,\n    \"autoWithdrawalBroadcast\": true,\n    \"autoPlanMaturity\": true,\n    \"autoRankMilestones\": true,\n    \"autoReferralCommissions\": true,\n    \"autoDownlineJoins\": true,\n    \"autoTicketReplies\": true,\n    \"autoNewsBroadcasts\": true\n  },\n  \"platformName\": \"Horizon Capital World\",\n  \"supportEmail\": \"support@horizoncap.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/auth/settings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "auth", "settings"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Dashboard & KPIs",
+      "item": [
+        {
+          "name": "Get Dashboard KPI Cards",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/dashboard/kpis",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "dashboard", "kpis"]
+            }
+          }
+        },
+        {
+          "name": "Get Dashboard Volume & Yield Charts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/dashboard/charts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "dashboard", "charts"]
+            }
+          }
+        },
+        {
+          "name": "Get Recent Dashboard Activities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/dashboard/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "dashboard", "activities"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Investment Plans Management",
+      "item": [
+        {
+          "name": "Get All Investment Plans",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/plans?category=all&status=all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "plans"],
+              "query": [
+                { "key": "category", "value": "all" },
+                { "key": "status", "value": "all" },
+                { "key": "search", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Investment Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Solar Eco Farm Yield Phase 3\",\n  \"category\": \"Renewable Energy\",\n  \"roi\": 18,\n  \"duration\": \"12 Months\",\n  \"durationDays\": 365,\n  \"minAmount\": 1000,\n  \"maxAmount\": 50000,\n  \"noMaxLimit\": false,\n  \"payoutInterval\": \"Per Second (Live)\",\n  \"status\": \"Active\",\n  \"description\": \"Clean energy solar array yield backed by sovereign off-take dividends.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/plans",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "plans"]
+            }
+          }
+        },
+        {
+          "name": "Get Plan By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/plans/:planId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "plans", ":planId"],
+              "variable": [{ "key": "planId", "value": "PLAN_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Update Investment Plan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Solar Eco Farm Yield Phase 3 (Updated)\",\n  \"roi\": 20,\n  \"minAmount\": 1500,\n  \"maxAmount\": 100000,\n  \"status\": \"Active\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/plans/:planId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "plans", ":planId"],
+              "variable": [{ "key": "planId", "value": "PLAN_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Delete Investment Plan",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/plans/:planId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "plans", ":planId"],
+              "variable": [{ "key": "planId", "value": "PLAN_ID_HERE" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Payment Settings & Gateways",
+      "item": [
+        {
+          "name": "Get All Payment Methods",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/payment-methods?category=all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "payment-methods"]
+            }
+          }
+        },
+        {
+          "name": "Create Crypto Payment Gateway",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"crypto\",\n  \"category\": \"Crypto Digital Wallet\",\n  \"name\": \"TRON Primary Treasury (TRC20)\",\n  \"subtitle\": \"TRX · USDT · USDD\",\n  \"currency\": \"USD / TRX\",\n  \"network\": \"TRON (TRC-20)\",\n  \"networkCode\": \"TRC20\",\n  \"address\": \"TX78rQw9pL29Ym82K1vNx4B8zQc12aE9mP\",\n  \"tokens\": [\"TRX\", \"USDT\", \"USDD\"],\n  \"minLimit\": \"$10 USD (20 TRX)\",\n  \"confirmationTime\": \"Instant (~1 Block)\",\n  \"qrCodeUrl\": \"\",\n  \"instructions\": \"Send TRX or USDT on TRC20 network. Fast 1-block verification.\",\n  \"status\": \"Active\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/payment-methods",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "payment-methods"]
+            }
+          }
+        },
+        {
+          "name": "Create Fiat / Mobile E-Wallet Gateway",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"fiat\",\n  \"category\": \"Mobile E-Wallet\",\n  \"name\": \"EasyPaisa Official\",\n  \"subtitle\": \"Rs 1.00 – Rs 100,000,000.00\",\n  \"currency\": \"PKR\",\n  \"provider\": \"EasyPaisa\",\n  \"accountNumber\": \"03493588941\",\n  \"accountHolder\": \"Mashooq Ali\",\n  \"network\": \"EasyPaisa Mobile Banking\",\n  \"networkCode\": \"EASYPAISA\",\n  \"confirmationTime\": \"Instant (< 1 Min)\",\n  \"minLimit\": \"Rs 1.00\",\n  \"instructions\": \"Send money to EasyPaisa 03493588941 and enter 11-digit TID.\",\n  \"status\": \"Active\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/payment-methods",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "payment-methods"]
+            }
+          }
+        },
+        {
+          "name": "Update Payment Method & Upload QR",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountNumber\": \"03493588941\",\n  \"accountHolder\": \"Mashooq Ali\",\n  \"qrCodeUrl\": \"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=03493588941\",\n  \"status\": \"Active\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/payment-methods/:methodId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "payment-methods", ":methodId"],
+              "variable": [{ "key": "methodId", "value": "METHOD_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Delete Payment Method",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/payment-methods/:methodId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "payment-methods", ":methodId"],
+              "variable": [{ "key": "methodId", "value": "METHOD_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Get Official Deposit Video Guide",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/payment-methods/video/tutorial",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "payment-methods", "video", "tutorial"]
+            }
+          }
+        },
+        {
+          "name": "Update Deposit Video Guide",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Official Deposit Guide: Step-by-Step Tutorial\",\n  \"subtitle\": \"Watch this 2-minute video before transferring funds.\",\n  \"videoType\": \"url\",\n  \"videoUrl\": \"https://www.w3schools.com/html/mov_bbb.mp4\",\n  \"youtubeUrl\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\n  \"instructions\": [\n    \"Choose your preferred deposit channel.\",\n    \"Copy account number or scan QR code.\",\n    \"Complete transfer and enter TID or upload receipt slip.\",\n    \"Click Submit deposit for instant verification.\"\n  ],\n  \"status\": \"Published\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/payment-methods/video/tutorial",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "payment-methods", "video", "tutorial"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Transactions Ledger & Approvals",
+      "item": [
+        {
+          "name": "Get All Transactions (with Filters)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/transactions?type=all&status=all&page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "transactions"],
+              "query": [
+                { "key": "type", "value": "all" },
+                { "key": "status", "value": "all" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "search", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Transaction By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/transactions/:txnId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "transactions", ":txnId"],
+              "variable": [{ "key": "txnId", "value": "TXN_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Approve Transaction (Credits User Wallet)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/transactions/:txnId/approve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "transactions", ":txnId", "approve"],
+              "variable": [{ "key": "txnId", "value": "TXN_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Reject Transaction (with Reason)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Invalid TID hash / Payment proof mismatch.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/transactions/:txnId/reject",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "transactions", ":txnId", "reject"],
+              "variable": [{ "key": "txnId", "value": "TXN_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Delete Transaction Record",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/transactions/:txnId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "transactions", ":txnId"],
+              "variable": [{ "key": "txnId", "value": "TXN_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Clear All Transactions (Purge)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/transactions/clear/all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "transactions", "clear", "all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Users Management",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users?status=all&page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users"],
+              "query": [
+                { "key": "status", "value": "all" },
+                { "key": "search", "value": "" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Details by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/:userId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", ":userId"],
+              "variable": [{ "key": "userId", "value": "USER_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Update User Status (Active/Inactive/Suspended)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Active\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/:userId/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", ":userId", "status"],
+              "variable": [{ "key": "userId", "value": "USER_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Adjust User Wallet Balance (Credit/Debit)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"walletType\": \"depositWallet\",\n  \"action\": \"credit\",\n  \"amount\": 5000,\n  \"reason\": \"Promotional Bonus Direct Credit\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/:userId/adjust-wallet",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", ":userId", "adjust-wallet"],
+              "variable": [{ "key": "userId", "value": "USER_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/:userId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", ":userId"],
+              "variable": [{ "key": "userId", "value": "USER_ID_HERE" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Referrals & Promoters Network",
+      "item": [
+        {
+          "name": "Get 5-Tier Referral Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/referrals/settings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "referrals", "settings"]
+            }
+          }
+        },
+        {
+          "name": "Update Tier Commission Rates",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"investCommission\": \"6%\",\n  \"earningsCommission\": \"5%\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/referrals/settings/:settingId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "referrals", "settings", ":settingId"],
+              "variable": [{ "key": "settingId", "value": "SETTING_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Get Promoters Network List",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/referrals/promoters?search=",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "referrals", "promoters"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Ranks Ladder & Leaderboard",
+      "item": [
+        {
+          "name": "Get 10-Tier Rank Ladder",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/ranks",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "ranks"]
+            }
+          }
+        },
+        {
+          "name": "Create Custom Rank Tier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"level\": 11,\n  \"name\": \"Sovereign Archon Partner\",\n  \"minInvest\": 25000000,\n  \"reward\": 1500000,\n  \"desc\": \"Exclusive platform syndicate partner with supreme lifetime dividends.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/ranks",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "ranks"]
+            }
+          }
+        },
+        {
+          "name": "Update Rank Tier",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"minInvest\": 5000,\n  \"reward\": 250,\n  \"desc\": \"Regional network leader tier.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/ranks/:rankId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "ranks", ":rankId"],
+              "variable": [{ "key": "rankId", "value": "RANK_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Delete Rank Tier",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/ranks/:rankId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "ranks", ":rankId"],
+              "variable": [{ "key": "rankId", "value": "RANK_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Get Achievers Leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/ranks/leaderboard",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "ranks", "leaderboard"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. News & Media Broadcasts",
+      "item": [
+        {
+          "name": "Get All News Articles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/news?category=all&status=all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "news"]
+            }
+          }
+        },
+        {
+          "name": "Create News Article",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Horizon Cap Worlds Expands 500MW Solar Array in Arizona\",\n  \"subtitle\": \"Strategic clean-energy infrastructure acquisition boosts investor yields\",\n  \"bannerUrl\": \"https://images.unsplash.com/photo-1509391365360-2e959784a276?q=80&w=1200\",\n  \"category\": \"Renewable Energy\",\n  \"authorName\": \"Alexander Vance\",\n  \"authorRole\": \"Chief Investment Officer\",\n  \"readTime\": \"4 min read\",\n  \"status\": \"Published\",\n  \"tags\": [\"Solar\", \"CleanEnergy\", \"YieldGrowth\"],\n  \"content\": \"## Strategic Infrastructure Milestone\\n\\nHorizon Cap Worlds has linked all 500MW capacity to the grid.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/news",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "news"]
+            }
+          }
+        },
+        {
+          "name": "Get Article By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/news/:articleId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "news", ":articleId"],
+              "variable": [{ "key": "articleId", "value": "ARTICLE_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Update News Article",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Horizon Cap Worlds Expands 500MW Solar Array (Updated)\",\n  \"status\": \"Published\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/news/:articleId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "news", ":articleId"],
+              "variable": [{ "key": "articleId", "value": "ARTICLE_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Delete News Article",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/news/:articleId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "news", ":articleId"],
+              "variable": [{ "key": "articleId", "value": "ARTICLE_ID_HERE" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Support Tickets & Channels",
+      "item": [
+        {
+          "name": "Get All Support Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/support/tickets?status=all&priority=all&page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "support", "tickets"]
+            }
+          }
+        },
+        {
+          "name": "Get Ticket Conversation Thread",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/support/tickets/:ticketId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "support", "tickets", ":ticketId"],
+              "variable": [{ "key": "ticketId", "value": "TICKET_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Reply to Support Ticket (User or Internal Note)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Hello William, your deposit has been verified and credited to your deposit wallet.\",\n  \"isInternalNote\": false,\n  \"attachments\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/support/tickets/:ticketId/reply",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "support", "tickets", ":ticketId", "reply"],
+              "variable": [{ "key": "ticketId", "value": "TICKET_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Update Ticket Status / Priority",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Resolved\",\n  \"priority\": \"Medium\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/support/tickets/:ticketId/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "support", "tickets", ":ticketId", "status"],
+              "variable": [{ "key": "ticketId", "value": "TICKET_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Delete Support Ticket",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/support/tickets/:ticketId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "support", "tickets", ":ticketId"],
+              "variable": [{ "key": "ticketId", "value": "TICKET_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Get All Support Channels",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/support/channels",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "support", "channels"]
+            }
+          }
+        },
+        {
+          "name": "Create Support Channel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"Telegram\",\n  \"title\": \"Official VIP Telegram Desk\",\n  \"handle\": \"@HorizonCapVIP\",\n  \"url\": \"https://t.me/HorizonCapVIP\",\n  \"department\": \"24/7 VIP Escrow Support\",\n  \"hours\": \"24/7 Live Coverage\",\n  \"category\": \"Instant Chat\",\n  \"status\": \"Active\",\n  \"stats\": \"Avg. Reply < 2 mins\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/support/channels",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "support", "channels"]
+            }
+          }
+        },
+        {
+          "name": "Update Support Channel",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"VIP Telegram Desk (Updated)\",\n  \"url\": \"https://t.me/HorizonCapVIP\",\n  \"status\": \"Active\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/support/channels/:channelId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "support", "channels", ":channelId"],
+              "variable": [{ "key": "channelId", "value": "CHANNEL_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Delete Support Channel",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/support/channels/:channelId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "support", "channels", ":channelId"],
+              "variable": [{ "key": "channelId", "value": "CHANNEL_ID_HERE" }]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
