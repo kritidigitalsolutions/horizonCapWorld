@@ -15,7 +15,6 @@ import SearchBar from '../components/ui/SearchBar';
 import Pagination from '../components/ui/Pagination';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
-import { rankLadder as initialRanks, users } from '../data/mockData';
 import {
   getAllRanks,
   createRank,
@@ -27,7 +26,7 @@ import {
 export default function Ranks() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('ladder'); // 'ladder', 'achievers'
-  const [ranks, setRanks] = useState(initialRanks);
+  const [ranks, setRanks] = useState([]);
   const [leaderboardList, setLeaderboardList] = useState([]);
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,20 +59,18 @@ export default function Ranks() {
       if (ranksRes.status === 'fulfilled' && ranksRes.value?.success && Array.isArray(ranksRes.value.ranks)) {
         setRanks(ranksRes.value.ranks);
       } else {
-        const saved = localStorage.getItem('horizon_rank_ladder');
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) setRanks(parsed);
-          } catch (e) {}
-        }
+        setRanks([]);
       }
 
       if (leaderRes.status === 'fulfilled' && leaderRes.value?.success && Array.isArray(leaderRes.value.leaderboard)) {
         setLeaderboardList(leaderRes.value.leaderboard);
+      } else {
+        setLeaderboardList([]);
       }
     } catch (err) {
-      console.warn('Using fallback ranks data:', err.message);
+      console.warn('Error fetching ranks data:', err.message);
+      setRanks([]);
+      setLeaderboardList([]);
     } finally {
       setLoading(false);
     }
@@ -158,14 +155,24 @@ export default function Ranks() {
   };
 
   // Enriched Leaders List with rank metrics
-  const leaderData = users.map((u) => {
-    const rawInvest = Number((u.totalInvested || '$0').replace(/[^0-9.-]+/g, '')) || 0;
-    const teamVolume = rawInvest * (u.totalReferrals > 0 ? (u.totalReferrals * 1.8 + 1) : 0);
-    const rankObj = ranks.find(r => r.name.toLowerCase() === (u.currentRank || '').toLowerCase().replace(/level \d+ \(|\)/g, '')) || ranks[0];
-    const rankCashBonus = u.totalReferrals > 0 ? (rankObj?.reward || 7.5) : 0;
+  const leaderData = leaderboardList.map((u) => {
+    const rawInvest = Number(u.totalInvested || 0);
+    const teamVolume = Number(u.teamTurnover || u.teamVolume || (rawInvest * (u.totalReferrals > 0 ? (u.totalReferrals * 1.8 + 1) : 0)));
+    const rankObj = ranks.find(r => (r.level === u.level) || r.name.toLowerCase() === (u.currentRank || u.rank || '').toLowerCase().replace(/level \d+ \(|\)/g, '')) || ranks[0];
+    const rankCashBonus = Number(u.rewardsEarned || u.reward || (u.totalReferrals > 0 ? (rankObj?.reward || 0) : 0));
 
     return {
       ...u,
+      id: u._id || u.id || u.customId,
+      customId: u.customId || u.id || '',
+      name: u.name || 'Investor',
+      email: u.email || '',
+      phone: u.phone || '',
+      currentRank: u.currentRank || u.rank || (rankObj?.name || 'Bronze Explorer'),
+      sponsor: u.sponsorId || u.referredBy || 'HORIZON-HQ',
+      directRefs: u.directReferrals || u.totalReferrals || u.directRefs || 0,
+      turnover: Math.round(teamVolume),
+      reward: Math.round(rankCashBonus),
       teamVolume: Math.round(teamVolume),
       rankCashBonus: Math.round(rankCashBonus),
       rankDetails: rankObj,
@@ -222,37 +229,37 @@ export default function Ranks() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Rank Rewards Distributed"
-          numericValue={689450}
+          numericValue={leaderboardList.reduce((sum, l) => sum + Number(l.rewardsEarned || l.reward || 0), 0)}
           prefix="$"
           decimals={0}
-          change="+24.8%"
+          change={leaderboardList.length > 0 ? 'Live Rewards' : 'No Rewards'}
           positive={true}
           icon="money"
         />
         <KPICard
           title="Active Rank Achievers"
-          numericValue={10283}
+          numericValue={leaderboardList.length}
           prefix=""
           decimals={0}
-          change="+14.2%"
+          change={leaderboardList.length > 0 ? 'Active Leaders' : 'No Leaders'}
           positive={true}
           icon="users"
         />
         <KPICard
           title="Network Referral Turnover"
-          numericValue={3155000}
+          numericValue={leaderboardList.reduce((sum, l) => sum + Number(l.teamTurnover || l.teamVolume || 0), 0)}
           prefix="$"
           decimals={0}
-          change="+18.5%"
+          change={leaderboardList.length > 0 ? 'Team Volume' : 'No Volume'}
           positive={true}
           icon="chart"
         />
         <KPICard
           title="Top Level Titans"
-          numericValue={8}
+          numericValue={leaderboardList.filter(l => Number(l.rankLevel || l.level || 0) >= 8).length}
           prefix=""
           decimals={0}
-          change="+2 This Month"
+          change={leaderboardList.filter(l => Number(l.rankLevel || l.level || 0) >= 8).length > 0 ? 'Apex Leaders' : 'Pending'}
           positive={true}
           icon="wallet"
         />
@@ -511,6 +518,12 @@ export default function Ranks() {
                 </tbody>
               </table>
             </div>
+
+            {filteredLeaders.length === 0 && (
+              <div className="p-12 text-center text-xs text-slate-400 font-poppins">
+                No rank achievers recorded yet. Achievers will appear here as users progress their turnover milestones.
+              </div>
+            )}
 
             {/* ──────────────── 20 ITEMS PER PAGE PAGINATION BAR ──────────────── */}
             <Pagination

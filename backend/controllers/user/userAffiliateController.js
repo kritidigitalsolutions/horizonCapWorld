@@ -22,18 +22,21 @@ exports.getReferralOverview = async (req, res) => {
       0
     );
 
-    // Fetch referral bonus transactions
+    // Fetch referral bonus transactions strictly for this user
     const bonusTxns = await Transaction.find({
-      $or: [{ user: user._id }, { userCustomId: user.customId }],
+      user: user._id,
       type: { $in: ["Referral Bonus", "Rank Bonus"] },
       status: "Approved",
     });
 
     const totalCommission = bonusTxns.reduce((sum, t) => sum + (t.amount || 0), 0);
-    const directCommission = totalCommission * 0.6; // estimated split
-    const multiTierCommission = totalCommission * 0.4;
+    const directCommission = bonusTxns
+      .filter((t) => (t.customId || "").includes("L1") || (t.gateway || "").toLowerCase().includes("direct"))
+      .reduce((sum, t) => sum + (t.amount || 0), 0) || (totalCommission * 0.6);
+    const multiTierCommission = Math.max(0, totalCommission - directCommission);
 
-    const referralLink = `https://horizoncapworlds.com/register?ref=${user.customId}`;
+    const origin = req.headers.origin || (req.headers.referer ? req.headers.referer.replace(/\/$/, "") : "https://horizoncapworlds.com");
+    const referralLink = `${origin}/register?ref=${user.customId}`;
 
     res.status(200).json({
       success: true,
@@ -83,7 +86,7 @@ exports.getReferralCommissions = async (req, res) => {
   }
 };
 
-// @desc    Get Multi-Tier Downline Network Tree
+// @desc    Get Multi-Tier Downline Network Tree (5-Tier Deep)
 // @route   GET /api/user/referrals/network
 exports.getReferralNetwork = async (req, res) => {
   try {
@@ -92,22 +95,47 @@ exports.getReferralNetwork = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found." });
     }
 
+    // Load tiers from DB for exact rates
+    let tiers = await ReferralSetting.find().sort({ levelNumber: 1 });
+    const getRateForLevel = (lvl) => {
+      const found = tiers?.find((t) => t.levelNumber === lvl);
+      return found?.investCommissionRate ?? (6 - lvl);
+    };
+
     // Level 1: Direct Sponsored
     const level1 = await User.find({ sponsorId: user.customId }).select(
       "customId name email phone totalInvested createdAt status"
     );
 
     // Level 2: Sponsored by Level 1
-    const l1Ids = level1.map((u) => u.customId);
-    const level2 = await User.find({ sponsorId: { $in: l1Ids } }).select(
+    const l1Ids = level1.map((u) => u.customId).filter(Boolean);
+    const level2 = l1Ids.length > 0 ? await User.find({ sponsorId: { $in: l1Ids } }).select(
       "customId name email phone totalInvested sponsorId createdAt status"
-    );
+    ) : [];
 
     // Level 3: Sponsored by Level 2
-    const l2Ids = level2.map((u) => u.customId);
-    const level3 = await User.find({ sponsorId: { $in: l2Ids } }).select(
+    const l2Ids = level2.map((u) => u.customId).filter(Boolean);
+    const level3 = l2Ids.length > 0 ? await User.find({ sponsorId: { $in: l2Ids } }).select(
       "customId name email phone totalInvested sponsorId createdAt status"
-    );
+    ) : [];
+
+    // Level 4: Sponsored by Level 3
+    const l3Ids = level3.map((u) => u.customId).filter(Boolean);
+    const level4 = l3Ids.length > 0 ? await User.find({ sponsorId: { $in: l3Ids } }).select(
+      "customId name email phone totalInvested sponsorId createdAt status"
+    ) : [];
+
+    // Level 5: Sponsored by Level 4
+    const l4Ids = level4.map((u) => u.customId).filter(Boolean);
+    const level5 = l4Ids.length > 0 ? await User.find({ sponsorId: { $in: l4Ids } }).select(
+      "customId name email phone totalInvested sponsorId createdAt status"
+    ) : [];
+
+    const l1Rate = getRateForLevel(1);
+    const l2Rate = getRateForLevel(2);
+    const l3Rate = getRateForLevel(3);
+    const l4Rate = getRateForLevel(4);
+    const l5Rate = getRateForLevel(5);
 
     const formattedNetwork = [
       ...level1.map((u) => ({
@@ -118,9 +146,9 @@ exports.getReferralNetwork = async (req, res) => {
         level: 1,
         sponsor: user.customId,
         invested: u.totalInvested || 0,
-        directComm: (u.totalInvested || 0) * 0.05,
-        multiTierComm: (u.totalInvested || 0) * 0.03,
-        totalComm: (u.totalInvested || 0) * 0.08,
+        directComm: ((u.totalInvested || 0) * l1Rate) / 100,
+        multiTierComm: 0,
+        totalComm: ((u.totalInvested || 0) * l1Rate) / 100,
         joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",
         status: u.status || "Active",
       })),
@@ -133,8 +161,8 @@ exports.getReferralNetwork = async (req, res) => {
         sponsor: u.sponsorId,
         invested: u.totalInvested || 0,
         directComm: 0,
-        multiTierComm: (u.totalInvested || 0) * 0.04,
-        totalComm: (u.totalInvested || 0) * 0.04,
+        multiTierComm: ((u.totalInvested || 0) * l2Rate) / 100,
+        totalComm: ((u.totalInvested || 0) * l2Rate) / 100,
         joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",
         status: u.status || "Active",
       })),
@@ -147,8 +175,36 @@ exports.getReferralNetwork = async (req, res) => {
         sponsor: u.sponsorId,
         invested: u.totalInvested || 0,
         directComm: 0,
-        multiTierComm: (u.totalInvested || 0) * 0.03,
-        totalComm: (u.totalInvested || 0) * 0.03,
+        multiTierComm: ((u.totalInvested || 0) * l3Rate) / 100,
+        totalComm: ((u.totalInvested || 0) * l3Rate) / 100,
+        joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",
+        status: u.status || "Active",
+      })),
+      ...level4.map((u) => ({
+        id: u.customId,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        level: 4,
+        sponsor: u.sponsorId,
+        invested: u.totalInvested || 0,
+        directComm: 0,
+        multiTierComm: ((u.totalInvested || 0) * l4Rate) / 100,
+        totalComm: ((u.totalInvested || 0) * l4Rate) / 100,
+        joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",
+        status: u.status || "Active",
+      })),
+      ...level5.map((u) => ({
+        id: u.customId,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        level: 5,
+        sponsor: u.sponsorId,
+        invested: u.totalInvested || 0,
+        directComm: 0,
+        multiTierComm: ((u.totalInvested || 0) * l5Rate) / 100,
+        totalComm: ((u.totalInvested || 0) * l5Rate) / 100,
         joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",
         status: u.status || "Active",
       })),
@@ -160,6 +216,8 @@ exports.getReferralNetwork = async (req, res) => {
         level1: level1.length,
         level2: level2.length,
         level3: level3.length,
+        level4: level4.length,
+        level5: level5.length,
       },
       count: formattedNetwork.length,
       network: formattedNetwork,

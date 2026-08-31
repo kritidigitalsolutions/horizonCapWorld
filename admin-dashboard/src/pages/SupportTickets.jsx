@@ -18,18 +18,19 @@ import Pagination from '../components/ui/Pagination';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
 import MediaViewerModal, { getMediaType } from '../components/ui/MediaViewerModal';
-import { supportTickets as initialTickets, users } from '../data/mockData';
 import {
   getSupportTickets,
   replyTicket,
   updateTicketStatus,
   deleteTicket
 } from '../api/supportApi';
+import { getAllUsers } from '../api/usersApi';
 import { uploadFileToCloudinary, deleteFileFromCloudinary } from '../api/uploadApi';
 
 export default function SupportTickets() {
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
+  const [usersList, setUsersList] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -53,7 +54,7 @@ export default function SupportTickets() {
 
   // New Ticket Drawer State
   const [isNewTicketOpen, setIsNewTicketOpen] = useState(false);
-  const [newTicketUser, setNewTicketUser] = useState(users[0]?.id || 1);
+  const [newTicketUser, setNewTicketUser] = useState('');
   const [newTicketSubject, setNewTicketSubject] = useState('');
   const [newTicketCategory, setNewTicketCategory] = useState('Deposit & Funding');
   const [newTicketPriority, setNewTicketPriority] = useState('High');
@@ -70,15 +71,15 @@ export default function SupportTickets() {
         search: search.trim() || undefined,
       });
 
-      if (res?.success && Array.isArray(res.tickets) && res.tickets.length > 0) {
+      if (res?.success && Array.isArray(res.tickets)) {
         const formatted = res.tickets.map(t => ({
           _id: t._id,
           id: t.customId || t._id,
-          customId: t.userCustomId || 'HORIZON-USR-01',
+          customId: t.userCustomId || '',
           userName: t.userName || t.user?.name || 'Investor',
-          userEmail: t.userEmail || t.user?.email || 'investor@example.com',
-          userPhone: t.userPhone || '+1 555-0199',
-          userRank: t.userRank || 'Level 1 (Starter)',
+          userEmail: t.userEmail || t.user?.email || '',
+          userPhone: t.userPhone || '',
+          userRank: t.userRank || 'Starter',
           userAvatar: (t.userName || 'Investor').split(' ').map(n => n[0]).join(''),
           subject: t.subject,
           category: t.category || 'General Support',
@@ -97,11 +98,11 @@ export default function SupportTickets() {
         }));
         setTickets(formatted);
       } else {
-        setTickets(initialTickets);
+        setTickets([]);
       }
     } catch (err) {
-      console.warn('Using fallback support tickets data:', err.message);
-      setTickets(initialTickets);
+      console.warn('Error fetching support tickets:', err.message);
+      setTickets([]);
     } finally {
       setLoading(false);
     }
@@ -109,6 +110,16 @@ export default function SupportTickets() {
 
   useEffect(() => {
     fetchTickets();
+    getAllUsers({ limit: 100 }).then(res => {
+      if (res?.success && Array.isArray(res.users)) {
+        setUsersList(res.users);
+        if (res.users.length > 0 && !newTicketUser) {
+          setNewTicketUser(res.users[0]._id || res.users[0].customId || res.users[0].id);
+        }
+      }
+    }).catch(err => {
+      console.warn('Error fetching users list for support tickets:', err.message);
+    });
   }, [fetchTickets]);
 
   // Reset page when filters change
@@ -223,16 +234,22 @@ export default function SupportTickets() {
     e.preventDefault();
     if (!newTicketSubject.trim() || !newTicketMessage.trim()) return;
 
-    const selectedUserObj = users.find(u => u.id === Number(newTicketUser)) || users[0];
+    const selectedUserObj = usersList.find(u => (u._id === newTicketUser || u.customId === newTicketUser || String(u.id) === String(newTicketUser))) || usersList[0] || {
+      name: 'Investor',
+      email: 'investor@example.com',
+      phone: '',
+      currentRank: 'Starter',
+      customId: 'HORIZON-USR-01'
+    };
 
     const newTicketObj = {
       id: `TCK-${Math.floor(1000 + Math.random() * 9000)}`,
-      customId: selectedUserObj.customId || `HORIZON-USR-0${selectedUserObj.id}`,
-      userName: selectedUserObj.name,
-      userEmail: selectedUserObj.email,
-      userPhone: selectedUserObj.phone,
+      customId: selectedUserObj.customId || `HORIZON-USR-0${selectedUserObj.id || 1}`,
+      userName: selectedUserObj.name || selectedUserObj.fullName || 'Investor',
+      userEmail: selectedUserObj.email || '',
+      userPhone: selectedUserObj.phone || '',
       userRank: selectedUserObj.currentRank || 'Level 1 (Starter)',
-      userAvatar: selectedUserObj.name.split(' ').map(n => n[0]).join(''),
+      userAvatar: (selectedUserObj.name || selectedUserObj.fullName || 'Investor').split(' ').map(n => n[0]).join(''),
       subject: newTicketSubject.trim(),
       category: newTicketCategory,
       priority: newTicketPriority,
@@ -565,6 +582,12 @@ export default function SupportTickets() {
             </tbody>
           </table>
         </div>
+
+        {filteredTickets.length === 0 && (
+          <div className="p-12 text-center text-xs text-slate-400 font-poppins">
+            No support tickets found matching your filter criteria.
+          </div>
+        )}
 
         {/* ──────────────── 20 ITEMS PER PAGE PAGINATION BAR ──────────────── */}
         <Pagination
@@ -1071,11 +1094,14 @@ export default function SupportTickets() {
               onChange={e => setNewTicketUser(e.target.value)}
               className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-gold-400"
             >
-              {users.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.customId || `HORIZON-USR-0${u.id}`}) • {u.email}
+              {usersList.map(u => (
+                <option key={u._id || u.id || u.customId} value={u._id || u.customId || u.id}>
+                  {u.name || u.fullName} ({u.customId || u._id}) • {u.email}
                 </option>
               ))}
+              {usersList.length === 0 && (
+                <option value="">No registered users found</option>
+              )}
             </select>
           </div>
 

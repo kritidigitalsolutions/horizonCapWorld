@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { newsArticles as initialArticles } from '../data/userMockData';
 import { getNewsArticle, getNews } from '../api/newsApi';
 import {
   RiArrowLeftLine, RiCalendarLine, RiTimeLine, RiEyeLine, RiShareLine,
@@ -27,48 +26,57 @@ export default function NewsDetail() {
           getNews({ limit: 4 }),
         ]);
 
-        if (articleRes.status === 'fulfilled' && articleRes.value?.success && articleRes.value.news) {
-          const art = articleRes.value.news;
+        const art = articleRes.status === 'fulfilled' && articleRes.value?.success
+          ? (articleRes.value.article || articleRes.value.news)
+          : null;
+
+        if (art) {
           setArticle({
-            id: art._id || art.id,
+            id: art._id || art.id || art.customId,
             title: art.title,
             subtitle: art.subtitle || '',
             content: art.content || '',
-            category: art.category || 'Renewable Energy',
+            category: art.category || 'Company',
             date: art.createdAt ? art.createdAt.split('T')[0] : '2026-08-20',
-            authorName: art.author?.name || art.authorName || 'Horizon Editorial Team',
+            publishDate: art.date || (art.createdAt ? new Date(art.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'),
+            authorName: typeof art.author === 'object' ? (art.author?.name || 'Super Admin') : (art.author || art.authorName || 'Super Admin'),
+            authorRole: typeof art.author === 'object' ? (art.author?.role || 'Platform Editorial') : 'Platform Editorial',
             readTime: art.readTime || '3 min read',
-            image: art.image || '',
-            tags: art.tags || [],
+            image: art.bannerUrl || art.image || '',
+            bannerUrl: art.bannerUrl || art.image || '',
+            tags: Array.isArray(art.tags) ? art.tags : (art.tags ? art.tags.split(',') : []),
           });
         } else {
-          const fallback = initialArticles.find(a => String(a.id) === String(id)) || initialArticles[0];
-          setArticle(fallback);
+          setArticle(null);
         }
 
-        if (listRes.status === 'fulfilled' && listRes.value?.success && Array.isArray(listRes.value.news)) {
-          const rel = listRes.value.news
-            .filter(a => String(a._id) !== String(id) && String(a.id) !== String(id))
+        const rawRel = listRes.status === 'fulfilled' && listRes.value?.success
+          ? (listRes.value.articles || listRes.value.news || [])
+          : [];
+
+        if (Array.isArray(rawRel) && rawRel.length > 0) {
+          const rel = rawRel
+            .filter(a => String(a._id || a.id) !== String(id))
             .slice(0, 3)
             .map(a => ({
-              id: a._id || a.id,
+              id: a._id || a.id || a.customId,
               title: a.title,
               subtitle: a.subtitle || '',
               content: a.content || '',
-              category: a.category || 'Renewable Energy',
+              category: a.category || 'Company',
               date: a.createdAt ? a.createdAt.split('T')[0] : '2026-08-20',
-              image: a.image || '',
+              publishDate: a.date || (a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'),
+              image: a.bannerUrl || a.image || '',
+              bannerUrl: a.bannerUrl || a.image || '',
             }));
           setRelatedArticles(rel);
         } else {
-          const relFallback = initialArticles.filter(a => String(a.id) !== String(id)).slice(0, 3);
-          setRelatedArticles(relFallback);
+          setRelatedArticles([]);
         }
       } catch (err) {
-        console.warn('Using fallback news detail:', err.message);
-        const fallback = initialArticles.find(a => String(a.id) === String(id)) || initialArticles[0];
-        setArticle(fallback);
-        setRelatedArticles(initialArticles.filter(a => String(a.id) !== String(id)).slice(0, 3));
+        console.warn('Error fetching news article:', err.message);
+        setArticle(null);
+        setRelatedArticles([]);
       } finally {
         setLoading(false);
       }

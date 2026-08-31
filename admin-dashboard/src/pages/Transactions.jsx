@@ -16,7 +16,6 @@ import Modal from '../components/ui/Modal';
 import Pagination from '../components/ui/Pagination';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
-import { transactions as initialTransactions } from '../data/mockData';
 import {
   getTransactions,
   approveTransaction,
@@ -58,14 +57,14 @@ export default function Transactions() {
         limit: 150,
       });
 
-      if (res?.success && Array.isArray(res.transactions) && res.transactions.length > 0) {
+      if (res?.success && Array.isArray(res.transactions)) {
         const formatted = res.transactions.map(t => {
           const numAmt = Number(t.rawAmount || t.amount || 0);
           return {
             _id: t._id,
             id: t.customId || t._id,
             user: t.userName || t.user?.name || 'Investor',
-            userCustomId: t.userCustomId || 'HORIZON-USR-07',
+            userCustomId: t.userCustomId || '',
             userEmail: t.userEmail || '',
             userPhone: t.userPhone || '',
             country: t.country || 'Global',
@@ -90,31 +89,11 @@ export default function Transactions() {
         });
         setTxnList(formatted);
       } else {
-        const saved = localStorage.getItem('horizon_transactions');
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setTxnList(parsed);
-              return;
-            }
-          } catch (e) {}
-        }
-        setTxnList(initialTransactions);
+        setTxnList([]);
       }
     } catch (err) {
-      console.warn('Using fallback transactions data:', err.message);
-      const saved = localStorage.getItem('horizon_transactions');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setTxnList(parsed);
-            return;
-          }
-        } catch (e) {}
-      }
-      setTxnList(initialTransactions);
+      console.warn('Error fetching transactions:', err.message);
+      setTxnList([]);
     } finally {
       setLoading(false);
     }
@@ -126,17 +105,8 @@ export default function Transactions() {
 
   // Real-time synchronization with User deposits & updates
   useEffect(() => {
-    const handleSync = (e) => {
-      if (e.detail && Array.isArray(e.detail)) {
-        setTxnList(e.detail);
-      } else {
-        const saved = localStorage.getItem('horizon_transactions');
-        if (saved) {
-          try {
-            setTxnList(JSON.parse(saved));
-          } catch (err) {}
-        }
-      }
+    const handleSync = () => {
+      fetchTxns();
     };
     window.addEventListener('horizon-transactions-change', handleSync);
     window.addEventListener('horizon-deposit-submitted', handleSync);
@@ -146,7 +116,7 @@ export default function Transactions() {
       window.removeEventListener('horizon-deposit-submitted', handleSync);
       window.removeEventListener('storage', handleSync);
     };
-  }, []);
+  }, [fetchTxns]);
 
   // Reset page to 1 when filters change
   useEffect(() => {
@@ -533,19 +503,19 @@ export default function Transactions() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Total Gross Deposits"
-          numericValue={totalDeposits || 445000}
+          numericValue={totalDeposits || 0}
           prefix="$"
           decimals={0}
-          change="+18.4%"
+          change={totalDeposits > 0 ? 'Live Volume' : 'No Deposits'}
           positive={true}
           icon="deposit"
         />
         <KPICard
           title="Total Settled Withdrawals"
-          numericValue={totalWithdrawals || 15000}
+          numericValue={totalWithdrawals || 0}
           prefix="$"
           decimals={0}
-          change="-4.2%"
+          change={totalWithdrawals > 0 ? 'Settled' : 'No Withdrawals'}
           positive={false}
           icon="withdrawal"
         />
@@ -560,10 +530,10 @@ export default function Transactions() {
         />
         <KPICard
           title="Referral Bonus Paid"
-          numericValue={totalReferral || 1200}
+          numericValue={totalReferral || 0}
           prefix="$"
           decimals={0}
-          change="+12.0%"
+          change={totalReferral > 0 ? 'Paid Out' : 'No Bonuses'}
           positive={true}
           icon="users"
         />

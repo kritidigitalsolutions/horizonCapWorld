@@ -6,7 +6,6 @@ import AreaChartComponent from '../components/charts/AreaChart';
 import BarChartComponent from '../components/charts/BarChart';
 import DonutChart from '../components/charts/DonutChart';
 import PageHeader from '../components/ui/PageHeader';
-import { kpiData as fallbackKpiData, chartData as fallbackChartData, recentActivity as fallbackRecentActivity } from '../data/mockData';
 import { getDashboardKPIs, getDashboardCharts, getRecentActivities } from '../api/dashboardApi';
 
 const activityIcons = {
@@ -17,11 +16,29 @@ const activityIcons = {
   plan: { icon: RiPieChartLine, color: 'text-gold-500', bg: 'bg-gold-50' },
 };
 
+const initialKpis = [
+  { id: 'total_aum', title: 'Total Platform AUM', value: '$0', numericValue: 0, prefix: '$', change: 'Liquidity', positive: true, icon: 'money', delay: 0 },
+  { id: 'active_investors', title: 'Active Investors', value: '0', numericValue: 0, prefix: '', change: 'Verified', positive: true, icon: 'users', delay: 80 },
+  { id: 'yield_distributed', title: 'Total Yield Distributed', value: '$0', numericValue: 0, prefix: '$', change: 'Per Second', positive: true, icon: 'chart', delay: 160 },
+  { id: 'platform_reserve', title: 'Platform Reserve Liquidity', value: '$0', numericValue: 0, prefix: '$', change: 'Reserve', positive: true, icon: 'wallet', delay: 240 },
+];
+
+const initialCharts = {
+  investment: [],
+  userGrowth: [],
+  categoryDistribution: [
+    { name: 'Renewable Energy', percentage: 40, color: '#38A169' },
+    { name: 'Precious Metals', percentage: 30, color: '#ECC94B' },
+    { name: 'Real Estate', percentage: 20, color: '#4299E1' },
+    { name: 'Venture Capital', percentage: 10, color: '#9F7AEA' },
+  ],
+};
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
-  const [kpis, setKpis] = useState(fallbackKpiData);
-  const [charts, setCharts] = useState(fallbackChartData);
-  const [activities, setActivities] = useState(fallbackRecentActivity);
+  const [kpis, setKpis] = useState(initialKpis);
+  const [charts, setCharts] = useState(initialCharts);
+  const [activities, setActivities] = useState([]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -38,10 +55,10 @@ export default function Dashboard() {
             {
               id: 'total_aum',
               title: 'Total Platform AUM',
-              value: `$${(raw.totalAUM || 82450000).toLocaleString()}`,
-              numericValue: raw.totalAUM || 82450000,
+              value: `$${Number(raw.totalAUM || 0).toLocaleString()}`,
+              numericValue: Number(raw.totalAUM || 0),
               prefix: '$',
-              change: '+18.4%',
+              change: raw.totalAUM > 0 ? '+100%' : 'No Volume',
               positive: true,
               icon: 'money',
               delay: 0,
@@ -49,10 +66,10 @@ export default function Dashboard() {
             {
               id: 'active_investors',
               title: 'Active Investors',
-              value: (raw.activeInvestors || raw.totalUsers || 1420).toLocaleString(),
-              numericValue: raw.activeInvestors || raw.totalUsers || 1420,
+              value: Number(raw.activeInvestors || raw.totalUsers || 0).toLocaleString(),
+              numericValue: Number(raw.activeInvestors || raw.totalUsers || 0),
               prefix: '',
-              change: '+12.6%',
+              change: (raw.activeInvestors || raw.totalUsers || 0) > 0 ? 'Active' : 'No Users',
               positive: true,
               icon: 'users',
               delay: 80,
@@ -60,10 +77,10 @@ export default function Dashboard() {
             {
               id: 'yield_distributed',
               title: 'Total Yield Distributed',
-              value: `$${(raw.totalYieldDistributed || 14200000).toLocaleString()}`,
-              numericValue: raw.totalYieldDistributed || 14200000,
+              value: `$${Number(raw.totalYieldDistributed || 0).toLocaleString()}`,
+              numericValue: Number(raw.totalYieldDistributed || 0),
               prefix: '$',
-              change: '+24.1%',
+              change: raw.totalYieldDistributed > 0 ? 'Live Stream' : 'Ready',
               positive: true,
               icon: 'chart',
               delay: 160,
@@ -71,10 +88,10 @@ export default function Dashboard() {
             {
               id: 'platform_reserve',
               title: 'Platform Reserve Liquidity',
-              value: `$${(raw.platformReserve || 21000000).toLocaleString()}`,
-              numericValue: raw.platformReserve || 21000000,
+              value: `$${Number(raw.platformReserve || 0).toLocaleString()}`,
+              numericValue: Number(raw.platformReserve || 0),
               prefix: '$',
-              change: '+8.3%',
+              change: raw.platformReserve > 0 ? 'Liquid Reserve' : 'Available',
               positive: true,
               icon: 'wallet',
               delay: 240,
@@ -85,11 +102,11 @@ export default function Dashboard() {
         if (chartRes.status === 'fulfilled' && chartRes.value?.success && Array.isArray(chartRes.value.charts)) {
           const investmentSeries = chartRes.value.charts.map(c => ({
             month: c.month,
-            amount: c.deposits || c.amount || 50000,
+            amount: Number(c.deposits || c.amount || 0),
           }));
           const userGrowthSeries = chartRes.value.charts.map(c => ({
             month: c.month,
-            users: c.newUsers || c.users || 200,
+            users: Number(c.newUsers || c.users || 0),
           }));
           setCharts(prev => ({
             ...prev,
@@ -122,12 +139,10 @@ export default function Dashboard() {
               });
             });
           }
-          if (acts.length > 0) {
-            setActivities(acts.slice(0, 6));
-          }
+          setActivities(acts);
         }
       } catch (err) {
-        console.warn('Using fallback admin dashboard data:', err.message);
+        console.warn('Error loading dashboard metrics:', err.message);
       } finally {
         setLoading(false);
       }
@@ -232,6 +247,11 @@ export default function Dashboard() {
                 </div>
               );
             })}
+            {activities.length === 0 && (
+              <div className="py-8 text-center text-xs text-slate-400">
+                No recent platform activities recorded yet.
+              </div>
+            )}
           </div>
         </div>
       </div>

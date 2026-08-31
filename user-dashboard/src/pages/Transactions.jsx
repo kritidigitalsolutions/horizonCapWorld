@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { userTransactions as initialTransactions } from '../data/userMockData';
 import { getTransactions } from '../api/transactionsApi';
 import {
   RiDownloadLine, RiEyeLine, RiArrowUpCircleLine,
@@ -14,6 +13,7 @@ import SearchBar from '../components/ui/SearchBar';
 import Modal from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
 import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 export default function Transactions() {
   const [loading, setLoading] = useState(true);
@@ -33,14 +33,14 @@ export default function Transactions() {
         limit: 100,
       });
 
-      if (res?.success && Array.isArray(res.transactions) && res.transactions.length > 0) {
+      if (res?.success && Array.isArray(res.transactions)) {
         const formatted = res.transactions.map(t => {
           const numAmt = Number(t.rawAmount || t.amount || 0);
           return {
             _id: t._id,
             id: t.customId || t._id,
-            user: t.userName || user?.name || 'Investor',
-            userCustomId: t.userCustomId || user?.id || 'HORIZON-USR-07',
+            user: t.userName || user?.fullName || user?.name || 'Investor',
+            userCustomId: t.userCustomId || user?.id || '',
             userEmail: t.userEmail || user?.email || '',
             type: t.type,
             amount: `$${numAmt.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
@@ -59,32 +59,11 @@ export default function Transactions() {
         });
         setTxnList(formatted);
       } else {
-        // Use local cache / initial fallback if backend list is empty
-        const saved = localStorage.getItem('horizon_transactions');
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setTxnList(parsed);
-              return;
-            }
-          } catch (e) {}
-        }
-        setTxnList(initialTransactions);
+        setTxnList([]);
       }
     } catch (err) {
-      console.warn('Using transaction cache fallback:', err.message);
-      const saved = localStorage.getItem('horizon_transactions');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setTxnList(parsed);
-            return;
-          }
-        } catch (e) {}
-      }
-      setTxnList(initialTransactions);
+      console.warn('Error fetching transactions:', err.message);
+      setTxnList([]);
     } finally {
       setLoading(false);
     }
@@ -96,12 +75,8 @@ export default function Transactions() {
 
   // Real-time synchronization with Super Admin approvals/rejections and new deposits
   useEffect(() => {
-    const handleSync = (e) => {
-      if (e.detail && Array.isArray(e.detail)) {
-        setTxnList(e.detail);
-      } else {
-        fetchTxns();
-      }
+    const handleSync = () => {
+      fetchTxns();
     };
     window.addEventListener('horizon-transactions-change', handleSync);
     window.addEventListener('storage', handleSync);
@@ -203,8 +178,8 @@ export default function Transactions() {
             <div class="amount">${formattedAmt}</div>
             <div class="status">${txn.status}</div>
             <div class="row"><span class="label">Transaction ID</span><span class="val">${txn.id}</span></div>
-            <div class="row"><span class="label">Investor Name</span><span class="val">${txn.user || user?.fullName || 'William Max'}</span></div>
-            <div class="row"><span class="label">Investor ID</span><span class="val">${txn.userCustomId || user?.id || 'HORIZON-USR-07'}</span></div>
+            <div class="row"><span class="label">Investor Name</span><span class="val">${txn.user || user?.fullName || user?.name || 'Investor'}</span></div>
+            <div class="row"><span class="label">Investor ID</span><span class="val">${txn.userCustomId || user?.id || ''}</span></div>
             <div class="row"><span class="label">Transaction Type</span><span class="val">${txn.type}</span></div>
             <div class="row"><span class="label">Gateway / Source</span><span class="val">${txn.gateway || 'System'}</span></div>
             <div class="row"><span class="label">Date & Time</span><span class="val">${txn.date} ${txn.time || ''}</span></div>
@@ -246,27 +221,27 @@ export default function Transactions() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <KPICard
           title="Total Gross Deposits"
-          numericValue={totalDeposits || 4000}
+          numericValue={totalDeposits || 0}
           prefix="$"
           icon="investment"
           positive={true}
-          change="+14.2%"
+          change={totalDeposits > 0 ? "Active" : "No Deposits"}
           subtitle="Cumulative deposited funds"
           delay={0}
         />
         <KPICard
           title="Settled Withdrawals"
-          numericValue={totalWithdrawals || 800}
+          numericValue={totalWithdrawals || 0}
           prefix="$"
           icon="withdrawal"
           positive={true}
-          change="Completed"
+          change={totalWithdrawals > 0 ? "Completed" : "No Payouts"}
           subtitle="Total cleared payouts"
           delay={60}
         />
         <KPICard
           title="ROI Yield Distributed"
-          numericValue={Math.round(totalRoiEarned || 1392)}
+          numericValue={Math.round(totalRoiEarned || 0)}
           prefix="$"
           icon="revenue"
           positive={true}
@@ -276,7 +251,7 @@ export default function Transactions() {
         />
         <KPICard
           title="Affiliate & Rank Bonuses"
-          numericValue={Math.round(totalReferralBonus || 280)}
+          numericValue={Math.round(totalReferralBonus || 0)}
           prefix="$"
           icon="users"
           positive={true}
@@ -407,8 +382,38 @@ export default function Transactions() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-slate-400 text-xs">
-                    No transaction records found matching your filter criteria.
+                  <td colSpan={8} className="text-center py-16 px-4">
+                    <div className="max-w-md mx-auto flex flex-col items-center justify-center space-y-3">
+                      <div className="w-14 h-14 rounded-2xl bg-gold-50 border border-gold-200 flex items-center justify-center text-gold-600 shadow-2xs">
+                        <RiExchangeDollarLine size={28} />
+                      </div>
+                      <h4 className="text-base font-bold text-slate-800">
+                        {search ? "No Matching Transactions" : "No Transactions Recorded Yet"}
+                      </h4>
+                      <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                        {search
+                          ? `No records found matching "${search}". Try searching with a different ID or keyword.`
+                          : filterType !== "all"
+                          ? `You do not have any ${filterType} transactions recorded on your account yet.`
+                          : "All your deposit requests, investment contracts, real-time ROI yields, and referral bonuses will be logged here in real time."}
+                      </p>
+                      {!search && (
+                        <div className="flex items-center gap-2.5 pt-2">
+                          <Link
+                            to="/deposit"
+                            className="btn btn-primary text-xs px-4 py-2 rounded-xl font-bold shadow-gold"
+                          >
+                            Deposit Funds
+                          </Link>
+                          <Link
+                            to="/plans"
+                            className="btn btn-secondary text-xs px-4 py-2 rounded-xl font-bold"
+                          >
+                            Explore Plans
+                          </Link>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}

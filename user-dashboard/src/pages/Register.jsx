@@ -1,13 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { countries } from '../data/userMockData';
 import {
   RiUser3Line, RiMailLine, RiLockPasswordLine,
   RiPhoneLine, RiGlobalLine, RiTeamLine,
   RiArrowRightLine, RiEyeLine, RiEyeOffLine,
   RiShieldCheckLine, RiCheckLine,
 } from 'react-icons/ri';
+
+const countries = [
+  'India',
+  'Pakistan',
+  'United States',
+  'United Kingdom',
+  'United Arab Emirates',
+  'Saudi Arabia',
+  'Canada',
+  'Australia',
+  'Germany',
+  'France',
+  'Singapore',
+  'Malaysia',
+  'Bangladesh',
+  'South Africa',
+  'Nigeria',
+  'Turkey',
+  'Kuwait',
+  'Qatar',
+  'Oman',
+  'Bahrain',
+  'Switzerland',
+  'Netherlands',
+  'Italy',
+  'Spain',
+  'Sweden',
+  'Norway',
+  'Denmark',
+  'Brazil',
+  'Mexico',
+  'Japan',
+  'South Korea',
+  'China',
+  'Hong Kong',
+  'Thailand',
+  'Vietnam',
+  'Indonesia',
+  'Philippines',
+  'Egypt',
+  'Kenya',
+  'Ghana',
+  'Sri Lanka',
+  'Nepal',
+  'New Zealand',
+  'Ireland',
+  'Belgium',
+  'Austria',
+  'Portugal',
+  'Poland',
+  'Czech Republic',
+  'Greece'
+];
 
 export default function Register() {
   const navigate = useNavigate();

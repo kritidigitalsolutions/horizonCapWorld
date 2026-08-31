@@ -13,7 +13,6 @@ import Modal from '../components/ui/Modal';
 import SearchBar from '../components/ui/SearchBar';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
-import { supportChannels as initialChannels } from '../data/mockData';
 import {
   getChannels,
   createChannel,
@@ -49,24 +48,14 @@ export default function SupportChannels() {
   const fetchChannels = useCallback(async () => {
     try {
       const res = await getChannels();
-      if (res?.success && Array.isArray(res.channels) && res.channels.length > 0) {
+      if (res?.success && Array.isArray(res.channels)) {
         setChannels(res.channels);
       } else {
-        const saved = localStorage.getItem('horizon_support_channels');
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setChannels(parsed);
-              return;
-            }
-          } catch (e) {}
-        }
-        setChannels(initialChannels);
+        setChannels([]);
       }
     } catch (err) {
-      console.warn('Using fallback channels data:', err.message);
-      setChannels(initialChannels);
+      console.warn('Error fetching support channels:', err.message);
+      setChannels([]);
     } finally {
       setLoading(false);
     }
@@ -402,6 +391,11 @@ export default function SupportChannels() {
             </div>
           </div>
         ))}
+        {filteredChannels.length === 0 && (
+          <div className="col-span-full card p-12 text-center text-xs text-slate-400 font-poppins">
+            No official support channels found. Click "Add Official Channel" to configure your support desk.
+          </div>
+        )}
       </div>
 
       {/* ──────────────── ADD / EDIT CHANNEL SLIDE-OVER DRAWER ──────────────── */}

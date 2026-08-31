@@ -4,51 +4,63 @@ import {
   RiCoinsLine, RiShieldCheckLine, RiCalculatorLine, RiArrowRightLine,
   RiMoneyDollarCircleLine, RiWallet3Line
 } from 'react-icons/ri';
-import { getReferralCommissions } from '../api/referralsApi';
+import { getReferralCommissions, getReferralOverview, getReferralNetwork } from '../api/referralsApi';
 import PageHeader from '../components/ui/PageHeader';
 import KPICard from '../components/ui/KPICard';
 import Badge from '../components/ui/Badge';
 
-// Initial Referral Commissions matching Super Admin
-const initialCommissions = [
-  { level: 'L1', name: 'Direct Referrals (Level 1)', investCommission: '5%', earningsCommission: '5%', activePromoters: 3420, totalVolume: '$1,250,000' },
-  { level: 'L2', name: 'Sub-Referrals (Level 2)', investCommission: '4%', earningsCommission: '4%', activePromoters: 2180, totalVolume: '$890,000' },
-  { level: 'L3', name: 'Network Tier (Level 3)', investCommission: '3%', earningsCommission: '3%', activePromoters: 1420, totalVolume: '$520,000' },
-  { level: 'L4', name: 'Network Tier (Level 4)', investCommission: '2%', earningsCommission: '2%', activePromoters: 840, totalVolume: '$310,000' },
-  { level: 'L5', name: 'Global Depth (Level 5)', investCommission: '1%', earningsCommission: '1%', activePromoters: 490, totalVolume: '$185,000' },
+// Initial Referral Commissions Tiers
+const defaultTiers = [
+  { level: 'L1', name: 'Direct Referrals (Level 1)', investCommission: '5%', earningsCommission: '5%' },
+  { level: 'L2', name: 'Sub-Referrals (Level 2)', investCommission: '4%', earningsCommission: '4%' },
+  { level: 'L3', name: 'Network Tier (Level 3)', investCommission: '3%', earningsCommission: '3%' },
+  { level: 'L4', name: 'Network Tier (Level 4)', investCommission: '2%', earningsCommission: '2%' },
+  { level: 'L5', name: 'Global Depth (Level 5)', investCommission: '1%', earningsCommission: '1%' },
 ];
 
 export default function ReferralPlans() {
-  const [commissions, setCommissions] = useState(initialCommissions);
+  const [commissions, setCommissions] = useState(defaultTiers);
+  const [overviewData, setOverviewData] = useState(null);
+  const [networkList, setNetworkList] = useState([]);
   const [calcDeposit, setCalcDeposit] = useState('10000');
   const [calcDailyYield, setCalcDailyYield] = useState('100');
 
   useEffect(() => {
-    const fetchTiers = async () => {
+    const fetchData = async () => {
       try {
-        const res = await getReferralCommissions();
-        if (res?.success && Array.isArray(res.tiers) && res.tiers.length > 0) {
-          setCommissions(res.tiers);
+        const [commsRes, overviewRes, netRes] = await Promise.allSettled([
+          getReferralCommissions(),
+          getReferralOverview(),
+          getReferralNetwork(),
+        ]);
+
+        if (commsRes.status === 'fulfilled' && commsRes.value?.success && Array.isArray(commsRes.value.tiers) && commsRes.value.tiers.length > 0) {
+          setCommissions(commsRes.value.tiers);
+        }
+        if (overviewRes.status === 'fulfilled' && overviewRes.value?.success) {
+          setOverviewData(overviewRes.value.data);
+        }
+        if (netRes.status === 'fulfilled' && netRes.value?.success && Array.isArray(netRes.value.network)) {
+          setNetworkList(netRes.value.network);
         }
       } catch (err) {
-        console.warn('Using default referral tiers:', err.message);
+        console.warn('Error loading referral data:', err.message);
       }
     };
-    fetchTiers();
+    fetchData();
   }, []);
 
   useEffect(() => {
-    const handleSync = (e) => {
-      if (e.detail && Array.isArray(e.detail)) {
-        setCommissions(e.detail);
-      } else {
-        const saved = localStorage.getItem('horizon_referral_commissions');
-        if (saved) {
-          try {
-            setCommissions(JSON.parse(saved));
-          } catch (err) {}
-        }
-      }
+    const handleSync = () => {
+      getReferralCommissions().then(res => {
+        if (res?.success && Array.isArray(res.tiers)) setCommissions(res.tiers);
+      }).catch(() => {});
+      getReferralOverview().then(res => {
+        if (res?.success) setOverviewData(res.data);
+      }).catch(() => {});
+      getReferralNetwork().then(res => {
+        if (res?.success && Array.isArray(res.network)) setNetworkList(res.network);
+      }).catch(() => {});
     };
 
     window.addEventListener('horizon-referrals-change', handleSync);
@@ -58,6 +70,11 @@ export default function ReferralPlans() {
       window.removeEventListener('storage', handleSync);
     };
   }, []);
+
+  const totalCommissions = Number(overviewData?.commissions?.totalEarned || 0);
+  const directPromoters = Number(overviewData?.directReferralsCount || networkList.filter(u => u.level === 1).length || 0);
+  const totalDownlines = Number(overviewData?.totalTeamCount || networkList.length || 0);
+  const avgAffiliateYield = Number((commissions.reduce((sum, c) => sum + (parseFloat(c.investCommission) || 0), 0) || 15.0).toFixed(1));
 
   return (
     <div className="page-enter space-y-6 pb-8 font-poppins">
@@ -72,38 +89,38 @@ export default function ReferralPlans() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Total Referral Commissions Paid"
-          numericValue={428900}
+          numericValue={totalCommissions}
           prefix="$"
           decimals={0}
-          change="+19.4%"
+          change={totalCommissions > 0 ? "Instant Payout" : "Ready"}
           positive={true}
           icon="money"
         />
         <KPICard
           title="Active Network Promoters"
-          numericValue={1420}
+          numericValue={directPromoters}
           prefix=""
           decimals={0}
-          change="+12.8%"
+          change="Level 1 Direct"
           positive={true}
           icon="users"
         />
         <KPICard
           title="Multi-Tier Downlines"
-          numericValue={8650}
+          numericValue={totalDownlines}
           prefix=""
           decimals={0}
-          change="+24.1%"
+          change="5 Tiers Active"
           positive={true}
           icon="chart"
         />
         <KPICard
           title="Average Affiliate Yield"
-          numericValue={14.5}
+          numericValue={avgAffiliateYield}
           prefix=""
           suffix="%"
           decimals={1}
-          change="+3.2%"
+          change="5 Tiers Total"
           positive={true}
           icon="wallet"
         />

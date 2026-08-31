@@ -28,6 +28,9 @@ import {
   RiMovieLine,
   RiYoutubeLine,
   RiFolderVideoLine,
+  RiLoader4Line,
+  RiEyeLine,
+  RiFileCopyLine,
 } from "react-icons/ri";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -102,6 +105,8 @@ export default function PaymentSettings() {
   const [isDefault, setIsDefault] = useState(false);
   const [status, setStatus] = useState("Active");
   const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [uploadingQr, setUploadingQr] = useState(false);
+  const [qrUploadError, setQrUploadError] = useState("");
 
   // Mobile E-Wallet Form Fields
   const [ewalletProvider, setEwalletProvider] = useState("EasyPaisa");
@@ -259,24 +264,71 @@ export default function PaymentSettings() {
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setQrCodeUrl(reader.result);
-      reader.readAsDataURL(file);
+    if (!file) return;
 
-      try {
-        const previousQr = qrCodeUrl || editingWallet?.qrCodeUrl;
-        const uploadRes = await uploadFileToCloudinary(file, {
-          folder: "horizoncap/payments",
-          oldUrl: previousQr,
-        });
-        if (uploadRes?.secure_url) {
-          setQrCodeUrl(uploadRes.secure_url);
-        }
-      } catch (err) {
-        console.warn("QR code upload to Cloudinary fallback:", err.message);
-      }
+    if (!file.type.startsWith("image/")) {
+      setQrUploadError("Please select a valid image file (PNG, JPG, WEBP, SVG).");
+      return;
     }
+
+    setQrUploadError("");
+    setUploadingQr(true);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setQrCodeUrl(reader.result);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      const previousQr =
+        qrCodeUrl && qrCodeUrl.startsWith("https://res.cloudinary.com")
+          ? qrCodeUrl
+          : editingWallet?.qrCodeUrl;
+      const uploadRes = await uploadFileToCloudinary(file, {
+        folder: "horizoncap/payments",
+        oldUrl: previousQr,
+      });
+      if (uploadRes?.secure_url) {
+        setQrCodeUrl(uploadRes.secure_url);
+      }
+    } catch (err) {
+      console.warn("QR code upload to Cloudinary fallback:", err.message);
+    } finally {
+      setUploadingQr(false);
+    }
+  };
+
+  const handleRemoveQrCode = () => {
+    if (qrCodeUrl && qrCodeUrl.includes("cloudinary.com")) {
+      deleteFileFromCloudinary(qrCodeUrl).catch(() => null);
+    }
+    setQrCodeUrl("");
+    setQrUploadError("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleAutoGenerateQr = () => {
+    const rawTarget =
+      category === "Crypto Digital Wallet"
+        ? address
+        : category === "Mobile E-Wallet"
+          ? ewalletMobileNo
+          : category === "Indian Bank Account"
+            ? (indianUpiId || indianAccountNo)
+            : intlAccountNo;
+
+    const dataToEncode = rawTarget
+      ? rawTarget.trim()
+      : address || name || "HorizonCapital";
+    if (!dataToEncode) {
+      alert("Please enter a wallet address first to generate its QR code.");
+      return;
+    }
+    const generatedUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(dataToEncode)}`;
+    setQrCodeUrl(generatedUrl);
   };
 
   const handleOpenVideoStudio = () => {
@@ -337,6 +389,8 @@ export default function PaymentSettings() {
     setIsDefault(false);
     setStatus("Active");
     setQrCodeUrl("");
+    setUploadingQr(false);
+    setQrUploadError("");
 
     if (defaultCat === "Mobile E-Wallet") {
       setEwalletProvider("EasyPaisa");
@@ -417,6 +471,8 @@ export default function PaymentSettings() {
     setIsDefault(!!w.isDefault);
     setStatus(w.status || "Active");
     setQrCodeUrl(w.qrCodeUrl || "");
+    setUploadingQr(false);
+    setQrUploadError("");
 
     if (
       w.minDeposits &&
@@ -561,6 +617,17 @@ export default function PaymentSettings() {
           ? res.methods
           : [];
       setMethods(updatedList);
+
+      // Synchronize local storage for instant live preview in User Dashboard
+      try {
+        localStorage.setItem("horizon_payment_methods", JSON.stringify(updatedList));
+        window.dispatchEvent(
+          new CustomEvent("horizon-payment-methods-change", { detail: updatedList })
+        );
+      } catch (e) {
+        /* ignore local storage error */
+      }
+
       setDrawerOpen(false);
     } catch (error) {
       console.error("Error saving payment method:", error);
@@ -1423,6 +1490,190 @@ export default function PaymentSettings() {
             </>
           )}
 
+          {/* ──────────────── UNIVERSAL & CRYPTO RECEIVING QR / SCAN IMAGE UPLOADER ──────────────── */}
+          <div className="p-4 bg-slate-50/90 rounded-2xl border border-slate-200/90 space-y-3 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 font-poppins">
+                    <RiQrCodeLine size={16} className="text-gold-600" />
+                    {category === "Crypto Digital Wallet"
+                      ? "Receiving Wallet QR / Scan Image"
+                      : "Official Deposit QR / Scan Image"}
+                  </label>
+                  {qrCodeUrl ? (
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300">
+                      ● Active Scan Attached
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-medium border border-slate-200">
+                      Optional Scan
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5 font-poppins">
+                  {category === "Crypto Digital Wallet"
+                    ? "Upload official receiving address QR code or deposit scan image. Investors will scan this directly from their crypto app (Binance, TrustWallet, OKX, MetaMask, Phantom)."
+                    : "Upload official account deposit QR code or merchant scan code."}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap flex-shrink-0">
+                {(address || ewalletMobileNo || indianAccountNo || indianUpiId) && (
+                  <button
+                    type="button"
+                    onClick={handleAutoGenerateQr}
+                    className="px-2.5 py-1 rounded-xl bg-gold-100 hover:bg-gold-200 text-gold-900 text-[11px] font-semibold border border-gold-300 transition-colors flex items-center gap-1 shadow-2xs font-poppins cursor-pointer"
+                    title="Auto-generate QR code from current receiving address"
+                  >
+                    <RiFlashlightLine size={13} className="text-gold-700" />
+                    <span>Auto Generate QR</span>
+                  </button>
+                )}
+
+                {qrCodeUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveQrCode}
+                    className="px-2.5 py-1 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-[11px] font-semibold border border-red-200 transition-colors flex items-center gap-1 shadow-2xs font-poppins cursor-pointer"
+                  >
+                    <RiCloseLine size={13} />
+                    <span>Remove Scan</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Hidden File Input for QR Code */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+
+            {/* Upload Area / Image Preview */}
+            {qrCodeUrl ? (
+              <div className="p-3.5 bg-white rounded-xl border border-gold-300/80 shadow-2xs flex flex-col sm:flex-row items-center gap-4">
+                {/* QR Image Thumbnail */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-white border-2 border-gold-400 p-1 flex-shrink-0 shadow-2xs cursor-pointer hover:border-gold-600 transition-all group relative overflow-hidden flex items-center justify-center"
+                  title="Click to replace scan image"
+                >
+                  <img
+                    src={qrCodeUrl}
+                    alt="Wallet QR Code"
+                    className="w-full h-full object-contain rounded-xl"
+                  />
+                  <div className="absolute inset-0 bg-slate-900/60 rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white text-[10px] font-bold gap-1 p-2 text-center">
+                    <RiImageAddLine size={20} className="text-gold-400" />
+                    <span>Click to Replace</span>
+                  </div>
+                </div>
+
+                {/* Details & Actions */}
+                <div className="min-w-0 flex-1 space-y-2 w-full">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-700 font-poppins">
+                      Verified Scan Code Attached
+                    </span>
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                      Live on User App
+                    </span>
+                  </div>
+
+                  <div className="text-[11px] text-slate-500 font-mono bg-slate-50 p-2 rounded-xl border border-slate-200 break-all line-clamp-1 select-all">
+                    {qrCodeUrl}
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      icon={<RiImageAddLine />}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {uploadingQr ? "Uploading..." : "Replace Scan"}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      icon={<RiEyeLine />}
+                      onClick={() =>
+                        setQrModalWallet({
+                          name: name || `${category} Scan`,
+                          qrCodeUrl,
+                        })
+                      }
+                    >
+                      Preview Zoom
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-slate-300 hover:border-gold-400 bg-white rounded-2xl p-5 text-center cursor-pointer transition-all group shadow-2xs"
+              >
+                {uploadingQr ? (
+                  <div className="py-4 space-y-2">
+                    <RiLoader4Line
+                      size={28}
+                      className="animate-spin text-gold-500 mx-auto"
+                    />
+                    <p className="text-xs font-semibold text-slate-700 font-poppins">
+                      Uploading wallet scan image to cloud storage...
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 py-2">
+                    <div className="w-12 h-12 rounded-2xl bg-gold-50 text-gold-600 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform shadow-2xs border border-gold-200">
+                      <RiUploadCloud2Line size={24} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 font-poppins">
+                        Click to Upload Wallet QR / Scan Image
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5 font-poppins">
+                        Supports PNG, JPG, JPEG, WEBP, SVG • Fast Cloudinary Upload
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Optional Direct URL Input */}
+            <div className="flex gap-2 items-center pt-0.5">
+              <input
+                type="url"
+                placeholder="Or paste direct scan image / QR URL (https://...)"
+                value={qrCodeUrl}
+                onChange={(e) => setQrCodeUrl(e.target.value)}
+                className="flex-1 px-3 py-1.5 bg-white rounded-xl border border-slate-200 text-xs text-slate-700 focus:border-gold-400 outline-none font-mono"
+              />
+              {address && !qrCodeUrl && (
+                <button
+                  type="button"
+                  onClick={handleAutoGenerateQr}
+                  className="px-3 py-1.5 bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-bold rounded-xl whitespace-nowrap shadow-gold transition-all cursor-pointer font-poppins"
+                >
+                  Generate QR
+                </button>
+              )}
+            </div>
+
+            {qrUploadError && (
+              <p className="text-xs text-red-600 font-medium font-poppins">{qrUploadError}</p>
+            )}
+          </div>
+
           {/* COMMON LIMITS & SPEED */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -1627,22 +1878,45 @@ export default function PaymentSettings() {
       <Modal
         isOpen={!!qrModalWallet}
         onClose={() => setQrModalWallet(null)}
-        title="Deposit QR Code"
+        title={qrModalWallet ? `${qrModalWallet.name || "Payment"} QR Code` : "Deposit QR Code"}
+        subtitle="Official receiving address scan image verified for platform deposits"
         size="sm"
         footer={
-          <Button variant="primary" onClick={() => setQrModalWallet(null)}>
-            Done
-          </Button>
+          <div className="flex items-center justify-between w-full">
+            {qrModalWallet?.qrCodeUrl && (
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(qrModalWallet.qrCodeUrl);
+                  alert("Scan image URL copied to clipboard!");
+                }}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors font-poppins"
+              >
+                <RiFileCopyLine size={14} />
+                <span>Copy URL</span>
+              </button>
+            )}
+            <Button variant="primary" onClick={() => setQrModalWallet(null)}>
+              Done
+            </Button>
+          </div>
         }
       >
         {qrModalWallet && (
-          <div className="text-center py-2 space-y-3">
-            <img
-              src={qrModalWallet.qrCodeUrl}
-              alt="QR"
-              className="w-48 h-48 mx-auto border-2 border-gold-300 rounded-2xl"
-            />
-            <p className="text-sm font-semibold">{qrModalWallet.name}</p>
+          <div className="text-center py-3 space-y-3 font-poppins">
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 inline-block shadow-2xs">
+              <img
+                src={qrModalWallet.qrCodeUrl}
+                alt="QR"
+                className="w-56 h-56 mx-auto object-contain rounded-xl bg-white border border-slate-200 p-2 shadow-2xs"
+              />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900">{qrModalWallet.name}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Scan using any supported banking or cryptocurrency mobile wallet
+              </p>
+            </div>
           </div>
         )}
       </Modal>

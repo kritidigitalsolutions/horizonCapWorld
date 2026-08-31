@@ -8,38 +8,17 @@ export function getReferralLink(userId) {
   const origin = typeof window !== 'undefined' && window.location.origin
     ? window.location.origin
     : 'https://horizoncapworlds.com';
-  return `${origin}/register?ref=${userId || 'HORIZON-USR-07'}`;
+  return `${origin}/register?ref=${userId || ''}`;
 }
-
-const defaultUser = {
-  id: 'HORIZON-USR-07',
-  fullName: 'William Max',
-  email: 'william@horizoncap.com',
-  phone: '+91 9876543210',
-  country: 'India',
-  sponsorId: 'HORIZON-USR-01',
-  rank: { level: 3, name: 'Gold Sovereign' },
-  joinDate: '2026-07-15',
-  depositWallet: 4000.0,
-  earningWallet: 1392.7,
-  totalInvested: 4000.0,
-  totalEarned: 1392.7,
-  totalWithdrawn: 800.0,
-  activeInvestments: 2,
-  totalReferrals: 7,
-  directReferrals: 3,
-  referralLink: getReferralLink('HORIZON-USR-07'),
-  dailyEarning: 68.7,
-  perSecondRate: 0.0007951,
-};
 
 const formatApiUser = (rawUser, overviewData = null) => {
   if (!rawUser) return null;
-  const customId = rawUser.customId || rawUser.id || 'HORIZON-USR-07';
+  const customId = rawUser.customId || rawUser.id || '';
   
   return {
     _id: rawUser._id || rawUser.id,
     id: customId,
+    customId,
     fullName: rawUser.name || rawUser.fullName || 'Investor',
     name: rawUser.name || rawUser.fullName || 'Investor',
     email: rawUser.email,
@@ -53,9 +32,9 @@ const formatApiUser = (rawUser, overviewData = null) => {
     sponsorId: rawUser.sponsorId || 'HORIZON-HQ',
     rank: {
       level: rawUser.rankLevel || rawUser.rank?.level || 1,
-      name: rawUser.currentRank || rawUser.rank?.name || 'Starter',
+      name: rawUser.currentRank || rawUser.rank?.name || 'Bronze Explorer',
     },
-    joinDate: rawUser.createdAt ? rawUser.createdAt.split('T')[0] : (rawUser.joinDate || '2026-01-01'),
+    joinDate: rawUser.createdAt ? rawUser.createdAt.split('T')[0] : (rawUser.joinDate || new Date().toISOString().split('T')[0]),
     depositWallet: Number(rawUser.depositWallet || overviewData?.wallets?.depositWallet || 0),
     earningWallet: Number(rawUser.earningWallet || overviewData?.wallets?.earningWallet || 0),
     totalInvested: Number(rawUser.totalInvested || overviewData?.wallets?.totalInvested || 0),
@@ -80,7 +59,7 @@ export function AuthProvider({ children }) {
         if (parsed) return parsed;
       } catch (e) {}
     }
-    return defaultUser;
+    return null;
   });
 
   const [token, setToken] = useState(() => localStorage.getItem('horizon_user_token') || '');
@@ -171,6 +150,8 @@ export function AuthProvider({ children }) {
     setIsAuthenticated(false);
     localStorage.removeItem('horizon_user');
     localStorage.removeItem('horizon_user_token');
+    localStorage.removeItem('horizon_user_avatar');
+    localStorage.removeItem('horizon_transactions');
   };
 
   const updateUser = (updates) => {

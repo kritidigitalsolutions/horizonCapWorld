@@ -13,7 +13,6 @@ import SearchBar from '../components/ui/SearchBar';
 import Pagination from '../components/ui/Pagination';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
-import { referralCommissions as initialCommissions, users } from '../data/mockData';
 import {
   getReferralSettings,
   updateReferralSetting,
@@ -23,7 +22,7 @@ import {
 export default function Referrals() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('plans'); // 'plans', 'promoters'
-  const [commissions, setCommissions] = useState(initialCommissions);
+  const [commissions, setCommissions] = useState([]);
   const [promoterList, setPromoterList] = useState([]);
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,19 +48,18 @@ export default function Referrals() {
       if (settingsRes.status === 'fulfilled' && settingsRes.value?.success && Array.isArray(settingsRes.value.settings)) {
         setCommissions(settingsRes.value.settings);
       } else {
-        const saved = localStorage.getItem('horizon_referral_commissions');
-        if (saved) {
-          try {
-            setCommissions(JSON.parse(saved));
-          } catch (e) {}
-        }
+        setCommissions([]);
       }
 
       if (promotersRes.status === 'fulfilled' && promotersRes.value?.success && Array.isArray(promotersRes.value.promoters)) {
         setPromoterList(promotersRes.value.promoters);
+      } else {
+        setPromoterList([]);
       }
     } catch (err) {
-      console.warn('Using fallback referrals data:', err.message);
+      console.warn('Error fetching referrals data:', err.message);
+      setCommissions([]);
+      setPromoterList([]);
     } finally {
       setLoading(false);
     }
@@ -109,16 +107,24 @@ export default function Referrals() {
     setEditingCommission(null);
   };
 
-  // Promoter calculations fallback
-  const basePromoterData = promoterList.length > 0 ? promoterList : users.map((u) => {
-    const rawInvest = Number((u.totalInvested || '$0').replace(/[^0-9.-]+/g, '')) || 0;
-    const teamVolume = rawInvest * (u.totalReferrals > 0 ? (u.totalReferrals * 1.8 + 1) : 0);
-    const directComm = (teamVolume * 0.5) * 0.05;
-    const multiTierComm = (teamVolume * 0.5) * 0.035;
-    const totalComm = directComm + multiTierComm;
+  // Promoter calculations
+  const basePromoterData = promoterList.map((u) => {
+    const rawInvest = Number(u.totalInvested || 0);
+    const teamVolume = Number(u.teamTurnover || u.teamVolume || 0);
+    const directComm = Number(u.directCommission || u.directComm || (teamVolume * 0.05));
+    const multiTierComm = Number(u.multiTierCommission || u.multiTierComm || (teamVolume * 0.035));
+    const totalComm = Number(u.commissionsEarned || u.totalCommission || (directComm + multiTierComm));
 
     return {
       ...u,
+      id: u._id || u.id || u.customId,
+      customId: u.customId || u.id || '',
+      name: u.name || 'Investor',
+      email: u.email || '',
+      phone: u.phone || '',
+      sponsor: u.sponsorId || u.referredBy || 'HORIZON-HQ',
+      directRefs: u.directReferrals || u.directRefs || 0,
+      totalTeam: u.totalTeamMembers || u.teamCount || 0,
       teamVolume: Math.round(teamVolume),
       directComm: Math.round(directComm),
       multiTierComm: Math.round(multiTierComm),
@@ -159,38 +165,38 @@ export default function Referrals() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Total Referral Commissions Paid"
-          numericValue={428900}
+          numericValue={promoterList.reduce((sum, p) => sum + Number(p.commissionsEarned || p.totalCommission || 0), 0)}
           prefix="$"
           decimals={0}
-          change="+19.4%"
+          change={promoterList.length > 0 ? 'Live Paid' : 'No Commissions'}
           positive={true}
           icon="money"
         />
         <KPICard
           title="Active Network Promoters"
-          numericValue={1420}
+          numericValue={promoterList.length}
           prefix=""
           decimals={0}
-          change="+12.8%"
+          change={promoterList.length > 0 ? 'Active Leaders' : 'No Promoters'}
           positive={true}
           icon="users"
         />
         <KPICard
           title="Multi-Tier Downlines"
-          numericValue={8650}
+          numericValue={promoterList.reduce((sum, p) => sum + Number(p.totalTeamMembers || p.teamCount || 0), 0)}
           prefix=""
           decimals={0}
-          change="+24.1%"
+          change={promoterList.length > 0 ? 'Network Team' : 'No Downlines'}
           positive={true}
           icon="chart"
         />
         <KPICard
           title="Average Affiliate Yield"
-          numericValue={14.5}
+          numericValue={commissions.reduce((sum, c) => sum + (parseFloat(c.investCommission) || 0), 0) || 15.0}
           prefix=""
           suffix="%"
           decimals={1}
-          change="+3.2%"
+          change="5-Tier Total"
           positive={true}
           icon="wallet"
         />
@@ -465,6 +471,12 @@ export default function Referrals() {
                 </tbody>
               </table>
             </div>
+
+            {filteredPromoters.length === 0 && (
+              <div className="p-12 text-center text-xs text-slate-400 font-poppins">
+                No affiliate promoters recorded yet. Promoters will appear here as users build their downline teams.
+              </div>
+            )}
 
             {/* ──────────────── 20 ITEMS PER PAGE PAGINATION BAR ──────────────── */}
             <Pagination

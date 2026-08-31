@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supportCategories } from '../data/userMockData';
 import {
   getSupportChannels,
   getMyTickets,
@@ -19,117 +18,26 @@ import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
 import { useAuth } from '../context/AuthContext';
 
-// Default Official Channels matching Super Admin Mock Data
-const defaultOfficialChannels = [
-  {
-    id: 'chan-1',
-    category: 'Instant Chat',
-    platform: 'WhatsApp',
-    title: 'WhatsApp Official VIP Helpdesk',
-    handle: '+1 (800) 249-9201',
-    url: 'https://wa.me/18002499201',
-    department: '24/7 VIP Escrow & Deposit Support',
-    hours: '24/7 Live Coverage',
-    status: 'Active',
-    stats: 'Avg. Reply < 2 mins'
-  },
-  {
-    id: 'chan-2',
-    category: 'Instant Chat',
-    platform: 'WhatsApp',
-    title: 'VIP Investors Community Group',
-    handle: 'Horizon VIP Investors Circle',
-    url: 'https://chat.whatsapp.com/HorizonVIPCommunity',
-    department: 'Official Daily Updates & Announcements',
-    hours: '24/7 Live Community',
-    status: 'Active',
-    stats: '12,400 Members'
-  },
-  {
-    id: 'chan-3',
-    category: 'Telegram',
-    platform: 'Telegram',
-    title: 'Telegram 24/7 Support Bot',
-    handle: '@HorizonSupportBot',
-    url: 'https://t.me/HorizonSupportBot',
-    department: 'Automated Account & Live Agent Routing',
-    hours: '24/7 Automated + Live Agents',
-    status: 'Active',
-    stats: 'Instant AI + Agent Desk'
-  },
-  {
-    id: 'chan-4',
-    category: 'Telegram',
-    platform: 'Telegram',
-    title: 'Official Announcements Channel',
-    handle: '@HorizonCapitalOfficial',
-    url: 'https://t.me/HorizonCapitalOfficial',
-    department: 'Corporate News, Yield Reports & Media',
-    hours: 'Broadcast Channel',
-    status: 'Active',
-    stats: '48,500 Subscribers'
-  },
-  {
-    id: 'chan-5',
-    category: 'Email Desk',
-    platform: 'Email',
-    title: 'General Support Helpdesk',
-    handle: 'support@horizonofcapital.com',
-    url: 'mailto:support@horizonofcapital.com',
-    department: 'Ticket Resolution & Technical Assistance',
-    hours: '24/7 Monitoring (Reply < 30m)',
-    status: 'Active',
-    stats: '100% Response Rate'
-  },
-  {
-    id: 'chan-6',
-    category: 'Email Desk',
-    platform: 'Email',
-    title: 'Compliance & Institutional Escrow',
-    handle: 'escrow@horizonofcapital.com',
-    url: 'mailto:escrow@horizonofcapital.com',
-    department: 'Institutional SWIFT Wires & Escrow Verification',
-    hours: 'Mon-Fri 8:00 AM - 8:00 PM EST',
-    status: 'Active',
-    stats: 'Institutional Desk'
-  },
-  {
-    id: 'chan-7',
-    category: 'Telephone',
-    platform: 'Phone',
-    title: 'Global Toll-Free Hotline',
-    handle: '+1 (800) 249-9201',
-    url: 'tel:+18002499201',
-    department: 'Direct Priority Voice Desk (USA / UK / Global)',
-    hours: 'Mon-Fri 9:00 AM - 6:00 PM EST',
-    status: 'Active',
-    stats: 'Toll-Free Worldwide'
-  },
-  {
-    id: 'chan-8',
-    category: 'Community',
-    platform: 'Discord',
-    title: 'Discord VIP Community Hub',
-    handle: 'discord.gg/horizoncap',
-    url: 'https://discord.gg/horizoncap',
-    department: 'Global Trading Strategies & Networking',
-    hours: '24/7 Community Chats',
-    status: 'Active',
-    stats: '8,900 Online'
-  },
+const supportCategories = [
+  'Deposit & Funding',
+  'Withdrawal & Settlement',
+  'Investment Plans & Yield',
+  'Referrals & Affiliates',
+  'Security & 2FA',
+  'Account & General'
 ];
 
 export default function Support() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('channels'); // 'channels' | 'create_ticket' | 'my_tickets'
 
-  const [channels, setChannels] = useState(defaultOfficialChannels);
+  const [channels, setChannels] = useState([]);
   const [channelCategory, setChannelCategory] = useState('all');
   const [channelSearch, setChannelSearch] = useState('');
   const [copiedId, setCopiedId] = useState(null);
 
   // Ticket Form State
-  const [form, setForm] = useState({ category: 'Investment', priority: 'Normal', subject: '', message: '' });
+  const [form, setForm] = useState({ category: 'Investment Plans & Yield', priority: 'Normal', subject: '', message: '' });
   const [attachedFile, setAttachedFile] = useState(null); // { name, size, type, previewUrl }
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [ticketSubmitting, setTicketSubmitting] = useState(false);
@@ -146,14 +54,16 @@ export default function Support() {
         getMyTickets(),
       ]);
 
-      if (chanRes.status === 'fulfilled' && chanRes.value?.success && Array.isArray(chanRes.value.channels) && chanRes.value.channels.length > 0) {
+      if (chanRes.status === 'fulfilled' && chanRes.value?.success && Array.isArray(chanRes.value.channels)) {
         setChannels(chanRes.value.channels);
+      } else {
+        setChannels([]);
       }
 
       if (tickRes.status === 'fulfilled' && tickRes.value?.success && Array.isArray(tickRes.value.tickets)) {
         const formatted = tickRes.value.tickets.map(t => ({
           _id: t._id,
-          id: t.ticketId || t._id,
+          id: t.customId || t.ticketId || t._id,
           category: t.category || 'General Support',
           priority: t.priority || 'Medium',
           subject: t.subject || 'Support Request',
@@ -165,9 +75,13 @@ export default function Support() {
           attachment: t.messages?.[0]?.attachments?.[0] ? { previewUrl: t.messages[0].attachments[0], name: 'Attachment' } : null,
         }));
         setMyTickets(formatted);
+      } else {
+        setMyTickets([]);
       }
     } catch (err) {
-      console.warn('Using default support data:', err.message);
+      console.warn('Error fetching support data:', err.message);
+      setChannels([]);
+      setMyTickets([]);
     } finally {
       setLoading(false);
     }
@@ -735,6 +649,12 @@ export default function Support() {
                 </div>
               </div>
             ))}
+
+            {myTickets.length === 0 && (
+              <div className="card p-12 text-center text-slate-400 text-sm font-medium">
+                You haven't submitted any support tickets yet. Click "Submit Support Ticket" above if you need assistance.
+              </div>
+            )}
           </div>
         </div>
       )}

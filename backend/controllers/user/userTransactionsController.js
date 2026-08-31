@@ -157,11 +157,9 @@ exports.getTransactions = async (req, res) => {
   try {
     const { type, status, search, limit = 50, page = 1 } = req.query;
     const userId = req.user._id;
-    const userCustomId = req.user.customId;
 
-    const query = {
-      $or: [{ user: userId }, { userCustomId }],
-    };
+    // Strict user isolation — only records belonging to this specific user
+    const query = { user: userId };
 
     if (type && type !== "all") {
       query.type = type;
@@ -171,30 +169,30 @@ exports.getTransactions = async (req, res) => {
       query.status = status;
     }
 
-    if (search) {
-      query.$and = [
-        {
-          $or: [
-            { customId: { $regex: search, $options: "i" } },
-            { referenceNo: { $regex: search, $options: "i" } },
-            { gateway: { $regex: search, $options: "i" } },
-          ],
-        },
+    if (search && search.trim()) {
+      const s = search.trim();
+      query.$or = [
+        { customId: { $regex: s, $options: "i" } },
+        { referenceNo: { $regex: s, $options: "i" } },
+        { gateway: { $regex: s, $options: "i" } },
       ];
     }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 50));
 
     const total = await Transaction.countDocuments(query);
     const transactions = await Transaction.find(query)
       .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum);
 
     res.status(200).json({
       success: true,
       count: transactions.length,
       total,
-      page: Number(page),
-      pages: Math.ceil(total / Number(limit)),
+      page: pageNum,
+      pages: Math.ceil(total / limitNum) || 1,
       transactions,
     });
   } catch (error) {
@@ -206,10 +204,20 @@ exports.getTransactions = async (req, res) => {
 // @route   GET /api/user/transactions/:id
 exports.getTransactionById = async (req, res) => {
   try {
-    const transaction = await Transaction.findOne({
-      $or: [{ _id: req.params.id }, { customId: req.params.id }],
-      $or: [{ user: req.user._id }, { userCustomId: req.user.customId }],
-    });
+    const idParam = req.params.id;
+    const query = {
+      user: req.user._id,
+      $or: [
+        { customId: idParam },
+      ],
+    };
+
+    // If param is a valid 24-hex ObjectId, also check _id
+    if (/^[0-9a-fA-F]{24}$/.test(idParam)) {
+      query.$or.push({ _id: idParam });
+    }
+
+    const transaction = await Transaction.findOne(query);
 
     if (!transaction) {
       return res.status(404).json({ success: false, message: "Transaction record not found." });

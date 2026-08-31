@@ -13,7 +13,6 @@ import Modal from '../components/ui/Modal';
 import SearchBar from '../components/ui/SearchBar';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
-import { newsArticles as initialArticles } from '../data/mockData';
 import {
   getAllArticles,
   createArticle,
@@ -71,7 +70,7 @@ export default function NewsMedia() {
         search: search.trim() || undefined,
       });
 
-      if (res?.success && Array.isArray(res.articles) && res.articles.length > 0) {
+      if (res?.success && Array.isArray(res.articles)) {
         const formatted = res.articles.map(a => ({
           _id: a._id,
           id: a.customId || a._id,
@@ -84,27 +83,17 @@ export default function NewsMedia() {
           excerpt: a.excerpt || a.subtitle || (a.content ? a.content.slice(0, 140) + '...' : ''),
           tags: Array.isArray(a.tags) ? a.tags : (a.tags ? a.tags.split(',') : []),
           status: a.status || 'Published',
-          views: String(a.views || '1'),
+          views: String(a.views || '0'),
           readTime: a.readTime || '3 min read',
           date: a.date || (a.createdAt ? a.createdAt.split('T')[0] : '2026-08-20'),
         }));
         setArticles(formatted);
       } else {
-        const saved = localStorage.getItem('horizon_news_broadcasts');
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setArticles(parsed);
-              return;
-            }
-          } catch (e) {}
-        }
-        setArticles(initialArticles);
+        setArticles([]);
       }
     } catch (err) {
-      console.warn('Using fallback news articles data:', err.message);
-      setArticles(initialArticles);
+      console.warn('Error fetching news articles:', err.message);
+      setArticles([]);
     } finally {
       setLoading(false);
     }

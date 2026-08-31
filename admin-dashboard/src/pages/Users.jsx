@@ -14,7 +14,6 @@ import SearchBar from '../components/ui/SearchBar';
 import Pagination from '../components/ui/Pagination';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
-import { users as initialUsers } from '../data/mockData';
 import {
   getAllUsers,
   updateUserStatus,
@@ -39,14 +38,14 @@ export default function Users() {
         status: statusFilter !== 'all' ? statusFilter : undefined,
       });
 
-      if (res?.success && Array.isArray(res.users) && res.users.length > 0) {
+      if (res?.success && Array.isArray(res.users)) {
         const formatted = res.users.map(u => ({
           _id: u._id,
           id: u.customId || u._id,
-          customId: u.customId || 'HORIZON-USR-01',
+          customId: u.customId || '',
           name: u.name || 'Investor',
           email: u.email || '',
-          phone: u.phone || '+1 555-0199',
+          phone: u.phone || '',
           country: u.country || 'Global',
           joined: u.createdAt ? u.createdAt.split('T')[0] : '2026-01-01',
           status: u.status || 'Active',
@@ -69,11 +68,11 @@ export default function Users() {
         }));
         setUserList(formatted);
       } else {
-        setUserList(initialUsers);
+        setUserList([]);
       }
     } catch (err) {
-      console.warn('Using fallback users data:', err.message);
-      setUserList(initialUsers);
+      console.warn('Error fetching users:', err.message);
+      setUserList([]);
     } finally {
       setLoading(false);
     }

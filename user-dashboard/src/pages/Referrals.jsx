@@ -13,15 +13,14 @@ import KPICard from '../components/ui/KPICard';
 import Modal from '../components/ui/Modal';
 import SearchBar from '../components/ui/SearchBar';
 import Badge from '../components/ui/Badge';
-import { referralNetwork as initialNetwork } from '../data/userMockData';
 
 // Initial Referral Commissions matching Super Admin
-const initialCommissions = [
-  { level: 'L1', name: 'Direct Referrals (Level 1)', investCommission: '5%', earningsCommission: '5%', activePromoters: 3420, totalVolume: '$1,250,000' },
-  { level: 'L2', name: 'Sub-Referrals (Level 2)', investCommission: '4%', earningsCommission: '4%', activePromoters: 2180, totalVolume: '$890,000' },
-  { level: 'L3', name: 'Network Tier (Level 3)', investCommission: '3%', earningsCommission: '3%', activePromoters: 1420, totalVolume: '$520,000' },
-  { level: 'L4', name: 'Network Tier (Level 4)', investCommission: '2%', earningsCommission: '2%', activePromoters: 840, totalVolume: '$310,000' },
-  { level: 'L5', name: 'Global Depth (Level 5)', investCommission: '1%', earningsCommission: '1%', activePromoters: 490, totalVolume: '$185,000' },
+const defaultCommissions = [
+  { level: 'L1', name: 'Direct Referrals (Level 1)', investCommission: '5%', earningsCommission: '5%' },
+  { level: 'L2', name: 'Sub-Referrals (Level 2)', investCommission: '4%', earningsCommission: '4%' },
+  { level: 'L3', name: 'Network Tier (Level 3)', investCommission: '3%', earningsCommission: '3%' },
+  { level: 'L4', name: 'Network Tier (Level 4)', investCommission: '2%', earningsCommission: '2%' },
+  { level: 'L5', name: 'Global Depth (Level 5)', investCommission: '1%', earningsCommission: '1%' },
 ];
 
 export default function Referrals() {
@@ -34,7 +33,7 @@ export default function Referrals() {
 
   const [overviewData, setOverviewData] = useState(null);
   const [networkList, setNetworkList] = useState([]);
-  const [commissions, setCommissions] = useState(initialCommissions);
+  const [commissions, setCommissions] = useState(defaultCommissions);
 
   // Modals / Drawers
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -61,13 +60,13 @@ export default function Referrals() {
         }
 
         if (netRes.status === 'fulfilled' && netRes.value?.success && Array.isArray(netRes.value.network)) {
-          setNetworkList(netRes.value.network.length > 0 ? netRes.value.network : initialNetwork);
+          setNetworkList(netRes.value.network);
         } else {
-          setNetworkList(initialNetwork);
+          setNetworkList([]);
         }
       } catch (err) {
-        console.warn('Using fallback referrals data:', err.message);
-        setNetworkList(initialNetwork);
+        console.warn('Error fetching referrals data:', err.message);
+        setNetworkList([]);
       } finally {
         setLoading(false);
       }
@@ -76,7 +75,7 @@ export default function Referrals() {
     fetchData();
   }, []);
 
-  const referralLink = overviewData?.referralLink || user?.referralLink || getReferralLink(user?.id || 'HORIZON-USR-07');
+  const referralLink = overviewData?.referralLink || user?.referralLink || getReferralLink(user?.customId || user?.id || '');
 
   const copyLink = () => {
     navigator.clipboard.writeText(referralLink);
@@ -84,7 +83,7 @@ export default function Referrals() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const currentNetwork = networkList.length > 0 ? networkList : initialNetwork;
+  const currentNetwork = networkList;
   const levelCounts = [1, 2, 3, 4, 5].map(l => currentNetwork.filter(r => r.level === l).length);
 
   const filteredNetwork = currentNetwork.filter(item => {
@@ -116,42 +115,41 @@ export default function Referrals() {
         }
       />
 
-      {/* ──────────────── 4 ROLLING ODOMETER KPI CARDS (DESIGN.MD) ──────────────── */}
+      {/* ──────────────── 4 ROLLING ODOMETER KPI CARDS ──────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Total Referral Commissions Paid"
-          numericValue={428900}
+          numericValue={Math.round(overviewData?.commissions?.totalEarned || 0)}
           prefix="$"
           decimals={0}
-          change="+19.4%"
+          change={overviewData?.commissions?.totalEarned > 0 ? "Instant Payout" : "Ready"}
           positive={true}
           icon="money"
         />
         <KPICard
-          title="Active Network Promoters"
-          numericValue={1420}
+          title="Direct Active Promoters"
+          numericValue={overviewData?.directReferralsCount || networkList.filter(u => u.level === 1).length || 0}
           prefix=""
           decimals={0}
-          change="+12.8%"
+          change="Level 1 Direct"
           positive={true}
           icon="users"
         />
         <KPICard
           title="Multi-Tier Downlines"
-          numericValue={8650}
+          numericValue={overviewData?.totalTeamCount || networkList.length || 0}
           prefix=""
           decimals={0}
-          change="+24.1%"
+          change="5 Tiers Active"
           positive={true}
           icon="chart"
         />
         <KPICard
-          title="Average Affiliate Yield"
-          numericValue={14.5}
-          prefix=""
-          suffix="%"
-          decimals={1}
-          change="+3.2%"
+          title="Total Team Turnover Volume"
+          numericValue={Math.round(overviewData?.totalTeamVolume || 0)}
+          prefix="$"
+          decimals={0}
+          change="Team Volume"
           positive={true}
           icon="wallet"
         />
@@ -179,64 +177,65 @@ export default function Referrals() {
             onClick={() => setIsQrModalOpen(true)}
             className="btn btn-secondary text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer bg-white shadow-2xs"
           >
-            <RiQrCodeLine size={16} className="text-gold-700" />
-            <span>Invite QR</span>
+            <RiQrCodeLine size={15} />
+            <span>QR Code</span>
           </button>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-          <div className="flex-1 w-full px-4 py-3 rounded-2xl bg-white border border-gold-200 text-xs sm:text-sm font-mono font-bold text-slate-900 truncate select-all shadow-xs">
+        {/* Dynamic Link Input with instant copy */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 px-4 py-3 rounded-xl bg-white border border-gold-200 text-xs sm:text-sm font-mono font-bold text-slate-800 truncate shadow-2xs select-all">
             {referralLink}
           </div>
+          <button
+            type="button"
+            onClick={copyLink}
+            className={`btn text-xs px-5 py-3 rounded-xl font-bold transition-all shadow-gold flex items-center gap-1.5 cursor-pointer ${
+              copied ? 'bg-emerald-600 text-white' : 'btn-primary'
+            }`}
+          >
+            {copied ? <RiCheckLine size={16} /> : <RiFileCopyLine size={16} />}
+            <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+          </button>
+        </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={copyLink}
-              className={`btn text-xs px-5 py-3 rounded-2xl font-extrabold flex items-center justify-center gap-2 cursor-pointer transition-all w-full sm:w-auto ${
-                copied
-                  ? 'bg-emerald-500 text-white border-emerald-500 shadow-gold'
-                  : 'btn-primary shadow-gold'
-              }`}
-            >
-              {copied ? (
-                <>
-                  <RiCheckLine size={16} /> Copied!
-                </>
-              ) : (
-                <>
-                  <RiFileCopyLine size={16} /> Copy Link
-                </>
-              )}
-            </button>
-          </div>
+        <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+          <span className="font-mono">
+            Sponsor ID: <strong className="text-slate-700">{user?.customId || user?.id || '—'}</strong>
+          </span>
+          <span className="text-emerald-700 font-bold flex items-center gap-1">
+            <RiShieldCheckLine size={14} /> Active Downline Referral Structure (5-Levels)
+          </span>
         </div>
       </div>
 
-      {/* ──────────────── TABS SWITCHER (MATCHING SUPER ADMIN) ──────────────── */}
-      <div className="card p-2">
-        <div className="flex items-center gap-2 overflow-x-auto font-poppins">
-          {[
-            { id: 'tree', label: 'Active Downline Partners Directory', count: `${initialNetwork.length} Partners`, icon: <RiGroupLine /> },
-            { id: 'plans', label: '5-Tier Commission Structure', count: '5 Tiers Active', icon: <RiNodeTree /> },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
-                activeTab === tab.id
-                  ? 'bg-gold-400 text-slate-900 font-bold shadow-gold'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              <span className="text-sm">{tab.icon}</span>
-              <span>{tab.label}</span>
-              <span className="px-2 py-0.5 rounded-md text-[10px] bg-white/80 text-slate-800 font-bold border border-slate-200/80 shadow-2xs">
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </div>
+      {/* ──────────────── TAB SWITCHER ──────────────── */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab('tree')}
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'tree'
+              ? 'bg-gold-400 text-slate-950 shadow-gold'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <RiNodeTree size={16} />
+          <span>Active Downline Partners ({networkList.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('plans')}
+          className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            activeTab === 'plans'
+              ? 'bg-gold-400 text-slate-950 shadow-gold'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <RiPercentLine size={16} />
+          <span>5-Tier Commission Structure</span>
+        </button>
       </div>
 
       {/* ──────────────── TAB 1: ACTIVE DOWNLINE PARTNERS DIRECTORY ──────────────── */}
@@ -283,13 +282,13 @@ export default function Referrals() {
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  All Tiers
+                  All Tiers ({networkList.length})
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Downlines Table (Matching Super Admin Users Table Styling Exactly) */}
+          {/* Downlines Table */}
           <div className="card overflow-hidden">
             <div className="table-container">
               <table className="data-table font-poppins">
@@ -300,10 +299,8 @@ export default function Referrals() {
                     <th className="font-medium text-slate-500">Mobile Number</th>
                     <th className="font-medium text-slate-500">Referred By (Sponsor)</th>
                     <th className="font-medium text-slate-500">Tier Level</th>
-                    <th className="font-medium text-slate-500">Direct Referrals</th>
-                    <th className="font-medium text-slate-500">Total Team Volume</th>
-                    <th className="font-medium text-slate-500">Direct Comm (5%)</th>
-                    <th className="font-medium text-slate-500">Total Comm. Paid</th>
+                    <th className="font-medium text-slate-500">Total Invested</th>
+                    <th className="font-medium text-slate-500">Commission Earned</th>
                     <th className="font-medium text-slate-500">Status</th>
                     <th className="text-right pr-6 font-medium text-slate-500">Action</th>
                   </tr>
@@ -311,19 +308,19 @@ export default function Referrals() {
                 <tbody>
                   {filteredNetwork.map((u, i) => (
                     <tr
-                      key={u.id}
+                      key={u.id || i}
                       className="animate-fade-in hover:bg-slate-50/70 transition-colors"
                       style={{ animationDelay: `${i * 35}ms` }}
                     >
-                      {/* Promoter Details (Large Round Gold Avatar) */}
+                      {/* Promoter Details */}
                       <td>
                         <div className="flex items-center gap-3.5">
                           <div className="w-11 h-11 rounded-full bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 text-slate-900 font-bold flex items-center justify-center flex-shrink-0 shadow-xs ring-2 ring-gold-200/80 text-xs font-poppins">
-                            {u.name.split(' ').map(n => n[0]).join('')}
+                            {(u.name || 'P').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-slate-700 truncate leading-tight font-poppins">
-                              {u.name}
+                              {u.name || 'Investor'}
                             </p>
                             <p className="text-[11px] font-medium text-gold-600 font-poppins tracking-tight mt-0.5 font-mono">
                               {u.id}
@@ -334,19 +331,19 @@ export default function Referrals() {
 
                       {/* Email */}
                       <td className="text-xs font-normal text-slate-500 font-poppins">
-                        {u.email}
+                        {u.email || '—'}
                       </td>
 
                       {/* Mobile Number */}
                       <td className="text-xs font-medium text-slate-600 font-poppins whitespace-nowrap">
-                        {u.phone || '+91 98765 00000'}
+                        {u.phone || '—'}
                       </td>
 
                       {/* Referred By / Sponsor */}
                       <td>
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gold-50/80 text-slate-700 text-xs font-medium border border-gold-200/80 whitespace-nowrap font-poppins">
                           <RiGroupLine size={13} className="text-gold-600" />
-                          {u.sponsor || 'HORIZON-USR-07'}
+                          {u.sponsor || 'Direct'}
                         </span>
                       </td>
 
@@ -357,26 +354,11 @@ export default function Referrals() {
                         </span>
                       </td>
 
-                      {/* Direct Referrals */}
-                      <td>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200/80 whitespace-nowrap font-poppins">
-                          <RiGroupLine size={13} className="text-blue-500" />
-                          {u.directRefs || 0} Direct
-                        </span>
-                      </td>
-
-                      {/* Total Team Volume */}
+                      {/* Total Invested */}
                       <td>
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-50/90 text-amber-900 text-xs font-semibold border border-amber-300/80 whitespace-nowrap font-poppins font-mono">
                           <RiCoinsLine size={13} className="text-amber-600" />
-                          ${(u.teamVolume || u.invested * 20).toLocaleString()}.00
-                        </span>
-                      </td>
-
-                      {/* Direct Comm. (5%) */}
-                      <td>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200 whitespace-nowrap font-poppins font-mono">
-                          +${(u.directComm || u.invested * 0.05).toLocaleString()}.00
+                          ${Number(u.invested || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </span>
                       </td>
 
@@ -384,24 +366,24 @@ export default function Referrals() {
                       <td>
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800 text-xs font-extrabold border border-emerald-300 whitespace-nowrap font-poppins shadow-2xs font-mono">
                           <RiMoneyDollarCircleLine size={14} className="text-emerald-600" />
-                          +${(u.totalComm || (u.invested * 0.05 + 100)).toLocaleString()}.00
+                          +${Number(u.totalComm || u.directComm || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </span>
                       </td>
 
                       {/* Status */}
                       <td>
                         <Badge variant={u.status === 'Active' ? 'success' : 'danger'} size="sm">
-                          {u.status}
+                          {u.status || 'Active'}
                         </Badge>
                       </td>
 
-                      {/* Action Button: Audit Tree (Prominent Gold Button) */}
+                      {/* Action Button: Audit Tree */}
                       <td className="text-right pr-6">
                         <button
                           type="button"
                           onClick={() => setSelectedPartner(u)}
                           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins cursor-pointer"
-                          title="View partner downline hierarchy & audit"
+                          title="View partner details"
                         >
                           <RiNodeTree size={14} className="text-slate-900" />
                           <span>Audit</span>
@@ -409,6 +391,38 @@ export default function Referrals() {
                       </td>
                     </tr>
                   ))}
+
+                  {filteredNetwork.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="text-center py-16 px-4">
+                        <div className="max-w-md mx-auto flex flex-col items-center justify-center space-y-3">
+                          <div className="w-14 h-14 rounded-2xl bg-gold-50 border border-gold-200 flex items-center justify-center text-gold-600 shadow-2xs">
+                            <RiGroupLine size={28} />
+                          </div>
+                          <h4 className="text-base font-bold text-slate-800">
+                            {search ? "No Matching Downline Partners" : "No Downline Partners Yet"}
+                          </h4>
+                          <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                            {search
+                              ? `No partners found matching "${search}".`
+                              : tierFilter !== 'all'
+                              ? `No partners currently placed in Tier Level ${tierFilter}.`
+                              : "Start building your team by sharing your official invite link. You'll earn up to 5 tiers of instant investment and profit-sharing bonuses."}
+                          </p>
+                          {!search && (
+                            <button
+                              type="button"
+                              onClick={copyLink}
+                              className="btn btn-primary text-xs px-4 py-2 rounded-xl font-bold shadow-gold flex items-center gap-1.5 cursor-pointer mt-2"
+                            >
+                              {copied ? <RiCheckLine size={15} /> : <RiFileCopyLine size={15} />}
+                              <span>{copied ? "Invite Link Copied!" : "Copy Your Invite Link"}</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -449,7 +463,7 @@ export default function Referrals() {
                       <div>
                         <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
                         <p className="text-[11px] text-slate-400">
-                          {tier.activePromoters} Promoters • Total Volume: {tier.totalVolume}
+                          {networkList.filter(u => u.level === Number(tier.level.replace('L', ''))).length} Active Team Promoters
                         </p>
                       </div>
                     </div>
@@ -497,7 +511,7 @@ export default function Referrals() {
                       <div>
                         <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
                         <p className="text-[11px] text-slate-400">
-                          {tier.activePromoters} Promoters Active
+                          {networkList.filter(u => u.level === Number(tier.level.replace('L', ''))).length} Active Team Promoters
                         </p>
                       </div>
                     </div>

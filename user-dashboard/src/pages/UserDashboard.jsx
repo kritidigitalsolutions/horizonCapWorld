@@ -3,17 +3,28 @@ import { Link } from 'react-router-dom';
 import { useAuth, getReferralLink } from '../context/AuthContext';
 import { updateProfile as apiUpdateProfile } from '../api/authApi';
 import { uploadFileToCloudinary } from '../api/uploadApi';
-import { quickLinks } from '../data/userMockData';
 import {
   RiFundsLine, RiLineChartLine, RiArrowDownLine, RiArrowUpLine,
   RiGroupLine, RiNodeTree, RiTrophyLine, RiExchangeDollarLine,
   RiUser3Line, RiCustomerService2Line,
-  RiFileCopyLine, RiShareLine, RiArrowRightLine,
-  RiWallet3Line, RiSafeLine, RiCheckLine, RiSparklingLine,
-  RiAwardLine, RiShieldCheckLine, RiTimeLine, RiCalendarLine,
-  RiCoinsLine, RiGlobalLine, RiCameraLine, RiEditLine
+  RiFileCopyLine, RiArrowRightLine,
+  RiWallet3Line, RiSafeLine, RiSparklingLine,
+  RiAwardLine, RiCalendarLine, RiCameraLine
 } from 'react-icons/ri';
 import { UilBolt } from '@iconscout/react-unicons';
+
+const quickLinks = [
+  { name: 'Plans', path: '/plans' },
+  { name: 'Investments', path: '/investments' },
+  { name: 'Deposit', path: '/deposit' },
+  { name: 'Withdraw', path: '/withdraw' },
+  { name: 'Referrals', path: '/referrals' },
+  { name: 'Ranks', path: '/ranks' },
+  { name: 'History', path: '/transactions' },
+  { name: 'Referral Plans', path: '/referral-plans' },
+  { name: 'Profile', path: '/profile' },
+  { name: 'Support', path: '/support' },
+];
 
 const quickLinkIcons = {
   'Plans': RiFundsLine,
@@ -39,10 +50,10 @@ export default function UserDashboard() {
   const streamRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const referralLink = user?.referralLink || getReferralLink(user?.id || 'HORIZON-USR-07');
-  const userId = user?.id || 'HORIZON-USR-07';
-  const userName = user?.fullName || user?.name || 'William Max';
-  const userSponsor = user?.sponsorId || 'HORIZON-USR-01';
+  const referralLink = user?.referralLink || (user?.id || user?.customId ? getReferralLink(user?.customId || user?.id) : '');
+  const userId = user?.customId || user?.id || '';
+  const userName = user?.fullName || user?.name || 'Investor';
+  const userSponsor = user?.sponsorId || 'HORIZON-HQ';
 
   // Dynamic greeting based on time of day
   const getGreeting = () => {
@@ -105,12 +116,13 @@ export default function UserDashboard() {
 
   // Live per-second streaming ROI
   useEffect(() => {
-    if (!user || user.perSecondRate <= 0) return;
+    const rate = Number(user?.perSecondRate || 0);
+    if (rate <= 0) return;
     streamRef.current = setInterval(() => {
-      setStreamingValue(prev => prev + (user.perSecondRate || 0.0007951));
+      setStreamingValue(prev => prev + rate);
     }, 1000);
     return () => clearInterval(streamRef.current);
-  }, [user]);
+  }, [user?.perSecondRate]);
 
   // Countdown to next daily payout (midnight)
   useEffect(() => {
@@ -473,7 +485,7 @@ export default function UserDashboard() {
       </div>
 
       {/* ──────────────── QUICK ACCESS LINKS ──────────────── */}
-      <div className="card p-6 sm:p-7 border border-slate-200 shadow-sm">
+      {/* <div className="card p-6 sm:p-7 border border-slate-200 shadow-sm">
         <div className="mb-4">
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 font-poppins">Quick Navigation Hub</p>
           <p className="text-base font-bold text-slate-800 font-poppins">Investor Platform Shortcuts</p>
@@ -491,7 +503,7 @@ export default function UserDashboard() {
             );
           })}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

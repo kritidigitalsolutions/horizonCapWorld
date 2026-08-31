@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { investmentPlans as fallbackPlans } from '../data/userMockData';
 import { getPlans, investInPlan } from '../api/plansApi';
 import {
   RiPercentLine, RiTimeLine, RiShieldFlashLine, RiLeafLine, RiCoinsLine,
@@ -33,7 +32,7 @@ export default function Plans() {
   const fetchPlans = async () => {
     try {
       const res = await getPlans();
-      if (res?.success && Array.isArray(res.plans) && res.plans.length > 0) {
+      if (res?.success && Array.isArray(res.plans)) {
         const formatted = res.plans.map(p => ({
           _id: p._id,
           id: p._id || p.customId,
@@ -54,11 +53,11 @@ export default function Plans() {
         }));
         setPlansList(formatted);
       } else {
-        setPlansList(fallbackPlans);
+        setPlansList([]);
       }
     } catch (err) {
-      console.warn('Using fallback plans:', err.message);
-      setPlansList(fallbackPlans);
+      console.warn('Error fetching investment plans:', err.message);
+      setPlansList([]);
     } finally {
       setLoading(false);
     }

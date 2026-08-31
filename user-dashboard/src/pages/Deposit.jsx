@@ -580,12 +580,12 @@ export default function Deposit() {
 
       const depositData = {
         id: receiptId,
-        user: user?.fullName || user?.name || 'William Max',
-        userCustomId: user?.id || 'HORIZON-USR-07',
-        userEmail: user?.email || 'william@horizoncap.com',
-        userPhone: user?.phone || '+91 9876543210',
-        country: user?.country || 'India',
-        sponsorId: user?.sponsorId || 'HORIZON-USR-01',
+        user: user?.fullName || user?.name || 'Investor',
+        userCustomId: user?.id || '',
+        userEmail: user?.email || '',
+        userPhone: user?.phone || '',
+        country: user?.country || 'Global',
+        sponsorId: user?.sponsorId || 'HORIZON-HQ',
         type: 'Deposit',
         amount: formattedAmount,
         rawAmount: numAmount,
@@ -610,20 +610,9 @@ export default function Deposit() {
         clientNote: `Deposit via ${selectedMethod.name} (${selectedMethod.currency})`,
       };
 
-      // Persist into horizon_transactions in localStorage for Super Admin sync
-      try {
-        const savedTxns = localStorage.getItem('horizon_transactions');
-        let txnsArray = [];
-        if (savedTxns) {
-          txnsArray = JSON.parse(savedTxns);
-        }
-        const updatedTxns = [depositData, ...txnsArray];
-        localStorage.setItem('horizon_transactions', JSON.stringify(updatedTxns));
-        window.dispatchEvent(new CustomEvent('horizon-transactions-change', { detail: updatedTxns }));
-        window.dispatchEvent(new CustomEvent('horizon-deposit-submitted', { detail: depositData }));
-      } catch (err) {
-        console.error('Error saving transaction cache:', err);
-      }
+      // Notify other views cleanly
+      window.dispatchEvent(new CustomEvent('horizon-transactions-change', { detail: { action: 'refresh' } }));
+      window.dispatchEvent(new CustomEvent('horizon-deposit-submitted', { detail: depositData }));
 
       setSubmittedDepositInfo(depositData);
       setIsSuccessModalOpen(true);

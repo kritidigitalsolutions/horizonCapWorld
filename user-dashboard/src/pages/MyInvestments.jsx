@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { userInvestments as fallbackInvestments } from '../data/userMockData';
 import { getMyInvestments } from '../api/plansApi';
 import {
   RiFundsLine, RiTimeLine, RiCheckLine, RiLeafLine, RiCoinsLine,
@@ -40,11 +39,11 @@ export default function MyInvestments() {
         }));
         setInvestmentsList(formatted);
       } else {
-        setInvestmentsList(fallbackInvestments);
+        setInvestmentsList([]);
       }
     } catch (err) {
-      console.warn('Using fallback investments:', err.message);
-      setInvestmentsList(fallbackInvestments);
+      console.warn('Error fetching investments:', err.message);
+      setInvestmentsList([]);
     } finally {
       setLoading(false);
     }

@@ -30,10 +30,8 @@ exports.getDashboardOverview = async (req, res) => {
       status: "Completed",
     });
 
-    // 3. Fetch Recent Transactions
-    const recentTransactions = await Transaction.find({
-      $or: [{ user: userId }, { userCustomId: user.customId }],
-    })
+    // 3. Fetch Recent Transactions (strictly for this user)
+    const recentTransactions = await Transaction.find({ user: userId })
       .sort({ createdAt: -1 })
       .limit(8);
 

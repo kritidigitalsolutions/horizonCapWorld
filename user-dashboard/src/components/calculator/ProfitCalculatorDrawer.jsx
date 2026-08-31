@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import Modal from '../ui/Modal';
-import { investmentPlans } from '../../data/userMockData';
 import { RiCalculatorLine, RiArrowRightLine, RiInformationLine, RiFundsLine, RiSunLine, RiCopperCoinLine, RiCheckLine } from 'react-icons/ri';
 import { UilBolt, UilClock } from '@iconscout/react-unicons';
 
@@ -10,10 +9,10 @@ const categories = [
   { id: 'Precious Metals', label: 'Precious Metals', icon: RiCopperCoinLine },
 ];
 
-export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, initialPlanId, plans = null }) {
-  const allPlans = plans && plans.length > 0 ? plans : investmentPlans;
+export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, initialPlanId, plans = [] }) {
+  const allPlans = plans && plans.length > 0 ? plans : [];
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId || allPlans[0]?.id || 'PLAN-001');
+  const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId || allPlans[0]?.id || allPlans[0]?._id || '');
   const [amount, setAmount] = useState(1000);
 
   // Filter plans by selected category tab
@@ -26,7 +25,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
   const currentPlan = useMemo(() => {
     const found = filteredPlans.find(p => p.id === selectedPlanId || p._id === selectedPlanId);
     if (found) return found;
-    return filteredPlans[0] || allPlans[0];
+    return filteredPlans[0] || allPlans[0] || null;
   }, [filteredPlans, selectedPlanId, allPlans]);
 
   // Real-time calculations

@@ -31,10 +31,18 @@ exports.register = async (req, res) => {
     const customId = `HORIZON-USR-${String(count + 1).padStart(2, "0")}${randomSuffix}`;
 
     // Verify or default sponsor
-    let finalSponsorId = sponsorId ? sponsorId.trim() : "HORIZON-HQ";
-    if (sponsorId) {
-      const sponsor = await User.findOne({ customId: sponsorId.trim() });
+    let finalSponsorId = "HORIZON-HQ";
+    if (sponsorId && sponsorId.trim()) {
+      const cleanSponsor = sponsorId.trim();
+      const sponsor = await User.findOne({
+        $or: [
+          { customId: { $regex: `^${cleanSponsor}$`, $options: "i" } },
+          { email: cleanSponsor.toLowerCase() },
+          ...(/^[0-9a-fA-F]{24}$/.test(cleanSponsor) ? [{ _id: cleanSponsor }] : []),
+        ],
+      });
       if (sponsor) {
+        finalSponsorId = sponsor.customId;
         sponsor.totalReferrals = (sponsor.totalReferrals || 0) + 1;
         sponsor.directReferrals = (sponsor.directReferrals || 0) + 1;
         await sponsor.save();

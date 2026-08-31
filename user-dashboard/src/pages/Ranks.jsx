@@ -15,41 +15,15 @@ import KPICard from '../components/ui/KPICard';
 import Modal from '../components/ui/Modal';
 import SearchBar from '../components/ui/SearchBar';
 import Badge from '../components/ui/Badge';
-import { ranks as defaultRanks } from '../data/userMockData';
-
-// 10-Tier Rank Ladder Synchronized with Super Admin Architecture
-const rankLadderData = [
-  { level: 1, name: 'Bronze Explorer', minInvest: 100, reward: 7.5, achievers: 4890, desc: 'Entry leadership rank unlocked upon team initiation.' },
-  { level: 2, name: 'Silver Vanguard', minInvest: 500, reward: 35, achievers: 2340, desc: 'Proven team builder with active direct network.' },
-  { level: 3, name: 'Gold Sovereign', minInvest: 2500, reward: 175, achievers: 1210, desc: 'Established regional network promoter.' },
-  { level: 4, name: 'Platinum Luminary', minInvest: 10000, reward: 700, achievers: 680, desc: 'Senior network leader commanding high turnover.' },
-  { level: 5, name: 'Sapphire Viceroy', minInvest: 50000, reward: 3500, achievers: 340, desc: 'Elite portfolio leader with multi-tier downlines.' },
-  { level: 6, name: 'Emerald Chancellor', minInvest: 150000, reward: 10500, achievers: 160, desc: 'Continental executive commanding six-figure volume.' },
-  { level: 7, name: 'Ruby High Commander', minInvest: 500000, reward: 35000, achievers: 72, desc: 'Global leadership council member.' },
-  { level: 8, name: 'Diamond Archon', minInvest: 1500000, reward: 105000, achievers: 28, desc: 'Institutional syndicate director.' },
-  { level: 9, name: 'Crown Imperator', minInvest: 5000000, reward: 350000, achievers: 11, desc: 'Supreme network architect with multi-million turnover.' },
-  { level: 10, name: 'Apex Zenith Titan', minInvest: 10000000, reward: 700000, achievers: 8, desc: 'Pinnacle summit partner with permanent revenue share.' },
-];
-
-// Global Achievers Leaderboard Data Matching Super Admin Table Columns
-const mockLeaderboard = [
-  { id: 'HORIZON-USR-01', name: 'Alina Becker', email: 'alina.becker@example.com', phone: '+44 7911 123456', rank: 'Apex Zenith Titan', level: 10, directRefs: 84, turnover: 12450000, reward: 700000, sponsor: 'HORIZON-HQ', status: 'Active' },
-  { id: 'HORIZON-USR-02', name: 'Marcus Sterling', email: 'm.sterling@horizon.ch', phone: '+41 78 901 2345', rank: 'Apex Zenith Titan', level: 10, directRefs: 68, turnover: 10890000, reward: 700000, sponsor: 'HORIZON-HQ', status: 'Active' },
-  { id: 'HORIZON-USR-03', name: 'Tariq Mansoor', email: 'tariq.m@emirates.ae', phone: '+971 50 123 4567', rank: 'Crown Imperator', level: 9, directRefs: 52, turnover: 6420000, reward: 350000, sponsor: 'HORIZON-USR-01', status: 'Active' },
-  { id: 'HORIZON-USR-04', name: 'Elena Rostova', email: 'elena.rostova@finance.org', phone: '+7 916 123 4567', rank: 'Diamond Archon', level: 8, directRefs: 44, turnover: 2180000, reward: 105000, sponsor: 'HORIZON-USR-02', status: 'Active' },
-  { id: 'HORIZON-USR-05', name: 'Devon Vance', email: 'devon.v@vancecap.com', phone: '+1 212 555 0199', rank: 'Ruby High Commander', level: 7, directRefs: 38, turnover: 790000, reward: 35000, sponsor: 'HORIZON-USR-01', status: 'Active' },
-  { id: 'HORIZON-USR-06', name: 'Sarah Jenkins', email: 'sarah.j@growthventures.io', phone: '+61 491 570 156', rank: 'Emerald Chancellor', level: 6, directRefs: 29, turnover: 280000, reward: 10500, sponsor: 'HORIZON-USR-04', status: 'Active' },
-  { id: 'HORIZON-USR-07', name: 'William Max', email: 'william@horizoncap.com', phone: '+91 98765 43210', rank: 'Gold Sovereign', level: 3, directRefs: 14, turnover: 15750, reward: 175, sponsor: 'HORIZON-USR-01', status: 'Active' },
-];
 
 export default function Ranks() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('ladder'); // 'ladder', 'leaderboard'
   const [search, setSearch] = useState('');
   const [selectedRankDrawer, setSelectedRankDrawer] = useState(null);
-  const [ranks, setRanks] = useState(rankLadderData);
+  const [ranks, setRanks] = useState([]);
   const [myRankData, setMyRankData] = useState(null);
-  const [leaderboardList, setLeaderboardList] = useState(mockLeaderboard);
+  const [leaderboardList, setLeaderboardList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,19 +35,25 @@ export default function Ranks() {
           getLeaderboard(),
         ]);
 
-        if (ladderRes.status === 'fulfilled' && ladderRes.value?.success && Array.isArray(ladderRes.value.ranks) && ladderRes.value.ranks.length > 0) {
+        if (ladderRes.status === 'fulfilled' && ladderRes.value?.success && Array.isArray(ladderRes.value.ranks)) {
           setRanks(ladderRes.value.ranks);
+        } else {
+          setRanks([]);
         }
 
         if (myRankRes.status === 'fulfilled' && myRankRes.value?.success && myRankRes.value.data) {
           setMyRankData(myRankRes.value.data);
         }
 
-        if (lbRes.status === 'fulfilled' && lbRes.value?.success && Array.isArray(lbRes.value.leaderboard) && lbRes.value.leaderboard.length > 0) {
+        if (lbRes.status === 'fulfilled' && lbRes.value?.success && Array.isArray(lbRes.value.leaderboard)) {
           setLeaderboardList(lbRes.value.leaderboard);
+        } else {
+          setLeaderboardList([]);
         }
       } catch (err) {
-        console.warn('Using default ranks ladder data:', err.message);
+        console.warn('Error fetching ranks data:', err.message);
+        setRanks([]);
+        setLeaderboardList([]);
       } finally {
         setLoading(false);
       }
@@ -118,8 +98,14 @@ export default function Ranks() {
   }
   currentLevel = Math.max(1, Math.min(10, currentLevel));
 
-  const currentRankObj = ranks.find(r => r.level === currentLevel) || ranks[0] || rankLadderData[0];
-  const nextRankObj = ranks.find(r => r.level === currentLevel + 1) || currentRankObj || ranks[ranks.length - 1] || rankLadderData[0];
+  const currentRankObj = ranks.find(r => r.level === currentLevel) || ranks[0] || {
+    level: 1,
+    name: 'Bronze Explorer',
+    minInvest: 100,
+    reward: 7.5,
+    desc: 'Entry leadership rank'
+  };
+  const nextRankObj = ranks.find(r => r.level === currentLevel + 1) || currentRankObj || ranks[ranks.length - 1] || currentRankObj;
 
   const currentRankReward = Number(currentRankObj?.reward ?? currentRankObj?.rewardUnlocked ?? 0);
   const nextRankReward = Number(nextRankObj?.reward ?? myRankData?.nextRank?.rewardOnUnlock ?? nextRankObj?.rewardOnUnlock ?? 0);
@@ -139,14 +125,14 @@ export default function Ranks() {
     return <RiAwardLine size={24} className="text-emerald-500" />;
   };
 
-  const filteredLeaders = (leaderboardList && leaderboardList.length > 0 ? leaderboardList : mockLeaderboard).filter(l => {
+  const filteredLeaders = (leaderboardList || []).filter(l => {
     const q = search.trim().toLowerCase();
     return !q ||
       l.name?.toLowerCase().includes(q) ||
-      l.id?.toLowerCase().includes(q) ||
-      l.email?.toLowerCase().includes(q) ||
+      (l.id || l.customId || '').toLowerCase().includes(q) ||
+      (l.email || '').toLowerCase().includes(q) ||
       (l.phone || '').toLowerCase().includes(q) ||
-      l.rank?.toLowerCase().includes(q);
+      (l.rank || l.currentRank || '').toLowerCase().includes(q);
   });
 
   return (
@@ -172,37 +158,37 @@ export default function Ranks() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Rank Rewards Distributed"
-          numericValue={689450}
+          numericValue={leaderboardList.reduce((sum, l) => sum + Number(l.rewardsEarned || l.reward || 0), 0)}
           prefix="$"
           decimals={0}
-          change="+24.8%"
+          change={leaderboardList.length > 0 ? "Live Rewards" : "Ready"}
           positive={true}
           icon="money"
         />
         <KPICard
           title="Active Rank Achievers"
-          numericValue={10283}
+          numericValue={leaderboardList.length}
           prefix=""
           decimals={0}
-          change="+14.2%"
+          change={leaderboardList.length > 0 ? "Global Achievers" : "Ready"}
           positive={true}
           icon="users"
         />
         <KPICard
           title="Network Referral Turnover"
-          numericValue={3155000}
+          numericValue={leaderboardList.reduce((sum, l) => sum + Number(l.teamTurnover || l.teamVolume || l.turnover || 0), 0)}
           prefix="$"
           decimals={0}
-          change="+18.5%"
+          change={leaderboardList.length > 0 ? "Total Turnover" : "Ready"}
           positive={true}
           icon="chart"
         />
         <KPICard
           title="Top Level Titans"
-          numericValue={8}
+          numericValue={leaderboardList.filter(l => Number(l.rankLevel || l.level || 0) >= 8).length}
           prefix=""
           decimals={0}
-          change="+2 This Month"
+          change="Apex Leaders"
           positive={true}
           icon="wallet"
         />
@@ -287,7 +273,7 @@ export default function Ranks() {
         <div className="flex items-center gap-2 overflow-x-auto font-poppins">
           {[
             { id: 'ladder', label: '10-Level Rank Ladder', count: 'Levels 1–10', icon: <RiTrophyLine /> },
-            { id: 'leaderboard', label: 'Top Rank Achievers Leaderboard', count: `${mockLeaderboard.length} Leaders`, icon: <RiGroupLine /> },
+            { id: 'leaderboard', label: 'Top Rank Achievers Leaderboard', count: `${leaderboardList.length} Leaders`, icon: <RiGroupLine /> },
           ].map(tab => (
             <button
               key={tab.id}
@@ -460,7 +446,7 @@ export default function Ranks() {
                 </thead>
                 <tbody>
                   {filteredLeaders.map((u, i) => {
-                    const matchedRank = rankLadderData.find(r => r.level === u.level) || rankLadderData[0];
+                    const matchedRank = ranks.find(r => r.level === (u.level || u.rankLevel) || r.name?.toLowerCase() === (u.rank || u.currentRank || '').toLowerCase()) || ranks[0] || null;
 
                     return (
                       <tr
@@ -560,6 +546,12 @@ export default function Ranks() {
                 </tbody>
               </table>
             </div>
+
+            {filteredLeaders.length === 0 && (
+              <div className="p-12 text-center text-xs text-slate-400 font-poppins">
+                No rank achievers recorded yet. Achievers will appear here as network milestones are reached.
+              </div>
+            )}
           </div>
         </div>
       )}

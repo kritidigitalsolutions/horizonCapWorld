@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { newsArticles as initialArticles } from '../data/userMockData';
 import { getNews } from '../api/newsApi';
 import {
   RiNewspaperLine, RiCalendarLine, RiTimeLine, RiEyeLine, RiArrowRightLine,
@@ -11,7 +10,7 @@ import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
 
 export default function NewsMedia() {
-  const [articles, setArticles] = useState(initialArticles);
+  const [articles, setArticles] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -23,46 +22,30 @@ export default function NewsMedia() {
         search: search.trim() || undefined,
       });
 
-      if (res?.success && Array.isArray(res.news) && res.news.length > 0) {
-        const formatted = res.news.map(art => ({
-          id: art._id || art.id,
+      const rawList = res?.articles || res?.news || [];
+      if (res?.success && Array.isArray(rawList)) {
+        const formatted = rawList.map(art => ({
+          id: art._id || art.id || art.customId,
           title: art.title,
           subtitle: art.subtitle || '',
           content: art.content || '',
-          category: art.category || 'Renewable Energy',
+          category: art.category || 'Company',
           date: art.createdAt ? art.createdAt.split('T')[0] : '2026-08-20',
-          authorName: art.author?.name || art.authorName || 'Horizon Editorial Team',
+          publishDate: art.date || (art.createdAt ? new Date(art.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'),
+          authorName: typeof art.author === 'object' ? (art.author?.name || 'Super Admin') : (art.author || art.authorName || 'Super Admin'),
+          authorRole: typeof art.author === 'object' ? (art.author?.role || 'Platform Editorial') : 'Platform Editorial',
           readTime: art.readTime || '3 min read',
-          image: art.image || '',
-          tags: art.tags || [],
+          image: art.bannerUrl || art.image || '',
+          bannerUrl: art.bannerUrl || art.image || '',
+          tags: Array.isArray(art.tags) ? art.tags : (art.tags ? art.tags.split(',') : []),
         }));
         setArticles(formatted);
       } else {
-        const saved = localStorage.getItem('horizon_news_broadcasts');
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setArticles(parsed);
-              return;
-            }
-          } catch (e) {}
-        }
-        setArticles(initialArticles);
+        setArticles([]);
       }
     } catch (err) {
-      console.warn('Using fallback news broadcasts:', err.message);
-      const saved = localStorage.getItem('horizon_news_broadcasts');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setArticles(parsed);
-            return;
-          }
-        } catch (e) {}
-      }
-      setArticles(initialArticles);
+      console.warn('Error fetching news articles:', err.message);
+      setArticles([]);
     } finally {
       setLoading(false);
     }

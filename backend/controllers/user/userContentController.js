@@ -29,6 +29,7 @@ exports.getNews = async (req, res) => {
       success: true,
       count: articles.length,
       articles,
+      news: articles,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -39,7 +40,13 @@ exports.getNews = async (req, res) => {
 // @route   GET /api/user/news/:id
 exports.getNewsArticle = async (req, res) => {
   try {
-    const article = await NewsArticle.findById(req.params.id);
+    let article = null;
+    if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      article = await NewsArticle.findById(req.params.id);
+    }
+    if (!article) {
+      article = await NewsArticle.findOne({ customId: req.params.id });
+    }
     if (!article) {
       return res.status(404).json({ success: false, message: "Article not found." });
     }
@@ -50,6 +57,7 @@ exports.getNewsArticle = async (req, res) => {
     res.status(200).json({
       success: true,
       article,
+      news: article,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
