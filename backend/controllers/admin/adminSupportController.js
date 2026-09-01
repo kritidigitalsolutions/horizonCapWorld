@@ -1,5 +1,6 @@
 const SupportTicket = require("../../models/SupportTicket");
 const SupportChannel = require("../../models/SupportChannel");
+const { notifyUser } = require("../../utils/notificationService");
 
 // @desc    Get All Support Tickets
 // @route   GET /api/admin/support/tickets
@@ -112,6 +113,21 @@ exports.replyTicket = async (req, res) => {
     ticket.lastUpdated = "Just now";
     await ticket.save();
 
+    // Automated notification to user (if not internal note)
+    if (!isInternalNote && ticket.user) {
+      await notifyUser({
+        userId: ticket.user,
+        title: `Support Reply on Ticket #${ticket.customId || ticket._id}`,
+        message: `Support officer replied: "${text.trim().substring(0, 100)}${text.trim().length > 100 ? "..." : ""}"`,
+        category: "SUPPORT",
+        type: "ticket_reply",
+        priority: "NORMAL",
+        actionUrl: "/support",
+        metadata: { ticketId: ticket.customId, subject: ticket.subject },
+        settingKey: "autoTicketReplies",
+      });
+    }
+
     res.status(200).json({
       success: true,
       message: isInternalNote ? "Internal note added." : "Reply dispatched to investor.",
@@ -137,6 +153,21 @@ exports.updateTicketStatus = async (req, res) => {
     if (priority) ticket.priority = priority;
     ticket.lastUpdated = "Just now";
     await ticket.save();
+
+    // Automated notification on resolution / status update
+    if (ticket.user && status) {
+      await notifyUser({
+        userId: ticket.user,
+        title: `Ticket #${ticket.customId} Status: ${status}`,
+        message: `Your support ticket regarding "${ticket.subject}" has been marked as ${status}.`,
+        category: "SUPPORT",
+        type: "ticket_status",
+        priority: status === "Resolved" ? "NORMAL" : "HIGH",
+        actionUrl: "/support",
+        metadata: { ticketId: ticket.customId, status },
+        settingKey: "autoTicketStatusChange",
+      });
+    }
 
     res.status(200).json({
       success: true,

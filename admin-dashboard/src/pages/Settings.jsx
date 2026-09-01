@@ -14,6 +14,9 @@ import PageHeader from '../components/ui/PageHeader';
 import {
   getAdminProfile,
   updateAdminProfile,
+  sendAdminOtp,
+  verifyAdminOtp,
+  changeAdminEmail,
   changeAdminPassword,
   getAdminSettings,
   updateAdminSettings
@@ -37,6 +40,9 @@ export default function Settings() {
   const [newEmailAddress, setNewEmailAddress] = useState('');
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [emailOtpVerified, setEmailOtpVerified] = useState(false);
+  const [emailOtpCode, setEmailOtpCode] = useState('');
+  const [emailOtpLoading, setEmailOtpLoading] = useState(false);
+  const [emailOtpError, setEmailOtpError] = useState('');
   const [emailUpdated, setEmailUpdated] = useState(false);
 
   // Change Password State (with OTP)
@@ -48,6 +54,9 @@ export default function Settings() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordOtpSent, setPasswordOtpSent] = useState(false);
   const [passwordOtpVerified, setPasswordOtpVerified] = useState(false);
+  const [passwordOtpCode, setPasswordOtpCode] = useState('');
+  const [passwordOtpLoading, setPasswordOtpLoading] = useState(false);
+  const [passwordOtpError, setPasswordOtpError] = useState('');
   const [passwordUpdated, setPasswordUpdated] = useState(false);
 
   // Comprehensive Automated User Dashboard Alerts & Notifications State
@@ -173,45 +182,137 @@ export default function Settings() {
   };
 
   // Handle Email Update with OTP
+  const handleSendEmailOtp = async () => {
+    if (!newEmailAddress.trim() || newEmailAddress.trim() === profileEmail) return;
+    setEmailOtpError('');
+    setEmailOtpLoading(true);
+    try {
+      const res = await sendAdminOtp({ purpose: 'CHANGE_EMAIL', newEmail: newEmailAddress.trim() });
+      if (res?.success) {
+        setEmailOtpSent(true);
+      } else {
+        setEmailOtpError(res?.message || 'Failed to dispatch email OTP.');
+      }
+    } catch (err) {
+      setEmailOtpError(err.response?.data?.message || err.message || 'Failed to send OTP.');
+    } finally {
+      setEmailOtpLoading(false);
+    }
+  };
+
+  const handleVerifyEmailOtp = async (code) => {
+    setEmailOtpCode(code);
+    setEmailOtpError('');
+    setEmailOtpLoading(true);
+    try {
+      const res = await verifyAdminOtp({ otp: code });
+      if (res?.success) {
+        setEmailOtpVerified(true);
+      } else {
+        setEmailOtpError(res?.message || 'Invalid OTP code.');
+      }
+    } catch (err) {
+      setEmailOtpError(err.response?.data?.message || err.message || 'Invalid OTP code.');
+    } finally {
+      setEmailOtpLoading(false);
+    }
+  };
+
   const handleCommitEmailUpdate = async () => {
     if (!newEmailAddress.trim()) return;
+    setEmailOtpError('');
+    setEmailOtpLoading(true);
     try {
-      await updateAdminProfile({
-        email: newEmailAddress.trim()
+      const res = await changeAdminEmail({
+        newEmail: newEmailAddress.trim(),
+        otp: emailOtpCode
       });
+      if (res?.success) {
+        setProfileEmail(newEmailAddress.trim());
+        setEmailUpdated(true);
+        setTimeout(() => {
+          setEmailUpdated(false);
+          setEmailOtpSent(false);
+          setEmailOtpVerified(false);
+          setEmailOtpCode('');
+          setNewEmailAddress('');
+        }, 3000);
+      } else {
+        setEmailOtpError(res?.message || 'Failed to update email.');
+      }
     } catch (err) {
-      console.warn('API update admin email offline:', err.message);
+      setEmailOtpError(err.response?.data?.message || err.message || 'Failed to update email.');
+    } finally {
+      setEmailOtpLoading(false);
     }
-    setProfileEmail(newEmailAddress.trim());
-    setEmailUpdated(true);
-    setTimeout(() => {
-      setEmailUpdated(false);
-      setEmailOtpSent(false);
-      setEmailOtpVerified(false);
-      setNewEmailAddress('');
-    }, 3000);
   };
 
   // Handle Password Update with OTP
+  const handleSendPasswordOtp = async () => {
+    if (!currentPassword || !newPassword || newPassword !== confirmPassword) return;
+    setPasswordOtpError('');
+    setPasswordOtpLoading(true);
+    try {
+      const res = await sendAdminOtp({ purpose: 'CHANGE_PASSWORD' });
+      if (res?.success) {
+        setPasswordOtpSent(true);
+      } else {
+        setPasswordOtpError(res?.message || 'Failed to dispatch password OTP.');
+      }
+    } catch (err) {
+      setPasswordOtpError(err.response?.data?.message || err.message || 'Failed to send OTP.');
+    } finally {
+      setPasswordOtpLoading(false);
+    }
+  };
+
+  const handleVerifyPasswordOtp = async (code) => {
+    setPasswordOtpCode(code);
+    setPasswordOtpError('');
+    setPasswordOtpLoading(true);
+    try {
+      const res = await verifyAdminOtp({ otp: code });
+      if (res?.success) {
+        setPasswordOtpVerified(true);
+      } else {
+        setPasswordOtpError(res?.message || 'Invalid OTP code.');
+      }
+    } catch (err) {
+      setPasswordOtpError(err.response?.data?.message || err.message || 'Invalid OTP code.');
+    } finally {
+      setPasswordOtpLoading(false);
+    }
+  };
+
   const handleCommitPasswordUpdate = async () => {
     if (!newPassword || newPassword !== confirmPassword) return;
+    setPasswordOtpError('');
+    setPasswordOtpLoading(true);
     try {
-      await changeAdminPassword({
+      const res = await changeAdminPassword({
         currentPassword,
-        newPassword
+        newPassword,
+        otp: passwordOtpCode
       });
+      if (res?.success) {
+        setPasswordUpdated(true);
+        setTimeout(() => {
+          setPasswordUpdated(false);
+          setPasswordOtpSent(false);
+          setPasswordOtpVerified(false);
+          setPasswordOtpCode('');
+          setCurrentPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+        }, 3000);
+      } else {
+        setPasswordOtpError(res?.message || 'Failed to update password.');
+      }
     } catch (err) {
-      console.warn('API change admin password offline:', err.message);
+      setPasswordOtpError(err.response?.data?.message || err.message || 'Failed to update password.');
+    } finally {
+      setPasswordOtpLoading(false);
     }
-    setPasswordUpdated(true);
-    setTimeout(() => {
-      setPasswordUpdated(false);
-      setPasswordOtpSent(false);
-      setPasswordOtpVerified(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    }, 3000);
   };
 
   // Handle Save Alerts
@@ -543,6 +644,13 @@ export default function Settings() {
                   </div>
                 </div>
 
+                {/* Email Errors */}
+                {emailOtpError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold animate-slide-up">
+                    {emailOtpError}
+                  </div>
+                )}
+
                 {!emailOtpSent && !emailOtpVerified && (
                   <div className="space-y-4 pt-2">
                     <div className="p-4 bg-white rounded-2xl border border-blue-200 shadow-2xs space-y-2 text-xs text-slate-600">
@@ -554,10 +662,10 @@ export default function Settings() {
                       variant="primary"
                       size="lg"
                       className="w-full"
-                      onClick={() => setEmailOtpSent(true)}
-                      disabled={!newEmailAddress.trim() || newEmailAddress === profileEmail}
+                      onClick={handleSendEmailOtp}
+                      disabled={emailOtpLoading || !newEmailAddress.trim() || newEmailAddress.trim() === profileEmail}
                     >
-                      Send 6-Digit Email OTP
+                      {emailOtpLoading ? 'Sending Email OTP...' : 'Send 6-Digit Email OTP'}
                     </Button>
                   </div>
                 )}
@@ -568,14 +676,16 @@ export default function Settings() {
                       <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Enter 6-Digit Email OTP</h5>
                       <p className="text-[11px] text-slate-400">Code dispatched to {profileEmail}</p>
                       <div className="py-2 flex justify-center">
-                        <OTPInput length={6} onComplete={() => setEmailOtpVerified(true)} />
+                        <OTPInput length={6} onComplete={handleVerifyEmailOtp} />
                       </div>
+                      {emailOtpLoading && <p className="text-xs text-blue-600 font-semibold animate-pulse">Verifying code...</p>}
                     </div>
 
                     <div className="text-center text-xs">
                       <button
-                        onClick={() => setEmailOtpSent(true)}
-                        className="text-gold-700 font-semibold hover:underline"
+                        onClick={handleSendEmailOtp}
+                        disabled={emailOtpLoading}
+                        className="text-gold-700 font-semibold hover:underline cursor-pointer"
                       >
                         Resend OTP Code
                       </button>
@@ -597,9 +707,10 @@ export default function Settings() {
                       size="lg"
                       className="w-full"
                       icon={<RiMailLine />}
+                      disabled={emailOtpLoading}
                       onClick={handleCommitEmailUpdate}
                     >
-                      Commit & Update Master Email
+                      {emailOtpLoading ? 'Updating Email...' : 'Commit & Update Master Email'}
                     </Button>
                   </div>
                 )}
@@ -740,6 +851,13 @@ export default function Settings() {
                   </div>
                 </div>
 
+                {/* Password OTP Error */}
+                {passwordOtpError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold animate-slide-up">
+                    {passwordOtpError}
+                  </div>
+                )}
+
                 {!passwordOtpSent && !passwordOtpVerified && (
                   <div className="space-y-4 pt-2">
                     <div className="p-4 bg-white rounded-2xl border border-gold-200 shadow-2xs space-y-2 text-xs text-slate-600">
@@ -751,10 +869,10 @@ export default function Settings() {
                       variant="primary"
                       size="lg"
                       className="w-full"
-                      onClick={() => setPasswordOtpSent(true)}
-                      disabled={!currentPassword || !newPassword || newPassword !== confirmPassword}
+                      onClick={handleSendPasswordOtp}
+                      disabled={passwordOtpLoading || !currentPassword || !newPassword || newPassword !== confirmPassword}
                     >
-                      Send 6-Digit Password OTP
+                      {passwordOtpLoading ? 'Sending Password OTP...' : 'Send 6-Digit Password OTP'}
                     </Button>
                   </div>
                 )}
@@ -765,14 +883,16 @@ export default function Settings() {
                       <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Enter 6-Digit Password Code</h5>
                       <p className="text-[11px] text-slate-400">Code dispatched to {profileEmail}</p>
                       <div className="py-2 flex justify-center">
-                        <OTPInput length={6} onComplete={() => setPasswordOtpVerified(true)} />
+                        <OTPInput length={6} onComplete={handleVerifyPasswordOtp} />
                       </div>
+                      {passwordOtpLoading && <p className="text-xs text-gold-700 font-semibold animate-pulse">Verifying code...</p>}
                     </div>
 
                     <div className="text-center text-xs">
                       <button
-                        onClick={() => setPasswordOtpSent(true)}
-                        className="text-gold-700 font-semibold hover:underline"
+                        onClick={handleSendPasswordOtp}
+                        disabled={passwordOtpLoading}
+                        className="text-gold-700 font-semibold hover:underline cursor-pointer"
                       >
                         Resend OTP Code
                       </button>
@@ -794,9 +914,10 @@ export default function Settings() {
                       size="lg"
                       className="w-full"
                       icon={<RiLockPasswordLine />}
+                      disabled={passwordOtpLoading}
                       onClick={handleCommitPasswordUpdate}
                     >
-                      Commit & Update Master Password
+                      {passwordOtpLoading ? 'Updating Password...' : 'Commit & Update Master Password'}
                     </Button>
                   </div>
                 )}

@@ -1,6 +1,7 @@
 const Admin = require("../../models/Admin");
 const AdminSettings = require("../../models/AdminSettings");
 const { generateToken } = require("../../utils/jwt");
+const { sendOtpEmail, sendPasswordResetConfirmation } = require("../../utils/emailService");
 const bcrypt = require("bcrypt");
 
 // @desc    Login Super Admin
@@ -121,34 +122,309 @@ exports.updateAdminProfile = async (req, res) => {
   }
 };
 
-// @desc    Change Admin Password
+// @desc    Send OTP to Admin (Protected) for Password or Email Change
+// @route   POST /api/admin/auth/send-otp
+exports.sendAdminOtp = async (req, res) => {
+  try {
+    const { purpose, newEmail } = req.body;
+    const admin = await Admin.findById(req.admin._id);
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "Admin not found." });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    admin.otp = otp;
+    admin.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    admin.otpPurpose = purpose || "CHANGE_PASSWORD";
+    if (newEmail) {
+      admin.pendingEmail = newEmail.toLowerCase().trim();
+    }
+    await admin.save();
+
+    // Send genuine email via Nodemailer
+    await sendOtpEmail({
+      to: admin.email,
+      name: admin.name,
+      otp,
+      purpose: purpose === "CHANGE_EMAIL" ? "Admin Email Change" : "Admin Password Change",
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `A 6-digit verification code has been dispatched to ${admin.email}.`,
+      expiresIn: "10 minutes",
+    });
+  } catch (error) {
+    console.error("[Admin Auth] sendAdminOtp error:", error);
+    res.status(500).json({ success: false, message: "Failed to send OTP: " + error.message });
+  }
+};
+
+// @desc    Verify Admin OTP (Protected)
+// @route   POST /api/admin/auth/verify-otp
+exports.verifyAdminOtp = async (req, res) => {
+  try {
+    const { otp } = req.body;
+    if (!otp) {
+      return res.status(400).json({ success: false, message: "Please provide the 6-digit OTP code." });
+    }
+
+    const admin = await Admin.findById(req.admin._id);
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "Admin not found." });
+    }
+
+    if (!admin.otp || admin.otp !== otp.trim()) {
+      return res.status(400).json({ success: false, message: "Invalid OTP code entered." });
+    }
+
+    if (admin.otpExpires && new Date() > admin.otpExpires) {
+      return res.status(400).json({ success: false, message: "OTP code has expired. Please request a new code." });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Admin OTP verified successfully.",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Change Admin Email after OTP verification (Protected)
+// @route   PUT /api/admin/auth/change-email
+exports.changeAdminEmail = async (req, res) => {
+  try {
+    const { newEmail, otp } = req.body;
+    if (!newEmail) {
+      return res.status(400).json({ success: false, message: "New email is required." });
+    }
+
+    const cleanEmail = newEmail.toLowerCase().trim();
+    const admin = await Admin.findById(req.admin._id);
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "Admin not found." });
+    }
+
+    if (otp) {
+      if (!admin.otp || admin.otp !== otp.trim()) {
+        return res.status(400).json({ success: false, message: "Invalid OTP code." });
+      }
+      if (admin.otpExpires && new Date() > admin.otpExpires) {
+        return res.status(400).json({ success: false, message: "OTP code has expired." });
+      }
+    }
+
+    const existing = await Admin.findOne({ email: cleanEmail, _id: { $ne: admin._id } });
+    if (existing) {
+      return res.status(400).json({ success: false, message: "This email address is already in use by another admin." });
+    }
+
+    admin.email = cleanEmail;
+    admin.otp = null;
+    admin.otpExpires = null;
+    admin.otpPurpose = null;
+    admin.pendingEmail = null;
+    await admin.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Master Admin email updated successfully.",
+      email: admin.email,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Change Admin Password (Protected)
 // @route   PUT /api/admin/auth/change-password
 exports.changeAdminPassword = async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
+    const { currentPassword, newPassword, otp } = req.body;
+    if (!newPassword) {
       return res.status(400).json({
         success: false,
-        message: "Current password and new password are required.",
+        message: "New password is required.",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters long.",
       });
     }
 
     const admin = await Admin.findById(req.admin._id);
-    const isMatch = await admin.comparePassword(currentPassword);
-    if (!isMatch) {
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "Admin not found." });
+    }
+
+    // Either verify currentPassword or verified OTP
+    if (currentPassword) {
+      const isMatch = await admin.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(400).json({
+          success: false,
+          message: "Current password does not match.",
+        });
+      }
+    } else if (otp) {
+      if (!admin.otp || admin.otp !== otp.trim()) {
+        return res.status(400).json({ success: false, message: "Invalid OTP code." });
+      }
+      if (admin.otpExpires && new Date() > admin.otpExpires) {
+        return res.status(400).json({ success: false, message: "OTP code has expired." });
+      }
+    } else {
       return res.status(400).json({
         success: false,
-        message: "Current password does not match.",
+        message: "Current password or valid OTP code is required to update password.",
       });
     }
 
     const salt = await bcrypt.genSalt(10);
     admin.password = await bcrypt.hash(newPassword, salt);
+    admin.otp = null;
+    admin.otpExpires = null;
+    admin.otpPurpose = null;
     await admin.save();
+
+    // Send confirmation email
+    sendPasswordResetConfirmation({ to: admin.email, name: admin.name }).catch((err) =>
+      console.warn("[Email Service] Password update confirmation notice failed:", err.message)
+    );
 
     res.status(200).json({
       success: true,
       message: "Admin password updated successfully.",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Send Forgot Password OTP for Admin (Public)
+// @route   POST /api/admin/auth/forgot-password/send-otp
+exports.forgotPasswordSendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Please provide your admin email address." });
+    }
+
+    const admin = await Admin.findOne({ email: email.toLowerCase().trim() });
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "No admin account found matching this email address.",
+      });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    admin.otp = otp;
+    admin.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    admin.otpPurpose = "FORGOT_PASSWORD";
+    await admin.save();
+
+    // Send genuine email via Nodemailer
+    await sendOtpEmail({
+      to: admin.email,
+      name: admin.name,
+      otp,
+      purpose: "Super Admin Password Recovery",
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `A 6-digit password recovery code has been sent to ${admin.email}.`,
+      expiresIn: "10 minutes",
+    });
+  } catch (error) {
+    console.error("[Admin Auth] forgotPasswordSendOtp error:", error);
+    res.status(500).json({ success: false, message: "Failed to dispatch recovery email: " + error.message });
+  }
+};
+
+// @desc    Verify Forgot Password OTP for Admin (Public)
+// @route   POST /api/admin/auth/forgot-password/verify-otp
+exports.forgotPasswordVerifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: "Email and OTP code are required." });
+    }
+
+    const admin = await Admin.findOne({ email: email.toLowerCase().trim() });
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "Admin account not found." });
+    }
+
+    if (!admin.otp || admin.otp !== otp.trim()) {
+      return res.status(400).json({ success: false, message: "Invalid OTP code entered." });
+    }
+
+    if (admin.otpExpires && new Date() > admin.otpExpires) {
+      return res.status(400).json({ success: false, message: "OTP code has expired. Please request a new code." });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Recovery OTP verified successfully. You may now choose a new password.",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Reset Admin Password using OTP (Public)
+// @route   POST /api/admin/auth/forgot-password/reset
+exports.forgotPasswordReset = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, OTP code, and new password are required.",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters long.",
+      });
+    }
+
+    const admin = await Admin.findOne({ email: email.toLowerCase().trim() });
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "Admin account not found." });
+    }
+
+    if (!admin.otp || admin.otp !== otp.trim()) {
+      return res.status(400).json({ success: false, message: "Invalid OTP code entered." });
+    }
+
+    if (admin.otpExpires && new Date() > admin.otpExpires) {
+      return res.status(400).json({ success: false, message: "OTP code has expired. Please request a new code." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    admin.password = await bcrypt.hash(newPassword, salt);
+    admin.otp = null;
+    admin.otpExpires = null;
+    admin.otpPurpose = null;
+    await admin.save();
+
+    // Send confirmation email
+    sendPasswordResetConfirmation({ to: admin.email, name: admin.name }).catch((err) =>
+      console.warn("[Email Service] Password reset confirmation email error:", err.message)
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Your admin password has been reset successfully. You can now login with your new credentials.",
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

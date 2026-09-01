@@ -1,8 +1,9 @@
 const User = require("../models/User");
 const UserInvestment = require("../models/UserInvestment");
-const Transaction = require("../models/Transaction");
-const Rank = require("../models/Rank");
 const ReferralSetting = require("../models/ReferralSetting");
+const Rank = require("../models/Rank");
+const Transaction = require("../models/Transaction");
+const { notifyUser } = require("./notificationService");
 
 // 10-Tier Rank Milestones (Fallback Defaults)
 const defaultRanks = [
@@ -155,6 +156,19 @@ const distributeReferralCommissions = async (investorUser, planAmount) => {
           status: "Completed",
         });
 
+        // Automated notification for sponsor
+        await notifyUser({
+          userId: sponsor._id,
+          title: `Level ${currentLevel} Referral Commission Credited`,
+          message: `You earned +$${commissionAmount.toLocaleString()} (${rate}%) from downline investor ${investorUser.name}'s plan activation!`,
+          category: "REFERRAL",
+          type: "referral_commission",
+          priority: "NORMAL",
+          actionUrl: "/referrals",
+          metadata: { amount: commissionAmount, level: currentLevel, investor: investorUser.name },
+          settingKey: "autoReferralCommissions",
+        });
+
         // Trigger Rank Qualification check for sponsor
         await checkAndPromoteRank(sponsor);
       }
@@ -219,6 +233,20 @@ const checkAndPromoteRank = async (user) => {
       }
 
       await user.save();
+
+      // Automated Rank Promotion Alert
+      await notifyUser({
+        userId: user._id,
+        title: `Rank Promoted to ${highestQualified.name}!`,
+        message: `Congratulations! You achieved ${highestQualified.name} Rank with team turnover of $${Number(currentTurnover).toLocaleString()} and unlocked a $${Number(cashReward).toLocaleString()} cash reward bonus!`,
+        category: "RANK",
+        type: "rank_upgrade",
+        priority: "HIGH",
+        actionUrl: "/ranks",
+        metadata: { rankName: highestQualified.name, rankLevel: highestQualified.level, reward: cashReward },
+        settingKey: "autoRankMilestones",
+      });
+
       console.log(`User ${user.customId} promoted from ${oldRank} to ${highestQualified.name}!`);
     }
   } catch (error) {

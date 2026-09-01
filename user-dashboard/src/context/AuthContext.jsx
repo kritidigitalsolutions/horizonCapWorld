@@ -92,9 +92,12 @@ export function AuthProvider({ children }) {
     refreshUser();
   }, [refreshUser]);
 
-  const login = async (email, password) => {
+  const login = async (email, password, otp = '') => {
     try {
-      const res = await loginUser({ email, password });
+      const res = await loginUser({ email, password, otp });
+      if (res?.require2FA) {
+        return { success: true, require2FA: true, message: res.message, email: res.email };
+      }
       if (res?.success && res.token) {
         localStorage.setItem('horizon_user_token', res.token);
         setToken(res.token);

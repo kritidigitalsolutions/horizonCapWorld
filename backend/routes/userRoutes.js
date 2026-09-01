@@ -7,6 +7,10 @@ const { protectUser } = require("../middlewares/auth");
 const {
   register,
   login,
+  sendLogin2FAOtp,
+  userForgotPasswordSendOtp,
+  userForgotPasswordVerifyOtp,
+  userForgotPasswordReset,
   getProfile,
   updateProfile,
   changePassword,
@@ -58,6 +62,11 @@ const {
 // ──────── 1. AUTHENTICATION & PROFILE ────────
 router.post("/auth/register", register);
 router.post("/auth/login", login);
+router.post("/auth/login-2fa-otp", sendLogin2FAOtp);
+router.post("/auth/forgot-password/send-otp", userForgotPasswordSendOtp);
+router.post("/auth/forgot-password/verify-otp", userForgotPasswordVerifyOtp);
+router.post("/auth/forgot-password/reset", userForgotPasswordReset);
+
 router.get("/auth/me", protectUser, getProfile);
 router.get("/profile", protectUser, getProfile);
 router.put("/profile", protectUser, updateProfile);
@@ -103,7 +112,24 @@ router.get("/support/tickets", protectUser, getMyTickets);
 router.get("/support/tickets/:id", protectUser, getTicketById);
 router.post("/support/tickets/:id/reply", protectUser, replyToTicket);
 
-// ──────── 8. MEDIA & FILE UPLOAD ────────
+// ──────── 8. NOTIFICATIONS & INBOX ALERTS ────────
+const {
+  getUserNotifications,
+  getUnreadCount,
+  markAsRead,
+  markAllAsRead,
+  deleteNotification,
+  clearAllNotifications,
+} = require("../controllers/user/userNotificationController");
+
+router.get("/notifications", protectUser, getUserNotifications);
+router.get("/notifications/unread-count", protectUser, getUnreadCount);
+router.put("/notifications/mark-all-read", protectUser, markAllAsRead);
+router.put("/notifications/:id/read", protectUser, markAsRead);
+router.delete("/notifications/clear-all", protectUser, clearAllNotifications);
+router.delete("/notifications/:id", protectUser, deleteNotification);
+
+// ──────── 9. MEDIA & FILE UPLOAD ────────
 const upload = require("../middlewares/upload");
 const { uploadFile, deleteFile } = require("../controllers/uploadController");
 router.post("/upload", protectUser, upload.single("file"), uploadFile);

@@ -121,6 +121,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    otpPurpose: {
+      type: String,
+      default: null,
+    },
+    pendingEmail: {
+      type: String,
+      default: null,
+    },
     lastYieldSync: {
       type: Date,
       default: Date.now,

@@ -10,6 +10,7 @@ import Ranks from '../pages/Ranks';
 import Referrals from '../pages/Referrals';
 import SupportTickets from '../pages/SupportTickets';
 import SupportChannels from '../pages/SupportChannels';
+import Notifications from '../pages/Notifications';
 import ProtectedRoute from '../components/common/ProtectedRoute';
 import Layout from '../components/layout/Layout';
 
@@ -28,6 +29,7 @@ const AdminRoutes = () => {
                  <Route path="ranks" element={<Ranks />} />
                  <Route path="referrals" element={<Referrals />} />
                  <Route path="transactions" element={<Transactions />} />
+                 <Route path="notifications" element={<Notifications />} />
                  <Route path="support-tickets" element={<SupportTickets />} />
                  <Route path="support-channels" element={<SupportChannels />} />
                  <Route path="news-media" element={<NewsMedia />} />

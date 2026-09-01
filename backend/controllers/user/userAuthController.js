@@ -2,6 +2,8 @@ const bcrypt = require("bcrypt");
 const User = require("../../models/User");
 const { generateToken } = require("../../utils/jwt");
 const { syncUserStreamingEarnings } = require("../../utils/yieldAndAffiliateEngine");
+const { sendOtpEmail, sendPasswordResetConfirmation } = require("../../utils/emailService");
+const { notifyUser } = require("../../utils/notificationService");
 
 // @desc    Register a new User
 // @route   POST /api/user/auth/register
@@ -46,6 +48,19 @@ exports.register = async (req, res) => {
         sponsor.totalReferrals = (sponsor.totalReferrals || 0) + 1;
         sponsor.directReferrals = (sponsor.directReferrals || 0) + 1;
         await sponsor.save();
+
+        // Automated downline join alert to sponsor
+        await notifyUser({
+          userId: sponsor._id,
+          title: "New Downline Partner Joined",
+          message: `Investor ${name.trim()} (${email.toLowerCase().trim()}) has joined your direct affiliate team!`,
+          category: "REFERRAL",
+          type: "downline_join",
+          priority: "NORMAL",
+          actionUrl: "/referrals",
+          metadata: { newUserName: name.trim(), newUserCustomId: customId },
+          settingKey: "autoDownlineJoins",
+        });
       }
     }
 
@@ -75,6 +90,17 @@ exports.register = async (req, res) => {
       perSecondRate: 0,
       payoutType: "Per Second (Live)",
       status: "Active",
+    });
+
+    // Welcome notification to new user
+    await notifyUser({
+      userId: newUser._id,
+      title: "Welcome to Horizon Capital Worlds",
+      message: "Your investor portfolio has been initialized. Fund your wallet or activate an investment plan to start streaming live returns.",
+      category: "SYSTEM",
+      type: "welcome_notice",
+      priority: "HIGH",
+      actionUrl: "/plans",
     });
 
     const token = generateToken(newUser._id, "USER");
@@ -116,7 +142,7 @@ exports.register = async (req, res) => {
 // @route   POST /api/user/auth/login
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, otp } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -148,8 +174,64 @@ exports.login = async (req, res) => {
       });
     }
 
+    // ──────── 2FA CHECK ────────
+    if (user.is2FAEnabled) {
+      if (!otp) {
+        // Generate and dispatch OTP
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        user.otp = code;
+        user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+        user.otpPurpose = "2FA_LOGIN";
+        await user.save();
+
+        await sendOtpEmail({
+          to: user.email,
+          name: user.name,
+          otp: code,
+          purpose: "Investor Portal 2-Step Login Verification",
+        });
+
+        return res.status(200).json({
+          success: true,
+          require2FA: true,
+          message: `A 6-digit security code has been sent to ${user.email}.`,
+          email: user.email,
+        });
+      } else {
+        // Validate OTP
+        if (!user.otp || user.otp !== otp.trim()) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid 6-digit 2FA code entered. Please check your email.",
+          });
+        }
+        if (user.otpExpires && new Date() > user.otpExpires) {
+          return res.status(400).json({
+            success: false,
+            message: "2FA code has expired. Please request a new code.",
+          });
+        }
+
+        user.otp = null;
+        user.otpExpires = null;
+        user.otpPurpose = null;
+        await user.save();
+      }
+    }
+
     // Synchronize latest per-second streaming ROI earnings upon login
     user = await syncUserStreamingEarnings(user);
+
+    // Automated Security Login Alert
+    await notifyUser({
+      userId: user._id,
+      title: "Security Login Alert",
+      message: `Successful sign-in to your investor portal on ${new Date().toLocaleString()}.`,
+      category: "SECURITY",
+      type: "login_alert",
+      priority: "LOW",
+      settingKey: "autoNewDeviceLogin",
+    });
 
     const token = generateToken(user._id, "USER");
 
@@ -186,6 +268,47 @@ exports.login = async (req, res) => {
         status: user.status,
         createdAt: user.createdAt,
       },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Resend 2FA Login OTP (Public)
+// @route   POST /api/user/auth/resend-2fa-otp
+exports.sendLogin2FAOtp = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required." });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) {
+      return res.status(401).json({ success: false, message: "Invalid credentials." });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: "Invalid credentials." });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.otp = otp;
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    user.otpPurpose = "2FA_LOGIN";
+    await user.save();
+
+    await sendOtpEmail({
+      to: user.email,
+      name: user.name,
+      otp,
+      purpose: "Investor Portal 2-Step Login Verification",
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `A new 6-digit code has been dispatched to ${user.email}.`,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -290,16 +413,16 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// @desc    Change Password
+// @desc    Change Password (with current password and/or OTP)
 // @route   PUT /api/user/profile/password
 exports.changePassword = async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword, otp } = req.body;
 
-    if (!currentPassword || !newPassword) {
+    if (!newPassword) {
       return res.status(400).json({
         success: false,
-        message: "Current password and new password are required.",
+        message: "New password is required.",
       });
     }
 
@@ -315,17 +438,39 @@ exports.changePassword = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found." });
     }
 
-    const isMatch = await user.comparePassword(currentPassword);
-    if (!isMatch) {
+    if (currentPassword) {
+      const isMatch = await user.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(400).json({
+          success: false,
+          message: "Current password does not match our records.",
+        });
+      }
+    } else if (otp) {
+      if (!user.otp || user.otp !== otp.trim()) {
+        return res.status(400).json({ success: false, message: "Invalid OTP code entered." });
+      }
+      if (user.otpExpires && new Date() > user.otpExpires) {
+        return res.status(400).json({ success: false, message: "OTP code has expired. Please request a new code." });
+      }
+    } else {
       return res.status(400).json({
         success: false,
-        message: "Current password does not match our records.",
+        message: "Current password or valid verification code is required.",
       });
     }
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
+    user.otp = "";
+    user.otpExpires = null;
+    user.otpPurpose = null;
     await user.save();
+
+    // Send confirmation email
+    sendPasswordResetConfirmation({ to: user.email, name: user.name }).catch((err) =>
+      console.warn("[Email Service] Password update confirmation failed:", err.message)
+    );
 
     res.status(200).json({
       success: true,
@@ -336,10 +481,11 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-// @desc    Send Email OTP for Verification / 2FA
+// @desc    Send Email OTP for Verification / 2FA / Password Change
 // @route   POST /api/user/profile/send-otp
 exports.sendOtp = async (req, res) => {
   try {
+    const { purpose } = req.body || {};
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found." });
@@ -348,16 +494,25 @@ exports.sendOtp = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     user.otp = otp;
     user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+    user.otpPurpose = purpose || "PROFILE_SECURITY";
     await user.save();
+
+    // Send genuine email via Nodemailer
+    await sendOtpEmail({
+      to: user.email,
+      name: user.name,
+      otp,
+      purpose: purpose === "CHANGE_PASSWORD" ? "Account Password Update" : "Profile Security Verification",
+    });
 
     res.status(200).json({
       success: true,
       message: `A 6-digit OTP has been dispatched to ${user.email}.`,
-      otp, // included for development & testing
       expiresIn: "10 minutes",
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("[User Auth] sendOtp error:", error);
+    res.status(500).json({ success: false, message: "Failed to send OTP: " + error.message });
   }
 };
 
@@ -382,10 +537,6 @@ exports.verifyOtp = async (req, res) => {
     if (user.otpExpires && new Date() > user.otpExpires) {
       return res.status(400).json({ success: false, message: "OTP code has expired. Please request a new code." });
     }
-
-    user.otp = "";
-    user.otpExpires = null;
-    await user.save();
 
     res.status(200).json({
       success: true,
@@ -413,6 +564,132 @@ exports.toggle2FA = async (req, res) => {
       success: true,
       message: `Email 2FA security has been ${user.is2FAEnabled ? "enabled" : "disabled"}.`,
       is2FAEnabled: user.is2FAEnabled,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Send Forgot Password OTP for User (Public)
+// @route   POST /api/user/auth/forgot-password/send-otp
+exports.userForgotPasswordSendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Please provide your registered email address." });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "No user account found matching this email address.",
+      });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.otp = otp;
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    user.otpPurpose = "FORGOT_PASSWORD";
+    await user.save();
+
+    // Send genuine email via Nodemailer
+    await sendOtpEmail({
+      to: user.email,
+      name: user.name,
+      otp,
+      purpose: "Investor Password Recovery",
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `A 6-digit password recovery code has been sent to ${user.email}.`,
+      expiresIn: "10 minutes",
+    });
+  } catch (error) {
+    console.error("[User Auth] forgotPasswordSendOtp error:", error);
+    res.status(500).json({ success: false, message: "Failed to dispatch recovery email: " + error.message });
+  }
+};
+
+// @desc    Verify Forgot Password OTP for User (Public)
+// @route   POST /api/user/auth/forgot-password/verify-otp
+exports.userForgotPasswordVerifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: "Email and OTP code are required." });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User account not found." });
+    }
+
+    if (!user.otp || user.otp !== otp.trim()) {
+      return res.status(400).json({ success: false, message: "Invalid OTP code entered." });
+    }
+
+    if (user.otpExpires && new Date() > user.otpExpires) {
+      return res.status(400).json({ success: false, message: "OTP code has expired. Please request a new code." });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Recovery OTP verified successfully. You may now enter your new password.",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Reset User Password using OTP (Public)
+// @route   POST /api/user/auth/forgot-password/reset
+exports.userForgotPasswordReset = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, OTP code, and new password are required.",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters long.",
+      });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User account not found." });
+    }
+
+    if (!user.otp || user.otp !== otp.trim()) {
+      return res.status(400).json({ success: false, message: "Invalid OTP code entered." });
+    }
+
+    if (user.otpExpires && new Date() > user.otpExpires) {
+      return res.status(400).json({ success: false, message: "OTP code has expired. Please request a new code." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.otp = "";
+    user.otpExpires = null;
+    user.otpPurpose = null;
+    await user.save();
+
+    // Send confirmation email
+    sendPasswordResetConfirmation({ to: user.email, name: user.name }).catch((err) =>
+      console.warn("[Email Service] Password reset confirmation notice error:", err.message)
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Your password has been reset successfully. You can now login with your new credentials.",
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

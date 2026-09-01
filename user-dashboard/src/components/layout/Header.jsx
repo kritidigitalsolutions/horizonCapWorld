@@ -16,6 +16,7 @@ const pageTitles = {
   '/referral-plans': 'Referral Commission Plans',
   '/ranks': 'Rank Progression Ladder',
   '/news': 'News & Media Broadcasts',
+  '/notifications': 'Notification Center',
   '/profile': 'My Profile',
   '/support': 'Investor Support Desk',
 };

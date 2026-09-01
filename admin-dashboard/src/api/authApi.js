@@ -18,9 +18,45 @@ export const updateAdminProfile = async (profileData) => {
   return response.data;
 };
 
-// Change admin password
+// Send OTP to Admin for email or password change (Protected)
+export const sendAdminOtp = async (data = {}) => {
+  const response = await API.post("/admin/auth/send-otp", data);
+  return response.data;
+};
+
+// Verify Admin OTP (Protected)
+export const verifyAdminOtp = async (otpData) => {
+  const response = await API.post("/admin/auth/verify-otp", otpData);
+  return response.data;
+};
+
+// Change Admin Email (Protected)
+export const changeAdminEmail = async (emailData) => {
+  const response = await API.put("/admin/auth/change-email", emailData);
+  return response.data;
+};
+
+// Change admin password (Protected)
 export const changeAdminPassword = async (passwordData) => {
   const response = await API.put("/admin/auth/change-password", passwordData);
+  return response.data;
+};
+
+// Forgot password - Send OTP to Admin Email (Public)
+export const forgotPasswordSendOtp = async (emailData) => {
+  const response = await API.post("/admin/auth/forgot-password/send-otp", emailData);
+  return response.data;
+};
+
+// Forgot password - Verify OTP (Public)
+export const forgotPasswordVerifyOtp = async (otpData) => {
+  const response = await API.post("/admin/auth/forgot-password/verify-otp", otpData);
+  return response.data;
+};
+
+// Forgot password - Reset Password (Public)
+export const forgotPasswordReset = async (resetData) => {
+  const response = await API.post("/admin/auth/forgot-password/reset", resetData);
   return response.data;
 };
 

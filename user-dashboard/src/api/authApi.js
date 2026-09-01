@@ -5,6 +5,11 @@ export const loginUser = async (credentials) => {
   return response.data;
 };
 
+export const sendLogin2FAOtp = async (credentials) => {
+  const response = await api.post('/user/auth/login-2fa-otp', credentials);
+  return response.data;
+};
+
 export const registerUser = async (userData) => {
   const response = await api.post('/user/auth/register', userData);
   return response.data;
@@ -30,8 +35,8 @@ export const changePassword = async (passwordData) => {
   return response.data;
 };
 
-export const sendOtp = async () => {
-  const response = await api.post('/user/profile/send-otp');
+export const sendOtp = async (data = {}) => {
+  const response = await api.post('/user/profile/send-otp', data);
   return response.data;
 };
 
@@ -45,3 +50,20 @@ export const toggle2FA = async (enabled) => {
   return response.data;
 };
 
+// Forgot password - Send OTP to user email (Public)
+export const forgotPasswordSendOtp = async (emailData) => {
+  const response = await api.post('/user/auth/forgot-password/send-otp', emailData);
+  return response.data;
+};
+
+// Forgot password - Verify OTP (Public)
+export const forgotPasswordVerifyOtp = async (otpData) => {
+  const response = await api.post('/user/auth/forgot-password/verify-otp', otpData);
+  return response.data;
+};
+
+// Forgot password - Reset Password (Public)
+export const forgotPasswordReset = async (resetData) => {
+  const response = await api.post('/user/auth/forgot-password/reset', resetData);
+  return response.data;
+};

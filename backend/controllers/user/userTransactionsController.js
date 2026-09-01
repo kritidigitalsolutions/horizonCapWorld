@@ -1,6 +1,7 @@
 const Transaction = require("../../models/Transaction");
 const PaymentMethod = require("../../models/PaymentMethod");
 const User = require("../../models/User");
+const { notifyUser, notifyAdmin } = require("../../utils/notificationService");
 
 // @desc    Get all active receiving deposit payment gateways
 // @route   GET /api/user/deposits/gateways
@@ -67,6 +68,28 @@ exports.createDeposit = async (req, res) => {
       date: new Date().toISOString().split("T")[0],
       time: new Date().toLocaleTimeString("en-US", { hour12: false }),
       status: "Pending",
+    });
+
+    // Automated alerts
+    await notifyAdmin({
+      title: "New Deposit Submission",
+      message: `${user.name} submitted a deposit of $${numAmount.toLocaleString()} via ${gateway || "Vault"}. Pending approval.`,
+      category: "FINANCIAL",
+      type: "deposit_submitted",
+      priority: "NORMAL",
+      actionUrl: "/transactions",
+      metadata: { transactionId: customId, amount: numAmount, userId: user._id },
+    });
+
+    await notifyUser({
+      userId: user._id,
+      title: "Deposit Proof Received",
+      message: `Your deposit submission of $${numAmount.toLocaleString()} via ${gateway || "Vault"} has been received. Our finance desk is reviewing the proof.`,
+      category: "FINANCIAL",
+      type: "deposit_submitted",
+      priority: "NORMAL",
+      actionUrl: "/transactions",
+      metadata: { transactionId: customId, amount: numAmount },
     });
 
     res.status(201).json({
@@ -138,6 +161,28 @@ exports.createWithdrawal = async (req, res) => {
       date: new Date().toISOString().split("T")[0],
       time: new Date().toLocaleTimeString("en-US", { hour12: false }),
       status: "Pending",
+    });
+
+    // Automated alerts
+    await notifyAdmin({
+      title: "New Withdrawal Request",
+      message: `${user.name} requested a withdrawal of $${numAmount.toLocaleString()} to ${gateway || "Crypto Wallet"}.`,
+      category: "FINANCIAL",
+      type: "withdrawal_requested",
+      priority: "HIGH",
+      actionUrl: "/transactions",
+      metadata: { transactionId: customId, amount: numAmount, userId: user._id },
+    });
+
+    await notifyUser({
+      userId: user._id,
+      title: "Withdrawal Request Received",
+      message: `Your withdrawal request of $${numAmount.toLocaleString()} has been queued for verification and payout processing.`,
+      category: "FINANCIAL",
+      type: "withdrawal_requested",
+      priority: "NORMAL",
+      actionUrl: "/transactions",
+      metadata: { transactionId: customId, amount: numAmount },
     });
 
     res.status(201).json({

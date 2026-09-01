@@ -23,6 +23,7 @@ import Profile from './pages/Profile';
 import Support from './pages/Support';
 import NewsMedia from './pages/NewsMedia';
 import NewsDetail from './pages/NewsDetail';
+import Notifications from './pages/Notifications';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -53,6 +54,7 @@ function AppRoutes() {
       <Route path="/ranks" element={<ProtectedRoute><Ranks /></ProtectedRoute>} />
       <Route path="/news" element={<ProtectedRoute><NewsMedia /></ProtectedRoute>} />
       <Route path="/news/:id" element={<ProtectedRoute><NewsDetail /></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
 

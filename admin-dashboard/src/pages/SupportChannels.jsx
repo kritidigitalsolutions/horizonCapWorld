@@ -298,99 +298,102 @@ export default function SupportChannels() {
 
       {/* ──────────────── CHANNELS GRID (PURE WHITE & GOLD LIGHT THEME) ──────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredChannels.map((c, i) => (
-          <div
-            key={c.id}
-            className="card p-5 space-y-4 hover:border-gold-300 hover:shadow-md transition-all animate-fade-in flex flex-col justify-between"
-            style={{ animationDelay: `${i * 40}ms` }}
-          >
-            <div className="space-y-3">
-              {/* Header: Platform Icon + Category Tag + Status */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-center shadow-2xs">
-                    {getPlatformIcon(c.platform)}
+        {filteredChannels.map((c, i) => {
+          const chanKey = c._id || c.id || `chan-${i}`;
+          return (
+            <div
+              key={chanKey}
+              className="card p-5 space-y-4 hover:border-gold-300 hover:shadow-md transition-all animate-fade-in flex flex-col justify-between"
+              style={{ animationDelay: `${i * 40}ms` }}
+            >
+              <div className="space-y-3">
+                {/* Header: Platform Icon + Category Tag + Status */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-center shadow-2xs">
+                      {getPlatformIcon(c.platform)}
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        {c.platform}
+                      </span>
+                      <h3 className="text-sm font-bold text-slate-800 leading-tight font-poppins">
+                        {c.title}
+                      </h3>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      {c.platform}
-                    </span>
-                    <h3 className="text-sm font-bold text-slate-800 leading-tight font-poppins">
-                      {c.title}
-                    </h3>
+
+                  <Badge variant={c.status === 'Active' ? 'success' : 'warning'} size="sm">
+                    {c.status}
+                  </Badge>
+                </div>
+
+                {/* Department & Handle */}
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[11px] text-slate-500 font-medium">Department:</span>
+                    <span className="text-[11px] font-semibold text-slate-800 truncate max-w-[170px]">{c.department}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/50">
+                    <span className="text-[11px] text-slate-500 font-medium">Account / Handle:</span>
+                    <span className="text-[11px] font-mono font-bold text-gold-700 truncate max-w-[170px]">{c.handle}</span>
                   </div>
                 </div>
 
-                <Badge variant={c.status === 'Active' ? 'success' : 'warning'} size="sm">
-                  {c.status}
-                </Badge>
+                {/* Operating Hours & Stats Bar */}
+                <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                  <span className="inline-flex items-center gap-1">
+                    <RiTimeLine size={13} className="text-gold-600" />
+                    {c.hours}
+                  </span>
+                  <span className="font-semibold text-slate-700 bg-gold-50/80 border border-gold-200 px-2 py-0.5 rounded-md">
+                    {c.stats}
+                  </span>
+                </div>
               </div>
 
-              {/* Department & Handle */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-slate-500 font-medium">Department:</span>
-                  <span className="text-[11px] font-semibold text-slate-800 truncate max-w-[170px]">{c.department}</span>
-                </div>
+              {/* Actions Footer */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                <a
+                  href={c.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold shadow-gold transition-all active:scale-95"
+                >
+                  <RiExternalLinkLine size={14} />
+                  <span>Open / Test Channel</span>
+                </a>
 
-                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/50">
-                  <span className="text-[11px] text-slate-500 font-medium">Account / Handle:</span>
-                  <span className="text-[11px] font-mono font-bold text-gold-700 truncate max-w-[170px]">{c.handle}</span>
-                </div>
-              </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => copyToClipboard(c.url, chanKey)}
+                    className="p-2 rounded-xl bg-slate-100 hover:bg-gold-50 text-slate-500 hover:text-gold-800 transition-colors border border-slate-200 shadow-2xs"
+                    title="Copy direct link"
+                  >
+                    {copiedId === chanKey ? <RiCheckLine size={14} className="text-emerald-600" /> : <RiFileCopyLine size={14} />}
+                  </button>
 
-              {/* Operating Hours & Stats Bar */}
-              <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
-                <span className="inline-flex items-center gap-1">
-                  <RiTimeLine size={13} className="text-gold-600" />
-                  {c.hours}
-                </span>
-                <span className="font-semibold text-slate-700 bg-gold-50/80 border border-gold-200 px-2 py-0.5 rounded-md">
-                  {c.stats}
-                </span>
+                  <button
+                    onClick={() => handleOpenEdit(c)}
+                    className="p-2 rounded-xl bg-slate-100 hover:bg-gold-50 text-slate-500 hover:text-gold-800 transition-colors border border-slate-200 shadow-2xs"
+                    title="Edit Channel"
+                  >
+                    <RiEditLine size={14} />
+                  </button>
+
+                  <button
+                    onClick={() => setDeletingChannel(c)}
+                    className="p-2 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors border border-slate-200 shadow-2xs"
+                    title="Delete Channel"
+                  >
+                    <RiDeleteBinLine size={14} />
+                  </button>
+                </div>
               </div>
             </div>
-
-            {/* Actions Footer */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-              <a
-                href={c.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold shadow-gold transition-all active:scale-95"
-              >
-                <RiExternalLinkLine size={14} />
-                <span>Open / Test Channel</span>
-              </a>
-
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => copyToClipboard(c.url, c.id)}
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-gold-50 text-slate-500 hover:text-gold-800 transition-colors border border-slate-200 shadow-2xs"
-                  title="Copy direct link"
-                >
-                  {copiedId === c.id ? <RiCheckLine size={14} className="text-emerald-600" /> : <RiFileCopyLine size={14} />}
-                </button>
-
-                <button
-                  onClick={() => handleOpenEdit(c)}
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-gold-50 text-slate-500 hover:text-gold-800 transition-colors border border-slate-200 shadow-2xs"
-                  title="Edit Channel"
-                >
-                  <RiEditLine size={14} />
-                </button>
-
-                <button
-                  onClick={() => setDeletingChannel(c)}
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors border border-slate-200 shadow-2xs"
-                  title="Delete Channel"
-                >
-                  <RiDeleteBinLine size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
         {filteredChannels.length === 0 && (
           <div className="col-span-full card p-12 text-center text-xs text-slate-400 font-poppins">
             No official support channels found. Click "Add Official Channel" to configure your support desk.

@@ -35,6 +35,22 @@ const adminSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    otp: {
+      type: String,
+      default: null,
+    },
+    otpExpires: {
+      type: Date,
+      default: null,
+    },
+    otpPurpose: {
+      type: String,
+      default: null,
+    },
+    pendingEmail: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );

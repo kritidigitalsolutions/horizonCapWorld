@@ -4,6 +4,7 @@ const {
   deleteFromCloudinary,
   replaceCloudinaryAsset,
 } = require("../../utils/cloudinary");
+const { broadcastToAll } = require("../../utils/notificationService");
 
 // @desc    Get All News Articles & Media Broadcasts
 // @route   GET /api/admin/news
@@ -94,6 +95,19 @@ exports.createArticle = async (req, res) => {
       tags: parsedTags,
       content,
     });
+
+    // Broadcast notification if published
+    if ((status || "Published") === "Published") {
+      await broadcastToAll({
+        title: `Platform Editorial: ${title.trim()}`,
+        message: subtitle || `New editorial article published in ${category || "Company News"}. Read the latest analysis.`,
+        category: "NEWS",
+        type: "news_broadcast",
+        priority: "NORMAL",
+        actionUrl: `/news/${newArticle._id}`,
+        metadata: { articleId: newArticle._id },
+      });
+    }
 
     res.status(201).json({
       success: true,

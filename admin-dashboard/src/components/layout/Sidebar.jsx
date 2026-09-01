@@ -14,6 +14,7 @@ import {
   RiCloseLine,
   RiTicketLine, RiTicketFill,
   RiCustomerService2Line, RiCustomerService2Fill,
+  RiNotification3Line, RiNotification3Fill,
 } from 'react-icons/ri';
 import { UilAngleRight } from '@iconscout/react-unicons';
 
@@ -38,6 +39,7 @@ const navSections = [
   {
     title: 'Desk & System',
     items: [
+      { path: '/admin/notifications', label: 'Notifications', icon: RiNotification3Line, activeIcon: RiNotification3Fill },
       { path: '/admin/support-tickets', label: 'Support Tickets', icon: RiTicketLine, activeIcon: RiTicketFill },
       { path: '/admin/support-channels', label: 'Support Channels', icon: RiCustomerService2Line, activeIcon: RiCustomerService2Fill },
       { path: '/admin/news-media', label: 'News & Media', icon: RiNewspaperLine, activeIcon: RiNewspaperFill },

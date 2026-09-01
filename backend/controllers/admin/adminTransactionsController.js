@@ -1,5 +1,6 @@
 const Transaction = require("../../models/Transaction");
 const User = require("../../models/User");
+const { notifyUser, notifyAdmin } = require("../../utils/notificationService");
 
 // @desc    Get All Transactions with filters (Tab, Search, Date Range, Pagination)
 // @route   GET /api/admin/transactions
@@ -107,17 +108,39 @@ exports.approveTransaction = async (req, res) => {
     transaction.rejectReason = "";
     await transaction.save();
 
-    // If Deposit, credit user depositWallet
+    // If Deposit, credit user depositWallet & trigger automated notification
     if (transaction.type === "Deposit" && transaction.user) {
       await User.findByIdAndUpdate(transaction.user, {
         $inc: { depositWallet: transaction.amount },
       });
+      await notifyUser({
+        userId: transaction.user,
+        title: "Deposit Approved & Vault Credited",
+        message: `Your deposit of $${Number(transaction.amount || 0).toLocaleString()} via ${transaction.gateway || "Vault"} has been verified and credited to your Deposit Wallet.`,
+        category: "FINANCIAL",
+        type: "deposit_approved",
+        priority: "HIGH",
+        actionUrl: "/transactions",
+        metadata: { amount: transaction.amount, transactionId: transaction.customId },
+        settingKey: "autoDepositApproval",
+      });
     }
 
-    // If Withdrawal, increment totalWithdrawn
+    // If Withdrawal, increment totalWithdrawn & trigger automated notification
     if (transaction.type === "Withdrawal" && transaction.user) {
       await User.findByIdAndUpdate(transaction.user, {
         $inc: { totalWithdrawn: transaction.amount },
+      });
+      await notifyUser({
+        userId: transaction.user,
+        title: "Withdrawal Approved & Dispatched",
+        message: `Your withdrawal of $${Number(transaction.amount || 0).toLocaleString()} via ${transaction.gateway || "Blockchain"} has cleared and the payout was processed.`,
+        category: "FINANCIAL",
+        type: "withdrawal_approved",
+        priority: "HIGH",
+        actionUrl: "/transactions",
+        metadata: { amount: transaction.amount, transactionId: transaction.customId },
+        settingKey: "autoWithdrawalBroadcast",
       });
     }
 
@@ -159,6 +182,20 @@ exports.rejectTransaction = async (req, res) => {
     transaction.status = "Rejected";
     transaction.rejectReason = reason || "Verification failed / Invalid receipt.";
     await transaction.save();
+
+    // Trigger rejection notification
+    if (transaction.user) {
+      await notifyUser({
+        userId: transaction.user,
+        title: `${transaction.type} Request Rejected`,
+        message: `Your ${transaction.type.toLowerCase()} request of $${Number(transaction.amount || 0).toLocaleString()} was rejected: ${transaction.rejectReason}`,
+        category: "FINANCIAL",
+        type: `${transaction.type.toLowerCase()}_rejected`,
+        priority: "NORMAL",
+        actionUrl: "/transactions",
+        metadata: { amount: transaction.amount, reason: transaction.rejectReason },
+      });
+    }
 
     res.status(200).json({
       success: true,

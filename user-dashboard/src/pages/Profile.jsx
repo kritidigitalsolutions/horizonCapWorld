@@ -219,7 +219,7 @@ export default function Profile() {
 
   // Send Password Change OTP
   const handleSendPasswordOTP = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setPasswordError('');
 
     if (!currentPassword) {
@@ -236,11 +236,10 @@ export default function Profile() {
     }
 
     try {
-      const res = await apiSendOtp();
+      const res = await apiSendOtp({ purpose: 'CHANGE_PASSWORD' });
       if (res?.success) {
-        setGeneratedPasswordOtp(res.otp || '');
         setPasswordOtp('');
-        setCountdown(45);
+        setCountdown(60);
         setOtpSentTime(new Date().toLocaleTimeString());
         setPasswordOtpSent(true);
         triggerToast(`6-Digit Verification OTP sent to ${form.email}`, 'info');
@@ -248,13 +247,7 @@ export default function Profile() {
         setPasswordError(res?.message || 'Could not send verification OTP.');
       }
     } catch (err) {
-      const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedPasswordOtp(randomCode);
-      setPasswordOtp('');
-      setCountdown(45);
-      setOtpSentTime(new Date().toLocaleTimeString());
-      setPasswordOtpSent(true);
-      triggerToast(`6-Digit Verification OTP sent to ${form.email}`, 'info');
+      setPasswordError(err.response?.data?.message || err.message || 'Failed to dispatch verification OTP.');
     }
   };
 
@@ -270,19 +263,13 @@ export default function Profile() {
 
     setChangingPass(true);
     try {
-      // 1. Verify OTP
-      try {
-        await apiVerifyOtp({ otp: passwordOtp.trim() });
-      } catch (err) {
-        if (generatedPasswordOtp && passwordOtp.trim() !== generatedPasswordOtp) {
-          setPasswordError('Invalid OTP code. Please check your email inbox.');
-          setChangingPass(false);
-          return;
-        }
-      }
+      // Change Password with OTP & current password
+      const res = await apiChangePassword({
+        currentPassword,
+        newPassword,
+        otp: passwordOtp.trim(),
+      });
 
-      // 2. Change Password
-      const res = await apiChangePassword({ currentPassword, newPassword });
       if (res?.success) {
         setPasswordSaved(true);
         triggerToast('Account password updated successfully! Keep your credentials safe.');
@@ -299,7 +286,7 @@ export default function Profile() {
         setPasswordError(res?.message || 'Password update failed.');
       }
     } catch (err) {
-      setPasswordError(err.response?.data?.message || err.message || 'Password change failed.');
+      setPasswordError(err.response?.data?.message || err.message || 'Password change failed. Please verify your OTP code.');
     } finally {
       setChangingPass(false);
     }
@@ -771,28 +758,13 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Simulated Email Notification Card for Testing */}
-              <div className="p-3 bg-blue-50/80 rounded-2xl border border-blue-200 space-y-2">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-bold text-blue-900 flex items-center gap-1">
-                    <RiMailLine size={14} className="text-blue-600" /> Incoming Security OTP Code:
-                  </span>
-                  <span className="text-blue-700 font-mono text-[10px]">{otpSentTime}</span>
-                </div>
-
-                <div className="flex items-center justify-between bg-white p-2 rounded-xl border border-blue-200">
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Your 6-Digit Code</span>
-                    <span className="text-base font-black text-slate-900 font-mono tracking-widest">{generatedPasswordOtp}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setPasswordOtp(generatedPasswordOtp); setPasswordError(''); }}
-                    className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-2xs cursor-pointer transition-colors"
-                  >
-                    Auto-Fill Code
-                  </button>
-                </div>
+              {/* Live Email Notification Status */}
+              <div className="p-3.5 bg-blue-50/80 rounded-2xl border border-blue-200 flex items-center justify-between text-xs text-blue-900">
+                <span className="font-semibold flex items-center gap-1.5">
+                  <RiMailLine size={16} className="text-blue-600" />
+                  Code sent via Gmail SMTP to <strong className="text-blue-950 font-mono">{form.email}</strong>
+                </span>
+                <span className="text-blue-600 font-mono text-[11px]">{otpSentTime}</span>
               </div>
 
               {/* OTP Input */}

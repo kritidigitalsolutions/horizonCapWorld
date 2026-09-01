@@ -6,6 +6,7 @@ const {
   syncUserStreamingEarnings,
   distributeReferralCommissions,
 } = require("../../utils/yieldAndAffiliateEngine");
+const { notifyUser } = require("../../utils/notificationService");
 
 // @desc    Get all active investment plans
 // @route   GET /api/user/plans
@@ -157,6 +158,19 @@ exports.investInPlan = async (req, res) => {
 
     // 10. Re-sync user totals
     await syncUserStreamingEarnings(user._id);
+
+    // 11. Automated Notification
+    await notifyUser({
+      userId: user._id,
+      title: "Investment Contract Activated",
+      message: `You have successfully invested $${numAmount.toLocaleString()} into the ${plan.name} (${plan.roi}% APY). Real-time per-second yield streaming has commenced.`,
+      category: "FINANCIAL",
+      type: "plan_investment",
+      priority: "HIGH",
+      actionUrl: "/investments",
+      metadata: { planId: plan._id, planName: plan.name, amount: numAmount },
+      settingKey: "autoRoiStreaming",
+    });
 
     res.status(201).json({
       success: true,

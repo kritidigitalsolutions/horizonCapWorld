@@ -13,6 +13,7 @@ const pageTitles = {
   '/admin/ranks': 'Rank Progression Ladder',
   '/admin/referrals': 'Referral Plans & Commissions',
   '/admin/transactions': 'Transactions',
+  '/admin/notifications': 'Notifications & Alerts',
   '/admin/support-tickets': 'Support Tickets & Helpdesk',
   '/admin/support-channels': 'Official Support Channels',
   '/admin/news-media': 'News & Media',

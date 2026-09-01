@@ -11,6 +11,7 @@ import {
   RiUser3Line, RiUser3Fill,
   RiCustomerService2Line, RiCustomerService2Fill,
   RiNewspaperLine, RiNewspaperFill,
+  RiNotification3Line, RiNotification3Fill,
   RiMenuFoldLine, RiMenuUnfoldLine,
   RiCloseLine,
   RiArrowUpLine, RiArrowDownLine,
@@ -47,6 +48,7 @@ const navSections = [
   {
     title: 'Desk & Media',
     items: [
+      { path: '/notifications', label: 'Notifications', icon: RiNotification3Line, activeIcon: RiNotification3Fill },
       { path: '/news', label: 'News & Media', icon: RiNewspaperLine, activeIcon: RiNewspaperFill },
       { path: '/profile', label: 'My Profile', icon: RiUser3Line, activeIcon: RiUser3Fill },
       { path: '/support', label: 'Support Desk', icon: RiCustomerService2Line, activeIcon: RiCustomerService2Fill },

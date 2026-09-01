@@ -7,7 +7,13 @@ const {
   loginAdmin,
   getAdminProfile,
   updateAdminProfile,
+  sendAdminOtp,
+  verifyAdminOtp,
+  changeAdminEmail,
   changeAdminPassword,
+  forgotPasswordSendOtp,
+  forgotPasswordVerifyOtp,
+  forgotPasswordReset,
   getAdminSettings,
   updateAdminSettings,
 } = require("../controllers/admin/adminAuthController");
@@ -88,8 +94,15 @@ const {
 
 // ──────── 1. AUTHENTICATION & PROFILE ────────
 router.post("/auth/login", loginAdmin);
+router.post("/auth/forgot-password/send-otp", forgotPasswordSendOtp);
+router.post("/auth/forgot-password/verify-otp", forgotPasswordVerifyOtp);
+router.post("/auth/forgot-password/reset", forgotPasswordReset);
+
 router.get("/auth/profile", protectAdmin, getAdminProfile);
 router.put("/auth/profile", protectAdmin, updateAdminProfile);
+router.post("/auth/send-otp", protectAdmin, sendAdminOtp);
+router.post("/auth/verify-otp", protectAdmin, verifyAdminOtp);
+router.put("/auth/change-email", protectAdmin, changeAdminEmail);
 router.put("/auth/change-password", protectAdmin, changeAdminPassword);
 router.get("/auth/settings", protectAdmin, getAdminSettings);
 router.put("/auth/settings", protectAdmin, updateAdminSettings);
@@ -160,7 +173,23 @@ router.post("/support/channels", protectAdmin, createChannel);
 router.put("/support/channels/:id", protectAdmin, updateChannel);
 router.delete("/support/channels/:id", protectAdmin, deleteChannel);
 
-// ──────── 11. MEDIA & FILE UPLOAD ────────
+// ──────── 11. NOTIFICATIONS & CUSTOM PUSH BROADCASTS ────────
+const {
+  getAdminNotifications,
+  markAdminNotificationRead,
+  deleteAdminNotification,
+  clearAllAdminNotifications,
+  sendPushNotification,
+} = require("../controllers/admin/adminNotificationController");
+
+router.get("/notifications", protectAdmin, getAdminNotifications);
+router.put("/notifications/mark-all-read", protectAdmin, markAdminNotificationRead);
+router.put("/notifications/:id/read", protectAdmin, markAdminNotificationRead);
+router.delete("/notifications/clear-all", protectAdmin, clearAllAdminNotifications);
+router.delete("/notifications/:id", protectAdmin, deleteAdminNotification);
+router.post("/notifications/push", protectAdmin, sendPushNotification);
+
+// ──────── 12. MEDIA & FILE UPLOAD ────────
 const upload = require("../middlewares/upload");
 const { uploadFile, deleteFile } = require("../controllers/uploadController");
 router.post("/upload", protectAdmin, upload.single("file"), uploadFile);
