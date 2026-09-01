@@ -17,12 +17,29 @@ exports.loginAdmin = async (req, res) => {
       });
     }
 
-    const admin = await Admin.findOne({ email: email.toLowerCase().trim() });
+    let admin = await Admin.findOne({ email: email.toLowerCase().trim() });
     if (!admin) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid admin credentials.",
-      });
+      // If no admin exists in DB at all, auto-create default super admin
+      const adminCount = await Admin.countDocuments();
+      if (adminCount === 0 && email.toLowerCase().trim() === "admin@gmail.com") {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash("admin123", salt);
+        admin = await Admin.create({
+          name: "Super Admin",
+          email: "admin@gmail.com",
+          password: hashedPassword,
+          avatar: "",
+          recoveryEmail: "recovery@horizoncap.com",
+          role: "SUPER_ADMIN",
+          twoFactorEnabled: true,
+        });
+        console.log("[Auto-Seed] Initialized Super Admin upon first login.");
+      } else {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid admin credentials.",
+        });
+      }
     }
 
     const isMatch = await admin.comparePassword(password);
