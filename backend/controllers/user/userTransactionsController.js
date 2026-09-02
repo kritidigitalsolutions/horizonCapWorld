@@ -1,7 +1,6 @@
 const Transaction = require("../../models/Transaction");
 const PaymentMethod = require("../../models/PaymentMethod");
 const User = require("../../models/User");
-const { notifyUser, notifyAdmin } = require("../../utils/notificationService");
 
 // @desc    Get all active receiving deposit payment gateways
 // @route   GET /api/user/deposits/gateways
@@ -18,13 +17,11 @@ exports.getDepositGateways = async (req, res) => {
   }
 };
 
-const { uploadToCloudinary } = require("../../utils/cloudinary");
-
 // @desc    Submit Deposit Proof / TID Request
 // @route   POST /api/user/deposits/submit
 exports.createDeposit = async (req, res) => {
   try {
-    const { amount, gateway, referenceNo, slipUrl: rawSlipUrl } = req.body;
+    const { amount, gateway, referenceNo, slipUrl } = req.body;
     const userId = req.user._id;
 
     if (!amount || parseFloat(amount) <= 0) {
@@ -37,14 +34,6 @@ exports.createDeposit = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: "Investor not found." });
-    }
-
-    let slipUrl = rawSlipUrl || "";
-    if (slipUrl && slipUrl.startsWith("data:")) {
-      const uploadRes = await uploadToCloudinary(slipUrl, {
-        folder: "horizoncap/deposits",
-      });
-      slipUrl = uploadRes.secure_url;
     }
 
     const numAmount = parseFloat(amount);
@@ -64,32 +53,10 @@ exports.createDeposit = async (req, res) => {
       netAmount: numAmount,
       gateway: gateway || "Direct Deposit",
       referenceNo: referenceNo || `REF-${Date.now().toString().slice(-6)}`,
-      slipUrl,
+      slipUrl: slipUrl || "",
       date: new Date().toISOString().split("T")[0],
       time: new Date().toLocaleTimeString("en-US", { hour12: false }),
       status: "Pending",
-    });
-
-    // Automated alerts
-    await notifyAdmin({
-      title: "New Deposit Submission",
-      message: `${user.name} submitted a deposit of $${numAmount.toLocaleString()} via ${gateway || "Vault"}. Pending approval.`,
-      category: "FINANCIAL",
-      type: "deposit_submitted",
-      priority: "NORMAL",
-      actionUrl: "/transactions",
-      metadata: { transactionId: customId, amount: numAmount, userId: user._id },
-    });
-
-    await notifyUser({
-      userId: user._id,
-      title: "Deposit Proof Received",
-      message: `Your deposit submission of $${numAmount.toLocaleString()} via ${gateway || "Vault"} has been received. Our finance desk is reviewing the proof.`,
-      category: "FINANCIAL",
-      type: "deposit_submitted",
-      priority: "NORMAL",
-      actionUrl: "/transactions",
-      metadata: { transactionId: customId, amount: numAmount },
     });
 
     res.status(201).json({
@@ -163,28 +130,6 @@ exports.createWithdrawal = async (req, res) => {
       status: "Pending",
     });
 
-    // Automated alerts
-    await notifyAdmin({
-      title: "New Withdrawal Request",
-      message: `${user.name} requested a withdrawal of $${numAmount.toLocaleString()} to ${gateway || "Crypto Wallet"}.`,
-      category: "FINANCIAL",
-      type: "withdrawal_requested",
-      priority: "HIGH",
-      actionUrl: "/transactions",
-      metadata: { transactionId: customId, amount: numAmount, userId: user._id },
-    });
-
-    await notifyUser({
-      userId: user._id,
-      title: "Withdrawal Request Received",
-      message: `Your withdrawal request of $${numAmount.toLocaleString()} has been queued for verification and payout processing.`,
-      category: "FINANCIAL",
-      type: "withdrawal_requested",
-      priority: "NORMAL",
-      actionUrl: "/transactions",
-      metadata: { transactionId: customId, amount: numAmount },
-    });
-
     res.status(201).json({
       success: true,
       message: "Withdrawal request submitted successfully. Processing within 12-24 hours.",
@@ -202,9 +147,11 @@ exports.getTransactions = async (req, res) => {
   try {
     const { type, status, search, limit = 50, page = 1 } = req.query;
     const userId = req.user._id;
+    const userCustomId = req.user.customId;
 
-    // Strict user isolation — only records belonging to this specific user
-    const query = { user: userId };
+    const query = {
+      $or: [{ user: userId }, { userCustomId }],
+    };
 
     if (type && type !== "all") {
       query.type = type;
@@ -214,30 +161,30 @@ exports.getTransactions = async (req, res) => {
       query.status = status;
     }
 
-    if (search && search.trim()) {
-      const s = search.trim();
-      query.$or = [
-        { customId: { $regex: s, $options: "i" } },
-        { referenceNo: { $regex: s, $options: "i" } },
-        { gateway: { $regex: s, $options: "i" } },
+    if (search) {
+      query.$and = [
+        {
+          $or: [
+            { customId: { $regex: search, $options: "i" } },
+            { referenceNo: { $regex: search, $options: "i" } },
+            { gateway: { $regex: search, $options: "i" } },
+          ],
+        },
       ];
     }
-
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 50));
 
     const total = await Transaction.countDocuments(query);
     const transactions = await Transaction.find(query)
       .sort({ createdAt: -1 })
-      .skip((pageNum - 1) * limitNum)
-      .limit(limitNum);
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit));
 
     res.status(200).json({
       success: true,
       count: transactions.length,
       total,
-      page: pageNum,
-      pages: Math.ceil(total / limitNum) || 1,
+      page: Number(page),
+      pages: Math.ceil(total / Number(limit)),
       transactions,
     });
   } catch (error) {
@@ -249,20 +196,10 @@ exports.getTransactions = async (req, res) => {
 // @route   GET /api/user/transactions/:id
 exports.getTransactionById = async (req, res) => {
   try {
-    const idParam = req.params.id;
-    const query = {
-      user: req.user._id,
-      $or: [
-        { customId: idParam },
-      ],
-    };
-
-    // If param is a valid 24-hex ObjectId, also check _id
-    if (/^[0-9a-fA-F]{24}$/.test(idParam)) {
-      query.$or.push({ _id: idParam });
-    }
-
-    const transaction = await Transaction.findOne(query);
+    const transaction = await Transaction.findOne({
+      $or: [{ _id: req.params.id }, { customId: req.params.id }],
+      $or: [{ user: req.user._id }, { userCustomId: req.user.customId }],
+    });
 
     if (!transaction) {
       return res.status(404).json({ success: false, message: "Transaction record not found." });

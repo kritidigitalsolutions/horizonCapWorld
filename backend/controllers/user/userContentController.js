@@ -29,7 +29,6 @@ exports.getNews = async (req, res) => {
       success: true,
       count: articles.length,
       articles,
-      news: articles,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -40,13 +39,7 @@ exports.getNews = async (req, res) => {
 // @route   GET /api/user/news/:id
 exports.getNewsArticle = async (req, res) => {
   try {
-    let article = null;
-    if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
-      article = await NewsArticle.findById(req.params.id);
-    }
-    if (!article) {
-      article = await NewsArticle.findOne({ customId: req.params.id });
-    }
+    const article = await NewsArticle.findById(req.params.id);
     if (!article) {
       return res.status(404).json({ success: false, message: "Article not found." });
     }
@@ -57,7 +50,6 @@ exports.getNewsArticle = async (req, res) => {
     res.status(200).json({
       success: true,
       article,
-      news: article,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -109,13 +101,11 @@ exports.getSupportChannels = async (req, res) => {
   }
 };
 
-const { uploadToCloudinary } = require("../../utils/cloudinary");
-
 // @desc    Create Support Ticket
 // @route   POST /api/user/support/tickets
 exports.createSupportTicket = async (req, res) => {
   try {
-    const { subject, category, priority, message, attachments: rawAttachments } = req.body;
+    const { subject, category, priority, message, attachments } = req.body;
     const userId = req.user._id;
 
     if (!subject || !message) {
@@ -128,22 +118,6 @@ exports.createSupportTicket = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found." });
-    }
-
-    // Process attachments to Cloudinary if base64
-    let processedAttachments = [];
-    if (Array.isArray(rawAttachments)) {
-      for (const att of rawAttachments) {
-        if (typeof att === "string" && att.startsWith("data:")) {
-          const up = await uploadToCloudinary(att, { folder: "horizoncap/tickets" });
-          processedAttachments.push(up.secure_url);
-        } else if (typeof att === "object" && att.dataUrl && att.dataUrl.startsWith("data:")) {
-          const up = await uploadToCloudinary(att.dataUrl, { folder: "horizoncap/tickets" });
-          processedAttachments.push(up.secure_url);
-        } else if (typeof att === "string" && att) {
-          processedAttachments.push(att);
-        }
-      }
     }
 
     const ticketId = `TICK-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -164,7 +138,7 @@ exports.createSupportTicket = async (req, res) => {
           senderName: user.name,
           text: message.trim(),
           time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          attachments: processedAttachments,
+          attachments: attachments || [],
         },
       ],
       lastUpdated: "Just now",
@@ -238,28 +212,12 @@ exports.replyToTicket = async (req, res) => {
       return res.status(404).json({ success: false, message: "Ticket not found." });
     }
 
-    // Process attachments to Cloudinary if base64
-    let processedAttachments = [];
-    if (Array.isArray(attachments)) {
-      for (const att of attachments) {
-        if (typeof att === "string" && att.startsWith("data:")) {
-          const up = await uploadToCloudinary(att, { folder: "horizoncap/tickets" });
-          processedAttachments.push(up.secure_url);
-        } else if (typeof att === "object" && att.dataUrl && att.dataUrl.startsWith("data:")) {
-          const up = await uploadToCloudinary(att.dataUrl, { folder: "horizoncap/tickets" });
-          processedAttachments.push(up.secure_url);
-        } else if (typeof att === "string" && att) {
-          processedAttachments.push(att);
-        }
-      }
-    }
-
     ticket.messages.push({
       sender: "user",
       senderName: req.user.name || "Investor",
       text: text.trim(),
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      attachments: processedAttachments,
+      attachments: attachments || [],
     });
 
     if (ticket.status === "Resolved" || ticket.status === "Closed") {
