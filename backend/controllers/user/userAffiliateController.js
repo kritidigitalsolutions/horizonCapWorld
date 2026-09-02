@@ -61,7 +61,7 @@ exports.getReferralOverview = async (req, res) => {
   }
 };
 
-// @desc    Get Referral Commission Tier Structure
+// @desc    Get Referral Commission Tier Structure (Dynamic Downline Calculation)
 // @route   GET /api/user/referrals/commissions
 exports.getReferralCommissions = async (req, res) => {
   try {
@@ -76,10 +76,57 @@ exports.getReferralCommissions = async (req, res) => {
       ];
     }
 
+    // Dynamic downline statistics calculation
+    const levelStats = {
+      1: { count: 0, volume: 0 },
+      2: { count: 0, volume: 0 },
+      3: { count: 0, volume: 0 },
+      4: { count: 0, volume: 0 },
+      5: { count: 0, volume: 0 },
+    };
+
+    if (req.user && req.user.customId) {
+      const level1 = await User.find({ sponsorId: req.user.customId }).select("customId totalInvested");
+      levelStats[1].count = level1.length;
+      levelStats[1].volume = level1.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+
+      const l1Ids = level1.map((u) => u.customId).filter(Boolean);
+      const level2 = l1Ids.length > 0 ? await User.find({ sponsorId: { $in: l1Ids } }).select("customId totalInvested") : [];
+      levelStats[2].count = level2.length;
+      levelStats[2].volume = level2.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+
+      const l2Ids = level2.map((u) => u.customId).filter(Boolean);
+      const level3 = l2Ids.length > 0 ? await User.find({ sponsorId: { $in: l2Ids } }).select("customId totalInvested") : [];
+      levelStats[3].count = level3.length;
+      levelStats[3].volume = level3.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+
+      const l3Ids = level3.map((u) => u.customId).filter(Boolean);
+      const level4 = l3Ids.length > 0 ? await User.find({ sponsorId: { $in: l3Ids } }).select("customId totalInvested") : [];
+      levelStats[4].count = level4.length;
+      levelStats[4].volume = level4.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+
+      const l4Ids = level4.map((u) => u.customId).filter(Boolean);
+      const level5 = l4Ids.length > 0 ? await User.find({ sponsorId: { $in: l4Ids } }).select("customId totalInvested") : [];
+      levelStats[5].count = level5.length;
+      levelStats[5].volume = level5.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+    }
+
+    const dynamicTiers = tiers.map((t) => {
+      const plain = t.toObject ? t.toObject() : { ...t };
+      const lvl = plain.levelNumber || 1;
+      const stats = levelStats[lvl] || { count: 0, volume: 0 };
+      return {
+        ...plain,
+        activePromoters: stats.count,
+        totalVolume: `$${Number(stats.volume).toLocaleString()}`,
+        volumeRaw: stats.volume,
+      };
+    });
+
     res.status(200).json({
       success: true,
-      count: tiers.length,
-      tiers,
+      count: dynamicTiers.length,
+      tiers: dynamicTiers,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

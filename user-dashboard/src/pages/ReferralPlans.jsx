@@ -76,6 +76,23 @@ export default function ReferralPlans() {
   const totalDownlines = Number(overviewData?.totalTeamCount || networkList.length || 0);
   const avgAffiliateYield = Number((commissions.reduce((sum, c) => sum + (parseFloat(c.investCommission) || 0), 0) || 15.0).toFixed(1));
 
+  // Dynamic Level Stats Calculation from live network list
+  const getDynamicTierStats = (tier) => {
+    const levelNum = tier.levelNumber || parseInt(String(tier.level).replace('L', ''), 10) || 1;
+    if (networkList && networkList.length > 0) {
+      const tierMembers = networkList.filter(u => Number(u.level) === levelNum);
+      const tierVolume = tierMembers.reduce((sum, u) => sum + Number(u.invested || 0), 0);
+      return {
+        promoters: tierMembers.length,
+        volume: `$${tierVolume.toLocaleString()}`,
+      };
+    }
+    return {
+      promoters: tier.activePromoters !== undefined ? Number(tier.activePromoters) : 0,
+      volume: tier.totalVolume || '$0',
+    };
+  };
+
   return (
     <div className="page-enter space-y-6 pb-8 font-poppins">
       {/* ──────── PAGE HEADER ──────── */}
@@ -145,30 +162,33 @@ export default function ReferralPlans() {
           </div>
 
           <div className="space-y-2.5">
-            {commissions.map((tier) => (
-              <div
-                key={tier.level}
-                className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-emerald-50/30 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
-                    {tier.level}
-                  </span>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
-                    <p className="text-[11px] text-slate-400">
-                      {tier.activePromoters} Promoters • Total Volume: {tier.totalVolume}
-                    </p>
+            {commissions.map((tier) => {
+              const stats = getDynamicTierStats(tier);
+              return (
+                <div
+                  key={tier.level}
+                  className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-emerald-50/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
+                      {tier.level}
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
+                      <p className="text-[11px] text-slate-400">
+                        {stats.promoters} Promoters • Total Volume: {stats.volume}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-extrabold text-emerald-600 font-mono bg-emerald-50 border border-emerald-200 px-3.5 py-1 rounded-xl shadow-2xs">
+                      {tier.investCommission}
+                    </span>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-extrabold text-emerald-600 font-mono bg-emerald-50 border border-emerald-200 px-3.5 py-1 rounded-xl shadow-2xs">
-                    {tier.investCommission}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-poppins">
@@ -193,30 +213,33 @@ export default function ReferralPlans() {
           </div>
 
           <div className="space-y-2.5">
-            {commissions.map((tier) => (
-              <div
-                key={tier.level}
-                className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-amber-50/30 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
-                    {tier.level}
-                  </span>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
-                    <p className="text-[11px] text-slate-400">
-                      {tier.activePromoters} Promoters Active
-                    </p>
+            {commissions.map((tier) => {
+              const stats = getDynamicTierStats(tier);
+              return (
+                <div
+                  key={tier.level}
+                  className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-amber-50/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
+                      {tier.level}
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
+                      <p className="text-[11px] text-slate-400">
+                        {stats.promoters} Promoters Active
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-extrabold text-gold-700 font-mono bg-gold-50 border border-gold-300 px-3.5 py-1 rounded-xl shadow-2xs">
+                      {tier.earningsCommission}
+                    </span>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-extrabold text-gold-700 font-mono bg-gold-50 border border-gold-300 px-3.5 py-1 rounded-xl shadow-2xs">
-                    {tier.earningsCommission}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800 font-poppins">

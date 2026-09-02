@@ -6,7 +6,22 @@ const User = require("../../models/User");
 exports.getReferralSettings = async (req, res) => {
   try {
     const settings = await ReferralSetting.find().sort({ levelNumber: 1 });
-    res.status(200).json({ success: true, settings });
+    const activePromotersCount = await User.countDocuments({ totalReferrals: { $gt: 0 } });
+    const totalPlatformVolume = await User.aggregate([
+      { $group: { _id: null, total: { $sum: "$totalInvested" } } },
+    ]);
+    const totalVol = totalPlatformVolume[0]?.total || 0;
+
+    const dynamicSettings = settings.map((s) => {
+      const plain = s.toObject ? s.toObject() : { ...s };
+      return {
+        ...plain,
+        activePromoters: plain.activePromoters > 0 ? plain.activePromoters : activePromotersCount,
+        totalVolume: plain.totalVolume && plain.totalVolume !== "$0" ? plain.totalVolume : `$${totalVol.toLocaleString()}`,
+      };
+    });
+
+    res.status(200).json({ success: true, settings: dynamicSettings });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

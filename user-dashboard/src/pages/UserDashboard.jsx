@@ -40,8 +40,17 @@ const quickLinkIcons = {
 };
 
 export default function UserDashboard() {
-  const { user } = useAuth();
-  const [streamingValue, setStreamingValue] = useState(0);
+  const { user, updateUser } = useAuth();
+  const [streamingValue, setStreamingValue] = useState(() => {
+    try {
+      const saved = localStorage.getItem('horizon_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return Number(parsed?.totalEarned || parsed?.totalProfit || 0);
+      }
+    } catch (e) {}
+    return 0;
+  });
   const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [copiedRef, setCopiedRef] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
@@ -114,14 +123,24 @@ export default function UserDashboard() {
     return () => clearTimeout(t);
   }, []);
 
-  // Live per-second streaming ROI
+  // Synchronize initial & updated profit baseline from backend user data
+  useEffect(() => {
+    const liveProfit = Number(user?.totalEarned || user?.totalProfit || 0);
+    if (liveProfit > 0) {
+      setStreamingValue(prev => (prev === 0 || liveProfit > prev ? liveProfit : prev));
+    }
+  }, [user?.totalEarned, user?.totalProfit]);
+
+  // Live continuous per-second streaming ROI
   useEffect(() => {
     const rate = Number(user?.perSecondRate || 0);
     if (rate <= 0) return;
     streamRef.current = setInterval(() => {
       setStreamingValue(prev => prev + rate);
     }, 1000);
-    return () => clearInterval(streamRef.current);
+    return () => {
+      if (streamRef.current) clearInterval(streamRef.current);
+    };
   }, [user?.perSecondRate]);
 
   // Countdown to next daily payout (midnight)

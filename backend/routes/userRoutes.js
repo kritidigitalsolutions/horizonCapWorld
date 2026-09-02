@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const { protectUser } = require("../middlewares/auth");
+const { protectUser, optionalUserAuth } = require("../middlewares/auth");
 
 // Controllers
 const {
@@ -95,7 +95,7 @@ router.get("/transactions/:id", protectUser, getTransactionById);
 
 // ──────── 5. REFERRALS & RANKS ────────
 router.get("/referrals/overview", protectUser, getReferralOverview);
-router.get("/referrals/commissions", getReferralCommissions);
+router.get("/referrals/commissions", optionalUserAuth, getReferralCommissions);
 router.get("/referrals/network", protectUser, getReferralNetwork);
 router.get("/ranks/ladder", getRankLadder);
 router.get("/ranks/my-rank", protectUser, getMyRankStatus);
