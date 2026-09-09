@@ -1,68 +1,96 @@
 const Transaction = require("../../models/Transaction");
 const PaymentMethod = require("../../models/PaymentMethod");
+const DepositVideo = require("../../models/DepositVideo");
 const User = require("../../models/User");
 
-// @desc    Get all active receiving deposit payment gateways
+// @desc    Get Active Deposit Gateways (Fiat, Bank, Crypto)
 // @route   GET /api/user/deposits/gateways
 exports.getDepositGateways = async (req, res) => {
   try {
-    const gateways = await PaymentMethod.find({ status: "Active" }).sort({ type: 1 });
-    res.status(200).json({
-      success: true,
-      count: gateways.length,
-      gateways,
-    });
+    const { category, type } = req.query;
+    let query = { status: { $ne: "Inactive" } };
+
+    if (category && category !== "all") {
+      query.category = category;
+    }
+    if (type && type !== "all") {
+      query.type = type;
+    }
+
+    const gateways = await PaymentMethod.find(query).sort({ type: 1, name: 1 });
+    res.status(200).json({ success: true, count: gateways.length, gateways });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Submit Deposit Proof / TID Request
-// @route   POST /api/user/deposits/submit
+// @desc    Get Official Deposit Tutorial Video
+// @route   GET /api/user/deposits/tutorial-video
+exports.getDepositVideo = async (req, res) => {
+  try {
+    let video = await DepositVideo.findOne({ status: "Published" });
+    if (!video) {
+      video = await DepositVideo.findOne();
+    }
+    res.status(200).json({ success: true, video });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Submit New Deposit Request
+// @route   POST /api/user/deposits
 exports.createDeposit = async (req, res) => {
   try {
-    const { amount, gateway, referenceNo, slipUrl } = req.body;
-    const userId = req.user._id;
+    const { amount, rawAmount, gateway, referenceNo, slipUrl, senderName, senderAccount, senderPhone, cryptoNetwork, selectedToken } = req.body;
+    const depositAmount = Number(amount);
 
-    if (!amount || parseFloat(amount) <= 0) {
+    if (!depositAmount || depositAmount <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Please specify a valid deposit amount.",
+        message: "Valid deposit amount is required.",
       });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: "Investor not found." });
+    if (!gateway) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select a valid deposit gateway/channel.",
+      });
     }
 
-    const numAmount = parseFloat(amount);
-    const customId = `TXN-DP-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Investor account not found." });
+    }
 
-    const transaction = await Transaction.create({
-      customId,
+    const newTrx = await Transaction.create({
       user: user._id,
       userName: user.name,
-      userCustomId: user.customId,
+      userCustomId: user.customId || "HORIZON-USR-01",
       userEmail: user.email,
-      country: user.country || "Global",
+      country: user.country,
       type: "Deposit",
-      amount: numAmount,
-      rawAmount: numAmount,
+      amount: depositAmount,
+      rawAmount: Number(rawAmount) || depositAmount,
       fee: 0,
-      netAmount: numAmount,
-      gateway: gateway || "Direct Deposit",
-      referenceNo: referenceNo || `REF-${Date.now().toString().slice(-6)}`,
+      netAmount: depositAmount,
+      gateway: gateway || "Manual Transfer",
+      referenceNo: referenceNo || `DEP-${Date.now().toString().slice(-6)}`,
       slipUrl: slipUrl || "",
-      date: new Date().toISOString().split("T")[0],
-      time: new Date().toLocaleTimeString("en-US", { hour12: false }),
+      senderName: senderName || user.name,
+      senderAccount: senderAccount || "",
+      senderPhone: senderPhone || user.phone || "",
+      cryptoNetwork: cryptoNetwork || "",
+      selectedToken: selectedToken || "",
       status: "Pending",
+      note: `Deposit via ${gateway} submitted for verification.`,
     });
 
     res.status(201).json({
       success: true,
-      message: "Deposit proof submitted successfully. Pending compliance verification.",
-      transaction,
+      message: "Deposit submitted successfully. Our treasury desk is reviewing your transfer.",
+      transaction: newTrx,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -70,71 +98,65 @@ exports.createDeposit = async (req, res) => {
 };
 
 // @desc    Submit Withdrawal Request
-// @route   POST /api/user/withdrawals/submit
+// @route   POST /api/user/withdrawals
 exports.createWithdrawal = async (req, res) => {
   try {
-    const { amount, gateway, address } = req.body;
-    const userId = req.user._id;
+    const { amount, gateway, walletAddress, bankDetails, note } = req.body;
+    const withdrawAmount = Number(amount);
 
-    if (!amount || parseFloat(amount) <= 0) {
+    if (!withdrawAmount || withdrawAmount <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Please specify a valid withdrawal amount.",
+        message: "Valid withdrawal amount is required.",
       });
     }
 
-    if (!address || !address.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Recipient wallet address or bank account coordinates are required.",
-      });
-    }
-
-    const user = await User.findById(userId);
+    const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(404).json({ success: false, message: "Investor not found." });
+      return res.status(404).json({ success: false, message: "Investor account not found." });
     }
 
-    const numAmount = parseFloat(amount);
-
-    if ((user.earningWallet || 0) < numAmount) {
+    if ((user.earningWallet || 0) < withdrawAmount) {
       return res.status(400).json({
         success: false,
-        message: `Insufficient available earning wallet balance ($${(user.earningWallet || 0).toLocaleString()} USD).`,
+        message: `Insufficient Earning Wallet balance ($${(user.earningWallet || 0).toLocaleString()} USD).`,
       });
     }
 
-    // Deduct from earning wallet
-    user.earningWallet = (user.earningWallet || 0) - numAmount;
-    user.totalWithdrawn = (user.totalWithdrawn || 0) + numAmount;
+    // 5% standard protocol withdrawal fee or 0
+    const fee = parseFloat((withdrawAmount * 0.05).toFixed(2));
+    const netAmount = parseFloat((withdrawAmount - fee).toFixed(2));
+
+    // Deduct from earning wallet immediately to prevent double spending
+    user.earningWallet -= withdrawAmount;
+    user.totalWithdrawn = (user.totalWithdrawn || 0) + withdrawAmount;
     await user.save();
 
-    const customId = `TXN-WD-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
-
-    const transaction = await Transaction.create({
-      customId,
+    const newTrx = await Transaction.create({
       user: user._id,
       userName: user.name,
-      userCustomId: user.customId,
+      userCustomId: user.customId || "HORIZON-USR-01",
       userEmail: user.email,
-      country: user.country || "Global",
+      country: user.country,
       type: "Withdrawal",
-      amount: numAmount,
-      rawAmount: numAmount,
-      fee: 0,
-      netAmount: numAmount,
-      gateway: gateway || "USDT (TRC20)",
-      referenceNo: address.trim(),
-      date: new Date().toISOString().split("T")[0],
-      time: new Date().toLocaleTimeString("en-US", { hour12: false }),
+      amount: withdrawAmount,
+      rawAmount: withdrawAmount,
+      fee,
+      netAmount,
+      gateway: gateway || "Crypto Wallet",
+      referenceNo: walletAddress || bankDetails?.accountNumber || `WD-${Date.now().toString().slice(-6)}`,
       status: "Pending",
+      note: note || `Withdrawal request to ${gateway || "designated destination"}.`,
     });
 
     res.status(201).json({
       success: true,
-      message: "Withdrawal request submitted successfully. Processing within 12-24 hours.",
-      transaction,
-      remainingEarningWallet: user.earningWallet,
+      message: `Withdrawal request for $${withdrawAmount.toLocaleString()} USD submitted successfully.`,
+      transaction: newTrx,
+      user: {
+        earningWallet: user.earningWallet,
+        totalWithdrawn: user.totalWithdrawn,
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -145,13 +167,8 @@ exports.createWithdrawal = async (req, res) => {
 // @route   GET /api/user/transactions
 exports.getTransactions = async (req, res) => {
   try {
-    const { type, status, search, limit = 50, page = 1 } = req.query;
-    const userId = req.user._id;
-    const userCustomId = req.user.customId;
-
-    const query = {
-      $or: [{ user: userId }, { userCustomId }],
-    };
+    const { type, status, search, page = 1, limit = 20 } = req.query;
+    let query = { user: req.user._id };
 
     if (type && type !== "all") {
       query.type = type;
@@ -162,26 +179,22 @@ exports.getTransactions = async (req, res) => {
     }
 
     if (search) {
-      query.$and = [
-        {
-          $or: [
-            { customId: { $regex: search, $options: "i" } },
-            { referenceNo: { $regex: search, $options: "i" } },
-            { gateway: { $regex: search, $options: "i" } },
-          ],
-        },
+      query.$or = [
+        { referenceNo: { $regex: search, $options: "i" } },
+        { gateway: { $regex: search, $options: "i" } },
+        { customId: { $regex: search, $options: "i" } },
       ];
     }
 
+    const skip = (Number(page) - 1) * Number(limit);
     const total = await Transaction.countDocuments(query);
     const transactions = await Transaction.find(query)
       .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
+      .skip(skip)
       .limit(Number(limit));
 
     res.status(200).json({
       success: true,
-      count: transactions.length,
       total,
       page: Number(page),
       pages: Math.ceil(total / Number(limit)),
@@ -192,13 +205,13 @@ exports.getTransactions = async (req, res) => {
   }
 };
 
-// @desc    Get Single Transaction by ID
+// @desc    Get Single Transaction Details
 // @route   GET /api/user/transactions/:id
 exports.getTransactionById = async (req, res) => {
   try {
     const transaction = await Transaction.findOne({
-      $or: [{ _id: req.params.id }, { customId: req.params.id }],
-      $or: [{ user: req.user._id }, { userCustomId: req.user.customId }],
+      _id: req.params.id,
+      user: req.user._id,
     });
 
     if (!transaction) {
@@ -210,4 +223,3 @@ exports.getTransactionById = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-

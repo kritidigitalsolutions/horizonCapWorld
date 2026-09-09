@@ -1,7 +1,6 @@
-import api from './api';
+import API from "./api";
 
 export const getDashboardOverview = async () => {
-  const response = await api.get('/user/dashboard/overview');
+  const response = await API.get("/user/dashboard/overview");
   return response.data;
 };
-

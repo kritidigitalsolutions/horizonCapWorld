@@ -13,7 +13,7 @@ const investmentPlanSchema = new mongoose.Schema(
       trim: true,
     },
     roi: {
-      type: Number, // ROI percentage e.g. 18 for 18%
+      type: Number, // Monthly ROI percentage e.g. 1.5 for 1.5% or 10 for 10%
       required: true,
     },
     roiPerSec: {
@@ -27,6 +27,10 @@ const investmentPlanSchema = new mongoose.Schema(
     durationDays: {
       type: Number,
       default: 365,
+    },
+    isInfinite: {
+      type: Boolean,
+      default: false,
     },
     minAmount: {
       type: Number,
@@ -63,10 +67,10 @@ const investmentPlanSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Calculate roiPerSec before saving (Mongoose 9 compatible)
+// Calculate roiPerSec before saving (Monthly ROI based)
 investmentPlanSchema.pre("save", function () {
   if (this.roi && this.minAmount) {
-    const secRate = ((this.minAmount * (this.roi / 100)) / (365 * 86400)).toFixed(6);
+    const secRate = ((this.minAmount * (this.roi / 100)) / (30 * 86400)).toFixed(6);
     this.roiPerSec = `$${secRate} / sec`;
   }
 });

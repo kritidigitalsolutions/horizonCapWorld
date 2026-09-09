@@ -1,47 +1,66 @@
-import api from './api';
+import API from "./api";
 
-export const loginUser = async (credentials) => {
-  const response = await api.post('/user/auth/login', credentials);
+export const registerUser = async (userData) => {
+  const response = await API.post("/user/auth/register", userData);
   return response.data;
 };
 
-export const registerUser = async (userData) => {
-  const response = await api.post('/user/auth/register', userData);
+export const loginUser = async (credentials) => {
+  const response = await API.post("/user/auth/login", credentials);
+  return response.data;
+};
+
+export const sendLogin2FAOtp = async (payload) => {
+  const response = await API.post("/user/auth/login-2fa-otp", payload);
+  return response.data;
+};
+
+export const forgotPasswordSendOtp = async (payload) => {
+  const response = await API.post("/user/auth/forgot-password/send-otp", payload);
+  return response.data;
+};
+
+export const forgotPasswordVerifyOtp = async (payload) => {
+  const response = await API.post("/user/auth/forgot-password/verify-otp", payload);
+  return response.data;
+};
+
+export const forgotPasswordReset = async (payload) => {
+  const response = await API.post("/user/auth/forgot-password/reset", payload);
   return response.data;
 };
 
 export const getMe = async () => {
-  const response = await api.get('/user/auth/me');
+  const response = await API.get("/user/auth/me");
   return response.data;
 };
 
 export const getProfile = async () => {
-  const response = await api.get('/user/profile');
+  const response = await API.get("/user/profile");
   return response.data;
 };
 
 export const updateProfile = async (profileData) => {
-  const response = await api.put('/user/profile', profileData);
+  const response = await API.put("/user/profile", profileData);
   return response.data;
 };
 
-export const changePassword = async (passwordData) => {
-  const response = await api.put('/user/profile/password', passwordData);
+export const changePassword = async (passwords) => {
+  const response = await API.put("/user/profile/password", passwords);
   return response.data;
 };
 
-export const sendOtp = async () => {
-  const response = await api.post('/user/profile/send-otp');
+export const sendOtp = async (payload) => {
+  const response = await API.post("/user/profile/send-otp", payload);
   return response.data;
 };
 
-export const verifyOtp = async (otpData) => {
-  const response = await api.post('/user/profile/verify-otp', otpData);
+export const verifyOtp = async (payload) => {
+  const response = await API.post("/user/profile/verify-otp", payload);
   return response.data;
 };
 
-export const toggle2FA = async (enabled) => {
-  const response = await api.put('/user/profile/2fa', { enabled });
+export const toggle2FA = async (status) => {
+  const response = await API.put("/user/profile/2fa", status);
   return response.data;
 };
-

@@ -2,27 +2,33 @@ const InvestmentPlan = require("../../models/InvestmentPlan");
 const UserInvestment = require("../../models/UserInvestment");
 const User = require("../../models/User");
 const Transaction = require("../../models/Transaction");
-const {
-  syncUserStreamingEarnings,
-  distributeReferralCommissions,
-} = require("../../utils/yieldAndAffiliateEngine");
 
-// @desc    Get all active investment plans
+// @desc    Get All Active Investment Plans
 // @route   GET /api/user/plans
 exports.getPlans = async (req, res) => {
   try {
-    const plans = await InvestmentPlan.find({ status: "Active" }).sort({ minAmount: 1 });
-    res.status(200).json({
-      success: true,
-      count: plans.length,
-      plans,
-    });
+    const { category, search } = req.query;
+    let query = { status: "Active" };
+
+    if (category && category !== "all") {
+      query.category = category;
+    }
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { category: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const plans = await InvestmentPlan.find(query).sort({ minAmount: 1 });
+    res.status(200).json({ success: true, count: plans.length, plans });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Get single investment plan by ID
+// @desc    Get Single Plan by ID
 // @route   GET /api/user/plans/:id
 exports.getPlanById = async (req, res) => {
   try {
@@ -36,180 +42,158 @@ exports.getPlanById = async (req, res) => {
   }
 };
 
-// @desc    Execute Plan Investment Contract
-// @route   POST /api/user/plans/invest
+// @desc    Invest in a Plan
+// @route   POST /api/user/investments
 exports.investInPlan = async (req, res) => {
   try {
     const { planId, amount } = req.body;
-    const userId = req.user._id;
+    const investAmount = Number(amount);
 
-    if (!planId || !amount || parseFloat(amount) <= 0) {
+    if (!planId || !investAmount || investAmount <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Please specify a valid plan ID and investment amount.",
+        message: "Valid plan ID and investment amount are required.",
       });
     }
 
-    const numAmount = parseFloat(amount);
-
-    // 1. Fetch Plan
     const plan = await InvestmentPlan.findById(planId);
     if (!plan || plan.status !== "Active") {
       return res.status(404).json({
         success: false,
-        message: "Selected investment plan is not active or unavailable.",
+        message: "Selected investment plan is currently unavailable or inactive.",
       });
     }
 
-    // 2. Validate Limits
-    if (numAmount < plan.minAmount) {
+    // Validate minimum and maximum amounts
+    if (investAmount < plan.minAmount) {
       return res.status(400).json({
         success: false,
-        message: `Minimum investment for ${plan.name} is $${plan.minAmount.toLocaleString()}.`,
+        message: `Minimum investment for this plan is $${plan.minAmount.toLocaleString()} USD.`,
       });
     }
 
-    if (!plan.noMaxLimit && plan.maxAmount && numAmount > plan.maxAmount) {
+    if (!plan.noMaxLimit && plan.maxAmount && investAmount > plan.maxAmount) {
       return res.status(400).json({
         success: false,
-        message: `Maximum investment for ${plan.name} is $${plan.maxAmount.toLocaleString()}.`,
+        message: `Maximum investment for this plan is $${plan.maxAmount.toLocaleString()} USD.`,
       });
     }
 
-    // 3. Fetch User & Validate Deposit Wallet Balance
-    const user = await User.findById(userId);
+    const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ success: false, message: "Investor account not found." });
     }
 
-    if ((user.depositWallet || 0) < numAmount) {
+    // Check wallet balance
+    if ((user.depositWallet || 0) < investAmount) {
       return res.status(400).json({
         success: false,
-        message: `Insufficient deposit wallet balance ($${(user.depositWallet || 0).toLocaleString()} available). Please fund your wallet.`,
+        message: `Insufficient Deposit Wallet balance ($${(user.depositWallet || 0).toLocaleString()} USD). Please deposit funds first.`,
       });
     }
 
-    // 4. Calculate Duration & Yield Rates
-    const durationDays = plan.durationDays || 365;
-    const dailyEarning = parseFloat(((numAmount * (plan.roi / 100)) / 365).toFixed(4));
-    const perSecondRate = parseFloat((dailyEarning / 86400).toFixed(7));
+    // Deduct from depositWallet and increase totalInvested
+    user.depositWallet -= investAmount;
+    user.totalInvested = (user.totalInvested || 0) + investAmount;
 
-    const startDate = new Date();
-    const endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
+    // Monthly ROI % to daily & per second calculations
+    const dailyEarning = (investAmount * (plan.roi / 100)) / 30;
+    const perSecondRate = dailyEarning / 86400;
 
-    const invCustomId = `INV-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+    user.dailyEarning = parseFloat(((user.dailyEarning || 0) + dailyEarning).toFixed(4));
+    user.perSecondRate = parseFloat(((user.perSecondRate || 0) + perSecondRate).toFixed(8));
 
-    // 5. Create User Investment Contract
-    const investment = await UserInvestment.create({
-      customId: invCustomId,
+    // Create User Investment Record
+    const newInvestment = await UserInvestment.create({
       user: user._id,
-      userCustomId: user.customId,
       userName: user.name,
       userEmail: user.email,
       plan: plan._id,
       planName: plan.name,
-      planCategory: plan.category || "Renewable Energy",
-      amount: numAmount,
+      planCategory: plan.category,
+      amount: investAmount,
       roi: plan.roi,
+      payoutInterval: plan.payoutInterval,
+      duration: plan.duration,
+      durationDays: plan.durationDays,
+      isInfinite: plan.isInfinite,
       dailyEarning,
       perSecondRate,
-      totalEarned: 0,
-      durationDays,
-      daysRemaining: durationDays,
-      startDate,
-      endDate,
-      payoutInterval: plan.payoutInterval || "Per Second (Live)",
       status: "Active",
-      lastYieldSync: startDate,
+      startDate: new Date(),
     });
 
-    // 6. Update User Wallet
-    user.depositWallet = (user.depositWallet || 0) - numAmount;
-    user.totalInvested = (user.totalInvested || 0) + numAmount;
-    await user.save();
-
-    // 7. Increment Plan Investors Count
-    plan.investors = (plan.investors || 0) + 1;
-    await plan.save();
-
-    // 8. Create Transaction Log
-    const txnId = `TXN-INV-${Date.now().toString().slice(-6)}`;
-    await Transaction.create({
-      customId: txnId,
+    // Create Transaction Record
+    const newTrx = await Transaction.create({
       user: user._id,
       userName: user.name,
-      userCustomId: user.customId,
+      userCustomId: user.customId || "HORIZON-USR-01",
       userEmail: user.email,
-      country: user.country || "Global",
-      type: "Plan Investment",
-      amount: numAmount,
-      rawAmount: numAmount,
-      netAmount: numAmount,
-      gateway: `${plan.name} (${plan.roi}% APY)`,
-      referenceNo: invCustomId,
-      date: new Date().toISOString().split("T")[0],
-      time: new Date().toLocaleTimeString("en-US", { hour12: false }),
-      status: "Completed",
+      country: user.country,
+      type: "ROI Return",
+      amount: investAmount,
+      rawAmount: investAmount,
+      fee: 0,
+      netAmount: investAmount,
+      gateway: "Deposit Wallet",
+      referenceNo: newInvestment.customId,
+      status: "Approved",
+      note: `Active contract allocated in ${plan.name} (${plan.category})`,
     });
 
-    // 9. Traversal & Credit 5-Tier Referral Commissions
-    await distributeReferralCommissions(user, numAmount);
-
-    // 10. Re-sync user totals
-    await syncUserStreamingEarnings(user._id);
+    // Increment plan investors count
+    plan.investors = (plan.investors || 0) + 1;
+    await plan.save();
+    await user.save();
 
     res.status(201).json({
       success: true,
-      message: `Successfully invested $${numAmount.toLocaleString()} in ${plan.name}! Real-time yield streaming is active.`,
-      investment,
-      newDepositWalletBalance: user.depositWallet,
+      message: `Successfully invested $${investAmount.toLocaleString()} USD in ${plan.name}.`,
+      investment: newInvestment,
+      transaction: newTrx,
+      user: {
+        depositWallet: user.depositWallet,
+        earningWallet: user.earningWallet,
+        totalInvested: user.totalInvested,
+        dailyEarning: user.dailyEarning,
+        perSecondRate: user.perSecondRate,
+      },
     });
   } catch (error) {
-    console.error("Error in investInPlan:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Get Investor's Portfolio / Active Contracts
-// @route   GET /api/user/investments/my-investments
+// @desc    Get Current User's Active & Historical Investments
+// @route   GET /api/user/investments
 exports.getMyInvestments = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const { status, category } = req.query;
+    let query = { user: req.user._id };
 
-    // Sync streaming ROI
-    await syncUserStreamingEarnings(userId);
+    if (status && status !== "all") {
+      query.status = status;
+    }
 
-    const investments = await UserInvestment.find({ user: userId }).sort({ createdAt: -1 });
+    if (category && category !== "all") {
+      query.planCategory = category;
+    }
 
-    const totalInvested = investments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
-    const totalEarned = investments.reduce((sum, inv) => sum + (inv.totalEarned || 0), 0);
-    const activeContracts = investments.filter((inv) => inv.status === "Active");
-    const totalDailyEarning = activeContracts.reduce((sum, inv) => sum + (inv.dailyEarning || 0), 0);
-
-    res.status(200).json({
-      success: true,
-      count: investments.length,
-      summary: {
-        totalInvested,
-        totalEarned,
-        activeContractsCount: activeContracts.length,
-        totalDailyEarning,
-      },
-      investments,
-    });
+    const investments = await UserInvestment.find(query).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, count: investments.length, investments });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Get single user investment contract details
+// @desc    Get Single Investment Contract Details
 // @route   GET /api/user/investments/:id
 exports.getInvestmentById = async (req, res) => {
   try {
     const investment = await UserInvestment.findOne({
-      $or: [{ _id: req.params.id }, { customId: req.params.id }],
+      _id: req.params.id,
       user: req.user._id,
-    });
+    }).populate("plan");
 
     if (!investment) {
       return res.status(404).json({ success: false, message: "Investment contract not found." });
@@ -220,4 +204,3 @@ exports.getInvestmentById = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-

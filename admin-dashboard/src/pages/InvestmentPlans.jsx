@@ -13,7 +13,7 @@ import {
   RiCalculatorLine,
   RiCalendarEventLine,
   RiCheckLine,
-  RiDeleteBinLine, // Delete icon ke liye
+  RiDeleteBinLine,
 } from "react-icons/ri";
 import { UilMoneyBill } from "@iconscout/react-unicons";
 import Badge from "../components/ui/Badge";
@@ -30,8 +30,12 @@ import {
   deletePlan,
 } from "../api/plansApi";
 
-// Helper to format duration string from DD, MM, YYYY values
-function formatDurationString(dd, mm, yyyy) {
+// Helper to format duration string from DD, MM, YYYY values or infinite
+function formatDurationString(dd, mm, yyyy, isInfinite = false) {
+  if (isInfinite) {
+    return "Infinite / Lifetime";
+  }
+
   const parts = [];
   const y = parseInt(yyyy, 10);
   const m = parseInt(mm, 10);
@@ -45,7 +49,15 @@ function formatDurationString(dd, mm, yyyy) {
 }
 
 // Helper to parse duration string into DD, MM, YYYY
-function parseDurationString(str = "") {
+function parseDurationString(str = "", isInf = false) {
+  if (
+    isInf ||
+    str.toLowerCase().includes("infinite") ||
+    str.toLowerCase().includes("lifetime")
+  ) {
+    return { dd: "", mm: "", yyyy: "", isInfinite: true };
+  }
+
   let dd = "";
   let mm = "";
   let yyyy = "";
@@ -62,7 +74,7 @@ function parseDurationString(str = "") {
     mm = "12";
   }
 
-  return { dd, mm, yyyy };
+  return { dd, mm, yyyy, isInfinite: false };
 }
 
 export default function InvestmentPlans() {
@@ -76,58 +88,48 @@ export default function InvestmentPlans() {
   // Form State for Add/Edit Drawer
   const [formData, setFormData] = useState({
     name: "",
-    category: "",
+    category: "Renewable Energy",
     customCategory: "",
-    roi: "",
+    roi: "1.5", // Monthly ROI (%)
+    isInfinite: false,
     durationDD: "",
-    durationMM: "",
+    durationMM: "12",
     durationYYYY: "",
-    minAmount: "",
-    maxAmount: "",
+    minAmount: "1000",
+    maxAmount: "50000",
     noMaxLimit: false,
-    payoutInterval: "",
+    payoutInterval: "per_second",
     status: "Active",
     description: "",
   });
 
-  const [testAmount, setTestAmount] = useState("10000");
   const categories = ["all", "Renewable Energy", "Precious Metal"];
 
   // 1. Fetch All Plans
-const fetchPlans = async () => {
+  const fetchPlans = async () => {
     try {
       setLoading(true);
       const response = await getAllPlans();
-      
-      // Console me check karein ki data actual me kaisa dikh raha hai
-      console.log("API Response:", response);
 
-      // Agar response khud array hai
       if (Array.isArray(response)) {
         setPlans(response);
-      } 
-      // Agar array 'data' key ke andar hai (jaise: response.data)
-      else if (response && Array.isArray(response.data)) {
+      } else if (response && Array.isArray(response.data)) {
         setPlans(response.data);
-      } 
-      // Agar array 'plans' key ke andar hai
-      else if (response && Array.isArray(response.plans)) {
+      } else if (response && Array.isArray(response.plans)) {
         setPlans(response.plans);
-      } 
-      // Agar kuch samajh na aaye toh empty array set kar do taaki app crash na ho
-      else {
-        setPlans([]); 
+      } else {
+        setPlans([]);
       }
     } catch (error) {
       console.error("loading error in plans:", error);
-      setPlans([]); // Error aane par bhi empty array set karein
+      setPlans([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPlans(); // Correctly invoked
+    fetchPlans();
   }, []);
 
   // 2. Open Add Modal
@@ -137,7 +139,8 @@ const fetchPlans = async () => {
       name: "",
       category: "Renewable Energy",
       customCategory: "",
-      roi: "18",
+      roi: "1.5", // Monthly ROI %
+      isInfinite: false,
       durationDD: "",
       durationMM: "12",
       durationYYYY: "",
@@ -148,27 +151,32 @@ const fetchPlans = async () => {
       status: "Active",
       description: "",
     });
-    setTestAmount("10000");
     setModalOpen(true);
   };
 
   // 3. Open Edit Modal with Mapped Data
   const openEdit = (plan) => {
     setEditingPlan(plan);
-    const { dd, mm, yyyy } = parseDurationString(plan.duration || "12 Months");
+    const isInf =
+      !!plan.isInfinite ||
+      plan.duration?.toLowerCase().includes("infinite") ||
+      plan.duration?.toLowerCase().includes("lifetime");
+
+    const { dd, mm, yyyy } = parseDurationString(plan.duration || "12 Months", isInf);
 
     const isCustomCat = !["Renewable Energy", "Precious Metal"].includes(
       plan.category,
     );
 
     setFormData({
-      name: plan.name,
+      name: plan.name || "",
       category: isCustomCat ? "custom" : plan.category || "Renewable Energy",
       customCategory: isCustomCat ? plan.category : "",
-      roi: plan.roi ? plan.roi.toString() : "18",
-      durationDD: dd,
-      durationMM: mm,
-      durationYYYY: yyyy,
+      roi: plan.roi !== undefined ? plan.roi.toString() : "1.5",
+      isInfinite: isInf,
+      durationDD: isInf ? "" : dd,
+      durationMM: isInf ? "" : mm,
+      durationYYYY: isInf ? "" : yyyy,
       minAmount: plan.minAmount ? plan.minAmount.toString() : "1000",
       maxAmount: plan.maxAmount ? plan.maxAmount.toString() : "50000",
       noMaxLimit: plan.noMaxLimit || !plan.maxAmount,
@@ -177,7 +185,6 @@ const fetchPlans = async () => {
       status: plan.status || "Active",
       description: plan.description || "",
     });
-    setTestAmount("10000");
     setModalOpen(true);
   };
 
@@ -188,18 +195,22 @@ const fetchPlans = async () => {
         ? formData.customCategory.trim() || "General Yield"
         : formData.category;
 
-    const roiVal = parseFloat(formData.roi) || 12;
+    const roiVal = parseFloat(formData.roi) || 1.5;
     const minVal = parseFloat(formData.minAmount) || 1000;
     const maxVal = parseFloat(formData.maxAmount) || 50000;
 
-    const finalDuration = formatDurationString(
-      formData.durationDD,
-      formData.durationMM,
-      formData.durationYYYY,
-    );
+    const finalDuration = formData.isInfinite
+      ? "Infinite / Lifetime"
+      : formatDurationString(
+          formData.durationDD,
+          formData.durationMM,
+          formData.durationYYYY,
+          false
+        );
 
-    const totalDays =
-      (parseInt(formData.durationYYYY, 10) || 0) * 365 +
+    const totalDays = formData.isInfinite
+      ? 0
+      : (parseInt(formData.durationYYYY, 10) || 0) * 365 +
         (parseInt(formData.durationMM, 10) || 0) * 30 +
         (parseInt(formData.durationDD, 10) || 0) || 365;
 
@@ -210,6 +221,7 @@ const fetchPlans = async () => {
       roi: roiVal,
       duration: finalDuration,
       durationDays: totalDays,
+      isInfinite: formData.isInfinite,
       minAmount: minVal,
       maxAmount: formData.noMaxLimit ? null : maxVal,
       noMaxLimit: formData.noMaxLimit,
@@ -257,27 +269,8 @@ const fetchPlans = async () => {
     return matchSearch && matchCat;
   });
 
-  // Calculate live simulator values
-  const parsedTestAmount = parseFloat(testAmount) || 0;
+  // Monthly ROI % calculation for helper tag
   const roiNum = parseFloat(formData.roi) || 0;
-
-  const totalDays =
-    (parseInt(formData.durationYYYY, 10) || 0) * 365 +
-      (parseInt(formData.durationMM, 10) || 0) * 30 +
-      (parseInt(formData.durationDD, 10) || 0) || 365;
-
-  // Per-Second calculations
-  const perSecondYield = (parsedTestAmount * (roiNum / 100)) / (365 * 86400);
-  const perHourYield = perSecondYield * 3600;
-  const perDayYield = perSecondYield * 86400;
-  const perMonthYield = perDayYield * 30;
-
-  // Daily calculations
-  const dailyYield = (parsedTestAmount * (roiNum / 100)) / 365;
-  const weeklyYield = dailyYield * 7;
-  const monthlyYield = dailyYield * 30;
-  const totalTermProfit = dailyYield * totalDays;
-  const totalMaturityPayout = parsedTestAmount + totalTermProfit;
 
   if (loading) {
     return <SkeletonLoader type="table" rows={5} cols={6} />;
@@ -329,10 +322,14 @@ const fetchPlans = async () => {
         {filtered.map((plan, i) => {
           const isRenewable = plan.category === "Renewable Energy";
           const isMetal = plan.category === "Precious Metal";
+          const isPlanInfinite =
+            plan.isInfinite ||
+            plan.duration?.toLowerCase().includes("infinite") ||
+            plan.duration?.toLowerCase().includes("lifetime");
 
           return (
             <div
-              key={plan._id} // Changed to MongoDB _id
+              key={plan._id}
               className="card card-gold p-6 animate-slide-up flex flex-col justify-between hover:shadow-card-hover transition-all duration-300 relative group overflow-hidden"
               style={{ animationDelay: `${i * 60}ms` }}
             >
@@ -383,21 +380,29 @@ const fetchPlans = async () => {
                 {plan.name}
               </h3>
 
-              {/* Real-time Streaming ROI Highlight Box */}
-              <div className="p-3 bg-gradient-to-r from-gold-50/90 to-amber-50/50 rounded-xl border border-gold-200/60 mb-4">
+              {/* Monthly ROI Highlight Box */}
+              <div className="p-3.5 bg-gradient-to-r from-gold-50/90 to-amber-50/50 rounded-xl border border-gold-200/60 mb-4">
                 <div className="flex items-center justify-between mb-1">
                   <span className="flex items-center gap-1 text-xs text-gold-700 font-bold">
                     <RiFlashlightLine
                       size={15}
                       className="text-amber-500 animate-pulse"
                     />
-                    ROI Rate
+                    Monthly ROI
                   </span>
-                  <span className="text-base font-extrabold text-emerald-700 font-display">
-                    {plan.roi}% APY
-                  </span>
+                  <div className="text-right">
+                    <span className="text-base font-extrabold text-emerald-700 font-display">
+                      {plan.roi}% / Month
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40">
+                  <span>Annual APY Rate</span>
+                  <span className="font-bold text-gray-800 font-mono">
+                    {(Number(plan.roi || 0) * 12).toFixed(1)}% APY
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
                   <span>Payout Mode</span>
                   <span className="font-semibold text-gray-800 font-mono">
                     {plan.payoutInterval || "Per Second (Live)"}
@@ -423,8 +428,14 @@ const fetchPlans = async () => {
                   <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
                     <RiTimeLine size={16} /> Duration
                   </span>
-                  <span className="font-bold text-gray-800 text-xs">
-                    {plan.duration}
+                  <span className="font-bold text-gray-800 text-xs flex items-center gap-1">
+                    {isPlanInfinite ? (
+                      <span className="inline-flex items-center gap-1 text-gold-700 bg-gold-50 px-2 py-0.5 rounded border border-gold-200 font-extrabold">
+                        <span>∞</span> Lifetime
+                      </span>
+                    ) : (
+                      plan.duration
+                    )}
                   </span>
                 </div>
 
@@ -433,7 +444,7 @@ const fetchPlans = async () => {
                     <RiPercentLine size={16} /> Active Investors
                   </span>
                   <span className="font-semibold text-gold-600 text-xs">
-                    {plan.investors} Users
+                    {plan.investors || 0} Users
                   </span>
                 </div>
               </div>
@@ -481,7 +492,7 @@ const fetchPlans = async () => {
             ? `Configure Plan: ${editingPlan.name}`
             : "Create New Investment Plan"
         }
-        subtitle="Configure yield rate, investment range, category & per-second streaming"
+        subtitle="Configure monthly yield rate, contract duration, limits & return simulator"
         size="lg"
         footer={
           <>
@@ -510,7 +521,7 @@ const fetchPlans = async () => {
             />
           </div>
 
-          {/* Category Selection + Custom Option (Pure Icons, NO Emojis) */}
+          {/* Category Selection + Custom Option */}
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
               Asset Category *
@@ -548,7 +559,7 @@ const fetchPlans = async () => {
                     }
                     className={`p-2.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
                       isSelected
-                        ? "bg-gold-50 border-gold-400 text-gold-900 shadow-xs"
+                        ? "bg-gold-50 border-gold-400 text-gold-900 shadow-xs ring-1 ring-gold-300"
                         : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
                     }`}
                   >
@@ -601,7 +612,7 @@ const fetchPlans = async () => {
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
                   Maximum Investment ($)
                 </label>
-                <label className="flex items-center gap-1 text-[11px] text-gray-500 cursor-pointer">
+                <label className="flex items-center gap-1 text-[11px] text-gray-500 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={formData.noMaxLimit}
@@ -641,54 +652,95 @@ const fetchPlans = async () => {
             </div>
           </div>
 
-          {/* Annual ROI Rate (%) & DD, MM, YYYY Duration Fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* ROI Rate */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Annual ROI (%) *
+          {/* Monthly ROI Rate (%) */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                Monthly ROI (%) *
               </label>
-              <div className="flex items-center rounded-xl border border-gray-200 focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-100 bg-white overflow-hidden transition-all shadow-2xs">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className="w-full py-2.5 pl-3.5 pr-1 bg-transparent border-none outline-none font-bold text-gray-800 text-sm"
-                  placeholder="18"
-                  value={formData.roi}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9.]/g, "");
-                    setFormData({ ...formData, roi: val });
-                  }}
-                />
-                <span className="pr-3.5 text-gray-400 font-bold text-sm select-none">
-                  %
-                </span>
-              </div>
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                Annualized: {(roiNum * 12).toFixed(1)}% APY
+              </span>
+            </div>
+            <div className="flex items-center rounded-xl border border-gray-200 focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-100 bg-white overflow-hidden transition-all shadow-2xs">
+              <input
+                type="text"
+                inputMode="numeric"
+                className="w-full py-2.5 pl-3.5 pr-1 bg-transparent border-none outline-none font-bold text-gray-800 text-sm"
+                placeholder="1.5"
+                value={formData.roi}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9.]/g, "");
+                  setFormData({ ...formData, roi: val });
+                }}
+              />
+              <span className="pr-3.5 text-gray-400 font-bold text-sm select-none">
+                % / Month
+              </span>
+            </div>
+          </div>
+
+          {/* Duration Selector (Infinite / Lifetime vs DD / MM / YYYY) */}
+          <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                Plan Duration (DD / MM / YYYY) *
+              </label>
+              <span className="text-[11px] font-bold text-gold-800 bg-gold-100/80 px-2.5 py-0.5 rounded-md border border-gold-300 shadow-2xs truncate max-w-[200px] flex items-center gap-1">
+                <RiTimeLine size={13} />
+                {formData.isInfinite
+                  ? "∞ Infinite / Lifetime"
+                  : formatDurationString(
+                      formData.durationDD,
+                      formData.durationMM,
+                      formData.durationYYYY,
+                      false
+                    )}
+              </span>
             </div>
 
-            {/* DD / MM / YYYY Duration Inputs */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Duration (DD / MM / YYYY) *
-                </label>
-                <span className="text-[11px] font-bold text-gold-700 bg-gold-50 px-2 py-0.5 rounded-md border border-gold-200/60 shadow-2xs truncate max-w-[150px]">
-                  {formatDurationString(
-                    formData.durationDD,
-                    formData.durationMM,
-                    formData.durationYYYY,
-                  )}
-                </span>
-              </div>
+            {/* Selector Buttons */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, isInfinite: false })}
+                className={`p-2.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
+                  !formData.isInfinite
+                    ? "bg-white border-gold-400 text-gold-900 shadow-xs ring-1 ring-gold-300 font-extrabold"
+                    : "bg-white/60 border-gray-200 text-gray-600 hover:bg-white"
+                }`}
+              >
+                <RiCalendarEventLine
+                  size={15}
+                  className={!formData.isInfinite ? "text-gold-600" : "text-gray-400"}
+                />
+                <span>Fixed Duration</span>
+              </button>
 
-              <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, isInfinite: true })}
+                className={`p-2.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
+                  formData.isInfinite
+                    ? "bg-gold-500 border-gold-500 text-gray-950 shadow-xs font-extrabold"
+                    : "bg-white/60 border-gray-200 text-gray-600 hover:bg-white"
+                }`}
+              >
+                <span className="text-sm font-extrabold leading-none">∞</span>
+                <span>Infinite / Lifetime</span>
+              </button>
+            </div>
+
+            {/* If Fixed Duration, show DD, MM, YYYY inputs */}
+            {!formData.isInfinite ? (
+              <div className="grid grid-cols-3 gap-2 animate-fade-in pt-1">
                 {/* Days (DD) */}
                 <div className="flex items-center rounded-xl border border-gray-200 focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-100 bg-white overflow-hidden transition-all shadow-2xs">
                   <input
                     type="text"
                     inputMode="numeric"
                     maxLength={3}
-                    className="w-full py-2.5 pl-2 pr-0.5 bg-transparent border-none outline-none font-bold text-gray-800 text-xs text-center"
+                    className="w-full py-2 pl-2 pr-0.5 bg-transparent border-none outline-none font-bold text-gray-800 text-xs text-center"
                     placeholder="DD"
                     value={formData.durationDD}
                     onChange={(e) =>
@@ -699,7 +751,7 @@ const fetchPlans = async () => {
                     }
                   />
                   <span className="pr-2 text-[10px] text-gray-400 font-bold uppercase select-none">
-                    D
+                    Days
                   </span>
                 </div>
 
@@ -709,7 +761,7 @@ const fetchPlans = async () => {
                     type="text"
                     inputMode="numeric"
                     maxLength={2}
-                    className="w-full py-2.5 pl-2 pr-0.5 bg-transparent border-none outline-none font-bold text-gray-800 text-xs text-center"
+                    className="w-full py-2 pl-2 pr-0.5 bg-transparent border-none outline-none font-bold text-gray-800 text-xs text-center"
                     placeholder="MM"
                     value={formData.durationMM}
                     onChange={(e) =>
@@ -720,7 +772,7 @@ const fetchPlans = async () => {
                     }
                   />
                   <span className="pr-2 text-[10px] text-gray-400 font-bold uppercase select-none">
-                    M
+                    Months
                   </span>
                 </div>
 
@@ -730,7 +782,7 @@ const fetchPlans = async () => {
                     type="text"
                     inputMode="numeric"
                     maxLength={2}
-                    className="w-full py-2.5 pl-2 pr-0.5 bg-transparent border-none outline-none font-bold text-gray-800 text-xs text-center"
+                    className="w-full py-2 pl-2 pr-0.5 bg-transparent border-none outline-none font-bold text-gray-800 text-xs text-center"
                     placeholder="YYYY"
                     value={formData.durationYYYY}
                     onChange={(e) =>
@@ -741,11 +793,25 @@ const fetchPlans = async () => {
                     }
                   />
                   <span className="pr-2 text-[10px] text-gray-400 font-bold uppercase select-none">
-                    Y
+                    Years
                   </span>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-2.5 bg-gold-100/50 border border-gold-300/70 rounded-xl flex items-center gap-2.5 animate-fade-in">
+                <div className="w-7 h-7 rounded-lg bg-gold-400 text-gray-950 flex items-center justify-center font-extrabold text-base shrink-0 shadow-2xs">
+                  ∞
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-900">
+                    Lifetime Contract (Infinite Day)
+                  </p>
+                  <p className="text-[10.5px] text-gray-600 leading-tight">
+                    No lock-in or maturity date. Investors earn continuous yields on an ongoing basis.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Yield Payout Mode Selector */}
@@ -811,197 +877,6 @@ const fetchPlans = async () => {
               </label>
             </div>
           </div>
-
-          {/* Dynamic Calculator Based On Selected Payout Mode */}
-          {formData.payoutInterval === "per_second" ? (
-            /* Real-Time Per-Second ROI Simulator */
-            <div className="p-4 bg-gradient-to-br from-amber-50/80 via-gold-50/50 to-emerald-50/40 rounded-2xl border border-gold-200/70 space-y-3 animate-fade-in">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gold-400 text-gray-900 flex items-center justify-center shadow-xs">
-                    <RiCalculatorLine size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                      Real-Time Per-Second ROI Simulator
-                    </h4>
-                    <p className="text-[11px] text-gray-500">
-                      Live stream yield preview for user wallet
-                    </p>
-                  </div>
-                </div>
-
-                {/* Fully Clearable Test Amount Input */}
-                <div className="flex items-center gap-1 bg-white px-2.5 py-1.5 rounded-lg border border-gold-200 shadow-2xs">
-                  <span className="text-xs font-bold text-gold-600 select-none">
-                    $
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={testAmount}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, "");
-                      setTestAmount(val);
-                    }}
-                    placeholder="0"
-                    className="w-20 text-xs font-bold text-gray-800 outline-none bg-transparent"
-                  />
-                </div>
-              </div>
-
-              {/* Live Ticker Metrics */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-gold-200/40">
-                <div className="p-2.5 bg-white rounded-xl text-center border border-gray-100 shadow-2xs">
-                  <p className="text-[10px] text-gray-400 font-medium">
-                    Per Second
-                  </p>
-                  <p className="text-xs font-extrabold text-emerald-600 font-mono mt-0.5 truncate">
-                    ${perSecondYield.toFixed(6)}
-                  </p>
-                </div>
-
-                <div className="p-2.5 bg-white rounded-xl text-center border border-gray-100 shadow-2xs">
-                  <p className="text-[10px] text-gray-400 font-medium">
-                    Per Hour
-                  </p>
-                  <p className="text-xs font-extrabold text-gray-800 font-mono mt-0.5">
-                    ${perHourYield.toFixed(3)}
-                  </p>
-                </div>
-
-                <div className="p-2.5 bg-white rounded-xl text-center border border-gray-100 shadow-2xs">
-                  <p className="text-[10px] text-gray-400 font-medium">
-                    Per Day
-                  </p>
-                  <p className="text-xs font-extrabold text-gray-800 font-mono mt-0.5">
-                    ${perDayYield.toFixed(2)}
-                  </p>
-                </div>
-
-                <div className="p-2.5 bg-white rounded-xl text-center border border-gray-100 shadow-2xs">
-                  <p className="text-[10px] text-gray-400 font-medium">
-                    Per Month
-                  </p>
-                  <p className="text-xs font-extrabold text-gold-600 font-mono mt-0.5">
-                    ${perMonthYield.toFixed(2)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Formula Breakdown */}
-              <div className="p-3 bg-white/90 rounded-xl border border-gold-100 text-[11px] text-gray-600 space-y-1">
-                <p className="font-semibold text-gray-800 flex items-center gap-1.5">
-                  <RiInformationLine className="text-gold-500" size={15} />
-                  Per-Second Yield Math Formula:
-                </p>
-                <p className="leading-relaxed">
-                  Total annual yield is split across{" "}
-                  <strong>31,536,000 seconds</strong> (365d &times; 86,400s).
-                  Formula:{" "}
-                  <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[10px]">
-                    (${parsedTestAmount} &times; {formData.roi}%) &divide;
-                    31,536,000 = ${perSecondYield.toFixed(6)}/sec
-                  </code>
-                  .
-                </p>
-              </div>
-            </div>
-          ) : (
-            /* Daily Payout ROI Calculator */
-            <div className="p-4 bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-gold-50/40 rounded-2xl border border-blue-200/70 space-y-3 animate-fade-in">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center shadow-xs">
-                    <RiCalendarEventLine size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                      Daily Settlement ROI Calculator
-                    </h4>
-                    <p className="text-[11px] text-gray-500">
-                      Scheduled 24-hour return & total maturity payout
-                    </p>
-                  </div>
-                </div>
-
-                {/* Fully Clearable Test Amount Input */}
-                <div className="flex items-center gap-1 bg-white px-2.5 py-1.5 rounded-lg border border-blue-200 shadow-2xs">
-                  <span className="text-xs font-bold text-blue-600 select-none">
-                    $
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={testAmount}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, "");
-                      setTestAmount(val);
-                    }}
-                    placeholder="0"
-                    className="w-20 text-xs font-bold text-gray-800 outline-none bg-transparent"
-                  />
-                </div>
-              </div>
-
-              {/* Daily Metrics Breakdown */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-blue-200/40">
-                <div className="p-2.5 bg-white rounded-xl text-center border border-gray-100 shadow-2xs">
-                  <p className="text-[10px] text-gray-400 font-medium">
-                    Daily Return (24h)
-                  </p>
-                  <p className="text-xs font-extrabold text-blue-600 font-mono mt-0.5">
-                    ${dailyYield.toFixed(2)}
-                  </p>
-                </div>
-
-                <div className="p-2.5 bg-white rounded-xl text-center border border-gray-100 shadow-2xs">
-                  <p className="text-[10px] text-gray-400 font-medium">
-                    Weekly (7 Days)
-                  </p>
-                  <p className="text-xs font-extrabold text-gray-800 font-mono mt-0.5">
-                    ${weeklyYield.toFixed(2)}
-                  </p>
-                </div>
-
-                <div className="p-2.5 bg-white rounded-xl text-center border border-gray-100 shadow-2xs">
-                  <p className="text-[10px] text-gray-400 font-medium">
-                    Monthly (30 Days)
-                  </p>
-                  <p className="text-xs font-extrabold text-gray-800 font-mono mt-0.5">
-                    ${monthlyYield.toFixed(2)}
-                  </p>
-                </div>
-
-                <div className="p-2.5 bg-white rounded-xl text-center border border-gray-100 shadow-2xs">
-                  <p className="text-[10px] text-gray-400 font-medium">
-                    Total Term Profit
-                  </p>
-                  <p className="text-xs font-extrabold text-emerald-600 font-mono mt-0.5">
-                    +${totalTermProfit.toFixed(2)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Total Settlement Summary Box */}
-              <div className="p-3 bg-white/90 rounded-xl border border-blue-100 flex items-center justify-between text-xs">
-                <div>
-                  <p className="font-bold text-gray-800">
-                    Total Return on Maturity ({totalDays} Days):
-                  </p>
-                  <p className="text-[11px] text-gray-400">
-                    Principal (${parsedTestAmount.toLocaleString()}) + Total
-                    Profit (+${totalTermProfit.toFixed(2)})
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-extrabold text-emerald-700 font-mono">
-                    ${totalMaturityPayout.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Status Toggle */}
           <div>

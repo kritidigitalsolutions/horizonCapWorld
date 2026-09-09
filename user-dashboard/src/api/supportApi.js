@@ -1,27 +1,26 @@
-import api from './api';
+import API from "./api";
 
 export const getSupportChannels = async () => {
-  const response = await api.get('/user/support/channels');
+  const response = await API.get("/user/support/channels");
   return response.data;
 };
 
 export const createSupportTicket = async (ticketData) => {
-  const response = await api.post('/user/support/tickets', ticketData);
+  const response = await API.post("/user/support/tickets", ticketData);
   return response.data;
 };
 
-export const getMyTickets = async () => {
-  const response = await api.get('/user/support/tickets');
+export const getMyTickets = async (params) => {
+  const response = await API.get("/user/support/tickets", { params });
   return response.data;
 };
 
 export const getTicketById = async (id) => {
-  const response = await api.get(`/user/support/tickets/${id}`);
+  const response = await API.get(`/user/support/tickets/${id}`);
   return response.data;
 };
 
 export const replyToTicket = async (id, replyData) => {
-  const response = await api.post(`/user/support/tickets/${id}/reply`, replyData);
+  const response = await API.post(`/user/support/tickets/${id}/reply`, replyData);
   return response.data;
 };
-

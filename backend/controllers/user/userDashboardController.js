@@ -1,99 +1,93 @@
 const User = require("../../models/User");
 const UserInvestment = require("../../models/UserInvestment");
 const Transaction = require("../../models/Transaction");
-const { syncUserStreamingEarnings } = require("../../utils/yieldAndAffiliateEngine");
+const InvestmentPlan = require("../../models/InvestmentPlan");
 
-// @desc    Get Comprehensive User Dashboard Overview & Real-time Metrics
+// @desc    Get Investor Dashboard Overview (Wallets, KPIs, Charts, Streaming Rates, Recent Activity)
 // @route   GET /api/user/dashboard/overview
 exports.getDashboardOverview = async (req, res) => {
   try {
-    const userId = req.user._id;
-
-    // 1. Sync live streaming ROI per second
-    let user = await syncUserStreamingEarnings(userId);
+    const user = await User.findById(req.user._id).select("-password");
     if (!user) {
-      user = await User.findById(userId).select("-password -otp -otpExpires");
+      return res.status(404).json({ success: false, message: "Investor account not found." });
     }
 
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User account not found." });
-    }
-
-    // 2. Fetch User Investments
+    // Active Investments
     const activeInvestments = await UserInvestment.find({
-      user: userId,
+      user: user._id,
       status: "Active",
     }).sort({ createdAt: -1 });
 
-    const completedInvestmentsCount = await UserInvestment.countDocuments({
-      user: userId,
-      status: "Completed",
+    const activeContracts = activeInvestments.length;
+
+    // Calculate aggregated dynamic daily earnings & streaming per-sec rates from active contracts
+    let totalDailyEarning = 0;
+    let totalPerSecondRate = 0;
+
+    activeInvestments.forEach((inv) => {
+      totalDailyEarning += inv.dailyEarning || 0;
+      totalPerSecondRate += inv.perSecondRate || 0;
     });
 
-    // 3. Fetch Recent Transactions
-    const recentTransactions = await Transaction.find({
-      $or: [{ user: userId }, { userCustomId: user.customId }],
-    })
+    // If user's stored rate differs, sync it
+    if (activeContracts > 0) {
+      user.dailyEarning = parseFloat(totalDailyEarning.toFixed(4));
+      user.perSecondRate = parseFloat(totalPerSecondRate.toFixed(8));
+      await user.save();
+    }
+
+    // Recent Transactions
+    const recentTransactions = await Transaction.find({ user: user._id })
       .sort({ createdAt: -1 })
-      .limit(8);
+      .limit(6);
 
-    // 4. Calculate dynamic stats
-    const totalInvested = activeInvestments.reduce((sum, inv) => sum + (inv.amount || 0), 0) || user.totalInvested || 0;
-    const totalDailyEarning = activeInvestments.reduce((sum, inv) => sum + (inv.dailyEarning || 0), 0) || user.dailyEarning || 0;
-    const totalPerSecondRate = activeInvestments.reduce((sum, inv) => sum + (inv.perSecondRate || 0), 0) || user.perSecondRate || 0;
+    // Dynamic Portfolio breakdown
+    const portfolioSummary = {
+      totalInvested: user.totalInvested || 0,
+      activeContracts,
+      totalYield: user.totalProfit || 0,
+      dailyYieldRate: user.dailyEarning || 0,
+    };
 
-    // 5. Next daily payout timestamp (Next UTC midnight)
-    const now = new Date();
-    const nextPayout = new Date(now);
-    nextPayout.setUTCHours(24, 0, 0, 0);
-    const msUntilNextPayout = Math.max(0, nextPayout.getTime() - now.getTime());
+    // Live Yield Streaming details
+    const streaming = {
+      perSecondRate: user.perSecondRate || 0,
+      dailyEarning: user.dailyEarning || 0,
+      streamingProfit: user.earningWallet || 0,
+      payoutType: user.payoutType || "Per Second (Live)",
+    };
+
+    // Affiliate Network stats
+    const network = {
+      totalReferrals: user.totalReferrals || 0,
+      directReferrals: user.directReferrals || 0,
+      teamTurnover: user.teamTurnover || 0,
+      currentRank: user.currentRank || "Bronze Explorer",
+      rankLevel: user.rankLevel || 1,
+      sponsorId: user.sponsorId || "HORIZON-HQ",
+      customId: user.customId || "HORIZON-USR-01",
+    };
+
+    // Wallets
+    const wallets = {
+      depositWallet: user.depositWallet || 0,
+      earningWallet: user.earningWallet || 0,
+      totalInvested: user.totalInvested || 0,
+      totalProfit: user.totalProfit || 0,
+      totalWithdrawn: user.totalWithdrawn || 0,
+    };
 
     res.status(200).json({
       success: true,
-      data: {
-        user: {
-          id: user._id,
-          customId: user.customId,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          avatar: user.avatar,
-          country: user.country,
-          city: user.city,
-          sponsorId: user.sponsorId,
-          currentRank: user.currentRank || "Bronze Explorer",
-          rankLevel: user.rankLevel || 1,
-          teamTurnover: user.teamTurnover || 0,
-          totalReferrals: user.totalReferrals || 0,
-          directReferrals: user.directReferrals || 0,
-          is2FAEnabled: user.is2FAEnabled || false,
-          status: user.status,
-        },
-        wallets: {
-          depositWallet: user.depositWallet || 0,
-          earningWallet: user.earningWallet || 0,
-          totalInvested: user.totalInvested || totalInvested,
-          totalProfit: user.totalProfit || 0,
-          totalWithdrawn: user.totalWithdrawn || 0,
-        },
-        streaming: {
-          dailyEarning: totalDailyEarning,
-          perSecondRate: totalPerSecondRate,
-          payoutType: "Per Second (Live)",
-          lastYieldSync: user.lastYieldSync || now,
-          nextPayoutInMs: msUntilNextPayout,
-        },
-        investments: {
-          activeCount: activeInvestments.length,
-          completedCount: completedInvestmentsCount,
-          contracts: activeInvestments,
-        },
-        recentTransactions,
-      },
+      user,
+      wallets,
+      portfolioSummary,
+      streaming,
+      network,
+      recentTransactions,
+      activeInvestments,
     });
   } catch (error) {
-    console.error("Error in getDashboardOverview:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
-

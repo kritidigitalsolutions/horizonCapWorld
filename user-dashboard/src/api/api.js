@@ -1,42 +1,30 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002/api';
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 15000,
+const API = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5002/api'
 });
 
-// Request Interceptor: Attach User Token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('horizon_user_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+API.interceptors.request.use((config) => {
+  const token =
+    localStorage.getItem("horizon_user_token") ||
+    localStorage.getItem("horizon_token");
 
-// Response Interceptor: Handle Global 401 & Errors
-api.interceptors.response.use(
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+API.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // If unauthorized, clear token and redirect to login
-      localStorage.removeItem('horizon_user_token');
-      localStorage.removeItem('horizon_user');
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-        window.location.href = '/login';
-      }
+    if (error.response?.status === 401) {
+      localStorage.removeItem("horizon_user_token");
+      localStorage.removeItem("horizon_token");
+      localStorage.removeItem("horizon_user");
     }
     return Promise.reject(error);
   }
 );
 
-export default api;
-
+export default API;

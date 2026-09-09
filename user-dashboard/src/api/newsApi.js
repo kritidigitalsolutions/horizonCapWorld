@@ -1,12 +1,11 @@
-import api from './api';
+import API from "./api";
 
-export const getNews = async (params = {}) => {
-  const response = await api.get('/user/news', { params });
+export const getNews = async (params) => {
+  const response = await API.get("/user/news", { params });
   return response.data;
 };
 
 export const getNewsArticle = async (id) => {
-  const response = await api.get(`/user/news/${id}`);
+  const response = await API.get(`/user/news/${id}`);
   return response.data;
 };
-

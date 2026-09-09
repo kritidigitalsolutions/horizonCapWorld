@@ -75,8 +75,9 @@ export function AuthProvider({ children }) {
     }
     try {
       const res = await getDashboardOverview();
-      if (res?.success && res.data) {
-        const formatted = formatApiUser(res.data.user, res.data);
+      if (res?.success) {
+        const rawUser = res.user || res.data?.user;
+        const formatted = formatApiUser(rawUser, res.data || res);
         setUser(formatted);
         localStorage.setItem('horizon_user', JSON.stringify(formatted));
         setIsAuthenticated(true);

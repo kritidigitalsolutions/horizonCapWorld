@@ -3,7 +3,7 @@ import { getPlans, investInPlan } from '../api/plansApi';
 import {
   RiPercentLine, RiTimeLine, RiShieldFlashLine, RiLeafLine, RiCoinsLine,
   RiFlashlightLine, RiCalculatorLine, RiArrowRightLine, RiWalletLine,
-  RiCheckLine, RiSearchLine, RiAlertLine,
+  RiCheckLine, RiSearchLine, RiAlertLine, RiInformationLine,
 } from 'react-icons/ri';
 import { UilMoneyBill } from '@iconscout/react-unicons';
 import { useAuth } from '../context/AuthContext';
@@ -33,24 +33,28 @@ export default function Plans() {
     try {
       const res = await getPlans();
       if (res?.success && Array.isArray(res.plans)) {
-        const formatted = res.plans.map(p => ({
-          _id: p._id,
-          id: p._id || p.customId,
-          name: p.name,
-          category: p.category || 'Renewable Energy',
-          roi: typeof p.roi === 'string' ? p.roi : `${p.roi}%`,
-          roiNumeric: parseFloat(p.roi) || 12,
-          minAmount: `$${(p.minAmount || 100).toLocaleString()}`,
-          minAmountNumeric: p.minAmount || 100,
-          maxAmount: p.noMaxLimit ? 'No Limit' : (p.maxAmount ? `$${p.maxAmount.toLocaleString()}` : 'No Limit'),
-          maxAmountNumeric: p.maxAmount || 1000000,
-          duration: `${p.durationDays || 365} Days`,
-          durationDays: p.durationDays || 365,
-          investors: p.investors || 0,
-          status: p.status || 'Active',
-          payoutInterval: p.payoutInterval || 'Per Second (Live)',
-          description: p.description || '',
-        }));
+        const formatted = res.plans.map(p => {
+          const isInf = !!p.isInfinite || p.duration?.toLowerCase().includes("infinite") || p.duration?.toLowerCase().includes("lifetime");
+          return {
+            _id: p._id,
+            id: p._id || p.customId,
+            name: p.name,
+            category: p.category || 'Renewable Energy',
+            roi: typeof p.roi === 'string' ? p.roi : `${p.roi}%`,
+            roiNumeric: parseFloat(p.roi) || 1.5,
+            minAmount: `$${(p.minAmount || 100).toLocaleString()}`,
+            minAmountNumeric: p.minAmount || 100,
+            maxAmount: p.noMaxLimit ? 'No Limit' : (p.maxAmount ? `$${p.maxAmount.toLocaleString()}` : 'No Limit'),
+            maxAmountNumeric: p.maxAmount || 1000000,
+            duration: isInf ? "∞ Lifetime" : (p.duration || `${p.durationDays || 365} Days`),
+            durationDays: isInf ? 0 : (p.durationDays || 365),
+            isInfinite: isInf,
+            investors: p.investors || 0,
+            status: p.status || 'Active',
+            payoutInterval: p.payoutInterval || 'Per Second (Live)',
+            description: p.description || '',
+          };
+        });
         setPlansList(formatted);
       } else {
         setPlansList([]);
@@ -217,18 +221,24 @@ export default function Plans() {
                 {plan.name}
               </h3>
 
-              {/* Real-time Streaming ROI Highlight Box */}
-              <div className="p-3 bg-gradient-to-r from-gold-50/90 to-amber-50/50 rounded-xl border border-gold-200/60 mb-4">
+              {/* Monthly ROI Highlight Box */}
+              <div className="p-3.5 bg-gradient-to-r from-gold-50/90 to-amber-50/50 rounded-xl border border-gold-200/60 mb-4">
                 <div className="flex items-center justify-between mb-1">
                   <span className="flex items-center gap-1 text-xs text-gold-700 font-bold font-poppins">
                     <RiFlashlightLine size={15} className="text-amber-500 animate-pulse" />
-                    ROI Rate
+                    Monthly ROI
                   </span>
                   <span className="text-base font-extrabold text-emerald-700 font-display">
-                    {plan.roi} APY
+                    {plan.roiNumeric}% / Month
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40 font-poppins">
+                  <span>Annual APY Rate</span>
+                  <span className="font-bold text-gray-800 font-mono">
+                    {(plan.roiNumeric * 12).toFixed(1)}% APY
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 font-poppins">
                   <span>Payout Mode</span>
                   <span className="font-semibold text-gray-800 font-mono">
                     {plan.payoutInterval || 'Per Second (Live)'}
@@ -251,7 +261,15 @@ export default function Plans() {
                   <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
                     <RiTimeLine size={16} /> Duration
                   </span>
-                  <span className="font-bold text-gray-800 text-xs">{plan.duration}</span>
+                  <span className="font-bold text-gray-800 text-xs flex items-center gap-1">
+                    {plan.isInfinite ? (
+                      <span className="inline-flex items-center gap-1 text-gold-700 bg-gold-50 px-2 py-0.5 rounded border border-gold-200 font-extrabold text-[11px]">
+                        <span>∞</span> Lifetime
+                      </span>
+                    ) : (
+                      plan.duration
+                    )}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -295,8 +313,8 @@ export default function Plans() {
         isOpen={investDrawerOpen}
         onClose={() => setInvestDrawerOpen(false)}
         title={`Invest in ${selectedPlan?.name || 'Plan'}`}
-        subtitle={`Annual Yield: ${selectedPlan?.roi} APY | Contract: ${selectedPlan?.duration}`}
-        size="md"
+        subtitle={`${selectedPlan?.roiNumeric}% / Month (${(Number(selectedPlan?.roiNumeric || 0) * 12).toFixed(1)}% APY) | Contract: ${selectedPlan?.duration}`}
+        size="lg"
         footer={
           <div className="flex items-center justify-between w-full">
             <button onClick={() => setInvestDrawerOpen(false)} className="btn btn-secondary text-xs px-4 py-2.5">
@@ -312,7 +330,7 @@ export default function Plans() {
           </div>
         }
       >
-        <div className="space-y-5">
+        <div className="space-y-5 font-poppins">
           {investSuccess && (
             <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-poppins flex items-center gap-2">
               <RiCheckLine size={20} /> Contract successfully activated! Real-time streaming ROI has begun.
@@ -341,7 +359,7 @@ export default function Plans() {
             )}
           </div>
 
-          {/* Investment Amount */}
+          {/* Investment Amount Input & Presets */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500 font-poppins">
@@ -370,14 +388,14 @@ export default function Plans() {
             </div>
 
             {/* Quick Chips */}
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
               {[selectedPlan?.minAmountNumeric, 2500, 5000, 10000, 25000].filter(Boolean).map(amt => (
                 <button
                   key={amt}
                   type="button"
                   onClick={() => setInvestAmount(amt)}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold font-poppins transition-all ${
-                    Number(investAmount) === amt ? 'bg-gold-100 text-gold-700 border border-gold-300 font-bold' : 'bg-slate-50 border border-slate-200 text-slate-600'
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold font-poppins transition-all cursor-pointer ${
+                    Number(investAmount) === amt ? 'bg-gold-400 text-gray-950 font-bold shadow-2xs border border-gold-400' : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   ${amt?.toLocaleString()}
@@ -386,21 +404,158 @@ export default function Plans() {
             </div>
           </div>
 
-          {/* Projected Returns Box */}
-          <div className="p-4 rounded-xl bg-gold-50/60 border border-gold-200 space-y-2.5 text-sm font-poppins">
-            <div className="flex justify-between">
-              <span className="text-slate-500">Yield Rate ({selectedPlan?.roi} APY):</span>
-              <span className="font-bold text-emerald-600">${(((Number(investAmount) || 0) * (selectedPlan?.roiNumeric || 0)) / 100).toFixed(2)} / yr</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Contract Duration:</span>
-              <span className="font-bold text-slate-800">{selectedPlan?.duration}</span>
-            </div>
-            <div className="flex justify-between border-t border-gold-200 pt-2">
-              <span className="text-slate-700 font-bold">Total Maturity Value:</span>
-              <span className="font-black text-slate-900">${((Number(investAmount) || 0) + (((Number(investAmount) || 0) * (selectedPlan?.roiNumeric || 0) * (selectedPlan?.durationDays || 365)) / (100 * 365))).toFixed(2)}</span>
-            </div>
-          </div>
+          {/* ──────── ROI & YIELD RETURN CALCULATOR (DAILY, WEEKLY, MONTHLY, QUARTERLY, ANNUALLY) ──────── */}
+          {(() => {
+            const currentInvestCapital = Number(investAmount) || 0;
+            const planMonthlyRoi = Number(selectedPlan?.roiNumeric || 1.5);
+            const isPlanInfinite =
+              !!selectedPlan?.isInfinite ||
+              selectedPlan?.duration?.toLowerCase().includes("infinite") ||
+              selectedPlan?.duration?.toLowerCase().includes("lifetime");
+
+            const planDurationDays = isPlanInfinite ? 365 : (selectedPlan?.durationDays || 365);
+
+            const calcMonthlyYield = currentInvestCapital * (planMonthlyRoi / 100);
+            const calcDailyYield = calcMonthlyYield / 30;
+            const calcWeeklyYield = calcDailyYield * 7;
+            const calcQuarterlyYield = calcMonthlyYield * 3;
+            const calcAnnualYield = calcMonthlyYield * 12;
+
+            const calcTotalProfit = calcDailyYield * planDurationDays;
+            const calcTotalMaturity = currentInvestCapital + calcTotalProfit;
+
+            return (
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-gold-50/90 via-amber-50/50 to-emerald-50/40 border border-gold-300/80 space-y-3.5 shadow-xs animate-fade-in font-poppins">
+                {/* Header */}
+                <div className="flex items-center justify-between pb-2 border-b border-gold-200/60">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-gold-400 text-gray-950 flex items-center justify-center shadow-2xs font-bold">
+                      <RiCalculatorLine size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
+                        ROI & Yield Return Breakdown
+                      </h4>
+                      <p className="text-[11px] text-gray-500">
+                        {planMonthlyRoi}% / Month &bull; {(planMonthlyRoi * 12).toFixed(1)}% Annual APY
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="badge badge-gold text-[10px] font-bold">
+                    {selectedPlan?.payoutInterval || "Per Second (Live)"}
+                  </span>
+                </div>
+
+                {/* 5-Column Periodic Cards Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                  {/* 1. Daily */}
+                  <div className="p-2.5 bg-white rounded-xl text-center border border-gold-100 shadow-2xs">
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                      Daily (24h)
+                    </p>
+                    <p className="text-xs font-extrabold text-emerald-600 font-mono mt-0.5 truncate">
+                      +${calcDailyYield.toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-gray-500 font-medium mt-0.5 font-mono">
+                      {(planMonthlyRoi / 30).toFixed(3)}%
+                    </p>
+                  </div>
+
+                  {/* 2. Weekly */}
+                  <div className="p-2.5 bg-white rounded-xl text-center border border-gold-100 shadow-2xs">
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                      Weekly (7d)
+                    </p>
+                    <p className="text-xs font-extrabold text-blue-600 font-mono mt-0.5 truncate">
+                      +${calcWeeklyYield.toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-gray-500 font-medium mt-0.5 font-mono">
+                      {((planMonthlyRoi / 30) * 7).toFixed(2)}%
+                    </p>
+                  </div>
+
+                  {/* 3. Monthly */}
+                  <div className="p-2.5 bg-white rounded-xl text-center border border-gold-300 shadow-2xs ring-1 ring-gold-200 bg-gradient-to-b from-white to-gold-50/40">
+                    <p className="text-[10px] text-gold-700 font-bold uppercase tracking-wider">
+                      Monthly (30d)
+                    </p>
+                    <p className="text-xs font-extrabold text-gold-700 font-mono mt-0.5 truncate">
+                      +${calcMonthlyYield.toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-gold-800 font-bold mt-0.5 font-mono">
+                      {planMonthlyRoi}% / mo
+                    </p>
+                  </div>
+
+                  {/* 4. Quarterly */}
+                  <div className="p-2.5 bg-white rounded-xl text-center border border-gold-100 shadow-2xs">
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                      Quarterly (90d)
+                    </p>
+                    <p className="text-xs font-extrabold text-purple-600 font-mono mt-0.5 truncate">
+                      +${calcQuarterlyYield.toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-gray-500 font-medium mt-0.5 font-mono">
+                      {(planMonthlyRoi * 3).toFixed(1)}%
+                    </p>
+                  </div>
+
+                  {/* 5. Annually */}
+                  <div className="p-2.5 bg-white rounded-xl text-center border border-gold-200 shadow-2xs col-span-2 sm:col-span-1">
+                    <p className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">
+                      Annually (12m)
+                    </p>
+                    <p className="text-xs font-extrabold text-emerald-700 font-mono mt-0.5 truncate">
+                      +${calcAnnualYield.toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-emerald-800 font-bold mt-0.5 font-mono">
+                      {(planMonthlyRoi * 12).toFixed(1)}% APY
+                    </p>
+                  </div>
+                </div>
+
+                {/* Total Maturity & Projected Summary */}
+                <div className="p-3 bg-white/95 rounded-xl border border-gold-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div>
+                    <p className="font-bold text-gray-800 flex items-center gap-1.5">
+                      <RiInformationLine className="text-gold-500" size={15} />
+                      {isPlanInfinite
+                        ? "Continuous Lifetime Yield Stream:"
+                        : `Total Return on Maturity (${selectedPlan?.duration}):`}
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      Principal (${currentInvestCapital.toLocaleString()}) +{" "}
+                      {isPlanInfinite
+                        ? `1-Year Projected Return (+$${calcAnnualYield.toFixed(2)})`
+                        : `Contract Profit (+$${calcTotalProfit.toFixed(2)})`}
+                    </p>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <p className="text-[10px] text-gray-400 uppercase font-semibold">
+                      {isPlanInfinite ? "1-Year Maturity Value" : "Total Net Return"}
+                    </p>
+                    <span className="text-base font-extrabold text-emerald-700 font-mono">
+                      ${(isPlanInfinite ? currentInvestCapital + calcAnnualYield : calcTotalMaturity).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Live Streaming Info Note */}
+                <div className="text-[11px] text-gray-600 bg-white/70 p-2.5 rounded-lg border border-gold-100 flex items-start gap-1.5 leading-relaxed">
+                  <RiFlashlightLine size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                  <span>
+                    {selectedPlan?.payoutInterval === "Daily Payout" ? (
+                      <>Settled daily at 00:00 UTC directly into your Earning Wallet.</>
+                    ) : (
+                      <>Live yields stream directly into your wallet every second (<strong>${(calcDailyYield / 86400).toFixed(6)} / sec</strong>).</>
+                    )}{' '}
+                    {isPlanInfinite ? "Plan operates on an ongoing lifetime duration." : "100% principal unlocks upon contract maturity."}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </Modal>
 

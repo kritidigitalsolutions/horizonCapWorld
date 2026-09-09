@@ -12,10 +12,6 @@ const userInvestmentSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    userCustomId: {
-      type: String,
-      default: "HORIZON-USR-01",
-    },
     userName: {
       type: String,
       default: "Investor",
@@ -27,6 +23,7 @@ const userInvestmentSchema = new mongoose.Schema(
     plan: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "InvestmentPlan",
+      required: true,
     },
     planName: {
       type: String,
@@ -39,11 +36,27 @@ const userInvestmentSchema = new mongoose.Schema(
     amount: {
       type: Number,
       required: true,
-      min: 1,
     },
     roi: {
-      type: Number, // Annual percentage e.g. 18
+      type: Number, // Monthly ROI % (e.g. 1.5% or 10%)
       required: true,
+    },
+    payoutInterval: {
+      type: String,
+      enum: ["Per Second (Live)", "Daily Payout"],
+      default: "Per Second (Live)",
+    },
+    duration: {
+      type: String,
+      default: "12 Months",
+    },
+    durationDays: {
+      type: Number,
+      default: 365,
+    },
+    isInfinite: {
+      type: Boolean,
+      default: false,
     },
     dailyEarning: {
       type: Number,
@@ -53,13 +66,9 @@ const userInvestmentSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    totalEarned: {
+    totalProfitEarned: {
       type: Number,
       default: 0,
-    },
-    durationDays: {
-      type: Number,
-      default: 365,
     },
     startDate: {
       type: Date,
@@ -67,28 +76,36 @@ const userInvestmentSchema = new mongoose.Schema(
     },
     endDate: {
       type: Date,
-      required: true,
     },
-    daysRemaining: {
-      type: Number,
-      default: 365,
-    },
-    payoutInterval: {
-      type: String,
-      default: "Per Second (Live)",
+    lastSettlementAt: {
+      type: Date,
+      default: Date.now,
     },
     status: {
       type: String,
-      enum: ["Active", "Completed", "Paused", "Cancelled"],
+      enum: ["Active", "Completed", "Cancelled"],
       default: "Active",
-    },
-    lastYieldSync: {
-      type: Date,
-      default: Date.now,
     },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("UserInvestment", userInvestmentSchema);
+// Auto-generate customId & calculate rates before saving
+userInvestmentSchema.pre("save", function () {
+  if (!this.customId) {
+    this.customId = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
+  }
+  if (this.amount && this.roi) {
+    // roi is Monthly ROI % -> Daily return = (amount * (roi / 100)) / 30
+    this.dailyEarning = (this.amount * (this.roi / 100)) / 30;
+    // Per second = dailyEarning / 86400
+    this.perSecondRate = this.dailyEarning / 86400;
+  }
+  if (!this.endDate && !this.isInfinite && this.durationDays) {
+    const end = new Date(this.startDate || Date.now());
+    end.setDate(end.getDate() + this.durationDays);
+    this.endDate = end;
+  }
+});
 
+module.exports = mongoose.model("UserInvestment", userInvestmentSchema);

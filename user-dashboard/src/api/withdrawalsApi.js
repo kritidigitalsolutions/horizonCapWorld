@@ -1,7 +1,6 @@
-import api from './api';
+import API from "./api";
 
-export const createWithdrawal = async (withdrawalData) => {
-  const response = await api.post('/user/withdrawals', withdrawalData);
+export const createWithdrawal = async (withdrawData) => {
+  const response = await API.post("/user/withdrawals", withdrawData);
   return response.data;
 };
-

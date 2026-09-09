@@ -53,6 +53,7 @@ exports.createPlan = async (req, res) => {
       roi,
       duration,
       durationDays,
+      isInfinite,
       minAmount,
       maxAmount,
       noMaxLimit,
@@ -64,21 +65,27 @@ exports.createPlan = async (req, res) => {
     if (!name || roi === undefined || !minAmount) {
       return res.status(400).json({
         success: false,
-        message: "Plan name, ROI %, and minimum amount are required.",
+        message: "Plan name, Monthly ROI %, and minimum amount are required.",
       });
     }
 
     const numMin = Number(minAmount) || 1000;
-    const numRoi = Number(roi) || 12;
-    const secRate = ((numMin * (numRoi / 100)) / (365 * 86400)).toFixed(6);
+    const numRoi = Number(roi) || 1.5;
+    // Calculate per-second streaming rate from Monthly ROI %
+    const secRate = ((numMin * (numRoi / 100)) / (30 * 86400)).toFixed(6);
+
+    const isInf = !!isInfinite || duration === "Infinite / Lifetime";
+    const finalDuration = isInf ? "Infinite / Lifetime" : (duration || "12 Months");
+    const finalDurationDays = isInf ? 0 : (Number(durationDays) || 365);
 
     const newPlan = await InvestmentPlan.create({
       name,
       category: category || "Renewable Energy",
       roi: numRoi,
       roiPerSec: `$${secRate} / sec`,
-      duration: duration || "12 Months",
-      durationDays: durationDays || 365,
+      duration: finalDuration,
+      durationDays: finalDurationDays,
+      isInfinite: isInf,
       minAmount: numMin,
       maxAmount: noMaxLimit ? null : Number(maxAmount) || 50000,
       noMaxLimit: !!noMaxLimit,
@@ -112,6 +119,7 @@ exports.updatePlan = async (req, res) => {
       roi,
       duration,
       durationDays,
+      isInfinite,
       minAmount,
       maxAmount,
       noMaxLimit,
@@ -123,8 +131,9 @@ exports.updatePlan = async (req, res) => {
     if (name !== undefined) plan.name = name;
     if (category !== undefined) plan.category = category;
     if (roi !== undefined) plan.roi = Number(roi);
+    if (isInfinite !== undefined) plan.isInfinite = !!isInfinite;
     if (duration !== undefined) plan.duration = duration;
-    if (durationDays !== undefined) plan.durationDays = Number(durationDays);
+    if (durationDays !== undefined) plan.durationDays = plan.isInfinite ? 0 : Number(durationDays);
     if (minAmount !== undefined) plan.minAmount = Number(minAmount);
     if (maxAmount !== undefined) plan.maxAmount = noMaxLimit ? null : Number(maxAmount);
     if (noMaxLimit !== undefined) plan.noMaxLimit = !!noMaxLimit;
@@ -132,8 +141,8 @@ exports.updatePlan = async (req, res) => {
     if (status !== undefined) plan.status = status;
     if (description !== undefined) plan.description = description;
 
-    // Recalculate roiPerSec
-    const secRate = ((plan.minAmount * (plan.roi / 100)) / (365 * 86400)).toFixed(6);
+    // Recalculate roiPerSec based on monthly ROI
+    const secRate = ((plan.minAmount * (plan.roi / 100)) / (30 * 86400)).toFixed(6);
     plan.roiPerSec = `$${secRate} / sec`;
 
     await plan.save();

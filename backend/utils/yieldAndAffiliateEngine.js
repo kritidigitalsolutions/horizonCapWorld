@@ -1,233 +1,146 @@
 const User = require("../models/User");
 const UserInvestment = require("../models/UserInvestment");
-const Transaction = require("../models/Transaction");
-const Rank = require("../models/Rank");
 const ReferralSetting = require("../models/ReferralSetting");
-
-// 10-Tier Rank Milestones (Fallback Defaults)
-const defaultRanks = [
-  { level: 1, name: "Bronze Explorer", minInvest: 100, reward: 7.5 },
-  { level: 2, name: "Silver Vanguard", minInvest: 500, reward: 35 },
-  { level: 3, name: "Gold Sovereign", minInvest: 2500, reward: 175 },
-  { level: 4, name: "Platinum Luminary", minInvest: 10000, reward: 700 },
-  { level: 5, name: "Sapphire Viceroy", minInvest: 50000, reward: 3500 },
-  { level: 6, name: "Emerald Chancellor", minInvest: 150000, reward: 10500 },
-  { level: 7, name: "Ruby High Commander", minInvest: 500000, reward: 35000 },
-  { level: 8, name: "Diamond Archon", minInvest: 1500000, reward: 105000 },
-  { level: 9, name: "Crown Imperator", minInvest: 5000000, reward: 350000 },
-  { level: 10, name: "Apex Zenith Titan", minInvest: 10000000, reward: 700000 },
-];
-
-// 5-Tier Referral Default Rates
-const defaultTierRates = [
-  { levelNumber: 1, rate: 5 },
-  { levelNumber: 2, rate: 4 },
-  { levelNumber: 3, rate: 3 },
-  { levelNumber: 4, rate: 2 },
-  { levelNumber: 5, rate: 1 },
-];
+const Rank = require("../models/Rank");
+const Transaction = require("../models/Transaction");
 
 /**
- * Synchronize real-time streaming ROI earnings per second
+ * Synchronize real-time streaming earnings for an investor
+ * Calculates accrued yields from all active investment contracts
+ * @param {Object} user - Mongoose User Document or plain user object
+ * @returns {Object} updated user
  */
-const syncUserStreamingEarnings = async (userIdOrUser) => {
+const syncUserStreamingEarnings = async (user) => {
   try {
-    const targetId = userIdOrUser?._id || userIdOrUser;
-    const user = await User.findById(targetId);
-    if (!user) return null;
+    if (!user || !user._id) return user;
 
-    const investments = await UserInvestment.find({
-      user: user._id,
+    const userDoc = user._id ? await User.findById(user._id) : user;
+    if (!userDoc) return user;
+
+    const now = new Date();
+    const lastSync = userDoc.lastYieldSync ? new Date(userDoc.lastYieldSync) : new Date(userDoc.createdAt || now);
+    const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - lastSync.getTime()) / 1000));
+
+    // If less than 1 second elapsed, no yield to accrue yet
+    if (elapsedSeconds <= 0) {
+      return userDoc;
+    }
+
+    const activeInvestments = await UserInvestment.find({
+      user: userDoc._id,
       status: "Active",
     });
 
-    if (!investments || investments.length === 0) {
-      user.dailyEarning = 0;
-      user.perSecondRate = 0;
-      await user.save();
-      return user;
+    if (!activeInvestments || activeInvestments.length === 0) {
+      userDoc.lastYieldSync = now;
+      await userDoc.save();
+      return userDoc;
     }
 
-    const now = new Date();
-    let totalDailyEarning = 0;
-    let totalPerSecondRate = 0;
-    let totalIncrementalYield = 0;
+    let totalAccruedYield = 0;
+    let currentDailyEarning = 0;
+    let currentPerSecondRate = 0;
 
-    for (const inv of investments) {
-      const dailyRate = (inv.amount * (inv.roi / 100)) / 365;
-      const perSecRate = dailyRate / 86400;
+    for (const inv of activeInvestments) {
+      const invPerSec = inv.perSecondRate || (inv.amount * (inv.roi / 100)) / (30 * 86400);
+      const invDaily = inv.dailyEarning || (inv.amount * (inv.roi / 100)) / 30;
 
-      totalDailyEarning += dailyRate;
-      totalPerSecondRate += perSecRate;
+      currentDailyEarning += invDaily;
+      currentPerSecondRate += invPerSec;
 
-      // Calculate elapsed seconds since last sync
-      const lastSync = inv.lastYieldSync ? new Date(inv.lastYieldSync) : new Date(inv.startDate || now);
-      const elapsedSec = Math.max(0, Math.floor((now.getTime() - lastSync.getTime()) / 1000));
+      // Calculate accrued yield for this contract
+      const contractYield = elapsedSeconds * invPerSec;
+      totalAccruedYield += contractYield;
 
-      if (elapsedSec > 0) {
-        const incremental = perSecRate * elapsedSec;
-        inv.totalEarned = (inv.totalEarned || 0) + incremental;
-        inv.lastYieldSync = now;
-        totalIncrementalYield += incremental;
-      }
+      inv.totalProfitEarned = (inv.totalProfitEarned || 0) + contractYield;
+      inv.lastSettlementAt = now;
 
-      // Check contract maturity
-      const end = new Date(inv.endDate);
-      const daysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-      inv.daysRemaining = daysLeft;
-
-      if (now >= end || daysLeft <= 0) {
+      // Check if non-infinite contract has expired
+      if (!inv.isInfinite && inv.endDate && now >= new Date(inv.endDate)) {
         inv.status = "Completed";
       }
 
       await inv.save();
     }
 
-    // Update user aggregates
-    user.dailyEarning = parseFloat(totalDailyEarning.toFixed(4));
-    user.perSecondRate = parseFloat(totalPerSecondRate.toFixed(7));
-
-    if (totalIncrementalYield > 0) {
-      user.earningWallet = (user.earningWallet || 0) + totalIncrementalYield;
-      user.totalProfit = (user.totalProfit || 0) + totalIncrementalYield;
+    // Update user wallets and streaming rates
+    if (totalAccruedYield > 0) {
+      userDoc.earningWallet = parseFloat(((userDoc.earningWallet || 0) + totalAccruedYield).toFixed(4));
+      userDoc.totalProfit = parseFloat(((userDoc.totalProfit || 0) + totalAccruedYield).toFixed(4));
     }
 
-    user.lastYieldSync = now;
-    await user.save();
+    userDoc.dailyEarning = parseFloat(currentDailyEarning.toFixed(4));
+    userDoc.perSecondRate = parseFloat(currentPerSecondRate.toFixed(8));
+    userDoc.lastYieldSync = now;
 
-    return user;
+    await userDoc.save();
+    return userDoc;
   } catch (error) {
-    console.error("Error in syncUserStreamingEarnings:", error.message);
-    return null;
+    console.error("[Yield Engine] syncUserStreamingEarnings error:", error.message);
+    return user;
   }
 };
 
 /**
- * Distribute 5-Tier Referral Commissions upon plan activation
+ * Distribute Multi-Tier Referral Commissions upon deposit or investment
  */
-const distributeReferralCommissions = async (investorUser, planAmount) => {
+const distributeReferralCommissions = async (userId, amount, commissionType = "investment") => {
   try {
-    if (!investorUser || !planAmount || planAmount <= 0) return;
-
-    let currentSponsorId = investorUser.sponsorId;
-    let currentLevel = 1;
-
-    // Load tiers from DB or fallback
-    let tiers = await ReferralSetting.find().sort({ levelNumber: 1 });
-    if (!tiers || tiers.length === 0) {
-      tiers = defaultTierRates;
+    const investor = await User.findById(userId);
+    if (!investor || !investor.sponsorId || investor.sponsorId === "HORIZON-HQ") {
+      return;
     }
 
-    while (currentSponsorId && currentLevel <= 5) {
-      // Find sponsor by customId or email
+    const refSettings = await ReferralSetting.find().sort({ levelNumber: 1 });
+    let currentSponsorId = investor.sponsorId;
+
+    for (const tier of refSettings) {
+      if (!currentSponsorId || currentSponsorId === "HORIZON-HQ") break;
+
       const sponsor = await User.findOne({
-        $or: [{ customId: currentSponsorId }, { email: currentSponsorId }],
+        $or: [
+          { customId: currentSponsorId },
+          ...(/^[0-9a-fA-F]{24}$/.test(currentSponsorId) ? [{ _id: currentSponsorId }] : []),
+        ],
       });
 
       if (!sponsor) break;
 
-      const tierObj = tiers.find((t) => t.levelNumber === currentLevel) || defaultTierRates[currentLevel - 1];
-      const rate = tierObj?.investCommissionRate ?? tierObj?.rate ?? (6 - currentLevel);
-      const commissionAmount = parseFloat(((planAmount * rate) / 100).toFixed(2));
+      const rate = commissionType === "investment" ? (tier.investCommissionRate || 5) : (tier.earningsCommissionRate || 5);
+      const bonus = parseFloat(((amount * rate) / 100).toFixed(2));
 
-      if (commissionAmount > 0) {
-        sponsor.earningWallet = (sponsor.earningWallet || 0) + commissionAmount;
-        sponsor.teamTurnover = (sponsor.teamTurnover || 0) + planAmount;
+      if (bonus > 0) {
+        sponsor.earningWallet = (sponsor.earningWallet || 0) + bonus;
+        sponsor.totalProfit = (sponsor.totalProfit || 0) + bonus;
+        sponsor.teamTurnover = (sponsor.teamTurnover || 0) + amount;
         await sponsor.save();
 
-        // Create transaction record
-        const txnId = `TXN-REF-${Date.now().toString().slice(-6)}-L${currentLevel}`;
         await Transaction.create({
-          customId: txnId,
           user: sponsor._id,
           userName: sponsor.name,
           userCustomId: sponsor.customId,
           userEmail: sponsor.email,
-          country: sponsor.country || "Global",
+          country: sponsor.country,
           type: "Referral Bonus",
-          amount: commissionAmount,
-          rawAmount: commissionAmount,
-          netAmount: commissionAmount,
-          gateway: `L${currentLevel} Direct Bonus (${rate}%)`,
-          referenceNo: `REF-COMM-${investorUser.customId}-L${currentLevel}`,
-          date: new Date().toISOString().split("T")[0],
-          time: new Date().toLocaleTimeString("en-US", { hour12: false }),
-          status: "Completed",
+          amount: bonus,
+          rawAmount: bonus,
+          fee: 0,
+          netAmount: bonus,
+          gateway: "Affiliate Engine",
+          referenceNo: `REF-L${tier.levelNumber}-${Date.now().toString().slice(-5)}`,
+          status: "Approved",
+          note: `Level ${tier.levelNumber} (${rate}%) affiliate commission from downline ${investor.name} (${investor.customId}).`,
         });
-
-        // Trigger Rank Qualification check for sponsor
-        await checkAndPromoteRank(sponsor);
       }
 
       currentSponsorId = sponsor.sponsorId;
-      currentLevel++;
     }
   } catch (error) {
-    console.error("Error in distributeReferralCommissions:", error.message);
-  }
-};
-
-/**
- * Check and promote user along the 10-Tier Rank Progression Ladder
- */
-const checkAndPromoteRank = async (user) => {
-  try {
-    if (!user) return;
-
-    let rankList = await Rank.find().sort({ level: 1 });
-    if (!rankList || rankList.length === 0) {
-      rankList = defaultRanks;
-    }
-
-    const currentTurnover = user.teamTurnover || 0;
-    let highestQualified = null;
-
-    for (const r of rankList) {
-      if (currentTurnover >= r.minInvest) {
-        highestQualified = r;
-      }
-    }
-
-    if (highestQualified && highestQualified.level > (user.rankLevel || 1)) {
-      const oldRank = user.currentRank;
-      user.rankLevel = highestQualified.level;
-      user.currentRank = highestQualified.name;
-
-      const cashReward = highestQualified.reward || 0;
-      if (cashReward > 0) {
-        user.earningWallet = (user.earningWallet || 0) + cashReward;
-
-        // Create Rank Reward Transaction
-        const txnId = `TXN-RNK-${Date.now().toString().slice(-6)}`;
-        await Transaction.create({
-          customId: txnId,
-          user: user._id,
-          userName: user.name,
-          userCustomId: user.customId,
-          userEmail: user.email,
-          country: user.country || "Global",
-          type: "Rank Bonus",
-          amount: cashReward,
-          rawAmount: cashReward,
-          netAmount: cashReward,
-          gateway: `Rank Milestone Reward (${highestQualified.name})`,
-          referenceNo: `RANK-UP-${highestQualified.level}`,
-          date: new Date().toISOString().split("T")[0],
-          time: new Date().toLocaleTimeString("en-US", { hour12: false }),
-          status: "Completed",
-        });
-      }
-
-      await user.save();
-      console.log(`User ${user.customId} promoted from ${oldRank} to ${highestQualified.name}!`);
-    }
-  } catch (error) {
-    console.error("Error in checkAndPromoteRank:", error.message);
+    console.error("[Affiliate Engine] distributeReferralCommissions error:", error.message);
   }
 };
 
 module.exports = {
   syncUserStreamingEarnings,
   distributeReferralCommissions,
-  checkAndPromoteRank,
 };
