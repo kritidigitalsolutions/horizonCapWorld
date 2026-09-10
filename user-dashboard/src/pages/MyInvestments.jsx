@@ -26,10 +26,11 @@ export default function MyInvestments() {
           planName: inv.planName || 'Investment Contract',
           planCategory: inv.planCategory || 'Renewable Energy',
           amount: Number(inv.amount || 0),
-          roi: Number(inv.roi || 12),
+          dailyRoi: Number(inv.dailyRoi || ((inv.roi || 7.5) / 30)),
+          roi: Number(inv.roi || 7.5),
           dailyEarning: Number(inv.dailyEarning || 0),
           perSecondRate: Number(inv.perSecondRate || 0),
-          totalEarned: Number(inv.totalEarned || 0),
+          totalEarned: Number(inv.totalProfitEarned || inv.totalEarned || 0),
           durationDays: inv.durationDays || 365,
           daysRemaining: inv.daysRemaining !== undefined ? inv.daysRemaining : 365,
           startDate: inv.startDate ? inv.startDate.split('T')[0] : '2026-08-01',
@@ -206,7 +207,7 @@ export default function MyInvestments() {
                       <span>·</span>
                       <span className="flex items-center gap-1 text-emerald-700 font-bold">
                         <RiFlashlightLine size={13} className="text-amber-500" />
-                        {inv.roi}% APY Yield
+                        {inv.dailyRoi.toFixed(2)}% Daily ({inv.roi}% / mo)
                       </span>
                       <span>·</span>
                       <span className="text-slate-400">

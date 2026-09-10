@@ -2,14 +2,20 @@ const User = require("../../models/User");
 const Rank = require("../../models/Rank");
 const ReferralSetting = require("../../models/ReferralSetting");
 const Transaction = require("../../models/Transaction");
+const AdminSettings = require("../../models/AdminSettings");
 
-// @desc    Get Referral Overview Stats (Link, Code, Direct & Team Numbers, Earnings)
+// @desc    Get Referral Overview Stats (Link, Code, Direct & Team Numbers, Earnings, Toggles)
 // @route   GET /api/user/referrals/overview
 exports.getReferralOverview = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    let adminSettings = await AdminSettings.findOne();
+    if (!adminSettings) {
+      adminSettings = await AdminSettings.create({});
     }
 
     // Direct referrals (Level 1)
@@ -31,7 +37,7 @@ exports.getReferralOverview = async (req, res) => {
 
     const totalCommission = bonusTxns.reduce((sum, t) => sum + (t.amount || 0), 0);
     const directCommission = bonusTxns
-      .filter((t) => (t.customId || "").includes("L1") || (t.gateway || "").toLowerCase().includes("direct"))
+      .filter((t) => (t.customId || "").includes("L1") || (t.referenceNo || "").includes("L1") || (t.gateway || "").toLowerCase().includes("direct"))
       .reduce((sum, t) => sum + (t.amount || 0), 0) || (totalCommission * 0.6);
     const multiTierCommission = Math.max(0, totalCommission - directCommission);
 
@@ -53,6 +59,11 @@ exports.getReferralOverview = async (req, res) => {
           directCommission,
           multiTierCommission,
         },
+        toggles: {
+          referralDepositCommissionEnabled: adminSettings.referralDepositCommissionEnabled !== false,
+          referralRoiShareEnabled: adminSettings.referralRoiShareEnabled !== false,
+          referralSystemEnabled: adminSettings.referralSystemEnabled !== false,
+        },
         directMembers: directUsers,
       },
     });
@@ -61,7 +72,7 @@ exports.getReferralOverview = async (req, res) => {
   }
 };
 
-// @desc    Get Referral Commission Tier Structure (Dynamic Downline Calculation)
+// @desc    Get Referral Commission Tier Structure (Dynamic Downline Calculation for N Levels)
 // @route   GET /api/user/referrals/commissions
 exports.getReferralCommissions = async (req, res) => {
   try {
@@ -76,39 +87,38 @@ exports.getReferralCommissions = async (req, res) => {
       ];
     }
 
-    // Dynamic downline statistics calculation
-    const levelStats = {
-      1: { count: 0, volume: 0 },
-      2: { count: 0, volume: 0 },
-      3: { count: 0, volume: 0 },
-      4: { count: 0, volume: 0 },
-      5: { count: 0, volume: 0 },
-    };
+    let adminSettings = await AdminSettings.findOne();
+    if (!adminSettings) {
+      adminSettings = await AdminSettings.create({});
+    }
+
+    // Dynamic downline statistics calculation across all tiers
+    const levelStats = {};
+    tiers.forEach((t) => {
+      const lvl = t.levelNumber || 1;
+      levelStats[lvl] = { count: 0, volume: 0 };
+    });
 
     if (req.user && req.user.customId) {
-      const level1 = await User.find({ sponsorId: req.user.customId }).select("customId totalInvested");
-      levelStats[1].count = level1.length;
-      levelStats[1].volume = level1.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+      let currentParentIds = [req.user.customId];
 
-      const l1Ids = level1.map((u) => u.customId).filter(Boolean);
-      const level2 = l1Ids.length > 0 ? await User.find({ sponsorId: { $in: l1Ids } }).select("customId totalInvested") : [];
-      levelStats[2].count = level2.length;
-      levelStats[2].volume = level2.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+      for (const tier of tiers) {
+        const lvl = tier.levelNumber;
+        if (!currentParentIds || currentParentIds.length === 0) {
+          levelStats[lvl] = { count: 0, volume: 0 };
+          continue;
+        }
 
-      const l2Ids = level2.map((u) => u.customId).filter(Boolean);
-      const level3 = l2Ids.length > 0 ? await User.find({ sponsorId: { $in: l2Ids } }).select("customId totalInvested") : [];
-      levelStats[3].count = level3.length;
-      levelStats[3].volume = level3.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+        const downlineUsers = await User.find({
+          sponsorId: { $in: currentParentIds },
+        }).select("customId totalInvested");
 
-      const l3Ids = level3.map((u) => u.customId).filter(Boolean);
-      const level4 = l3Ids.length > 0 ? await User.find({ sponsorId: { $in: l3Ids } }).select("customId totalInvested") : [];
-      levelStats[4].count = level4.length;
-      levelStats[4].volume = level4.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+        const count = downlineUsers.length;
+        const volume = downlineUsers.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+        levelStats[lvl] = { count, volume };
 
-      const l4Ids = level4.map((u) => u.customId).filter(Boolean);
-      const level5 = l4Ids.length > 0 ? await User.find({ sponsorId: { $in: l4Ids } }).select("customId totalInvested") : [];
-      levelStats[5].count = level5.length;
-      levelStats[5].volume = level5.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+        currentParentIds = downlineUsers.map((u) => u.customId).filter(Boolean);
+      }
     }
 
     const dynamicTiers = tiers.map((t) => {
@@ -120,6 +130,7 @@ exports.getReferralCommissions = async (req, res) => {
         activePromoters: stats.count,
         totalVolume: `$${Number(stats.volume).toLocaleString()}`,
         volumeRaw: stats.volume,
+        status: plain.status || "Active",
       };
     });
 
@@ -127,13 +138,18 @@ exports.getReferralCommissions = async (req, res) => {
       success: true,
       count: dynamicTiers.length,
       tiers: dynamicTiers,
+      toggles: {
+        referralDepositCommissionEnabled: adminSettings.referralDepositCommissionEnabled !== false,
+        referralRoiShareEnabled: adminSettings.referralRoiShareEnabled !== false,
+        referralSystemEnabled: adminSettings.referralSystemEnabled !== false,
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Get Multi-Tier Downline Network Tree (5-Tier Deep)
+// @desc    Get Multi-Tier Downline Network Tree (Dynamic N-Tier Deep)
 // @route   GET /api/user/referrals/network
 exports.getReferralNetwork = async (req, res) => {
   try {
@@ -142,132 +158,79 @@ exports.getReferralNetwork = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found." });
     }
 
+    let adminSettings = await AdminSettings.findOne();
+    if (!adminSettings) {
+      adminSettings = await AdminSettings.create({});
+    }
+
     // Load tiers from DB for exact rates
     let tiers = await ReferralSetting.find().sort({ levelNumber: 1 });
+    if (!tiers || tiers.length === 0) {
+      tiers = [
+        { level: "L1", levelNumber: 1, investCommissionRate: 5 },
+        { level: "L2", levelNumber: 2, investCommissionRate: 4 },
+        { level: "L3", levelNumber: 3, investCommissionRate: 3 },
+        { level: "L4", levelNumber: 4, investCommissionRate: 2 },
+        { level: "L5", levelNumber: 5, investCommissionRate: 1 },
+      ];
+    }
+
     const getRateForLevel = (lvl) => {
-      const found = tiers?.find((t) => t.levelNumber === lvl);
-      return found?.investCommissionRate ?? (6 - lvl);
+      const found = tiers.find((t) => t.levelNumber === lvl);
+      return found?.investCommissionRate ?? Math.max(1, 6 - lvl);
     };
 
-    // Level 1: Direct Sponsored
-    const level1 = await User.find({ sponsorId: user.customId }).select(
-      "customId name email phone totalInvested createdAt status"
-    );
+    const formattedNetwork = [];
+    const levelCounts = {};
 
-    // Level 2: Sponsored by Level 1
-    const l1Ids = level1.map((u) => u.customId).filter(Boolean);
-    const level2 = l1Ids.length > 0 ? await User.find({ sponsorId: { $in: l1Ids } }).select(
-      "customId name email phone totalInvested sponsorId createdAt status"
-    ) : [];
+    let currentParentIds = [user.customId];
 
-    // Level 3: Sponsored by Level 2
-    const l2Ids = level2.map((u) => u.customId).filter(Boolean);
-    const level3 = l2Ids.length > 0 ? await User.find({ sponsorId: { $in: l2Ids } }).select(
-      "customId name email phone totalInvested sponsorId createdAt status"
-    ) : [];
+    for (const tier of tiers) {
+      const lvl = tier.levelNumber;
+      levelCounts[`level${lvl}`] = 0;
 
-    // Level 4: Sponsored by Level 3
-    const l3Ids = level3.map((u) => u.customId).filter(Boolean);
-    const level4 = l3Ids.length > 0 ? await User.find({ sponsorId: { $in: l3Ids } }).select(
-      "customId name email phone totalInvested sponsorId createdAt status"
-    ) : [];
+      if (!currentParentIds || currentParentIds.length === 0) continue;
 
-    // Level 5: Sponsored by Level 4
-    const l4Ids = level4.map((u) => u.customId).filter(Boolean);
-    const level5 = l4Ids.length > 0 ? await User.find({ sponsorId: { $in: l4Ids } }).select(
-      "customId name email phone totalInvested sponsorId createdAt status"
-    ) : [];
+      const downlines = await User.find({
+        sponsorId: { $in: currentParentIds },
+      }).select("customId name email phone totalInvested sponsorId createdAt status");
 
-    const l1Rate = getRateForLevel(1);
-    const l2Rate = getRateForLevel(2);
-    const l3Rate = getRateForLevel(3);
-    const l4Rate = getRateForLevel(4);
-    const l5Rate = getRateForLevel(5);
+      levelCounts[`level${lvl}`] = downlines.length;
 
-    const formattedNetwork = [
-      ...level1.map((u) => ({
-        id: u.customId,
-        name: u.name,
-        email: u.email,
-        phone: u.phone,
-        level: 1,
-        sponsor: user.customId,
-        invested: u.totalInvested || 0,
-        directComm: ((u.totalInvested || 0) * l1Rate) / 100,
-        multiTierComm: 0,
-        totalComm: ((u.totalInvested || 0) * l1Rate) / 100,
-        joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",
-        status: u.status || "Active",
-      })),
-      ...level2.map((u) => ({
-        id: u.customId,
-        name: u.name,
-        email: u.email,
-        phone: u.phone,
-        level: 2,
-        sponsor: u.sponsorId,
-        invested: u.totalInvested || 0,
-        directComm: 0,
-        multiTierComm: ((u.totalInvested || 0) * l2Rate) / 100,
-        totalComm: ((u.totalInvested || 0) * l2Rate) / 100,
-        joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",
-        status: u.status || "Active",
-      })),
-      ...level3.map((u) => ({
-        id: u.customId,
-        name: u.name,
-        email: u.email,
-        phone: u.phone,
-        level: 3,
-        sponsor: u.sponsorId,
-        invested: u.totalInvested || 0,
-        directComm: 0,
-        multiTierComm: ((u.totalInvested || 0) * l3Rate) / 100,
-        totalComm: ((u.totalInvested || 0) * l3Rate) / 100,
-        joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",
-        status: u.status || "Active",
-      })),
-      ...level4.map((u) => ({
-        id: u.customId,
-        name: u.name,
-        email: u.email,
-        phone: u.phone,
-        level: 4,
-        sponsor: u.sponsorId,
-        invested: u.totalInvested || 0,
-        directComm: 0,
-        multiTierComm: ((u.totalInvested || 0) * l4Rate) / 100,
-        totalComm: ((u.totalInvested || 0) * l4Rate) / 100,
-        joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",
-        status: u.status || "Active",
-      })),
-      ...level5.map((u) => ({
-        id: u.customId,
-        name: u.name,
-        email: u.email,
-        phone: u.phone,
-        level: 5,
-        sponsor: u.sponsorId,
-        invested: u.totalInvested || 0,
-        directComm: 0,
-        multiTierComm: ((u.totalInvested || 0) * l5Rate) / 100,
-        totalComm: ((u.totalInvested || 0) * l5Rate) / 100,
-        joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",
-        status: u.status || "Active",
-      })),
-    ];
+      const rate = getRateForLevel(lvl);
+
+      downlines.forEach((u) => {
+        const invested = u.totalInvested || 0;
+        const comm = (invested * rate) / 100;
+        formattedNetwork.push({
+          id: u.customId,
+          name: u.name,
+          email: u.email,
+          phone: u.phone,
+          level: lvl,
+          sponsor: u.sponsorId,
+          invested,
+          directComm: lvl === 1 ? comm : 0,
+          multiTierComm: lvl > 1 ? comm : 0,
+          totalComm: comm,
+          joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",
+          status: u.status || "Active",
+        });
+      });
+
+      currentParentIds = downlines.map((u) => u.customId).filter(Boolean);
+    }
 
     res.status(200).json({
       success: true,
-      levelCounts: {
-        level1: level1.length,
-        level2: level2.length,
-        level3: level3.length,
-        level4: level4.length,
-        level5: level5.length,
-      },
+      levelCounts,
       count: formattedNetwork.length,
       network: formattedNetwork,
+      toggles: {
+        referralDepositCommissionEnabled: adminSettings.referralDepositCommissionEnabled !== false,
+        referralRoiShareEnabled: adminSettings.referralRoiShareEnabled !== false,
+        referralSystemEnabled: adminSettings.referralSystemEnabled !== false,
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

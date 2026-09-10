@@ -3,7 +3,8 @@ import {
   RiTeamLine, RiFlashlightLine, RiCoinsLine, RiCalculatorLine,
   RiCheckLine, RiEditLine, RiNodeTree, RiUserLine, RiShieldCheckLine,
   RiGroupLine, RiMoneyDollarCircleLine, RiPercentLine, RiSearchLine,
-  RiArrowRightLine, RiInformationLine, RiEyeLine
+  RiArrowRightLine, RiInformationLine, RiEyeLine, RiAddLine,
+  RiDeleteBinLine, RiCloseLine, RiAlertLine
 } from 'react-icons/ri';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -15,7 +16,10 @@ import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
 import {
   getReferralSettings,
+  updateReferralToggles,
+  createReferralTier,
   updateReferralSetting,
+  deleteReferralTier,
   getPromotersNetwork
 } from '../api/referralsApi';
 
@@ -28,12 +32,35 @@ export default function Referrals() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
 
+  // Master Global Toggles
+  const [toggles, setToggles] = useState({
+    referralDepositCommissionEnabled: true,
+    referralRoiShareEnabled: true,
+    referralSystemEnabled: true,
+  });
+  const [savingToggle, setSavingToggle] = useState(null);
+  const [feedbackMsg, setFeedbackMsg] = useState('');
+
+  // Add Tier Modal State (Level 6+)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addLevelNum, setAddLevelNum] = useState(6);
+  const [addName, setAddName] = useState('');
+  const [addInvestComm, setAddInvestComm] = useState('1.0');
+  const [addEarnComm, setAddEarnComm] = useState('0.5');
+  const [addStatus, setAddStatus] = useState('Active');
+  const [isSubmittingAdd, setIsSubmittingAdd] = useState(false);
+
   // Edit Commission Modal State
   const [editingCommission, setEditingCommission] = useState(null);
+  const [editName, setEditName] = useState('');
   const [editInvestComm, setEditInvestComm] = useState('');
   const [editEarnComm, setEditEarnComm] = useState('');
+  const [editStatus, setEditStatus] = useState('Active');
   const [testDepositAmount, setTestDepositAmount] = useState('10000');
   const [testMonthlyYield, setTestMonthlyYield] = useState('1500');
+
+  // Delete Confirmation State
+  const [deletingTier, setDeletingTier] = useState(null);
 
   // Promoter Downline Tree Audit Drawer State
   const [selectedPromoter, setSelectedPromoter] = useState(null);
@@ -45,10 +72,13 @@ export default function Referrals() {
         getPromotersNetwork({ search: search.trim() || undefined })
       ]);
 
-      if (settingsRes.status === 'fulfilled' && settingsRes.value?.success && Array.isArray(settingsRes.value.settings)) {
-        setCommissions(settingsRes.value.settings);
-      } else {
-        setCommissions([]);
+      if (settingsRes.status === 'fulfilled' && settingsRes.value?.success) {
+        if (Array.isArray(settingsRes.value.settings)) {
+          setCommissions(settingsRes.value.settings);
+        }
+        if (settingsRes.value.toggles) {
+          setToggles(settingsRes.value.toggles);
+        }
       }
 
       if (promotersRes.status === 'fulfilled' && promotersRes.value?.success && Array.isArray(promotersRes.value.promoters)) {
@@ -73,10 +103,78 @@ export default function Referrals() {
     setCurrentPage(1);
   }, [search, activeTab]);
 
+  const showNotification = (msg) => {
+    setFeedbackMsg(msg);
+    setTimeout(() => setFeedbackMsg(''), 4000);
+  };
+
+  // Toggle master commission switches
+  const handleToggleSwitch = async (key) => {
+    setSavingToggle(key);
+    const updatedValue = !toggles[key];
+    const newToggles = { ...toggles, [key]: updatedValue };
+    setToggles(newToggles);
+
+    try {
+      const res = await updateReferralToggles({ [key]: updatedValue });
+      if (res?.success && res.toggles) {
+        setToggles(res.toggles);
+      }
+      showNotification(`Referral switch updated: ${key === 'referralDepositCommissionEnabled' ? 'Direct Deposit Commission' : 'Daily ROI Profit Share'} is now ${updatedValue ? 'ENABLED' : 'PAUSED'}.`);
+      window.dispatchEvent(new CustomEvent('horizon-referrals-change', { detail: newToggles }));
+    } catch (err) {
+      console.error('Error updating referral toggle:', err.message);
+      setToggles(toggles);
+      showNotification('Failed to update toggle. Please check backend connection.');
+    } finally {
+      setSavingToggle(null);
+    }
+  };
+
+  // Open Add New Level Modal
+  const openAddTierModal = () => {
+    const highestNum = commissions.reduce((max, c) => Math.max(max, Number(c.levelNumber || 0)), 0);
+    const nextNum = (highestNum || commissions.length || 5) + 1;
+    setAddLevelNum(nextNum);
+    setAddName(`Network Expansion Tier (Level ${nextNum})`);
+    setAddInvestComm('1.0');
+    setAddEarnComm('0.5');
+    setAddStatus('Active');
+    setIsAddModalOpen(true);
+  };
+
+  // Handle Create New Level
+  const handleCreateTier = async () => {
+    setIsSubmittingAdd(true);
+    try {
+      const res = await createReferralTier({
+        levelNumber: addLevelNum,
+        name: addName.trim() || `Network Expansion Tier (Level ${addLevelNum})`,
+        investCommission: `${addInvestComm}%`,
+        earningsCommission: `${addEarnComm}%`,
+        status: addStatus,
+      });
+
+      if (res?.success && res.tier) {
+        setCommissions(prev => [...prev, res.tier].sort((a, b) => a.levelNumber - b.levelNumber));
+        showNotification(`Level ${addLevelNum} tier created successfully!`);
+        setIsAddModalOpen(false);
+        fetchReferralData();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to create new level.');
+    } finally {
+      setIsSubmittingAdd(false);
+    }
+  };
+
+  // Open Edit Commission Modal
   const openEditCommission = (c) => {
     setEditingCommission(c);
+    setEditName(c.name || `Tier ${c.level}`);
     setEditInvestComm(String(c.investCommission || '5').replace('%', ''));
     setEditEarnComm(String(c.earningsCommission || '1').replace('%', ''));
+    setEditStatus(c.status || 'Active');
     setTestDepositAmount('10000');
     setTestMonthlyYield('1500');
   };
@@ -85,26 +183,47 @@ export default function Referrals() {
     if (!editingCommission) return;
 
     try {
-      if (editingCommission._id || editingCommission.level) {
-        await updateReferralSetting(editingCommission._id || editingCommission.level, {
-          investCommission: `${editInvestComm}%`,
-          earningsCommission: `${editEarnComm}%`,
-        });
+      const res = await updateReferralSetting(editingCommission._id || editingCommission.level, {
+        name: editName.trim(),
+        investCommission: `${editInvestComm}%`,
+        earningsCommission: `${editEarnComm}%`,
+        status: editStatus,
+      });
+
+      if (res?.success) {
+        showNotification(`${editingCommission.level} commission settings updated.`);
       }
     } catch (err) {
-      console.warn('API update referral offline:', err.message);
+      console.warn('API update referral error:', err.message);
     }
 
-    const updated = commissions.map(c => c.level === editingCommission.level ? {
+    const updated = commissions.map(c => (c.level === editingCommission.level || c._id === editingCommission._id) ? {
       ...c,
+      name: editName.trim(),
       investCommission: `${editInvestComm}%`,
       earningsCommission: `${editEarnComm}%`,
+      status: editStatus,
     } : c);
 
     setCommissions(updated);
-    localStorage.setItem('horizon_referral_commissions', JSON.stringify(updated));
-    window.dispatchEvent(new CustomEvent('horizon-referrals-change', { detail: updated }));
     setEditingCommission(null);
+    fetchReferralData();
+  };
+
+  // Delete Custom Tier
+  const handleDeleteTier = async (tier) => {
+    if (!tier || tier.levelNumber <= 1) return;
+    try {
+      const res = await deleteReferralTier(tier._id || tier.level);
+      if (res?.success) {
+        setCommissions(prev => prev.filter(c => c._id !== tier._id && c.level !== tier.level));
+        showNotification(`Tier ${tier.level} (${tier.name}) removed successfully.`);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete tier.');
+    } finally {
+      setDeletingTier(null);
+    }
   };
 
   // Promoter calculations
@@ -152,14 +271,156 @@ export default function Referrals() {
     );
   }
 
+  const depositEnabled = toggles.referralDepositCommissionEnabled !== false && toggles.referralSystemEnabled !== false;
+  const roiShareEnabled = toggles.referralRoiShareEnabled !== false && toggles.referralSystemEnabled !== false;
+
   return (
     <div className="space-y-6 animate-fade-in pb-8 font-poppins">
       {/* Header */}
       <PageHeader
         title="Referral Plans & Multi-Tier Commissions"
-        subtitle="Configure 5-tier direct deposit commissions, daily ROI profit sharing & promoter network trees"
-        badge="5-Tier Growth"
+        subtitle="Manage master commission toggles, direct deposit rates, daily ROI profit sharing & dynamic multi-tier depth"
+        badge={`${commissions.length}-Tier Active System`}
       />
+
+      {/* Floating Feedback Alert */}
+      {feedbackMsg && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm animate-fade-in">
+          <div className="flex items-center gap-2">
+            <RiShieldCheckLine size={18} className="text-emerald-600" />
+            <span>{feedbackMsg}</span>
+          </div>
+          <button onClick={() => setFeedbackMsg('')} className="text-emerald-700 hover:text-emerald-900 cursor-pointer">
+            <RiCloseLine size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* ──────────────── MASTER REFERRAL REWARD TOGGLE SWITCHES ──────────────── */}
+      <div className="card p-5 border-2 border-gold-300 shadow-gold space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <RiShieldCheckLine size={18} className="text-gold-600" />
+              Master Referral Commission Switches (Global Controls)
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Instantly enable or disable commission distributions across all investors on the platform in real time.
+            </p>
+          </div>
+          <span className="text-[11px] font-bold px-2.5 py-1 bg-gold-50 border border-gold-300 text-gold-900 rounded-lg shadow-2xs">
+            Admin Controlled
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Switch 1: Direct Investment Deposit Commission */}
+          <div className={`p-4 rounded-2xl border transition-all ${
+            depositEnabled
+              ? 'bg-emerald-50/50 border-emerald-300'
+              : 'bg-rose-50/50 border-rose-300'
+          }`}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-2xs ${
+                  depositEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                }`}>
+                  <RiTeamLine size={20} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900">
+                    1. Direct Investment Deposit Commission
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Credits instant bonuses to sponsors when downlines deposit into plans.
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle Switch */}
+              <button
+                type="button"
+                disabled={savingToggle === 'referralDepositCommissionEnabled'}
+                onClick={() => handleToggleSwitch('referralDepositCommissionEnabled')}
+                className={`relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  depositEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                }`}
+                title={`Click to ${depositEnabled ? 'Disable' : 'Enable'} Direct Deposit Commission`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                    depositEnabled ? 'translate-x-6' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">Distribution Status:</span>
+              <span className={`font-bold px-2.5 py-0.5 rounded-md text-[11px] ${
+                depositEnabled
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  : 'bg-rose-100 text-rose-800 border border-rose-200'
+              }`}>
+                {depositEnabled ? 'Active (Distributing Rewards)' : 'Paused (Rewards Disabled)'}
+              </span>
+            </div>
+          </div>
+
+          {/* Switch 2: Daily / Per-Second ROI Profit Share */}
+          <div className={`p-4 rounded-2xl border transition-all ${
+            roiShareEnabled
+              ? 'bg-amber-50/50 border-amber-300'
+              : 'bg-rose-50/50 border-rose-300'
+          }`}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-2xs ${
+                  roiShareEnabled ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                }`}>
+                  <RiFlashlightLine size={20} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900">
+                    2. Daily / Per-Second ROI Profit Share
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Streams ongoing profit-share yields from downline interest yields.
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle Switch */}
+              <button
+                type="button"
+                disabled={savingToggle === 'referralRoiShareEnabled'}
+                onClick={() => handleToggleSwitch('referralRoiShareEnabled')}
+                className={`relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  roiShareEnabled ? 'bg-amber-600' : 'bg-slate-300'
+                }`}
+                title={`Click to ${roiShareEnabled ? 'Disable' : 'Enable'} Daily ROI Profit Share`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                    roiShareEnabled ? 'translate-x-6' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">Streaming Status:</span>
+              <span className={`font-bold px-2.5 py-0.5 rounded-md text-[11px] ${
+                roiShareEnabled
+                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                  : 'bg-rose-100 text-rose-800 border border-rose-200'
+              }`}>
+                {roiShareEnabled ? 'Active (Live Streaming)' : 'Paused (Streaming Disabled)'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* ──────────────── ROLLING ODOMETER KPI CARDS ──────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -182,11 +443,12 @@ export default function Referrals() {
           icon="users"
         />
         <KPICard
-          title="Multi-Tier Downlines"
-          numericValue={promoterList.reduce((sum, p) => sum + Number(p.totalTeamMembers || p.teamCount || 0), 0)}
+          title="Configured Tier Depth"
+          numericValue={commissions.length}
           prefix=""
+          suffix=" Levels"
           decimals={0}
-          change={promoterList.length > 0 ? 'Network Team' : 'No Downlines'}
+          change="Multi-Tier Network"
           positive={true}
           icon="chart"
         />
@@ -196,23 +458,23 @@ export default function Referrals() {
           prefix=""
           suffix="%"
           decimals={1}
-          change="5-Tier Total"
+          change="All Tiers Total"
           positive={true}
           icon="wallet"
         />
       </div>
 
-      {/* Navigation Tabs (Clean 2 Tabs) */}
-      <div className="card p-2">
-        <div className="flex items-center gap-2 overflow-x-auto">
+      {/* Navigation Tabs */}
+      <div className="card p-2 flex items-center justify-between gap-2 overflow-x-auto">
+        <div className="flex items-center gap-2">
           {[
-            { id: 'plans', label: '5-Tier Referral Plans', count: 'L1 to L5 Matrix', icon: <RiTeamLine /> },
+            { id: 'plans', label: 'Multi-Tier Referral Plans', count: `${commissions.length} Active Levels`, icon: <RiTeamLine /> },
             { id: 'promoters', label: 'Affiliate Promoters Directory', count: `${filteredPromoters.length} Leaders`, icon: <RiGroupLine /> },
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
                 activeTab === tab.id
                   ? 'bg-gold-400 text-slate-900 font-semibold shadow-gold'
                   : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200'
@@ -226,48 +488,99 @@ export default function Referrals() {
             </button>
           ))}
         </div>
+
+        {activeTab === 'plans' && (
+          <button
+            type="button"
+            onClick={openAddTierModal}
+            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+          >
+            <RiAddLine size={16} />
+            <span>+ Add New Level (Level {commissions.length + 1}+)</span>
+          </button>
+        )}
       </div>
 
-      {/* ──────────────── TAB 1: 5-TIER REFERRAL PLANS GRID ──────────────── */}
+      {/* ──────────────── TAB 1: DEDICATED REFERRAL COMMISSIONS SECTIONS ──────────────── */}
       {activeTab === 'plans' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 1. Direct Investment Deposit Commission Box */}
-            <div className="card p-5 space-y-4 border border-emerald-200/80">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                  <RiTeamLine size={22} />
+            {/* SECTION 1: Direct Investment Deposit Commission */}
+            <div className={`card p-5 space-y-4 border ${depositEnabled ? 'border-emerald-200/80' : 'border-rose-200/80 bg-rose-50/10'}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                    <RiTeamLine size={22} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 font-poppins">
+                      1. Direct Investment Deposit Commission
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      Commission credited instantly when downline members deposit into investment plans
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800 font-poppins">1. Direct Investment Deposit Commission</h4>
-                  <p className="text-xs text-slate-400">Commission credited instantly when downline members deposit into investment plans</p>
-                </div>
+
+                <Badge variant={depositEnabled ? 'success' : 'danger'} size="sm">
+                  {depositEnabled ? 'Feature Active' : 'Paused by Admin'}
+                </Badge>
               </div>
+
+              {!depositEnabled && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
+                  <RiAlertLine size={16} className="text-rose-600 flex-shrink-0" />
+                  <span>Deposit commissions are currently <strong>disabled</strong>. Users will see a notice that this reward is paused.</span>
+                </div>
+              )}
 
               <div className="space-y-2.5">
                 {commissions.map((tier) => (
-                  <div key={tier.level} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-emerald-50/30 transition-colors">
+                  <div
+                    key={tier._id || tier.level}
+                    className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-emerald-50/30 transition-colors"
+                  >
                     <div className="flex items-center gap-3">
                       <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
                         {tier.level}
                       </span>
                       <div>
-                        <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
-                        <p className="text-[11px] text-slate-400">{tier.activePromoters} Promoters • Total Volume: {tier.totalVolume}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
+                          {tier.status === 'Inactive' && (
+                            <span className="px-1.5 py-0.2 text-[9px] bg-slate-200 text-slate-600 rounded font-bold">Inactive</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          {tier.activePromoters || 0} Promoters • Volume: {tier.totalVolume || '$0'}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <span className="text-sm font-extrabold text-emerald-600 font-mono bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl shadow-2xs">
                         {tier.investCommission}
                       </span>
+
                       <button
+                        type="button"
                         onClick={() => openEditCommission(tier)}
-                        className="p-1.5 rounded-lg hover:bg-gold-50 text-slate-400 hover:text-gold-700 transition-colors"
-                        title="Edit Commission"
+                        className="p-1.5 rounded-lg hover:bg-gold-50 text-slate-400 hover:text-gold-700 transition-colors cursor-pointer"
+                        title="Edit Commission Rates"
                       >
-                        <RiEditLine size={15} />
+                        <RiEditLine size={16} />
                       </button>
+
+                      {tier.levelNumber > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setDeletingTier(tier)}
+                          className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                          title="Delete Custom Tier"
+                        >
+                          <RiDeleteBinLine size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -278,42 +591,82 @@ export default function Referrals() {
               </div>
             </div>
 
-            {/* 2. Earnings / ROI Commission Box */}
-            <div className="card p-5 space-y-4 border border-amber-200/80">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                  <RiFlashlightLine size={22} />
+            {/* SECTION 2: Daily / Per-Second ROI Profit Share */}
+            <div className={`card p-5 space-y-4 border ${roiShareEnabled ? 'border-amber-200/80' : 'border-rose-200/80 bg-rose-50/10'}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                    <RiFlashlightLine size={22} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 font-poppins">
+                      2. Daily / Per-Second ROI Profit Share
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      Continuous commission earned on the streaming interest profit earned by downlines
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800 font-poppins">2. Daily / Per-Second ROI Profit Share</h4>
-                  <p className="text-xs text-slate-400">Continuous commission earned on the streaming interest profit earned by downlines</p>
-                </div>
+
+                <Badge variant={roiShareEnabled ? 'warning' : 'danger'} size="sm">
+                  {roiShareEnabled ? 'Feature Active' : 'Paused by Admin'}
+                </Badge>
               </div>
+
+              {!roiShareEnabled && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
+                  <RiAlertLine size={16} className="text-rose-600 flex-shrink-0" />
+                  <span>ROI profit share is currently <strong>disabled</strong>. Users will see a notice that streaming profit share is paused.</span>
+                </div>
+              )}
 
               <div className="space-y-2.5">
                 {commissions.map((tier) => (
-                  <div key={tier.level} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-amber-50/30 transition-colors">
+                  <div
+                    key={tier._id || tier.level}
+                    className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-amber-50/30 transition-colors"
+                  >
                     <div className="flex items-center gap-3">
                       <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
                         {tier.level}
                       </span>
                       <div>
-                        <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
-                        <p className="text-[11px] text-slate-400">{tier.activePromoters} Promoters Active</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
+                          {tier.status === 'Inactive' && (
+                            <span className="px-1.5 py-0.2 text-[9px] bg-slate-200 text-slate-600 rounded font-bold">Inactive</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          {tier.activePromoters || 0} Promoters Active
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <span className="text-sm font-extrabold text-gold-700 font-mono bg-gold-50 border border-gold-300 px-3 py-1 rounded-xl shadow-2xs">
                         {tier.earningsCommission}
                       </span>
+
                       <button
+                        type="button"
                         onClick={() => openEditCommission(tier)}
-                        className="p-1.5 rounded-lg hover:bg-gold-50 text-slate-400 hover:text-gold-700 transition-colors"
-                        title="Edit Commission"
+                        className="p-1.5 rounded-lg hover:bg-gold-50 text-slate-400 hover:text-gold-700 transition-colors cursor-pointer"
+                        title="Edit Commission Rates"
                       >
-                        <RiEditLine size={15} />
+                        <RiEditLine size={16} />
                       </button>
+
+                      {tier.levelNumber > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setDeletingTier(tier)}
+                          className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                          title="Delete Custom Tier"
+                        >
+                          <RiDeleteBinLine size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -327,7 +680,7 @@ export default function Referrals() {
         </div>
       )}
 
-      {/* ──────────────── TAB 2: PROMOTERS DIRECTORY TABLE (MATCHING USERS TABLE STYLING) ──────────────── */}
+      {/* ──────────────── TAB 2: PROMOTERS DIRECTORY TABLE ──────────────── */}
       {activeTab === 'promoters' && (
         <div className="space-y-4 font-poppins">
           <div className="card p-4">
@@ -355,8 +708,8 @@ export default function Referrals() {
                     <th className="font-medium text-slate-500">Referred By (Sponsor)</th>
                     <th className="font-medium text-slate-500">Direct Referrals</th>
                     <th className="font-medium text-slate-500">Total Team Volume</th>
-                    <th className="font-medium text-slate-500">Direct Comm (5%)</th>
-                    <th className="font-medium text-slate-500">Team Comm (L2-L5)</th>
+                    <th className="font-medium text-slate-500">Direct Comm</th>
+                    <th className="font-medium text-slate-500">Team Comm</th>
                     <th className="font-medium text-slate-500">Total Commissions Paid</th>
                     <th className="font-medium text-slate-500">Status</th>
                     <th className="text-right pr-6 font-medium text-slate-500">Action</th>
@@ -374,7 +727,7 @@ export default function Referrals() {
                         className="animate-fade-in hover:bg-slate-50/70 transition-colors"
                         style={{ animationDelay: `${i * 35}ms` }}
                       >
-                        {/* Promoter Details (Large Round Avatar) */}
+                        {/* Promoter Details */}
                         <td>
                           <div className="flex items-center gap-3.5">
                             <div className="w-11 h-11 rounded-full bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 text-slate-900 font-bold flex items-center justify-center flex-shrink-0 shadow-xs ring-2 ring-gold-200/80 text-xs font-poppins">
@@ -425,14 +778,14 @@ export default function Referrals() {
                           </span>
                         </td>
 
-                        {/* Direct Comm. (5%) */}
+                        {/* Direct Comm */}
                         <td>
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200 whitespace-nowrap font-poppins">
                             +${u.directComm.toLocaleString()}.00
                           </span>
                         </td>
 
-                        {/* Multi-Tier Team Comm. */}
+                        {/* Multi-Tier Team Comm */}
                         <td>
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gold-50 text-gold-800 text-xs font-bold border border-gold-300/80 whitespace-nowrap font-poppins">
                             +${u.multiTierComm.toLocaleString()}.00
@@ -454,12 +807,13 @@ export default function Referrals() {
                           </Badge>
                         </td>
 
-                        {/* Action Button: Audit Tree (Prominent Gold Button) */}
+                        {/* Action Button */}
                         <td className="text-right pr-6">
                           <button
+                            type="button"
                             onClick={() => setSelectedPromoter(u)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins"
-                            title="View 5-tier downline hierarchy"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins cursor-pointer"
+                            title="View downline hierarchy"
                           >
                             <RiNodeTree size={14} className="text-slate-900" />
                             <span>Audit Tree</span>
@@ -478,7 +832,6 @@ export default function Referrals() {
               </div>
             )}
 
-            {/* ──────────────── 20 ITEMS PER PAGE PAGINATION BAR ──────────────── */}
             <Pagination
               currentPage={currentPage}
               totalItems={filteredPromoters.length}
@@ -489,7 +842,119 @@ export default function Referrals() {
         </div>
       )}
 
-      {/* ──────────────── EDIT COMMISSION SLIDE-OVER DRAWER WITH IN-DRAWER AUTO CALCULATION (NO DARK BOX) ──────────────── */}
+      {/* ──────────────── MODAL 1: ADD NEW LEVEL (LEVEL 6+) ──────────────── */}
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title={`Add New Referral Tier: Level ${addLevelNum}`}
+        subtitle="Configure dynamic downline rewards for Level 6+ network expansion"
+        size="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
+            <Button
+              variant="primary"
+              icon={<RiCheckLine />}
+              onClick={handleCreateTier}
+              disabled={isSubmittingAdd}
+            >
+              {isSubmittingAdd ? 'Adding Level...' : `Save Level ${addLevelNum} Tier`}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4 font-poppins text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Level Number *
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={addLevelNum}
+                onChange={e => setAddLevelNum(parseInt(e.target.value, 10) || 1)}
+                className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 font-mono font-bold text-sm text-slate-900 outline-none focus:border-gold-400"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Level Code
+              </label>
+              <input
+                type="text"
+                disabled
+                value={`L${addLevelNum}`}
+                className="w-full px-3 py-2 bg-slate-100 rounded-xl border border-slate-200 font-mono font-bold text-sm text-slate-500 outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              Tier Name / Label *
+            </label>
+            <input
+              type="text"
+              value={addName}
+              onChange={e => setAddName(e.target.value)}
+              placeholder="e.g. VIP Global Expansion Tier (Level 6)"
+              className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-sm font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                1. Deposit Comm (%) *
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.1"
+                  value={addInvestComm}
+                  onChange={e => setAddInvestComm(e.target.value)}
+                  className="w-full pr-8 pl-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-emerald-600 font-mono outline-none focus:border-gold-400 shadow-2xs"
+                />
+                <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-mono">%</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                2. ROI Profit Share (%) *
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.1"
+                  value={addEarnComm}
+                  onChange={e => setAddEarnComm(e.target.value)}
+                  className="w-full pr-8 pl-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-gold-700 font-mono outline-none focus:border-gold-400 shadow-2xs"
+                />
+                <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-mono">%</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              Initial Tier Status
+            </label>
+            <select
+              value={addStatus}
+              onChange={e => setAddStatus(e.target.value)}
+              className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-gold-400"
+            >
+              <option value="Active">Active (Eligible for Commission)</option>
+              <option value="Inactive">Inactive (Paused)</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ──────────────── MODAL 2: EDIT COMMISSION MODAL ──────────────── */}
       <Modal
         isOpen={!!editingCommission}
         onClose={() => setEditingCommission(null)}
@@ -518,6 +983,18 @@ export default function Referrals() {
           return (
             <div className="space-y-4 font-poppins">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Tier Name / Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 outline-none focus:border-gold-400 shadow-2xs"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                     1. Deposit Commission Rate (%) *
@@ -549,9 +1026,23 @@ export default function Referrals() {
                     <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-mono">%</span>
                   </div>
                 </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Tier Status
+                  </label>
+                  <select
+                    value={editStatus}
+                    onChange={e => setEditStatus(e.target.value)}
+                    className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-gold-400"
+                  >
+                    <option value="Active">Active (Distributing Rewards)</option>
+                    <option value="Inactive">Inactive (Suspended)</option>
+                  </select>
+                </div>
               </div>
 
-              {/* ──────────────── IN-DRAWER REVENUE SHARE SIMULATION ENGINE (NO DARK BOX, PURE LIGHT GOLD) ──────────────── */}
+              {/* Commission Simulation Engine */}
               <div className="p-4 bg-gold-50/60 rounded-2xl border border-gold-200/80 space-y-3 shadow-2xs">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
@@ -563,7 +1054,6 @@ export default function Referrals() {
                   </span>
                 </div>
 
-                {/* Simulation Inputs */}
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <span className="text-[10px] text-slate-500 font-semibold block uppercase">Test Downline Deposit ($)</span>
@@ -586,7 +1076,6 @@ export default function Referrals() {
                   </div>
                 </div>
 
-                {/* Auto Calculated Result Cards */}
                 <div className="space-y-2 text-xs font-mono pt-1">
                   <div className="flex justify-between p-2.5 bg-white rounded-xl border border-gold-200/80 shadow-2xs">
                     <div>
@@ -604,7 +1093,6 @@ export default function Referrals() {
                     <span className="font-extrabold text-gold-700 text-sm self-center">+${calcMonthlyYieldShare.toLocaleString()}/mo</span>
                   </div>
 
-                  {/* Clean Light Summary Box */}
                   <div className="flex justify-between p-3 bg-white rounded-xl border-2 border-gold-400 shadow-2xs">
                     <div>
                       <span className="text-[10px] text-slate-600 uppercase font-bold block">1-Year Total Promoter Payout</span>
@@ -619,7 +1107,35 @@ export default function Referrals() {
         })()}
       </Modal>
 
-      {/* ──────────────── PROMOTER DOWNLINE AUDIT DRAWER ──────────────── */}
+      {/* ──────────────── MODAL 3: DELETE TIER CONFIRMATION ──────────────── */}
+      <Modal
+        isOpen={!!deletingTier}
+        onClose={() => setDeletingTier(null)}
+        title="Confirm Tier Removal"
+        subtitle={deletingTier ? `Are you sure you want to remove ${deletingTier.level} (${deletingTier.name})?` : ''}
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeletingTier(null)}>Cancel</Button>
+            <Button variant="danger" icon={<RiDeleteBinLine />} onClick={() => handleDeleteTier(deletingTier)}>
+              Delete Level
+            </Button>
+          </>
+        }
+      >
+        {deletingTier && (
+          <div className="space-y-3 text-xs text-slate-600 font-poppins">
+            <p>
+              Removing tier <strong className="text-slate-900 font-mono">{deletingTier.level}</strong> will permanently remove this level from new commission distributions.
+            </p>
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800">
+              Downline members previously placed in this level will no longer generate {deletingTier.level} commissions.
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ──────────────── MODAL 4: PROMOTER DOWNLINE AUDIT DRAWER ──────────────── */}
       <Modal
         isOpen={!!selectedPromoter}
         onClose={() => setSelectedPromoter(null)}
@@ -663,7 +1179,7 @@ export default function Referrals() {
               </div>
 
               <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
-                <span className="text-[10px] text-emerald-700 uppercase font-bold tracking-wider block">Direct Comm. (5%)</span>
+                <span className="text-[10px] text-emerald-700 uppercase font-bold tracking-wider block">Direct Comm</span>
                 <span className="text-base font-bold text-emerald-700 font-mono mt-0.5 block">
                   +${selectedPromoter.directComm.toLocaleString()}
                 </span>
@@ -677,38 +1193,22 @@ export default function Referrals() {
               </div>
             </div>
 
-            {/* 5-Tier Downline Network Hierarchy */}
+            {/* Dynamic Downline Network Hierarchy */}
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
               <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <RiNodeTree className="text-emerald-600" /> 5-Tier Downline Network Tree
+                <RiNodeTree className="text-emerald-600" /> Multi-Tier Downline Network Tree ({commissions.length} Levels)
               </h5>
 
-              <div className="grid grid-cols-5 gap-2 text-center text-xs">
-                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">Tier 1</span>
-                  <span className="font-bold text-emerald-600 block mt-0.5">{selectedPromoter.totalReferrals} Users</span>
-                  <span className="text-[10px] text-slate-500 font-mono">5% Comm.</span>
-                </div>
-                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">Tier 2</span>
-                  <span className="font-bold text-slate-800 block mt-0.5">{Math.round(selectedPromoter.totalReferrals * 1.5)} Users</span>
-                  <span className="text-[10px] text-slate-500 font-mono">4% Comm.</span>
-                </div>
-                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">Tier 3</span>
-                  <span className="font-bold text-slate-800 block mt-0.5">{Math.round(selectedPromoter.totalReferrals * 2)} Users</span>
-                  <span className="text-[10px] text-slate-500 font-mono">3% Comm.</span>
-                </div>
-                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">Tier 4</span>
-                  <span className="font-bold text-slate-800 block mt-0.5">{Math.round(selectedPromoter.totalReferrals * 1.2)} Users</span>
-                  <span className="text-[10px] text-slate-500 font-mono">2% Comm.</span>
-                </div>
-                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">Tier 5</span>
-                  <span className="font-bold text-slate-800 block mt-0.5">{Math.round(selectedPromoter.totalReferrals * 0.8)} Users</span>
-                  <span className="text-[10px] text-slate-500 font-mono">1% Comm.</span>
-                </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+                {commissions.slice(0, 10).map((tier, idx) => (
+                  <div key={tier.level} className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] text-slate-400 block font-bold">{tier.level}</span>
+                    <span className="font-bold text-slate-800 block mt-0.5">
+                      {idx === 0 ? selectedPromoter.totalReferrals : Math.round(selectedPromoter.totalReferrals * Math.max(0.5, (1.8 - idx * 0.2)))} Users
+                    </span>
+                    <span className="text-[10px] text-emerald-700 font-mono font-semibold">{tier.investCommission}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

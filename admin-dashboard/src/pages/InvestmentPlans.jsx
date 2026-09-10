@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   RiAddLine,
   RiEditLine,
@@ -14,6 +14,13 @@ import {
   RiCalendarEventLine,
   RiCheckLine,
   RiDeleteBinLine,
+  RiFundsLine,
+  RiSparklingLine,
+  RiStackLine,
+  RiRefreshLine,
+  RiArrowRightLine,
+  RiArrowDownSLine,
+  RiArrowUpSLine,
 } from "react-icons/ri";
 import { UilMoneyBill } from "@iconscout/react-unicons";
 import Badge from "../components/ui/Badge";
@@ -29,6 +36,15 @@ import {
   updatePlans,
   deletePlan,
 } from "../api/plansApi";
+
+// Default standard Amount-Wise Daily ROI Percentage Slabs requested by client
+export const DEFAULT_ROI_SLABS = [
+  { minAmount: 10, maxAmount: 49, noMaxLimit: false, dailyRoi: 0.25, monthlyRoi: 7.5, annualRoi: 90 },
+  { minAmount: 50, maxAmount: 99, noMaxLimit: false, dailyRoi: 0.35, monthlyRoi: 10.5, annualRoi: 126 },
+  { minAmount: 100, maxAmount: 499, noMaxLimit: false, dailyRoi: 0.55, monthlyRoi: 16.5, annualRoi: 198 },
+  { minAmount: 500, maxAmount: 1500, noMaxLimit: false, dailyRoi: 0.75, monthlyRoi: 22.5, annualRoi: 270 },
+  { minAmount: 1500, maxAmount: "", noMaxLimit: true, dailyRoi: 1.0, monthlyRoi: 30.0, annualRoi: 360 },
+];
 
 // Helper to format duration string from DD, MM, YYYY values or infinite
 function formatDurationString(dd, mm, yyyy, isInfinite = false) {
@@ -77,6 +93,25 @@ function parseDurationString(str = "", isInf = false) {
   return { dd, mm, yyyy, isInfinite: false };
 }
 
+// Helper to match active slab for dynamic calculation
+export function getMatchingSlab(amount, slabs = []) {
+  const num = Number(amount) || 0;
+  if (!slabs || slabs.length === 0) return null;
+  const found = slabs.find((s) => {
+    const min = Number(s.minAmount) || 0;
+    const max = s.noMaxLimit || !s.maxAmount ? Infinity : Number(s.maxAmount);
+    return num >= min && num <= max;
+  });
+  if (found) return found;
+  const sorted = [...slabs].sort(
+    (a, b) => (Number(b.minAmount) || 0) - (Number(a.minAmount) || 0)
+  );
+  if (sorted.length > 0 && num >= (Number(sorted[0].minAmount) || 0)) {
+    return sorted[0];
+  }
+  return slabs[0];
+}
+
 export default function InvestmentPlans() {
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState([]);
@@ -84,20 +119,24 @@ export default function InvestmentPlans() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
+  const [expandedSlabsPlanId, setExpandedSlabsPlanId] = useState(null);
 
   // Form State for Add/Edit Drawer
   const [formData, setFormData] = useState({
     name: "",
     category: "Renewable Energy",
     customCategory: "",
-    roi: "1.5", // Monthly ROI (%)
+    roiType: "slab", // "slab" | "fixed"
+    roi: "7.5", // Monthly ROI (%)
+    dailyRoi: "0.25", // Daily ROI (%)
+    roiSlabs: DEFAULT_ROI_SLABS,
     isInfinite: false,
     durationDD: "",
     durationMM: "12",
     durationYYYY: "",
-    minAmount: "1000",
-    maxAmount: "50000",
-    noMaxLimit: false,
+    minAmount: "10",
+    maxAmount: "",
+    noMaxLimit: true,
     payoutInterval: "per_second",
     status: "Active",
     description: "",
@@ -139,14 +178,17 @@ export default function InvestmentPlans() {
       name: "",
       category: "Renewable Energy",
       customCategory: "",
-      roi: "1.5", // Monthly ROI %
+      roiType: "slab",
+      roi: "7.5",
+      dailyRoi: "0.25",
+      roiSlabs: DEFAULT_ROI_SLABS.map((s) => ({ ...s })),
       isInfinite: false,
       durationDD: "",
       durationMM: "12",
       durationYYYY: "",
-      minAmount: "1000",
-      maxAmount: "50000",
-      noMaxLimit: false,
+      minAmount: "10",
+      maxAmount: "",
+      noMaxLimit: true,
       payoutInterval: "per_second",
       status: "Active",
       description: "",
@@ -165,20 +207,40 @@ export default function InvestmentPlans() {
     const { dd, mm, yyyy } = parseDurationString(plan.duration || "12 Months", isInf);
 
     const isCustomCat = !["Renewable Energy", "Precious Metal"].includes(
-      plan.category,
+      plan.category
     );
+
+    const slabs =
+      Array.isArray(plan.roiSlabs) && plan.roiSlabs.length > 0
+        ? plan.roiSlabs.map((s) => ({
+            minAmount: s.minAmount,
+            maxAmount: s.maxAmount || "",
+            noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
+            dailyRoi: s.dailyRoi || Number(((s.monthlyRoi || plan.roi || 7.5) / 30).toFixed(3)),
+            monthlyRoi: s.monthlyRoi || Number(((s.dailyRoi || 0.25) * 30).toFixed(2)),
+            annualRoi: s.annualRoi || Number(((s.dailyRoi || 0.25) * 360).toFixed(2)),
+          }))
+        : DEFAULT_ROI_SLABS.map((s) => ({ ...s }));
 
     setFormData({
       name: plan.name || "",
       category: isCustomCat ? "custom" : plan.category || "Renewable Energy",
       customCategory: isCustomCat ? plan.category : "",
-      roi: plan.roi !== undefined ? plan.roi.toString() : "1.5",
+      roiType: plan.roiType || (plan.roiSlabs?.length > 0 ? "slab" : "fixed"),
+      roi: plan.roi !== undefined ? plan.roi.toString() : "7.5",
+      dailyRoi:
+        plan.dailyRoi !== undefined
+          ? plan.dailyRoi.toString()
+          : plan.roi !== undefined
+          ? (Number(plan.roi) / 30).toFixed(3)
+          : "0.25",
+      roiSlabs: slabs,
       isInfinite: isInf,
       durationDD: isInf ? "" : dd,
       durationMM: isInf ? "" : mm,
       durationYYYY: isInf ? "" : yyyy,
-      minAmount: plan.minAmount ? plan.minAmount.toString() : "1000",
-      maxAmount: plan.maxAmount ? plan.maxAmount.toString() : "50000",
+      minAmount: plan.minAmount ? plan.minAmount.toString() : "10",
+      maxAmount: plan.maxAmount ? plan.maxAmount.toString() : "",
       noMaxLimit: plan.noMaxLimit || !plan.maxAmount,
       payoutInterval:
         plan.payoutInterval === "Daily Payout" ? "daily" : "per_second",
@@ -188,16 +250,117 @@ export default function InvestmentPlans() {
     setModalOpen(true);
   };
 
-  // 4. Handle Save (Create or Update API call)
+  // 4. Handle Slabs Changes with Dynamic Calculations
+  const handleSlabChange = (index, field, value) => {
+    const updated = [...formData.roiSlabs];
+    const item = { ...updated[index] };
+
+    if (field === "dailyRoi") {
+      item.dailyRoi = value;
+      const numDaily = parseFloat(value) || 0;
+      item.monthlyRoi = parseFloat((numDaily * 30).toFixed(2));
+      item.annualRoi = parseFloat((numDaily * 360).toFixed(2));
+    } else if (field === "monthlyRoi") {
+      item.monthlyRoi = value;
+      const numMonthly = parseFloat(value) || 0;
+      item.dailyRoi = parseFloat((numMonthly / 30).toFixed(3));
+      item.annualRoi = parseFloat((numMonthly * 12).toFixed(2));
+    } else if (field === "annualRoi") {
+      item.annualRoi = value;
+      const numAnnual = parseFloat(value) || 0;
+      item.monthlyRoi = parseFloat((numAnnual / 12).toFixed(2));
+      item.dailyRoi = parseFloat((numAnnual / 360).toFixed(3));
+    } else if (field === "minAmount") {
+      item.minAmount = value.replace(/[^0-9]/g, "");
+    } else if (field === "maxAmount") {
+      item.maxAmount = value.replace(/[^0-9]/g, "");
+    } else if (field === "noMaxLimit") {
+      item.noMaxLimit = value;
+      if (value) item.maxAmount = "";
+    }
+
+    updated[index] = item;
+    setFormData({ ...formData, roiSlabs: updated });
+  };
+
+  const handleAddSlab = () => {
+    const last = formData.roiSlabs[formData.roiSlabs.length - 1];
+    const newMin =
+      last && !last.noMaxLimit && last.maxAmount
+        ? Number(last.maxAmount) + 1
+        : 1500;
+    const newSlab = {
+      minAmount: newMin,
+      maxAmount: "",
+      noMaxLimit: true,
+      dailyRoi: 1.25,
+      monthlyRoi: 37.5,
+      annualRoi: 450.0,
+    };
+    setFormData({
+      ...formData,
+      roiSlabs: [...formData.roiSlabs, newSlab],
+    });
+  };
+
+  const handleRemoveSlab = (index) => {
+    if (formData.roiSlabs.length <= 1) return;
+    const updated = formData.roiSlabs.filter((_, i) => i !== index);
+    setFormData({ ...formData, roiSlabs: updated });
+  };
+
+  const handleResetSlabs = () => {
+    setFormData({
+      ...formData,
+      roiSlabs: DEFAULT_ROI_SLABS.map((s) => ({ ...s })),
+    });
+  };
+
+  // 5. Handle Save (Create or Update API call)
   const handleSave = async () => {
     const finalCategory =
       formData.category === "custom"
         ? formData.customCategory.trim() || "General Yield"
         : formData.category;
 
-    const roiVal = parseFloat(formData.roi) || 1.5;
-    const minVal = parseFloat(formData.minAmount) || 1000;
-    const maxVal = parseFloat(formData.maxAmount) || 50000;
+    const isSlab = formData.roiType === "slab";
+    const processedSlabs = isSlab
+      ? formData.roiSlabs.map((s) => {
+          const d = Number(s.dailyRoi) || 0;
+          return {
+            minAmount: Number(s.minAmount) || 0,
+            maxAmount: s.noMaxLimit ? null : Number(s.maxAmount) || null,
+            noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
+            dailyRoi: d,
+            monthlyRoi: Number((d * 30).toFixed(2)),
+            annualRoi: Number((d * 360).toFixed(2)),
+          };
+        })
+      : [];
+
+    const minVal = isSlab && processedSlabs.length > 0
+      ? processedSlabs[0].minAmount
+      : parseFloat(formData.minAmount) || 10;
+
+    const maxVal = isSlab && processedSlabs.length > 0
+      ? processedSlabs[processedSlabs.length - 1].noMaxLimit
+        ? null
+        : processedSlabs[processedSlabs.length - 1].maxAmount
+      : formData.noMaxLimit
+      ? null
+      : parseFloat(formData.maxAmount) || 50000;
+
+    const isNoMax = isSlab && processedSlabs.length > 0
+      ? processedSlabs[processedSlabs.length - 1].noMaxLimit
+      : formData.noMaxLimit;
+
+    const roiVal = isSlab && processedSlabs.length > 0
+      ? processedSlabs[0].monthlyRoi
+      : parseFloat(formData.roi) || 7.5;
+
+    const dailyRoiVal = isSlab && processedSlabs.length > 0
+      ? processedSlabs[0].dailyRoi
+      : parseFloat(formData.dailyRoi) || (roiVal / 30);
 
     const finalDuration = formData.isInfinite
       ? "Infinite / Lifetime"
@@ -218,13 +381,16 @@ export default function InvestmentPlans() {
     const payload = {
       name: formData.name || "New Investment Plan",
       category: finalCategory,
+      roiType: formData.roiType,
       roi: roiVal,
+      dailyRoi: dailyRoiVal,
+      roiSlabs: processedSlabs,
       duration: finalDuration,
       durationDays: totalDays,
       isInfinite: formData.isInfinite,
       minAmount: minVal,
-      maxAmount: formData.noMaxLimit ? null : maxVal,
-      noMaxLimit: formData.noMaxLimit,
+      maxAmount: isNoMax ? null : maxVal,
+      noMaxLimit: isNoMax,
       payoutInterval:
         formData.payoutInterval === "per_second"
           ? "Per Second (Live)"
@@ -247,7 +413,7 @@ export default function InvestmentPlans() {
     }
   };
 
-  // 5. Delete Plan API Integration
+  // 6. Delete Plan API Integration
   const handleDeletePlan = async (id) => {
     if (window.confirm("Are you sure you want to delete this plan?")) {
       try {
@@ -269,9 +435,6 @@ export default function InvestmentPlans() {
     return matchSearch && matchCat;
   });
 
-  // Monthly ROI % calculation for helper tag
-  const roiNum = parseFloat(formData.roi) || 0;
-
   if (loading) {
     return <SkeletonLoader type="table" rows={5} cols={6} />;
   }
@@ -281,7 +444,7 @@ export default function InvestmentPlans() {
       {/* Header */}
       <PageHeader
         title="Investment Plans"
-        subtitle="Manage Renewable Energy, Precious Metals & Custom Yield Plans"
+        subtitle="Configure Amount-Wise Daily ROI Slabs, Durations & Live Streaming Engine"
         badge="Asset Engine"
         actions={
           <Button variant="primary" icon={<RiAddLine />} onClick={openAdd}>
@@ -327,126 +490,199 @@ export default function InvestmentPlans() {
             plan.duration?.toLowerCase().includes("infinite") ||
             plan.duration?.toLowerCase().includes("lifetime");
 
+          const hasSlabs =
+            plan.roiType === "slab" ||
+            (Array.isArray(plan.roiSlabs) && plan.roiSlabs.length > 0);
+
+          const slabsList = hasSlabs
+            ? plan.roiSlabs
+            : DEFAULT_ROI_SLABS;
+
+          const minSlabDaily = slabsList[0]?.dailyRoi || 0.25;
+          const maxSlabDaily = slabsList[slabsList.length - 1]?.dailyRoi || 1.0;
+          const minSlabMonthly = (minSlabDaily * 30).toFixed(1);
+          const maxSlabMonthly = (maxSlabDaily * 30).toFixed(1);
+
+          const isExpanded = expandedSlabsPlanId === plan._id;
+
           return (
             <div
               key={plan._id}
               className="card card-gold p-6 animate-slide-up flex flex-col justify-between hover:shadow-card-hover transition-all duration-300 relative group overflow-hidden"
               style={{ animationDelay: `${i * 60}ms` }}
             >
-              {/* Top: Category Icon & Badge */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-xs ${
-                      isRenewable
-                        ? "bg-emerald-50 text-emerald-600"
-                        : isMetal
+              <div>
+                {/* Top: Category Icon & Badge */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-xs ${
+                        isRenewable
+                          ? "bg-emerald-50 text-emerald-600"
+                          : isMetal
                           ? "bg-amber-50 text-amber-600"
                           : "bg-blue-50 text-blue-600"
-                    }`}
-                  >
-                    {isRenewable ? (
-                      <RiLeafLine size={22} />
-                    ) : isMetal ? (
-                      <RiCoinsLine size={22} />
-                    ) : (
-                      <RiShieldFlashLine size={22} />
-                    )}
-                  </div>
-                  <div>
-                    <span
-                      className={`text-[11px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                        isRenewable
-                          ? "bg-emerald-100/70 text-emerald-800"
-                          : isMetal
-                            ? "bg-amber-100/70 text-amber-800"
-                            : "bg-blue-100/70 text-blue-800"
                       }`}
                     >
-                      {plan.category || "Standard"}
-                    </span>
-                  </div>
-                </div>
-
-                <Badge
-                  variant={plan.status === "Active" ? "success" : "danger"}
-                >
-                  {plan.status}
-                </Badge>
-              </div>
-
-              {/* Plan Title */}
-              <h3 className="text-lg font-bold text-gray-800 font-display mb-3 line-clamp-1 group-hover:text-gold-600 transition-colors">
-                {plan.name}
-              </h3>
-
-              {/* Monthly ROI Highlight Box */}
-              <div className="p-3.5 bg-gradient-to-r from-gold-50/90 to-amber-50/50 rounded-xl border border-gold-200/60 mb-4">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="flex items-center gap-1 text-xs text-gold-700 font-bold">
-                    <RiFlashlightLine
-                      size={15}
-                      className="text-amber-500 animate-pulse"
-                    />
-                    Monthly ROI
-                  </span>
-                  <div className="text-right">
-                    <span className="text-base font-extrabold text-emerald-700 font-display">
-                      {plan.roi}% / Month
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40">
-                  <span>Annual APY Rate</span>
-                  <span className="font-bold text-gray-800 font-mono">
-                    {(Number(plan.roi || 0) * 12).toFixed(1)}% APY
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
-                  <span>Payout Mode</span>
-                  <span className="font-semibold text-gray-800 font-mono">
-                    {plan.payoutInterval || "Per Second (Live)"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Key Specs */}
-              <div className="space-y-2.5 mb-5 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
-                    <UilMoneyBill size={16} /> Investment Range
-                  </span>
-                  <span className="font-bold text-gray-800 text-xs">
-                    ${plan.minAmount?.toLocaleString()} —{" "}
-                    {plan.noMaxLimit || !plan.maxAmount
-                      ? "No Limit"
-                      : `$${plan.maxAmount.toLocaleString()}`}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
-                    <RiTimeLine size={16} /> Duration
-                  </span>
-                  <span className="font-bold text-gray-800 text-xs flex items-center gap-1">
-                    {isPlanInfinite ? (
-                      <span className="inline-flex items-center gap-1 text-gold-700 bg-gold-50 px-2 py-0.5 rounded border border-gold-200 font-extrabold">
-                        <span>∞</span> Lifetime
+                      {isRenewable ? (
+                        <RiLeafLine size={22} />
+                      ) : isMetal ? (
+                        <RiCoinsLine size={22} />
+                      ) : (
+                        <RiShieldFlashLine size={22} />
+                      )}
+                    </div>
+                    <div>
+                      <span
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                          isRenewable
+                            ? "bg-emerald-100/70 text-emerald-800"
+                            : isMetal
+                            ? "bg-amber-100/70 text-amber-800"
+                            : "bg-blue-100/70 text-blue-800"
+                        }`}
+                      >
+                        {plan.category || "Standard"}
                       </span>
-                    ) : (
-                      plan.duration
-                    )}
-                  </span>
+                    </div>
+                  </div>
+
+                  <Badge
+                    variant={plan.status === "Active" ? "success" : "danger"}
+                  >
+                    {plan.status}
+                  </Badge>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
-                    <RiPercentLine size={16} /> Active Investors
-                  </span>
-                  <span className="font-semibold text-gold-600 text-xs">
-                    {plan.investors || 0} Users
-                  </span>
+                {/* Plan Title */}
+                <h3 className="text-lg font-bold text-gray-800 font-display mb-3 line-clamp-1 group-hover:text-gold-600 transition-colors">
+                  {plan.name}
+                </h3>
+
+                {/* Amount-Wise Daily ROI Highlight Box */}
+                <div className="p-3.5 bg-gradient-to-r from-gold-50/90 to-amber-50/50 rounded-xl border border-gold-200/60 mb-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="flex items-center gap-1 text-xs text-gold-700 font-bold">
+                      <RiFlashlightLine
+                        size={15}
+                        className="text-amber-500 animate-pulse"
+                      />
+                      {hasSlabs ? "Daily ROI Slabs" : "Daily / Monthly ROI"}
+                    </span>
+                    <div className="text-right">
+                      <span className="text-sm sm:text-base font-extrabold text-emerald-700 font-display">
+                        {hasSlabs
+                          ? `${minSlabDaily}% – ${maxSlabDaily}% Daily`
+                          : `${((plan.dailyRoi || plan.roi / 30) || 0.25).toFixed(2)}% Daily`}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40">
+                    <span>Monthly / Annual Range</span>
+                    <span className="font-bold text-gray-800 font-mono">
+                      {hasSlabs
+                        ? `${minSlabMonthly}% – ${maxSlabMonthly}% / mo`
+                        : `${plan.roi}% / mo (${(Number(plan.roi || 0) * 12).toFixed(1)}% APY)`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
+                    <span>Payout Mode</span>
+                    <span className="font-semibold text-gray-800 font-mono">
+                      {plan.payoutInterval || "Per Second (Live)"}
+                    </span>
+                  </div>
                 </div>
+
+                {/* Key Specs */}
+                <div className="space-y-2.5 mb-4 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
+                      <UilMoneyBill size={16} /> Investment Range
+                    </span>
+                    <span className="font-bold text-gray-800 text-xs">
+                      ${plan.minAmount?.toLocaleString() || "10"} —{" "}
+                      {plan.noMaxLimit || !plan.maxAmount
+                        ? "Unlimited"
+                        : `$${plan.maxAmount.toLocaleString()}`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
+                      <RiTimeLine size={16} /> Duration
+                    </span>
+                    <span className="font-bold text-gray-800 text-xs flex items-center gap-1">
+                      {isPlanInfinite ? (
+                        <span className="inline-flex items-center gap-1 text-gold-700 bg-gold-50 px-2 py-0.5 rounded border border-gold-200 font-extrabold">
+                          <span>∞</span> Lifetime
+                        </span>
+                      ) : (
+                        plan.duration
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
+                      <RiPercentLine size={16} /> Active Investors
+                    </span>
+                    <span className="font-semibold text-gold-600 text-xs">
+                      {plan.investors || 0} Users
+                    </span>
+                  </div>
+                </div>
+
+                {/* Amount-Wise Slabs Accordion / Dropdown */}
+                {hasSlabs && (
+                  <div className="mb-4">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedSlabsPlanId(isExpanded ? null : plan._id)
+                      }
+                      className="w-full py-1.5 px-2.5 rounded-lg bg-gold-100/50 hover:bg-gold-100 text-gold-900 border border-gold-300/70 text-[11px] font-bold flex items-center justify-between transition-all"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <RiStackLine size={14} className="text-gold-600" />
+                        <span>View 5 Amount-Wise ROI Slabs</span>
+                      </span>
+                      {isExpanded ? (
+                        <RiArrowUpSLine size={16} />
+                      ) : (
+                        <RiArrowDownSLine size={16} />
+                      )}
+                    </button>
+
+                    {isExpanded && (
+                      <div className="mt-2 p-2.5 bg-slate-50 rounded-xl border border-gold-200 space-y-1.5 animate-fade-in text-[11px]">
+                        <div className="grid grid-cols-3 font-bold text-gray-500 uppercase text-[9.5px] pb-1 border-b border-gray-200">
+                          <span>Amount Slab</span>
+                          <span className="text-center">Daily ROI</span>
+                          <span className="text-right">Monthly (Annual)</span>
+                        </div>
+                        {slabsList.map((slab, idx) => (
+                          <div
+                            key={idx}
+                            className="grid grid-cols-3 items-center py-1 border-b border-gray-100 last:border-none"
+                          >
+                            <span className="font-semibold text-gray-800">
+                              ${slab.minAmount} —{" "}
+                              {slab.noMaxLimit || !slab.maxAmount
+                                ? "$1500++"
+                                : `$${slab.maxAmount}`}
+                            </span>
+                            <span className="text-center font-bold text-emerald-600 font-mono">
+                              {slab.dailyRoi}% / d
+                            </span>
+                            <span className="text-right font-semibold text-gray-600 font-mono">
+                              {slab.monthlyRoi || (slab.dailyRoi * 30).toFixed(1)}% ({slab.annualRoi || (slab.dailyRoi * 360).toFixed(0)}%)
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -492,7 +728,7 @@ export default function InvestmentPlans() {
             ? `Configure Plan: ${editingPlan.name}`
             : "Create New Investment Plan"
         }
-        subtitle="Configure monthly yield rate, contract duration, limits & return simulator"
+        subtitle="Configure amount-wise daily ROI percentage slabs, limits & durations"
         size="lg"
         footer={
           <>
@@ -505,7 +741,7 @@ export default function InvestmentPlans() {
           </>
         }
       >
-        <div className="space-y-5">
+        <div className="space-y-5 font-sans">
           {/* Plan Name */}
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
@@ -583,102 +819,284 @@ export default function InvestmentPlans() {
             )}
           </div>
 
-          {/* Min & Max Investment Limits ($) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Minimum Investment ($) *
-              </label>
-              <div className="flex items-center rounded-xl border border-gray-200 focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-100 bg-white overflow-hidden transition-all shadow-2xs">
-                <span className="pl-3.5 pr-1 text-gray-500 font-bold text-sm select-none">
-                  $
-                </span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className="w-full py-2.5 pr-3 bg-transparent border-none outline-none font-semibold text-gray-800 text-sm"
-                  placeholder="1000"
-                  value={formData.minAmount}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, "");
-                    setFormData({ ...formData, minAmount: val });
-                  }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Maximum Investment ($)
-                </label>
-                <label className="flex items-center gap-1 text-[11px] text-gray-500 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={formData.noMaxLimit}
-                    onChange={(e) =>
-                      setFormData({ ...formData, noMaxLimit: e.target.checked })
-                    }
-                    className="rounded border-gray-300 text-gold-500 focus:ring-gold-400"
-                  />
-                  No Limit
-                </label>
-              </div>
-              <div
-                className={`flex items-center rounded-xl border border-gray-200 focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-100 overflow-hidden transition-all shadow-2xs ${
-                  formData.noMaxLimit ? "bg-gray-100" : "bg-white"
+          {/* ROI Structure Mode Toggle */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+              ROI Calculation Model *
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, roiType: "slab" })}
+                className={`p-3 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
+                  formData.roiType === "slab"
+                    ? "bg-gold-500 border-gold-500 text-gray-950 font-extrabold shadow-xs"
+                    : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
                 }`}
               >
-                <span className="pl-3.5 pr-1 text-gray-500 font-bold text-sm select-none">
-                  $
-                </span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  disabled={formData.noMaxLimit}
-                  className={`w-full py-2.5 pr-3 bg-transparent border-none outline-none font-semibold text-gray-800 text-sm ${
-                    formData.noMaxLimit
-                      ? "text-gray-400 cursor-not-allowed"
-                      : ""
-                  }`}
-                  placeholder={formData.noMaxLimit ? "Unlimited" : "50000"}
-                  value={formData.noMaxLimit ? "" : formData.maxAmount}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, "");
-                    setFormData({ ...formData, maxAmount: val });
-                  }}
-                />
-              </div>
+                <RiFundsLine size={16} />
+                <span>Amount-Wise Daily ROI Slabs (Active)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, roiType: "fixed" })}
+                className={`p-3 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
+                  formData.roiType === "fixed"
+                    ? "bg-gold-500 border-gold-500 text-gray-950 font-extrabold shadow-xs"
+                    : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <RiPercentLine size={16} />
+                <span>Fixed ROI Percentage</span>
+              </button>
             </div>
           </div>
 
-          {/* Monthly ROI Rate (%) */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Monthly ROI (%) *
-              </label>
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
-                Annualized: {(roiNum * 12).toFixed(1)}% APY
-              </span>
+          {/* ──────── AMOUNT-WISE DAILY ROI SLABS CONFIGURATOR ──────── */}
+          {formData.roiType === "slab" ? (
+            <div className="p-4 bg-gradient-to-br from-amber-50/70 via-gold-50/50 to-white rounded-2xl border border-gold-300/80 space-y-3.5 shadow-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-gold-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-gold-400 text-gray-950 flex items-center justify-center font-bold">
+                    <RiSparklingLine size={16} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
+                      Amount-Wise Daily ROI Slabs
+                    </h4>
+                    <p className="text-[11px] text-gray-500">
+                      Calculations: Daily ROI auto-computes Monthly & Annually APY
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleResetSlabs}
+                  className="px-2.5 py-1 rounded-lg bg-white border border-gold-300 text-gold-900 hover:bg-gold-50 text-[11px] font-bold flex items-center gap-1 shadow-2xs"
+                >
+                  <RiRefreshLine size={13} /> Reset Standard Slabs
+                </button>
+              </div>
+
+              {/* Slabs Table Header */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-12 gap-2 text-[10.5px] font-extrabold text-gray-500 uppercase px-1">
+                  <span className="col-span-3">Min Amount ($)</span>
+                  <span className="col-span-3">Max Amount ($)</span>
+                  <span className="col-span-2">Daily ROI (%)</span>
+                  <span className="col-span-2">Monthly (30d)</span>
+                  <span className="col-span-1 text-center">Annual</span>
+                  <span className="col-span-1 text-right">Del</span>
+                </div>
+
+                {/* Slabs List */}
+                {formData.roiSlabs.map((slab, idx) => (
+                  <div
+                    key={idx}
+                    className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded-xl border border-gold-200/80 shadow-2xs hover:border-gold-400 transition-all text-xs"
+                  >
+                    {/* Min Amount */}
+                    <div className="col-span-3 flex items-center rounded-lg border border-gray-200 bg-gray-50/50 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
+                      <span className="text-gray-400 font-bold text-xs mr-1">$</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={slab.minAmount}
+                        onChange={(e) =>
+                          handleSlabChange(idx, "minAmount", e.target.value)
+                        }
+                        className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
+                        placeholder="10"
+                      />
+                    </div>
+
+                    {/* Max Amount + Unlimited checkbox */}
+                    <div className="col-span-3 flex items-center gap-1">
+                      {slab.noMaxLimit ? (
+                        <div className="w-full py-1.5 px-2 rounded-lg bg-gold-100/70 border border-gold-300 text-gold-900 font-extrabold text-xs text-center">
+                          1500$ ++ (No Limit)
+                        </div>
+                      ) : (
+                        <div className="w-full flex items-center rounded-lg border border-gray-200 bg-gray-50/50 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
+                          <span className="text-gray-400 font-bold text-xs mr-1">$</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={slab.maxAmount}
+                            onChange={(e) =>
+                              handleSlabChange(idx, "maxAmount", e.target.value)
+                            }
+                            className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
+                            placeholder="49"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Daily ROI (%) */}
+                    <div className="col-span-2 flex items-center rounded-lg border border-emerald-300 bg-emerald-50/60 px-2 py-1.5 focus-within:border-emerald-500 focus-within:bg-white">
+                      <input
+                        type="text"
+                        value={slab.dailyRoi}
+                        onChange={(e) =>
+                          handleSlabChange(idx, "dailyRoi", e.target.value)
+                        }
+                        className="w-full bg-transparent outline-none font-extrabold text-emerald-700 text-xs"
+                        placeholder="0.25"
+                      />
+                      <span className="text-emerald-600 font-bold text-[10px]">%</span>
+                    </div>
+
+                    {/* Monthly ROI (%) [Auto computed or editable] */}
+                    <div className="col-span-2 flex items-center rounded-lg border border-gold-200 bg-gold-50/40 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
+                      <input
+                        type="text"
+                        value={slab.monthlyRoi}
+                        onChange={(e) =>
+                          handleSlabChange(idx, "monthlyRoi", e.target.value)
+                        }
+                        className="w-full bg-transparent outline-none font-bold text-gold-900 text-xs"
+                        placeholder="7.50"
+                      />
+                      <span className="text-gold-700 font-bold text-[10px]">%</span>
+                    </div>
+
+                    {/* Annual ROI (%) */}
+                    <div className="col-span-1 text-center font-bold text-gray-700 font-mono text-[11px]">
+                      {slab.annualRoi}%
+                    </div>
+
+                    {/* Delete button */}
+                    <div className="col-span-1 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSlab(idx)}
+                        disabled={formData.roiSlabs.length <= 1}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
+                      >
+                        <RiDeleteBinLine size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Slab Action */}
+              <div className="flex justify-between items-center pt-1">
+                <button
+                  type="button"
+                  onClick={handleAddSlab}
+                  className="px-3 py-1.5 rounded-xl bg-white border border-gold-400 text-gold-900 hover:bg-gold-50 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
+                >
+                  <RiAddLine size={15} /> Add Custom Slab
+                </button>
+
+                <span className="text-[11px] text-gray-500 font-medium">
+                  {formData.roiSlabs.length} Active Slabs Defined
+                </span>
+              </div>
             </div>
-            <div className="flex items-center rounded-xl border border-gray-200 focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-100 bg-white overflow-hidden transition-all shadow-2xs">
-              <input
-                type="text"
-                inputMode="numeric"
-                className="w-full py-2.5 pl-3.5 pr-1 bg-transparent border-none outline-none font-bold text-gray-800 text-sm"
-                placeholder="1.5"
-                value={formData.roi}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9.]/g, "");
-                  setFormData({ ...formData, roi: val });
-                }}
-              />
-              <span className="pr-3.5 text-gray-400 font-bold text-sm select-none">
-                % / Month
-              </span>
+          ) : (
+            /* Fixed ROI Inputs */
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Minimum Investment ($) *
+                  </label>
+                  <div className="flex items-center rounded-xl border border-gray-200 focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-100 bg-white overflow-hidden transition-all shadow-2xs">
+                    <span className="pl-3.5 pr-1 text-gray-500 font-bold text-sm select-none">
+                      $
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="w-full py-2.5 pr-3 bg-transparent border-none outline-none font-semibold text-gray-800 text-sm"
+                      placeholder="1000"
+                      value={formData.minAmount}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "");
+                        setFormData({ ...formData, minAmount: val });
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Maximum Investment ($)
+                    </label>
+                    <label className="flex items-center gap-1 text-[11px] text-gray-500 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={formData.noMaxLimit}
+                        onChange={(e) =>
+                          setFormData({ ...formData, noMaxLimit: e.target.checked })
+                        }
+                        className="rounded border-gray-300 text-gold-500 focus:ring-gold-400"
+                      />
+                      No Limit
+                    </label>
+                  </div>
+                  <div
+                    className={`flex items-center rounded-xl border border-gray-200 focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-100 overflow-hidden transition-all shadow-2xs ${
+                      formData.noMaxLimit ? "bg-gray-100" : "bg-white"
+                    }`}
+                  >
+                    <span className="pl-3.5 pr-1 text-gray-500 font-bold text-sm select-none">
+                      $
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      disabled={formData.noMaxLimit}
+                      className={`w-full py-2.5 pr-3 bg-transparent border-none outline-none font-semibold text-gray-800 text-sm ${
+                        formData.noMaxLimit
+                          ? "text-gray-400 cursor-not-allowed"
+                          : ""
+                      }`}
+                      placeholder={formData.noMaxLimit ? "Unlimited" : "50000"}
+                      value={formData.noMaxLimit ? "" : formData.maxAmount}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "");
+                        setFormData({ ...formData, maxAmount: val });
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Monthly ROI (%) *
+                  </label>
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                    Daily: {((parseFloat(formData.roi) || 7.5) / 30).toFixed(3)}% &bull; Annual: {((parseFloat(formData.roi) || 7.5) * 12).toFixed(1)}% APY
+                  </span>
+                </div>
+                <div className="flex items-center rounded-xl border border-gray-200 focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-100 bg-white overflow-hidden transition-all shadow-2xs">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="w-full py-2.5 pl-3.5 pr-1 bg-transparent border-none outline-none font-bold text-gray-800 text-sm"
+                    placeholder="7.5"
+                    value={formData.roi}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9.]/g, "");
+                      setFormData({ ...formData, roi: val });
+                    }}
+                  />
+                  <span className="pr-3.5 text-gray-400 font-bold text-sm select-none">
+                    % / Month
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Duration Selector (Infinite / Lifetime vs DD / MM / YYYY) */}
           <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-200/80 space-y-3">

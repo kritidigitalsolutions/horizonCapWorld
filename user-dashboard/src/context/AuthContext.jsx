@@ -38,6 +38,7 @@ const formatApiUser = (rawUser, overviewData = null) => {
     depositWallet: Number(rawUser.depositWallet || overviewData?.wallets?.depositWallet || 0),
     earningWallet: Number(rawUser.earningWallet || overviewData?.wallets?.earningWallet || 0),
     totalInvested: Number(rawUser.totalInvested || overviewData?.wallets?.totalInvested || 0),
+    totalProfit: Number(rawUser.totalProfit || rawUser.totalEarned || overviewData?.wallets?.totalProfit || overviewData?.wallets?.totalEarned || 0),
     totalEarned: Number(rawUser.totalProfit || rawUser.totalEarned || overviewData?.wallets?.totalProfit || overviewData?.wallets?.totalEarned || 0),
     totalWithdrawn: Number(rawUser.totalWithdrawn || overviewData?.wallets?.totalWithdrawn || 0),
     activeInvestments: Number(overviewData?.portfolioSummary?.activeContracts || rawUser.activeInvestments || 0),
@@ -45,6 +46,8 @@ const formatApiUser = (rawUser, overviewData = null) => {
     directReferrals: Number(rawUser.directReferrals || overviewData?.network?.directReferrals || 0),
     dailyEarning: Number(rawUser.dailyEarning || overviewData?.streaming?.dailyEarning || 0),
     perSecondRate: Number(rawUser.perSecondRate || overviewData?.streaming?.perSecondRate || 0),
+    lastYieldSync: rawUser.lastYieldSync || overviewData?.streaming?.lastYieldSync || new Date().toISOString(),
+    activeAssetNames: overviewData?.streaming?.activeAssetNames || '',
     referralLink: getReferralLink(customId),
     is2FAEnabled: !!rawUser.is2FAEnabled,
   };

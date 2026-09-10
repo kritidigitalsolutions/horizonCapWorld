@@ -557,8 +557,8 @@ export default function Deposit() {
       return;
     }
 
-    if (!transactionHash.trim() && !paymentSlip) {
-      setErrorMsg('Please enter your Transaction ID (TID / Hash) or upload your proof of payment document.');
+    if (!paymentSlip) {
+      setErrorMsg('Please upload your proof of payment / deposit slip document.');
       return;
     }
 
@@ -1176,7 +1176,7 @@ export default function Deposit() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                    PROOF OF PAYMENT / DEPOSIT SLIP <span className="text-slate-400 font-normal">(Optional if Hash provided)</span>
+                    PROOF OF PAYMENT / DEPOSIT SLIP <span className="text-red-500 font-bold">*</span> <span className="text-red-500 text-[10px] font-semibold">(Mandatory Required)</span>
                   </label>
                   <span className="text-[10px] font-semibold text-gold-600 bg-gold-50 px-2 py-0.5 rounded-lg border border-gold-200">
                     PDF, PNG, JPG, Doc

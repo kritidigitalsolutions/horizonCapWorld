@@ -43,82 +43,130 @@ const seedInitialData = async () => {
     // 3. Seed Investment Plans
     const plansCount = await InvestmentPlan.countDocuments();
     if (plansCount === 0) {
+      const standardSlabs = [
+        { minAmount: 10, maxAmount: 49, noMaxLimit: false, dailyRoi: 0.25, monthlyRoi: 7.5, annualRoi: 90 },
+        { minAmount: 50, maxAmount: 99, noMaxLimit: false, dailyRoi: 0.35, monthlyRoi: 10.5, annualRoi: 126 },
+        { minAmount: 100, maxAmount: 499, noMaxLimit: false, dailyRoi: 0.55, monthlyRoi: 16.5, annualRoi: 198 },
+        { minAmount: 500, maxAmount: 1500, noMaxLimit: false, dailyRoi: 0.75, monthlyRoi: 22.5, annualRoi: 270 },
+        { minAmount: 1500, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, monthlyRoi: 30.0, annualRoi: 360 },
+      ];
+
       const defaultPlans = [
         {
           name: "Solar Eco Farm Yield",
           category: "Renewable Energy",
-          roi: 18,
+          roiType: "slab",
+          roi: 7.5,
+          dailyRoi: 0.25,
+          roiSlabs: standardSlabs,
           duration: "12 Months",
           durationDays: 365,
-          minAmount: 1000,
-          maxAmount: 50000,
+          minAmount: 10,
+          maxAmount: null,
+          noMaxLimit: true,
           payoutInterval: "Per Second (Live)",
           status: "Active",
           investors: 428,
-          description: "Utility-scale photovoltaic generation farms in high-irradiance desert zones with 25-year sovereign power purchase agreements.",
+          description: "Utility-scale photovoltaic generation farms with sovereign power agreements and amount-wise daily ROI return slabs.",
         },
         {
           name: "Physical Gold Bullion Vault",
           category: "Precious Metal",
-          roi: 14,
+          roiType: "slab",
+          roi: 7.5,
+          dailyRoi: 0.25,
+          roiSlabs: standardSlabs,
           duration: "6 Months",
           durationDays: 180,
-          minAmount: 5000,
-          maxAmount: 150000,
+          minAmount: 10,
+          maxAmount: null,
+          noMaxLimit: true,
           payoutInterval: "Daily Payout",
           status: "Active",
           investors: 312,
-          description: "Allocated 99.99% pure LBMA-certified bullion bars stored in Zurich and Singapore ultra-secure custody facilities.",
+          description: "Allocated 99.99% pure LBMA-certified bullion bars stored in Zurich and Singapore custody vaults.",
         },
         {
           name: "Wind Turbine Clean Power",
           category: "Renewable Energy",
-          roi: 22,
+          roiType: "slab",
+          roi: 7.5,
+          dailyRoi: 0.25,
+          roiSlabs: standardSlabs,
           duration: "24 Months",
           durationDays: 730,
-          minAmount: 10000,
-          maxAmount: 500000,
+          minAmount: 10,
+          maxAmount: null,
+          noMaxLimit: true,
           payoutInterval: "Daily Payout",
           status: "Active",
           investors: 185,
-          description: "Offshore deep-water wind turbine syndicate generating stable institutional cash flows with guaranteed base yields.",
+          description: "Offshore deep-water wind turbine syndicate generating stable institutional cash flows.",
         },
         {
           name: "Platinum Reserve Vault",
           category: "Precious Metal",
-          roi: 26,
+          roiType: "slab",
+          roi: 7.5,
+          dailyRoi: 0.25,
+          roiSlabs: standardSlabs,
           duration: "18 Months",
           durationDays: 540,
-          minAmount: 25000,
-          maxAmount: 1000000,
+          minAmount: 10,
+          maxAmount: null,
+          noMaxLimit: true,
           payoutInterval: "Per Second (Live)",
           status: "Active",
           investors: 94,
-          description: "Institutional physical platinum sponge and ingots insured by Lloyd's of London with monthly third-party audit reports.",
+          description: "Institutional physical platinum sponge and ingots insured by Lloyd's of London with audited reserves.",
         },
         {
           name: "Green Hydrogen Catalyst",
           category: "Renewable Energy",
-          roi: 12,
+          roiType: "slab",
+          roi: 7.5,
+          dailyRoi: 0.25,
+          roiSlabs: standardSlabs,
           duration: "3 Months",
           durationDays: 90,
-          minAmount: 500,
-          maxAmount: 20000,
+          minAmount: 10,
+          maxAmount: null,
+          noMaxLimit: true,
           payoutInterval: "Per Second (Live)",
           status: "Active",
           investors: 560,
-          description: "Commercial zero-emission electrolyzer clusters producing green hydrogen for industrial maritime transport fleets.",
+          description: "Commercial zero-emission electrolyzer clusters producing green hydrogen for industrial transport fleets.",
         },
       ];
 
       for (const p of defaultPlans) {
-        const secRate = ((p.minAmount * (p.roi / 100)) / (365 * 86400)).toFixed(6);
-        await InvestmentPlan.create({
-          ...p,
-          roiPerSec: `$${secRate} / sec`,
-        });
+        await InvestmentPlan.create(p);
       }
-      console.log("Default Investment Plans seeded.");
+      console.log("Default Investment Plans seeded with Amount-Wise Daily ROI Slabs.");
+    } else {
+      const standardSlabs = [
+        { minAmount: 10, maxAmount: 49, noMaxLimit: false, dailyRoi: 0.25, monthlyRoi: 7.5, annualRoi: 90 },
+        { minAmount: 50, maxAmount: 99, noMaxLimit: false, dailyRoi: 0.35, monthlyRoi: 10.5, annualRoi: 126 },
+        { minAmount: 100, maxAmount: 499, noMaxLimit: false, dailyRoi: 0.55, monthlyRoi: 16.5, annualRoi: 198 },
+        { minAmount: 500, maxAmount: 1500, noMaxLimit: false, dailyRoi: 0.75, monthlyRoi: 22.5, annualRoi: 270 },
+        { minAmount: 1500, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, monthlyRoi: 30.0, annualRoi: 360 },
+      ];
+      const plansWithoutSlabs = await InvestmentPlan.find({
+        $or: [{ roiSlabs: { $exists: false } }, { roiSlabs: { $size: 0 } }],
+      });
+      if (plansWithoutSlabs.length > 0) {
+        for (const plan of plansWithoutSlabs) {
+          plan.roiType = "slab";
+          plan.roiSlabs = standardSlabs;
+          plan.dailyRoi = 0.25;
+          plan.roi = 7.5;
+          plan.minAmount = 10;
+          plan.noMaxLimit = true;
+          plan.maxAmount = null;
+          await plan.save();
+        }
+        console.log(`Updated ${plansWithoutSlabs.length} existing plans with standard Amount-Wise Daily ROI Slabs.`);
+      }
     }
 
     // 4. Seed Payment Methods

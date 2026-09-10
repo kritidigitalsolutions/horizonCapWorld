@@ -41,6 +41,11 @@ const referralSettingSchema = new mongoose.Schema(
       type: String,
       default: "$0",
     },
+    status: {
+      type: String,
+      enum: ["Active", "Inactive"],
+      default: "Active",
+    },
   },
   { timestamps: true }
 );

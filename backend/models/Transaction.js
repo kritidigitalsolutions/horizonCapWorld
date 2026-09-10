@@ -5,7 +5,9 @@ const transactionSchema = new mongoose.Schema(
     customId: {
       type: String,
       unique: true,
+      sparse: true,
       trim: true,
+      default: () => `TRX-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`,
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -60,6 +62,26 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    senderName: {
+      type: String,
+      default: "",
+    },
+    senderAccount: {
+      type: String,
+      default: "",
+    },
+    senderPhone: {
+      type: String,
+      default: "",
+    },
+    cryptoNetwork: {
+      type: String,
+      default: "",
+    },
+    selectedToken: {
+      type: String,
+      default: "",
+    },
     date: {
       type: String,
       default: () => new Date().toISOString().split("T")[0],
@@ -77,8 +99,19 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    note: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
+
+// Auto-generate unique customId if missing before save
+transactionSchema.pre("save", function () {
+  if (!this.customId) {
+    this.customId = `TRX-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+});
 
 module.exports = mongoose.model("Transaction", transactionSchema);

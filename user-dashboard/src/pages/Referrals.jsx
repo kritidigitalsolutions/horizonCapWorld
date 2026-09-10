@@ -4,7 +4,8 @@ import {
   RiCheckLine, RiEditLine, RiNodeTree, RiUserLine, RiShieldCheckLine,
   RiGroupLine, RiMoneyDollarCircleLine, RiPercentLine, RiSearchLine,
   RiArrowRightLine, RiInformationLine, RiEyeLine, RiFileCopyLine,
-  RiShareLine, RiQrCodeLine, RiUserAddLine, RiTimeLine
+  RiShareLine, RiQrCodeLine, RiUserAddLine, RiTimeLine, RiAlertLine,
+  RiPauseCircleLine
 } from 'react-icons/ri';
 import { useAuth, getReferralLink } from '../context/AuthContext';
 import { getReferralOverview, getReferralCommissions, getReferralNetwork } from '../api/referralsApi';
@@ -16,11 +17,11 @@ import Badge from '../components/ui/Badge';
 
 // Initial Referral Commissions matching Super Admin
 const defaultCommissions = [
-  { level: 'L1', name: 'Direct Referrals (Level 1)', investCommission: '5%', earningsCommission: '5%' },
-  { level: 'L2', name: 'Sub-Referrals (Level 2)', investCommission: '4%', earningsCommission: '4%' },
-  { level: 'L3', name: 'Network Tier (Level 3)', investCommission: '3%', earningsCommission: '3%' },
-  { level: 'L4', name: 'Network Tier (Level 4)', investCommission: '2%', earningsCommission: '2%' },
-  { level: 'L5', name: 'Global Depth (Level 5)', investCommission: '1%', earningsCommission: '1%' },
+  { level: 'L1', levelNumber: 1, name: 'Direct Referrals (Level 1)', investCommission: '5%', earningsCommission: '5%' },
+  { level: 'L2', levelNumber: 2, name: 'Sub-Referrals (Level 2)', investCommission: '4%', earningsCommission: '4%' },
+  { level: 'L3', levelNumber: 3, name: 'Network Tier (Level 3)', investCommission: '3%', earningsCommission: '3%' },
+  { level: 'L4', levelNumber: 4, name: 'Network Tier (Level 4)', investCommission: '2%', earningsCommission: '2%' },
+  { level: 'L5', levelNumber: 5, name: 'Global Depth (Level 5)', investCommission: '1%', earningsCommission: '1%' },
 ];
 
 export default function Referrals() {
@@ -34,6 +35,11 @@ export default function Referrals() {
   const [overviewData, setOverviewData] = useState(null);
   const [networkList, setNetworkList] = useState([]);
   const [commissions, setCommissions] = useState(defaultCommissions);
+  const [toggles, setToggles] = useState({
+    referralDepositCommissionEnabled: true,
+    referralRoiShareEnabled: true,
+    referralSystemEnabled: true,
+  });
 
   // Modals / Drawers
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -42,37 +48,61 @@ export default function Referrals() {
   const [calcDeposit, setCalcDeposit] = useState('10000');
   const [calcYield, setCalcYield] = useState('1500');
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [overviewRes, commsRes, netRes] = await Promise.allSettled([
-          getReferralOverview(),
-          getReferralCommissions(),
-          getReferralNetwork(),
-        ]);
+  const fetchData = async () => {
+    try {
+      const [overviewRes, commsRes, netRes] = await Promise.allSettled([
+        getReferralOverview(),
+        getReferralCommissions(),
+        getReferralNetwork(),
+      ]);
 
-        if (overviewRes.status === 'fulfilled' && overviewRes.value?.success) {
-          setOverviewData(overviewRes.value.data);
+      if (overviewRes.status === 'fulfilled' && overviewRes.value?.success) {
+        setOverviewData(overviewRes.value.data);
+        if (overviewRes.value.data.toggles) {
+          setToggles(overviewRes.value.data.toggles);
         }
+      }
 
-        if (commsRes.status === 'fulfilled' && commsRes.value?.success && Array.isArray(commsRes.value.tiers) && commsRes.value.tiers.length > 0) {
+      if (commsRes.status === 'fulfilled' && commsRes.value?.success) {
+        if (Array.isArray(commsRes.value.tiers) && commsRes.value.tiers.length > 0) {
           setCommissions(commsRes.value.tiers);
         }
-
-        if (netRes.status === 'fulfilled' && netRes.value?.success && Array.isArray(netRes.value.network)) {
-          setNetworkList(netRes.value.network);
-        } else {
-          setNetworkList([]);
+        if (commsRes.value.toggles) {
+          setToggles(commsRes.value.toggles);
         }
-      } catch (err) {
-        console.warn('Error fetching referrals data:', err.message);
-        setNetworkList([]);
-      } finally {
-        setLoading(false);
       }
+
+      if (netRes.status === 'fulfilled' && netRes.value?.success && Array.isArray(netRes.value.network)) {
+        setNetworkList(netRes.value.network);
+      } else {
+        setNetworkList([]);
+      }
+    } catch (err) {
+      console.warn('Error fetching referrals data:', err.message);
+      setNetworkList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    const handleSync = (e) => {
+      if (e?.detail) {
+        setToggles(prev => ({ ...prev, ...e.detail }));
+      }
+      fetchData();
     };
 
-    fetchData();
+    window.addEventListener('horizon-referrals-change', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('horizon-referrals-change', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, []);
 
   const referralLink = overviewData?.referralLink || user?.referralLink || getReferralLink(user?.customId || user?.id || '');
@@ -83,8 +113,15 @@ export default function Referrals() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const depositEnabled = toggles.referralDepositCommissionEnabled !== false && toggles.referralSystemEnabled !== false;
+  const roiShareEnabled = toggles.referralRoiShareEnabled !== false && toggles.referralSystemEnabled !== false;
+  const anyFeatureDisabled = !depositEnabled || !roiShareEnabled;
+
   const currentNetwork = networkList;
-  const levelCounts = [1, 2, 3, 4, 5].map(l => currentNetwork.filter(r => r.level === l).length);
+
+  // Extract distinct levels from commissions or network
+  const allLevels = commissions.map(c => c.levelNumber || parseInt(String(c.level).replace('L', ''), 10) || 1).sort((a, b) => a - b);
+  const distinctLevels = Array.from(new Set(allLevels.length > 0 ? allLevels : [1, 2, 3, 4, 5]));
 
   const filteredNetwork = currentNetwork.filter(item => {
     const q = search.trim().toLowerCase();
@@ -102,7 +139,7 @@ export default function Referrals() {
       <PageHeader
         title="My Referral Network"
         subtitle="Grow your multi-tier downline team and earn direct deposit & daily ROI profit-sharing commissions"
-        badge="Affiliate Network"
+        badge={`${commissions.length}-Tier Active Network`}
         actions={
           <button
             type="button"
@@ -114,6 +151,31 @@ export default function Referrals() {
           </button>
         }
       />
+
+      {/* ──────────────── REFERRAL STATUS NOTICE BANNER IF PAUSED BY ADMIN ──────────────── */}
+      {anyFeatureDisabled && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 shadow-sm space-y-1.5 animate-fade-in">
+          <div className="flex items-center gap-2.5 text-amber-900 font-bold text-sm">
+            <RiPauseCircleLine size={20} className="text-amber-600 flex-shrink-0" />
+            <span>Referral Commission Status Notice</span>
+          </div>
+          <div className="text-xs text-amber-800 space-y-1 pl-7">
+            {!depositEnabled && !roiShareEnabled ? (
+              <p>
+                <strong>Referral Reward Distributions are currently paused by platform administration.</strong> Downline registrations and tracking remain active, but commission distributions are temporarily disabled.
+              </p>
+            ) : !depositEnabled ? (
+              <p>
+                <strong>Direct Investment Deposit Commission is currently paused by administration.</strong> (Daily ROI Profit Share remains active).
+              </p>
+            ) : (
+              <p>
+                <strong>Daily / Per-Second ROI Profit Share is currently paused by administration.</strong> (Direct Investment Deposit Commission remains active).
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ──────────────── 4 ROLLING ODOMETER KPI CARDS ──────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -140,7 +202,7 @@ export default function Referrals() {
           numericValue={overviewData?.totalTeamCount || networkList.length || 0}
           prefix=""
           decimals={0}
-          change="5 Tiers Active"
+          change={`${commissions.length} Tiers Active`}
           positive={true}
           icon="chart"
         />
@@ -204,7 +266,7 @@ export default function Referrals() {
             Sponsor ID: <strong className="text-slate-700">{user?.customId || user?.id || '—'}</strong>
           </span>
           <span className="text-emerald-700 font-bold flex items-center gap-1">
-            <RiShieldCheckLine size={14} /> Active Downline Referral Structure (5-Levels)
+            <RiShieldCheckLine size={14} /> Active Downline Referral Structure ({commissions.length}-Levels)
           </span>
         </div>
       </div>
@@ -234,33 +296,36 @@ export default function Referrals() {
           }`}
         >
           <RiPercentLine size={16} />
-          <span>5-Tier Commission Structure</span>
+          <span>{commissions.length}-Tier Commission Structure</span>
         </button>
       </div>
 
       {/* ──────────────── TAB 1: ACTIVE DOWNLINE PARTNERS DIRECTORY ──────────────── */}
       {activeTab === 'tree' && (
         <div className="space-y-5">
-          {/* Level Distribution Summary Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            {[1, 2, 3, 4, 5].map(lvl => (
-              <button
-                key={lvl}
-                onClick={() => setTierFilter(tierFilter === String(lvl) ? 'all' : String(lvl))}
-                className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer ${
-                  tierFilter === String(lvl)
-                    ? 'card-gold border-gold-400 ring-2 ring-gold-300 shadow-gold'
-                    : 'card hover:border-slate-300'
-                }`}
-              >
-                <p className="text-2xl font-black font-display text-slate-900 tabular-nums">
-                  {levelCounts[lvl - 1]}
-                </p>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5 font-poppins">
-                  Level {lvl} Partners
-                </p>
-              </button>
-            ))}
+          {/* Dynamic Level Distribution Summary Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+            {distinctLevels.map(lvl => {
+              const count = currentNetwork.filter(r => r.level === lvl).length;
+              return (
+                <button
+                  key={lvl}
+                  onClick={() => setTierFilter(tierFilter === String(lvl) ? 'all' : String(lvl))}
+                  className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer ${
+                    tierFilter === String(lvl)
+                      ? 'card-gold border-gold-400 ring-2 ring-gold-300 shadow-gold'
+                      : 'card hover:border-slate-300'
+                  }`}
+                >
+                  <p className="text-2xl font-black font-display text-slate-900 tabular-nums">
+                    {count}
+                  </p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5 font-poppins">
+                    Level {lvl} Partners
+                  </p>
+                </button>
+              );
+            })}
           </div>
 
           {/* Search & Filter Bar */}
@@ -276,7 +341,7 @@ export default function Referrals() {
                 <button
                   type="button"
                   onClick={() => setTierFilter('all')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     tierFilter === 'all'
                       ? 'bg-slate-900 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -407,7 +472,7 @@ export default function Referrals() {
                               ? `No partners found matching "${search}".`
                               : tierFilter !== 'all'
                               ? `No partners currently placed in Tier Level ${tierFilter}.`
-                              : "Start building your team by sharing your official invite link. You'll earn up to 5 tiers of instant investment and profit-sharing bonuses."}
+                              : `Start building your team by sharing your official invite link. You'll earn up to ${commissions.length} tiers of instant investment and profit-sharing bonuses.`}
                           </p>
                           {!search && (
                             <button
@@ -430,30 +495,45 @@ export default function Referrals() {
         </div>
       )}
 
-      {/* ──────────────── TAB 2: 5-TIER COMMISSION STRUCTURE & PLANS (MATCHING SUPER ADMIN) ──────────────── */}
+      {/* ──────────────── TAB 2: MULTI-TIER COMMISSION STRUCTURE & PLANS ──────────────── */}
       {activeTab === 'plans' && (
         <div className="space-y-6 font-poppins">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* 1. Direct Investment Deposit Commission Box */}
-            <div className="card p-5 space-y-4 border border-emerald-200/80 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                  <RiTeamLine size={22} />
+            <div className={`card p-5 space-y-4 border shadow-sm ${
+              depositEnabled ? 'border-emerald-200/80' : 'border-rose-200/80 bg-rose-50/10'
+            }`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                    <RiTeamLine size={22} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 font-poppins">
+                      1. Direct Investment Deposit Commission
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      Commission credited instantly when downline members deposit into investment plans
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800 font-poppins">
-                    1. Direct Investment Deposit Commission
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Commission credited instantly when downline members deposit into investment plans
-                  </p>
-                </div>
+
+                <Badge variant={depositEnabled ? 'success' : 'danger'} size="sm">
+                  {depositEnabled ? 'Active' : 'Currently Unavailable'}
+                </Badge>
               </div>
+
+              {!depositEnabled && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
+                  <RiAlertLine size={16} className="text-rose-600 flex-shrink-0" />
+                  <span>Deposit commission feature is currently unavailable / paused by administration.</span>
+                </div>
+              )}
 
               <div className="space-y-2.5">
                 {commissions.map((tier) => (
                   <div
-                    key={tier.level}
+                    key={tier._id || tier.level}
                     className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-emerald-50/30 transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -463,13 +543,17 @@ export default function Referrals() {
                       <div>
                         <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
                         <p className="text-[11px] text-slate-400">
-                          {networkList.filter(u => u.level === Number(tier.level.replace('L', ''))).length} Active Team Promoters
+                          {networkList.filter(u => u.level === Number(String(tier.level).replace('L', ''))).length} Active Team Promoters
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-extrabold text-emerald-600 font-mono bg-emerald-50 border border-emerald-200 px-3.5 py-1 rounded-xl shadow-2xs">
+                      <span className={`text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl shadow-2xs ${
+                        depositEnabled
+                          ? 'text-emerald-600 bg-emerald-50 border border-emerald-200'
+                          : 'text-slate-400 bg-slate-100 border border-slate-200 line-through'
+                      }`}>
                         {tier.investCommission}
                       </span>
                     </div>
@@ -483,25 +567,40 @@ export default function Referrals() {
             </div>
 
             {/* 2. Earnings / ROI Commission Box */}
-            <div className="card p-5 space-y-4 border border-amber-200/80 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                  <RiFlashlightLine size={22} />
+            <div className={`card p-5 space-y-4 border shadow-sm ${
+              roiShareEnabled ? 'border-amber-200/80' : 'border-rose-200/80 bg-rose-50/10'
+            }`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                    <RiFlashlightLine size={22} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 font-poppins">
+                      2. Daily / Per-Second ROI Profit Share
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      Continuous commission earned on the streaming interest profit earned by downlines
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800 font-poppins">
-                    2. Daily / Per-Second ROI Profit Share
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Continuous commission earned on the streaming interest profit earned by downlines
-                  </p>
-                </div>
+
+                <Badge variant={roiShareEnabled ? 'warning' : 'danger'} size="sm">
+                  {roiShareEnabled ? 'Active' : 'Currently Unavailable'}
+                </Badge>
               </div>
+
+              {!roiShareEnabled && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
+                  <RiAlertLine size={16} className="text-rose-600 flex-shrink-0" />
+                  <span>Daily ROI profit share feature is currently unavailable / paused by administration.</span>
+                </div>
+              )}
 
               <div className="space-y-2.5">
                 {commissions.map((tier) => (
                   <div
-                    key={tier.level}
+                    key={tier._id || tier.level}
                     className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-amber-50/30 transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -511,13 +610,17 @@ export default function Referrals() {
                       <div>
                         <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
                         <p className="text-[11px] text-slate-400">
-                          {networkList.filter(u => u.level === Number(tier.level.replace('L', ''))).length} Active Team Promoters
+                          {networkList.filter(u => u.level === Number(String(tier.level).replace('L', ''))).length} Active Team Promoters
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-extrabold text-gold-700 font-mono bg-gold-50 border border-gold-300 px-3.5 py-1 rounded-xl shadow-2xs">
+                      <span className={`text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl shadow-2xs ${
+                        roiShareEnabled
+                          ? 'text-gold-700 bg-gold-50 border border-gold-300'
+                          : 'text-slate-400 bg-slate-100 border border-slate-200 line-through'
+                      }`}>
                         {tier.earningsCommission}
                       </span>
                     </div>
@@ -567,7 +670,7 @@ export default function Referrals() {
         </div>
       </Modal>
 
-      {/* ──────────────── MODAL 2: DOWNLINE PARTNER AUDIT DRAWER (MATCHING SUPER ADMIN EXACTLY) ──────────────── */}
+      {/* ──────────────── MODAL 2: DOWNLINE PARTNER AUDIT DRAWER ──────────────── */}
       <Modal
         isOpen={!!selectedPartner}
         onClose={() => setSelectedPartner(null)}
@@ -629,7 +732,7 @@ export default function Referrals() {
 
               <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
                 <span className="text-[10px] text-emerald-700 uppercase font-bold tracking-wider block">
-                  Direct Comm. (5%)
+                  Direct Comm
                 </span>
                 <span className="text-base font-bold text-emerald-700 font-mono mt-0.5 block">
                   +${(selectedPartner.directComm || selectedPartner.invested * 0.05).toLocaleString()}.00
@@ -646,48 +749,22 @@ export default function Referrals() {
               </div>
             </div>
 
-            {/* 5-Tier Downline Network Hierarchy */}
+            {/* Downline Network Hierarchy */}
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
               <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <RiNodeTree className="text-emerald-600" /> 5-Tier Downline Network Tree
+                <RiNodeTree className="text-emerald-600" /> Multi-Tier Downline Network Tree
               </h5>
 
-              <div className="grid grid-cols-5 gap-2 text-center text-xs">
-                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">Tier 1</span>
-                  <span className="font-bold text-emerald-600 block mt-0.5">
-                    {selectedPartner.directRefs || 12} Users
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono">5% Comm.</span>
-                </div>
-                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">Tier 2</span>
-                  <span className="font-bold text-slate-800 block mt-0.5">
-                    {Math.round((selectedPartner.directRefs || 12) * 1.5)} Users
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono">4% Comm.</span>
-                </div>
-                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">Tier 3</span>
-                  <span className="font-bold text-slate-800 block mt-0.5">
-                    {Math.round((selectedPartner.directRefs || 12) * 2)} Users
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono">3% Comm.</span>
-                </div>
-                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">Tier 4</span>
-                  <span className="font-bold text-slate-800 block mt-0.5">
-                    {Math.round((selectedPartner.directRefs || 12) * 1.2)} Users
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono">2% Comm.</span>
-                </div>
-                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 block font-bold">Tier 5</span>
-                  <span className="font-bold text-slate-800 block mt-0.5">
-                    {Math.round((selectedPartner.directRefs || 12) * 0.8)} Users
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono">1% Comm.</span>
-                </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+                {commissions.slice(0, 10).map((tier, idx) => (
+                  <div key={tier.level} className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] text-slate-400 block font-bold">{tier.level}</span>
+                    <span className="font-bold text-slate-800 block mt-0.5">
+                      {idx === 0 ? (selectedPartner.directRefs || 12) : Math.round((selectedPartner.directRefs || 12) * Math.max(0.5, (1.8 - idx * 0.2)))} Users
+                    </span>
+                    <span className="text-[10px] text-emerald-700 font-mono">{tier.investCommission}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -757,9 +834,11 @@ export default function Referrals() {
               const rate = parseFloat(c.investCommission) / 100;
               const bonus = (Number(calcDeposit) || 0) * rate;
               return (
-                <div key={c.level} className="flex justify-between py-1 border-b border-slate-200/60">
+                <div key={c._id || c.level} className="flex justify-between py-1 border-b border-slate-200/60">
                   <span className="text-slate-600">Level {c.level} ({c.investCommission}):</span>
-                  <span className="font-mono font-bold text-emerald-600">+${bonus.toFixed(2)} USD</span>
+                  <span className={`font-mono font-bold ${depositEnabled ? 'text-emerald-600' : 'text-slate-400 line-through'}`}>
+                    +${bonus.toFixed(2)} USD {depositEnabled ? '' : '(Paused)'}
+                  </span>
                 </div>
               );
             })}

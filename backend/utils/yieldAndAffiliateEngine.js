@@ -3,6 +3,7 @@ const UserInvestment = require("../models/UserInvestment");
 const ReferralSetting = require("../models/ReferralSetting");
 const Rank = require("../models/Rank");
 const Transaction = require("../models/Transaction");
+const AdminSettings = require("../models/AdminSettings");
 
 /**
  * Synchronize real-time streaming earnings for an investor
@@ -19,10 +20,10 @@ const syncUserStreamingEarnings = async (user) => {
 
     const now = new Date();
     const lastSync = userDoc.lastYieldSync ? new Date(userDoc.lastYieldSync) : new Date(userDoc.createdAt || now);
-    const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - lastSync.getTime()) / 1000));
+    const elapsedSeconds = Math.max(0, (now.getTime() - lastSync.getTime()) / 1000);
 
-    // If less than 1 second elapsed, no yield to accrue yet
-    if (elapsedSeconds <= 0) {
+    // If less than 0.1 second elapsed, no yield to accrue yet
+    if (elapsedSeconds < 0.1) {
       return userDoc;
     }
 
@@ -42,17 +43,21 @@ const syncUserStreamingEarnings = async (user) => {
     let currentPerSecondRate = 0;
 
     for (const inv of activeInvestments) {
-      const invPerSec = inv.perSecondRate || (inv.amount * (inv.roi / 100)) / (30 * 86400);
-      const invDaily = inv.dailyEarning || (inv.amount * (inv.roi / 100)) / 30;
+      const invDaily =
+        inv.dailyEarning ||
+        (inv.dailyRoi
+          ? inv.amount * (inv.dailyRoi / 100)
+          : (inv.amount * (inv.roi || 7.5) / 100) / 30);
+      const invPerSec = inv.perSecondRate || invDaily / 86400;
 
       currentDailyEarning += invDaily;
       currentPerSecondRate += invPerSec;
 
-      // Calculate accrued yield for this contract
+      // Calculate accrued yield for this contract using exact elapsed seconds
       const contractYield = elapsedSeconds * invPerSec;
       totalAccruedYield += contractYield;
 
-      inv.totalProfitEarned = (inv.totalProfitEarned || 0) + contractYield;
+      inv.totalProfitEarned = Number(((inv.totalProfitEarned || 0) + contractYield).toFixed(8));
       inv.lastSettlementAt = now;
 
       // Check if non-infinite contract has expired
@@ -63,14 +68,14 @@ const syncUserStreamingEarnings = async (user) => {
       await inv.save();
     }
 
-    // Update user wallets and streaming rates
+    // Update user wallets and streaming rates with high precision (8 decimals)
     if (totalAccruedYield > 0) {
-      userDoc.earningWallet = parseFloat(((userDoc.earningWallet || 0) + totalAccruedYield).toFixed(4));
-      userDoc.totalProfit = parseFloat(((userDoc.totalProfit || 0) + totalAccruedYield).toFixed(4));
+      userDoc.earningWallet = Number(((userDoc.earningWallet || 0) + totalAccruedYield).toFixed(8));
+      userDoc.totalProfit = Number(((userDoc.totalProfit || 0) + totalAccruedYield).toFixed(8));
     }
 
-    userDoc.dailyEarning = parseFloat(currentDailyEarning.toFixed(4));
-    userDoc.perSecondRate = parseFloat(currentPerSecondRate.toFixed(8));
+    userDoc.dailyEarning = Number(currentDailyEarning.toFixed(4));
+    userDoc.perSecondRate = Number(currentPerSecondRate.toFixed(8));
     userDoc.lastYieldSync = now;
 
     await userDoc.save();
@@ -82,16 +87,38 @@ const syncUserStreamingEarnings = async (user) => {
 };
 
 /**
- * Distribute Multi-Tier Referral Commissions upon deposit or investment
+ * Distribute Multi-Tier Referral Commissions upon deposit, investment, or ROI profit
  */
 const distributeReferralCommissions = async (userId, amount, commissionType = "investment") => {
   try {
+    if (!amount || amount <= 0) return;
+
+    // Check Global Admin Settings Referral Toggles
+    const settings = await AdminSettings.findOne();
+    if (settings) {
+      if (settings.referralSystemEnabled === false) {
+        console.log("[Affiliate Engine] Referral system is globally disabled by admin. Skipping distribution.");
+        return;
+      }
+      if (commissionType === "investment" && settings.referralDepositCommissionEnabled === false) {
+        console.log("[Affiliate Engine] Direct investment deposit commissions are disabled by admin. Skipping.");
+        return;
+      }
+      if (commissionType === "earnings" && settings.referralRoiShareEnabled === false) {
+        console.log("[Affiliate Engine] ROI profit share commissions are disabled by admin. Skipping.");
+        return;
+      }
+    }
+
     const investor = await User.findById(userId);
     if (!investor || !investor.sponsorId || investor.sponsorId === "HORIZON-HQ") {
       return;
     }
 
-    const refSettings = await ReferralSetting.find().sort({ levelNumber: 1 });
+    // Load only active referral tiers ordered by levelNumber
+    const refSettings = await ReferralSetting.find({ status: { $ne: "Inactive" } }).sort({ levelNumber: 1 });
+    if (!refSettings || refSettings.length === 0) return;
+
     let currentSponsorId = investor.sponsorId;
 
     for (const tier of refSettings) {
@@ -110,10 +137,14 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
       const bonus = parseFloat(((amount * rate) / 100).toFixed(2));
 
       if (bonus > 0) {
-        sponsor.earningWallet = (sponsor.earningWallet || 0) + bonus;
-        sponsor.totalProfit = (sponsor.totalProfit || 0) + bonus;
-        sponsor.teamTurnover = (sponsor.teamTurnover || 0) + amount;
+        sponsor.earningWallet = parseFloat(((sponsor.earningWallet || 0) + bonus).toFixed(2));
+        sponsor.totalProfit = parseFloat(((sponsor.totalProfit || 0) + bonus).toFixed(2));
+        if (commissionType === "investment") {
+          sponsor.teamTurnover = parseFloat(((sponsor.teamTurnover || 0) + amount).toFixed(2));
+        }
         await sponsor.save();
+
+        const typeLabel = commissionType === "investment" ? "Deposit Commission" : "Daily ROI Profit Share";
 
         await Transaction.create({
           user: sponsor._id,
@@ -127,9 +158,9 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
           fee: 0,
           netAmount: bonus,
           gateway: "Affiliate Engine",
-          referenceNo: `REF-L${tier.levelNumber}-${Date.now().toString().slice(-5)}`,
+          referenceNo: `REF-${tier.level || 'L' + tier.levelNumber}-${Date.now().toString().slice(-5)}`,
           status: "Approved",
-          note: `Level ${tier.levelNumber} (${rate}%) affiliate commission from downline ${investor.name} (${investor.customId}).`,
+          note: `Tier ${tier.level || 'L' + tier.levelNumber} (${rate}%) ${typeLabel} from downline ${investor.name} (${investor.customId}).`,
         });
       }
 

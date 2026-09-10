@@ -39,24 +39,54 @@ const quickLinkIcons = {
   'Support': RiCustomerService2Line,
 };
 
+// Helper to retrieve and restore continuous streaming state across page refreshes
+const getInitialStreamingState = () => {
+  try {
+    const savedStream = localStorage.getItem('horizon_streaming_state');
+    const savedUser = localStorage.getItem('horizon_user');
+    const userObj = savedUser ? JSON.parse(savedUser) : null;
+
+    let baseProfit = Number(userObj?.totalProfit || userObj?.totalEarned || 0);
+    let rate = Number(userObj?.perSecondRate || 0.0000008);
+    let baseTime = Date.now();
+
+    if (savedStream) {
+      const streamObj = JSON.parse(savedStream);
+      if (streamObj && typeof streamObj.baseProfit === 'number' && streamObj.timestamp) {
+        const streamRate = Number(streamObj.rate || rate);
+        const elapsedSec = Math.max(0, (Date.now() - streamObj.timestamp) / 1000);
+        const accruedSinceSave = streamObj.baseProfit + (elapsedSec * streamRate);
+        if (accruedSinceSave >= baseProfit) {
+          baseProfit = accruedSinceSave;
+          rate = streamRate;
+          baseTime = Date.now();
+        }
+      }
+    }
+
+    if (userObj && userObj.lastYieldSync) {
+      const syncElapsedSec = Math.max(0, (Date.now() - new Date(userObj.lastYieldSync).getTime()) / 1000);
+      const userAccrued = Number(userObj.totalProfit || userObj.totalEarned || 0) + (syncElapsedSec * rate);
+      if (userAccrued > baseProfit) {
+        baseProfit = userAccrued;
+      }
+    }
+
+    return { baseValue: baseProfit, baseTime, rate };
+  } catch (e) {
+    return { baseValue: 0, baseTime: Date.now(), rate: 0.0000008 };
+  }
+};
+
 export default function UserDashboard() {
   const { user, updateUser } = useAuth();
-  const [streamingValue, setStreamingValue] = useState(() => {
-    try {
-      const saved = localStorage.getItem('horizon_user');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return Number(parsed?.totalEarned || parsed?.totalProfit || 0);
-      }
-    } catch (e) {}
-    return 0;
-  });
+  const streamAnchorRef = useRef(getInitialStreamingState());
+  const [streamingValue, setStreamingValue] = useState(streamAnchorRef.current.baseValue);
   const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [copiedRef, setCopiedRef] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [loading, setLoading] = useState(true);
   const [avatar, setAvatar] = useState(() => localStorage.getItem('horizon_user_avatar') || '');
-  const streamRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const referralLink = user?.referralLink || (user?.id || user?.customId ? getReferralLink(user?.customId || user?.id) : '');
@@ -123,25 +153,86 @@ export default function UserDashboard() {
     return () => clearTimeout(t);
   }, []);
 
-  // Synchronize initial & updated profit baseline from backend user data
+  // Live continuous high-frequency streaming ROI ticker
   useEffect(() => {
-    const liveProfit = Number(user?.totalEarned || user?.totalProfit || 0);
-    if (liveProfit > 0) {
-      setStreamingValue(prev => (prev === 0 || liveProfit > prev ? liveProfit : prev));
-    }
-  }, [user?.totalEarned, user?.totalProfit]);
+    const activeRate = Number(user?.perSecondRate !== undefined && user?.perSecondRate !== null && user?.perSecondRate > 0
+      ? user.perSecondRate
+      : (streamAnchorRef.current.rate || 0.0000008));
 
-  // Live continuous per-second streaming ROI
-  useEffect(() => {
-    const rate = Number(user?.perSecondRate || 0);
-    if (rate <= 0) return;
-    streamRef.current = setInterval(() => {
-      setStreamingValue(prev => prev + rate);
-    }, 1000);
+    streamAnchorRef.current.rate = activeRate;
+
+    const tickStream = () => {
+      const now = Date.now();
+      const elapsedSec = Math.max(0, (now - streamAnchorRef.current.baseTime) / 1000);
+      const liveVal = streamAnchorRef.current.baseValue + (elapsedSec * streamAnchorRef.current.rate);
+      setStreamingValue(liveVal);
+    };
+
+    tickStream();
+    const interval = setInterval(tickStream, 100);
+
+    const persistStreamState = () => {
+      try {
+        const now = Date.now();
+        const elapsedSec = Math.max(0, (now - streamAnchorRef.current.baseTime) / 1000);
+        const liveVal = streamAnchorRef.current.baseValue + (elapsedSec * streamAnchorRef.current.rate);
+        localStorage.setItem('horizon_streaming_state', JSON.stringify({
+          baseProfit: liveVal,
+          timestamp: now,
+          rate: streamAnchorRef.current.rate,
+        }));
+      } catch (err) {}
+    };
+
+    // Auto persist every 1 second for crash/refresh resilience
+    const saveInterval = setInterval(persistStreamState, 1000);
+
+    window.addEventListener('beforeunload', persistStreamState);
+    window.addEventListener('pagehide', persistStreamState);
+    document.addEventListener('visibilitychange', persistStreamState);
+
     return () => {
-      if (streamRef.current) clearInterval(streamRef.current);
+      clearInterval(interval);
+      clearInterval(saveInterval);
+      persistStreamState();
+      window.removeEventListener('beforeunload', persistStreamState);
+      window.removeEventListener('pagehide', persistStreamState);
+      document.removeEventListener('visibilitychange', persistStreamState);
     };
   }, [user?.perSecondRate]);
+
+  // Synchronize when backend user data updates (monotonically progressive)
+  useEffect(() => {
+    if (!user) return;
+    const rate = Number(user?.perSecondRate !== undefined && user?.perSecondRate !== null && user?.perSecondRate > 0
+      ? user.perSecondRate
+      : (streamAnchorRef.current.rate || 0.0000008));
+    const backendProfit = Number(user?.totalProfit || user?.totalEarned || 0);
+    const lastSyncTime = user?.lastYieldSync ? new Date(user.lastYieldSync).getTime() : Date.now();
+    const elapsedSinceSync = Math.max(0, (Date.now() - lastSyncTime) / 1000);
+    const backendAccrued = backendProfit + (elapsedSinceSync * rate);
+
+    const currentLocal = streamAnchorRef.current.baseValue +
+      (Math.max(0, (Date.now() - streamAnchorRef.current.baseTime) / 1000) * streamAnchorRef.current.rate);
+
+    // Monotonic progression: take maximum so counter never restarts or jumps backward
+    const newBaseline = Math.max(currentLocal, backendAccrued, backendProfit);
+
+    streamAnchorRef.current = {
+      baseValue: newBaseline,
+      baseTime: Date.now(),
+      rate,
+    };
+    setStreamingValue(newBaseline);
+
+    try {
+      localStorage.setItem('horizon_streaming_state', JSON.stringify({
+        baseProfit: newBaseline,
+        timestamp: Date.now(),
+        rate,
+      }));
+    } catch (err) {}
+  }, [user?.totalProfit, user?.totalEarned, user?.perSecondRate, user?.lastYieldSync]);
 
   // Countdown to next daily payout (midnight)
   useEffect(() => {
@@ -392,7 +483,7 @@ export default function UserDashboard() {
                 </div>
               </div>
               <span className="text-[11px] font-bold text-emerald-700 font-mono">
-                +${user?.perSecondRate ? user.perSecondRate.toFixed(7) : '0.0000000'}/s
+                +${(user?.perSecondRate !== undefined && user?.perSecondRate !== null && user?.perSecondRate > 0 ? user.perSecondRate : (streamAnchorRef.current?.rate || 0.0000008)).toFixed(7)}/s
               </span>
             </div>
           </div>
@@ -421,9 +512,9 @@ export default function UserDashboard() {
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-700 font-poppins font-medium">
-              Streaming rate: <span className="text-emerald-700 font-extrabold font-mono">+${user?.perSecondRate?.toFixed(7) || '0.0007951'}/sec</span>
+              Streaming rate: <span className="text-emerald-700 font-extrabold font-mono">+${(user?.perSecondRate !== undefined && user?.perSecondRate !== null && user?.perSecondRate > 0 ? user.perSecondRate : (streamAnchorRef.current?.rate || 0.0000008)).toFixed(7)}/sec</span>
               {' · '}
-              <span className="text-slate-600">Active Assets: Solar Eco Farm & Platinum Vault Offtake</span>
+              <span className="text-slate-600">Active Assets: {user?.activeAssetNames || 'Solar Eco Farm & Platinum Vault Offtake'}</span>
             </p>
 
             <div className="flex items-center gap-3 pt-2">

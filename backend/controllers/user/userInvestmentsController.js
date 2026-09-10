@@ -2,6 +2,7 @@ const InvestmentPlan = require("../../models/InvestmentPlan");
 const UserInvestment = require("../../models/UserInvestment");
 const User = require("../../models/User");
 const Transaction = require("../../models/Transaction");
+const { distributeReferralCommissions, syncUserStreamingEarnings } = require("../../utils/yieldAndAffiliateEngine");
 
 // @desc    Get All Active Investment Plans
 // @route   GET /api/user/plans
@@ -96,8 +97,37 @@ exports.investInPlan = async (req, res) => {
     user.depositWallet -= investAmount;
     user.totalInvested = (user.totalInvested || 0) + investAmount;
 
-    // Monthly ROI % to daily & per second calculations
-    const dailyEarning = (investAmount * (plan.roi / 100)) / 30;
+    // Determine effective ROI rate (Slab matching or fixed)
+    let effectiveDailyRoi = plan.dailyRoi || (plan.roi ? plan.roi / 30 : 0.25);
+    let effectiveMonthlyRoi = plan.roi || Number((effectiveDailyRoi * 30).toFixed(2));
+    let effectiveAnnualRoi = Number((effectiveDailyRoi * 360).toFixed(2));
+    let matchedSlab = null;
+
+    if (plan.roiType === "slab" && Array.isArray(plan.roiSlabs) && plan.roiSlabs.length > 0) {
+      matchedSlab = plan.roiSlabs.find((s) => {
+        const min = Number(s.minAmount) || 0;
+        const max = s.noMaxLimit || !s.maxAmount ? Infinity : Number(s.maxAmount);
+        return investAmount >= min && investAmount <= max;
+      });
+
+      if (!matchedSlab) {
+        const sorted = [...plan.roiSlabs].sort((a, b) => (b.minAmount || 0) - (a.minAmount || 0));
+        if (sorted.length > 0 && investAmount >= sorted[0].minAmount) {
+          matchedSlab = sorted[0];
+        } else {
+          matchedSlab = plan.roiSlabs[0];
+        }
+      }
+
+      if (matchedSlab) {
+        effectiveDailyRoi = Number(matchedSlab.dailyRoi);
+        effectiveMonthlyRoi = matchedSlab.monthlyRoi || Number((effectiveDailyRoi * 30).toFixed(2));
+        effectiveAnnualRoi = matchedSlab.annualRoi || Number((effectiveDailyRoi * 360).toFixed(2));
+      }
+    }
+
+    // Dynamic daily & per second calculations based on matched slab ROI
+    const dailyEarning = investAmount * (effectiveDailyRoi / 100);
     const perSecondRate = dailyEarning / 86400;
 
     user.dailyEarning = parseFloat(((user.dailyEarning || 0) + dailyEarning).toFixed(4));
@@ -112,7 +142,18 @@ exports.investInPlan = async (req, res) => {
       planName: plan.name,
       planCategory: plan.category,
       amount: investAmount,
-      roi: plan.roi,
+      dailyRoi: effectiveDailyRoi,
+      roi: effectiveMonthlyRoi,
+      annualRoi: effectiveAnnualRoi,
+      slabApplied: matchedSlab
+        ? {
+            minAmount: matchedSlab.minAmount,
+            maxAmount: matchedSlab.maxAmount,
+            dailyRoi: matchedSlab.dailyRoi,
+            monthlyRoi: matchedSlab.monthlyRoi,
+            annualRoi: matchedSlab.annualRoi,
+          }
+        : undefined,
       payoutInterval: plan.payoutInterval,
       duration: plan.duration,
       durationDays: plan.durationDays,
@@ -138,7 +179,7 @@ exports.investInPlan = async (req, res) => {
       gateway: "Deposit Wallet",
       referenceNo: newInvestment.customId,
       status: "Approved",
-      note: `Active contract allocated in ${plan.name} (${plan.category})`,
+      note: `Active contract allocated in ${plan.name} (${plan.category}) @ ${effectiveDailyRoi}% daily ROI`,
     });
 
     // Increment plan investors count
@@ -146,9 +187,14 @@ exports.investInPlan = async (req, res) => {
     await plan.save();
     await user.save();
 
+    // Trigger multi-tier referral deposit commissions asynchronously
+    distributeReferralCommissions(user._id, investAmount, "investment").catch((err) =>
+      console.warn("[Affiliate] Investment commission distribution notice:", err.message)
+    );
+
     res.status(201).json({
       success: true,
-      message: `Successfully invested $${investAmount.toLocaleString()} USD in ${plan.name}.`,
+      message: `Successfully invested $${investAmount.toLocaleString()} USD in ${plan.name} at ${effectiveDailyRoi}% daily ROI.`,
       investment: newInvestment,
       transaction: newTrx,
       user: {
@@ -168,6 +214,9 @@ exports.investInPlan = async (req, res) => {
 // @route   GET /api/user/investments
 exports.getMyInvestments = async (req, res) => {
   try {
+    // Synchronize latest contract yields
+    await syncUserStreamingEarnings(req.user);
+
     const { status, category } = req.query;
     let query = { user: req.user._id };
 

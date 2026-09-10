@@ -2,15 +2,19 @@ const User = require("../../models/User");
 const UserInvestment = require("../../models/UserInvestment");
 const Transaction = require("../../models/Transaction");
 const InvestmentPlan = require("../../models/InvestmentPlan");
+const { syncUserStreamingEarnings } = require("../../utils/yieldAndAffiliateEngine");
 
 // @desc    Get Investor Dashboard Overview (Wallets, KPIs, Charts, Streaming Rates, Recent Activity)
 // @route   GET /api/user/dashboard/overview
 exports.getDashboardOverview = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select("-password");
+    let user = await User.findById(req.user._id).select("-password");
     if (!user) {
       return res.status(404).json({ success: false, message: "Investor account not found." });
     }
+
+    // Synchronize streaming earnings to accurately accrue yields up to current millisecond
+    user = await syncUserStreamingEarnings(user);
 
     // Active Investments
     const activeInvestments = await UserInvestment.find({
@@ -23,16 +27,18 @@ exports.getDashboardOverview = async (req, res) => {
     // Calculate aggregated dynamic daily earnings & streaming per-sec rates from active contracts
     let totalDailyEarning = 0;
     let totalPerSecondRate = 0;
+    const activeAssetNames = [];
 
     activeInvestments.forEach((inv) => {
       totalDailyEarning += inv.dailyEarning || 0;
       totalPerSecondRate += inv.perSecondRate || 0;
+      if (inv.planName) activeAssetNames.push(inv.planName);
     });
 
     // If user's stored rate differs, sync it
     if (activeContracts > 0) {
-      user.dailyEarning = parseFloat(totalDailyEarning.toFixed(4));
-      user.perSecondRate = parseFloat(totalPerSecondRate.toFixed(8));
+      user.dailyEarning = Number(totalDailyEarning.toFixed(4));
+      user.perSecondRate = Number(totalPerSecondRate.toFixed(8));
       await user.save();
     }
 
@@ -53,8 +59,11 @@ exports.getDashboardOverview = async (req, res) => {
     const streaming = {
       perSecondRate: user.perSecondRate || 0,
       dailyEarning: user.dailyEarning || 0,
-      streamingProfit: user.earningWallet || 0,
+      streamingProfit: user.totalProfit || user.earningWallet || 0,
       payoutType: user.payoutType || "Per Second (Live)",
+      lastYieldSync: user.lastYieldSync || new Date(),
+      serverTime: new Date().toISOString(),
+      activeAssetNames: activeAssetNames.length > 0 ? activeAssetNames.join(" & ") : "Solar Eco Farm & Platinum Vault Offtake",
     };
 
     // Affiliate Network stats

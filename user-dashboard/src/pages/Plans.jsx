@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getPlans, investInPlan } from '../api/plansApi';
 import {
   RiPercentLine, RiTimeLine, RiShieldFlashLine, RiLeafLine, RiCoinsLine,
   RiFlashlightLine, RiCalculatorLine, RiArrowRightLine, RiWalletLine,
-  RiCheckLine, RiSearchLine, RiAlertLine, RiInformationLine,
+  RiCheckLine, RiSearchLine, RiAlertLine, RiInformationLine, RiStackLine,
+  RiArrowDownSLine, RiArrowUpSLine, RiSparklingLine,
 } from 'react-icons/ri';
 import { UilMoneyBill } from '@iconscout/react-unicons';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +12,33 @@ import Modal from '../components/ui/Modal';
 import ProfitCalculatorDrawer from '../components/calculator/ProfitCalculatorDrawer';
 import SearchBar from '../components/ui/SearchBar';
 import PageHeader from '../components/ui/PageHeader';
+
+export const DEFAULT_ROI_SLABS = [
+  { minAmount: 10, maxAmount: 49, noMaxLimit: false, dailyRoi: 0.25, monthlyRoi: 7.5, annualRoi: 90 },
+  { minAmount: 50, maxAmount: 99, noMaxLimit: false, dailyRoi: 0.35, monthlyRoi: 10.5, annualRoi: 126 },
+  { minAmount: 100, maxAmount: 499, noMaxLimit: false, dailyRoi: 0.55, monthlyRoi: 16.5, annualRoi: 198 },
+  { minAmount: 500, maxAmount: 1500, noMaxLimit: false, dailyRoi: 0.75, monthlyRoi: 22.5, annualRoi: 270 },
+  { minAmount: 1500, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, monthlyRoi: 30.0, annualRoi: 360 },
+];
+
+// Helper to find matching slab for an amount
+export function matchRoiSlab(amount, slabs = []) {
+  const num = Number(amount) || 0;
+  const list = slabs && slabs.length > 0 ? slabs : DEFAULT_ROI_SLABS;
+  const found = list.find((s) => {
+    const min = Number(s.minAmount) || 0;
+    const max = s.noMaxLimit || !s.maxAmount ? Infinity : Number(s.maxAmount);
+    return num >= min && num <= max;
+  });
+  if (found) return found;
+  const sorted = [...list].sort(
+    (a, b) => (Number(b.minAmount) || 0) - (Number(a.minAmount) || 0)
+  );
+  if (sorted.length > 0 && num >= (Number(sorted[0].minAmount) || 0)) {
+    return sorted[0];
+  }
+  return list[0];
+}
 
 export default function Plans() {
   const [loading, setLoading] = useState(true);
@@ -22,10 +50,11 @@ export default function Plans() {
   const [calcPlan, setCalcPlan] = useState(null);
   const [investDrawerOpen, setInvestDrawerOpen] = useState(false);
   const [calcDrawerOpen, setCalcDrawerOpen] = useState(false);
-  const [investAmount, setInvestAmount] = useState(1000);
+  const [investAmount, setInvestAmount] = useState(100);
   const [investSuccess, setInvestSuccess] = useState(false);
   const [investSubmitting, setInvestSubmitting] = useState(false);
   const [investError, setInvestError] = useState('');
+  const [expandedSlabsPlanId, setExpandedSlabsPlanId] = useState(null);
 
   const categories = ['all', 'Renewable Energy', 'Precious Metal', 'Real Estate', 'Venture Capital'];
 
@@ -35,15 +64,27 @@ export default function Plans() {
       if (res?.success && Array.isArray(res.plans)) {
         const formatted = res.plans.map(p => {
           const isInf = !!p.isInfinite || p.duration?.toLowerCase().includes("infinite") || p.duration?.toLowerCase().includes("lifetime");
+          const slabs = Array.isArray(p.roiSlabs) && p.roiSlabs.length > 0
+            ? p.roiSlabs
+            : DEFAULT_ROI_SLABS;
+
+          const minDaily = slabs[0]?.dailyRoi || 0.25;
+          const maxDaily = slabs[slabs.length - 1]?.dailyRoi || 1.0;
+
           return {
             _id: p._id,
             id: p._id || p.customId,
             name: p.name,
             category: p.category || 'Renewable Energy',
-            roi: typeof p.roi === 'string' ? p.roi : `${p.roi}%`,
-            roiNumeric: parseFloat(p.roi) || 1.5,
-            minAmount: `$${(p.minAmount || 100).toLocaleString()}`,
-            minAmountNumeric: p.minAmount || 100,
+            roiType: p.roiType || 'slab',
+            roiSlabs: slabs,
+            dailyRoi: p.dailyRoi || minDaily,
+            minDaily,
+            maxDaily,
+            roi: typeof p.roi === 'string' ? p.roi : `${p.roi || 7.5}%`,
+            roiNumeric: parseFloat(p.roi) || (minDaily * 30),
+            minAmount: `$${(p.minAmount || slabs[0]?.minAmount || 10).toLocaleString()}`,
+            minAmountNumeric: p.minAmount || slabs[0]?.minAmount || 10,
             maxAmount: p.noMaxLimit ? 'No Limit' : (p.maxAmount ? `$${p.maxAmount.toLocaleString()}` : 'No Limit'),
             maxAmountNumeric: p.maxAmount || 1000000,
             duration: isInf ? "∞ Lifetime" : (p.duration || `${p.durationDays || 365} Days`),
@@ -73,7 +114,7 @@ export default function Plans() {
 
   const handleOpenInvest = (plan) => {
     setSelectedPlan(plan);
-    setInvestAmount(plan.minAmountNumeric || 1000);
+    setInvestAmount(plan.minAmountNumeric || 100);
     setInvestSuccess(false);
     setInvestError('');
     setInvestDrawerOpen(true);
@@ -123,6 +164,12 @@ export default function Plans() {
     return matchSearch && matchCat;
   });
 
+  // Dynamic Slab Matching in Invest Modal
+  const activeMatchedSlab = useMemo(() => {
+    if (!selectedPlan) return null;
+    return matchRoiSlab(investAmount, selectedPlan.roiSlabs);
+  }, [selectedPlan, investAmount]);
+
   if (loading) {
     return (
       <div className="page-enter space-y-6">
@@ -139,7 +186,7 @@ export default function Plans() {
       {/* ──────── PAGE HEADER & TOP ACTION ──────── */}
       <PageHeader
         title="Investment Plans"
-        subtitle="Explore institutional asset contracts backed by real renewable energy and physical bullion vaults"
+        subtitle="Explore institutional asset contracts with dynamic Amount-Wise Daily ROI percentage slabs"
         badge="Asset Engine"
         actions={
           <button
@@ -179,11 +226,13 @@ export default function Plans() {
         </div>
       </div>
 
-      {/* ──────── PLANS CARD GRID (EXACT SUPER ADMIN DESIGN) ──────── */}
+      {/* ──────── PLANS CARD GRID ──────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {filtered.map((plan, i) => {
           const isRenewable = plan.category === 'Renewable Energy';
           const isMetal = plan.category === 'Precious Metal';
+          const isExpanded = expandedSlabsPlanId === plan.id;
+          const slabs = plan.roiSlabs || DEFAULT_ROI_SLABS;
 
           return (
             <div
@@ -191,92 +240,132 @@ export default function Plans() {
               className="card card-gold p-6 animate-slide-up flex flex-col justify-between hover:shadow-card-hover transition-all duration-300 relative group overflow-hidden"
               style={{ animationDelay: `${i * 60}ms` }}
             >
-              {/* Top: Category Icon & Badge */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-xs ${
-                    isRenewable ? 'bg-emerald-50 text-emerald-600' :
-                    isMetal ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
-                  }`}>
-                    {isRenewable ? <RiLeafLine size={22} /> :
-                     isMetal ? <RiCoinsLine size={22} /> : <RiShieldFlashLine size={22} />}
-                  </div>
-                  <div>
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                      isRenewable ? 'bg-emerald-100/70 text-emerald-800' :
-                      isMetal ? 'bg-amber-100/70 text-amber-800' : 'bg-blue-100/70 text-blue-800'
+              <div>
+                {/* Top: Category Icon & Badge */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-xs ${
+                      isRenewable ? 'bg-emerald-50 text-emerald-600' :
+                      isMetal ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
                     }`}>
-                      {plan.category || 'Standard'}
+                      {isRenewable ? <RiLeafLine size={22} /> :
+                       isMetal ? <RiCoinsLine size={22} /> : <RiShieldFlashLine size={22} />}
+                    </div>
+                    <div>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                        isRenewable ? 'bg-emerald-100/70 text-emerald-800' :
+                        isMetal ? 'bg-amber-100/70 text-amber-800' : 'bg-blue-100/70 text-blue-800'
+                      }`}>
+                        {plan.category || 'Standard'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <span className="badge badge-success text-[10px] font-bold">
+                    {plan.status}
+                  </span>
+                </div>
+
+                {/* Plan Title */}
+                <h3 className="text-lg font-bold text-gray-800 font-display mb-3 line-clamp-1 group-hover:text-gold-600 transition-colors">
+                  {plan.name}
+                </h3>
+
+                {/* Amount-Wise Daily ROI Highlight Box */}
+                <div className="p-3.5 bg-gradient-to-r from-gold-50/90 to-amber-50/50 rounded-xl border border-gold-200/60 mb-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="flex items-center gap-1 text-xs text-gold-700 font-bold font-poppins">
+                      <RiFlashlightLine size={15} className="text-amber-500 animate-pulse" />
+                      Daily ROI Slabs
+                    </span>
+                    <span className="text-sm sm:text-base font-extrabold text-emerald-700 font-display">
+                      {plan.minDaily}% – {plan.maxDaily}% Daily
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40 font-poppins">
+                    <span>Monthly (Annual APY)</span>
+                    <span className="font-bold text-gray-800 font-mono">
+                      {(plan.minDaily * 30).toFixed(1)}% – {(plan.maxDaily * 30).toFixed(1)}% / mo ({(plan.minDaily * 360).toFixed(0)}% – {(plan.maxDaily * 360).toFixed(0)}% APY)
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 font-poppins">
+                    <span>Payout Mode</span>
+                    <span className="font-semibold text-gray-800 font-mono">
+                      {plan.payoutInterval || 'Per Second (Live)'}
                     </span>
                   </div>
                 </div>
 
-                <span className="badge badge-success text-[10px] font-bold">
-                  {plan.status}
-                </span>
-              </div>
+                {/* Key Specs */}
+                <div className="space-y-2.5 mb-4 text-sm font-poppins">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
+                      <UilMoneyBill size={16} /> Investment Range
+                    </span>
+                    <span className="font-bold text-gray-800 text-xs">
+                      {plan.minAmount} — {plan.maxAmount || 'No Limit'}
+                    </span>
+                  </div>
 
-              {/* Plan Title */}
-              <h3 className="text-lg font-bold text-gray-800 font-display mb-3 line-clamp-1 group-hover:text-gold-600 transition-colors">
-                {plan.name}
-              </h3>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
+                      <RiTimeLine size={16} /> Duration
+                    </span>
+                    <span className="font-bold text-gray-800 text-xs flex items-center gap-1">
+                      {plan.isInfinite ? (
+                        <span className="inline-flex items-center gap-1 text-gold-700 bg-gold-50 px-2 py-0.5 rounded border border-gold-200 font-extrabold text-[11px]">
+                          <span>∞</span> Lifetime
+                        </span>
+                      ) : (
+                        plan.duration
+                      )}
+                    </span>
+                  </div>
 
-              {/* Monthly ROI Highlight Box */}
-              <div className="p-3.5 bg-gradient-to-r from-gold-50/90 to-amber-50/50 rounded-xl border border-gold-200/60 mb-4">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="flex items-center gap-1 text-xs text-gold-700 font-bold font-poppins">
-                    <RiFlashlightLine size={15} className="text-amber-500 animate-pulse" />
-                    Monthly ROI
-                  </span>
-                  <span className="text-base font-extrabold text-emerald-700 font-display">
-                    {plan.roiNumeric}% / Month
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40 font-poppins">
-                  <span>Annual APY Rate</span>
-                  <span className="font-bold text-gray-800 font-mono">
-                    {(plan.roiNumeric * 12).toFixed(1)}% APY
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 font-poppins">
-                  <span>Payout Mode</span>
-                  <span className="font-semibold text-gray-800 font-mono">
-                    {plan.payoutInterval || 'Per Second (Live)'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Key Specs */}
-              <div className="space-y-2.5 mb-5 text-sm font-poppins">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
-                    <UilMoneyBill size={16} /> Investment Range
-                  </span>
-                  <span className="font-bold text-gray-800 text-xs">
-                    {plan.minAmount} — {plan.maxAmount || 'No Limit'}
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
+                      <RiPercentLine size={16} /> Active Investors
+                    </span>
+                    <span className="font-semibold text-gold-600 text-xs">{plan.investors} Users</span>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
-                    <RiTimeLine size={16} /> Duration
-                  </span>
-                  <span className="font-bold text-gray-800 text-xs flex items-center gap-1">
-                    {plan.isInfinite ? (
-                      <span className="inline-flex items-center gap-1 text-gold-700 bg-gold-50 px-2 py-0.5 rounded border border-gold-200 font-extrabold text-[11px]">
-                        <span>∞</span> Lifetime
-                      </span>
-                    ) : (
-                      plan.duration
-                    )}
-                  </span>
-                </div>
+                {/* Amount-Wise Slabs Accordion */}
+                <div className="mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedSlabsPlanId(isExpanded ? null : plan.id)}
+                    className="w-full py-1.5 px-2.5 rounded-lg bg-gold-100/60 hover:bg-gold-100 text-gold-950 border border-gold-300/80 text-[11px] font-bold flex items-center justify-between transition-all cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <RiStackLine size={14} className="text-gold-700" />
+                      <span>View 5 Amount-Wise ROI Slabs</span>
+                    </span>
+                    {isExpanded ? <RiArrowUpSLine size={16} /> : <RiArrowDownSLine size={16} />}
+                  </button>
 
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
-                    <RiPercentLine size={16} /> Active Investors
-                  </span>
-                  <span className="font-semibold text-gold-600 text-xs">{plan.investors} Users</span>
+                  {isExpanded && (
+                    <div className="mt-2 p-2.5 bg-slate-50 rounded-xl border border-gold-200 space-y-1.5 animate-fade-in text-[11px] font-poppins">
+                      <div className="grid grid-cols-3 font-bold text-gray-500 uppercase text-[9.5px] pb-1 border-b border-gray-200">
+                        <span>Amount Slab</span>
+                        <span className="text-center">Daily ROI</span>
+                        <span className="text-right">Monthly (Annual)</span>
+                      </div>
+                      {slabs.map((slab, idx) => (
+                        <div key={idx} className="grid grid-cols-3 items-center py-1 border-b border-gray-100 last:border-none">
+                          <span className="font-semibold text-gray-800">
+                            ${slab.minAmount} — {slab.noMaxLimit || !slab.maxAmount ? "1500$ ++" : `$${slab.maxAmount}`}
+                          </span>
+                          <span className="text-center font-bold text-emerald-600 font-mono">
+                            {slab.dailyRoi}% / d
+                          </span>
+                          <span className="text-right font-semibold text-gray-600 font-mono">
+                            {slab.monthlyRoi || (slab.dailyRoi * 30).toFixed(1)}% ({slab.annualRoi || (slab.dailyRoi * 360).toFixed(0)}%)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -313,7 +402,7 @@ export default function Plans() {
         isOpen={investDrawerOpen}
         onClose={() => setInvestDrawerOpen(false)}
         title={`Invest in ${selectedPlan?.name || 'Plan'}`}
-        subtitle={`${selectedPlan?.roiNumeric}% / Month (${(Number(selectedPlan?.roiNumeric || 0) * 12).toFixed(1)}% APY) | Contract: ${selectedPlan?.duration}`}
+        subtitle={`Amount-Wise Daily ROI Slabs &bull; Contract: ${selectedPlan?.duration}`}
         size="lg"
         footer={
           <div className="flex items-center justify-between w-full">
@@ -330,7 +419,7 @@ export default function Plans() {
           </div>
         }
       >
-        <div className="space-y-5 font-poppins">
+        <div className="space-y-4 font-poppins">
           {investSuccess && (
             <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-poppins flex items-center gap-2">
               <RiCheckLine size={20} /> Contract successfully activated! Real-time streaming ROI has begun.
@@ -344,7 +433,7 @@ export default function Plans() {
           )}
 
           {/* Wallet Balance Info */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
                 <RiWalletLine size={20} className="text-blue-600" />
@@ -359,9 +448,49 @@ export default function Plans() {
             )}
           </div>
 
+          {/* ──────── 5 AMOUNT-WISE DAILY ROI PERCENTAGE SLABS TABLE ──────── */}
+          <div className="p-3.5 bg-gradient-to-br from-amber-50/70 via-gold-50/40 to-white rounded-2xl border border-gold-300 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wide text-gold-950 flex items-center gap-1.5">
+                <RiSparklingLine size={16} className="text-gold-600" />
+                Amount Wise Daily ROI Slabs
+              </span>
+              <span className="badge badge-gold text-[10px] font-bold">
+                Active Slab: ${activeMatchedSlab?.minAmount} – {activeMatchedSlab?.noMaxLimit ? "1500$ ++" : `$${activeMatchedSlab?.maxAmount}`} ({activeMatchedSlab?.dailyRoi}% / d)
+              </span>
+            </div>
+
+            {/* Slabs Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-1.5 text-xs">
+              {(selectedPlan?.roiSlabs || DEFAULT_ROI_SLABS).map((slab, idx) => {
+                const isMatched = activeMatchedSlab?.minAmount === slab.minAmount;
+                return (
+                  <div
+                    key={idx}
+                    className={`p-2 rounded-xl border text-center transition-all ${
+                      isMatched
+                        ? 'bg-gold-400 border-gold-500 text-gray-950 shadow-md ring-2 ring-gold-300 scale-102 font-bold'
+                        : 'bg-white border-gold-200 text-gray-700 opacity-80'
+                    }`}
+                  >
+                    <p className={`text-[10.5px] font-extrabold ${isMatched ? 'text-gray-950' : 'text-gray-500'}`}>
+                      ${slab.minAmount} — {slab.noMaxLimit || !slab.maxAmount ? '1500$ ++' : `$${slab.maxAmount}`}
+                    </p>
+                    <p className={`text-xs font-black font-mono mt-0.5 ${isMatched ? 'text-gray-950' : 'text-emerald-700'}`}>
+                      {slab.dailyRoi}% daily
+                    </p>
+                    <p className={`text-[9.5px] mt-0.5 ${isMatched ? 'text-gray-900 font-semibold' : 'text-gray-500'}`}>
+                      {slab.monthlyRoi || (slab.dailyRoi * 30).toFixed(1)}% mo &bull; {slab.annualRoi || (slab.dailyRoi * 360).toFixed(0)}% yr
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Investment Amount Input & Presets */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500 font-poppins">
                 Investment Capital (USD)
               </label>
@@ -380,22 +509,24 @@ export default function Plans() {
                   const val = e.target.value;
                   setInvestAmount(val === '' ? '' : Number(val));
                 }}
-                min={selectedPlan?.minAmountNumeric}
+                min={selectedPlan?.minAmountNumeric || 10}
                 max={selectedPlan?.maxAmountNumeric}
                 className="input !pl-9 font-bold text-lg text-slate-900"
-                placeholder={String(selectedPlan?.minAmountNumeric || 1000)}
+                placeholder={String(selectedPlan?.minAmountNumeric || 100)}
               />
             </div>
 
             {/* Quick Chips */}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {[selectedPlan?.minAmountNumeric, 2500, 5000, 10000, 25000].filter(Boolean).map(amt => (
+              {[25, 75, 250, 750, 2000].map(amt => (
                 <button
                   key={amt}
                   type="button"
                   onClick={() => setInvestAmount(amt)}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold font-poppins transition-all cursor-pointer ${
-                    Number(investAmount) === amt ? 'bg-gold-400 text-gray-950 font-bold shadow-2xs border border-gold-400' : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
+                    Number(investAmount) === amt
+                      ? 'bg-gold-400 text-gray-950 font-bold shadow-2xs border border-gold-400'
+                      : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   ${amt?.toLocaleString()}
@@ -407,7 +538,10 @@ export default function Plans() {
           {/* ──────── ROI & YIELD RETURN CALCULATOR (DAILY, WEEKLY, MONTHLY, QUARTERLY, ANNUALLY) ──────── */}
           {(() => {
             const currentInvestCapital = Number(investAmount) || 0;
-            const planMonthlyRoi = Number(selectedPlan?.roiNumeric || 1.5);
+            const activeDailyRoi = Number(activeMatchedSlab?.dailyRoi) || 0.25;
+            const activeMonthlyRoi = Number(activeMatchedSlab?.monthlyRoi) || activeDailyRoi * 30;
+            const activeAnnualRoi = Number(activeMatchedSlab?.annualRoi) || activeDailyRoi * 360;
+
             const isPlanInfinite =
               !!selectedPlan?.isInfinite ||
               selectedPlan?.duration?.toLowerCase().includes("infinite") ||
@@ -415,11 +549,11 @@ export default function Plans() {
 
             const planDurationDays = isPlanInfinite ? 365 : (selectedPlan?.durationDays || 365);
 
-            const calcMonthlyYield = currentInvestCapital * (planMonthlyRoi / 100);
-            const calcDailyYield = calcMonthlyYield / 30;
+            const calcDailyYield = currentInvestCapital * (activeDailyRoi / 100);
             const calcWeeklyYield = calcDailyYield * 7;
+            const calcMonthlyYield = calcDailyYield * 30;
             const calcQuarterlyYield = calcMonthlyYield * 3;
-            const calcAnnualYield = calcMonthlyYield * 12;
+            const calcAnnualYield = calcDailyYield * 360;
 
             const calcTotalProfit = calcDailyYield * planDurationDays;
             const calcTotalMaturity = currentInvestCapital + calcTotalProfit;
@@ -437,7 +571,7 @@ export default function Plans() {
                         ROI & Yield Return Breakdown
                       </h4>
                       <p className="text-[11px] text-gray-500">
-                        {planMonthlyRoi}% / Month &bull; {(planMonthlyRoi * 12).toFixed(1)}% Annual APY
+                        Slab Rate: {activeDailyRoi}% Daily &bull; {activeMonthlyRoi}% Monthly &bull; {activeAnnualRoi}% Annual APY
                       </p>
                     </div>
                   </div>
@@ -458,7 +592,7 @@ export default function Plans() {
                       +${calcDailyYield.toFixed(2)}
                     </p>
                     <p className="text-[10px] text-gray-500 font-medium mt-0.5 font-mono">
-                      {(planMonthlyRoi / 30).toFixed(3)}%
+                      {activeDailyRoi}%
                     </p>
                   </div>
 
@@ -471,7 +605,7 @@ export default function Plans() {
                       +${calcWeeklyYield.toFixed(2)}
                     </p>
                     <p className="text-[10px] text-gray-500 font-medium mt-0.5 font-mono">
-                      {((planMonthlyRoi / 30) * 7).toFixed(2)}%
+                      {(activeDailyRoi * 7).toFixed(2)}%
                     </p>
                   </div>
 
@@ -484,7 +618,7 @@ export default function Plans() {
                       +${calcMonthlyYield.toFixed(2)}
                     </p>
                     <p className="text-[10px] text-gold-800 font-bold mt-0.5 font-mono">
-                      {planMonthlyRoi}% / mo
+                      {activeMonthlyRoi}% / mo
                     </p>
                   </div>
 
@@ -497,7 +631,7 @@ export default function Plans() {
                       +${calcQuarterlyYield.toFixed(2)}
                     </p>
                     <p className="text-[10px] text-gray-500 font-medium mt-0.5 font-mono">
-                      {(planMonthlyRoi * 3).toFixed(1)}%
+                      {(activeMonthlyRoi * 3).toFixed(1)}%
                     </p>
                   </div>
 
@@ -510,7 +644,7 @@ export default function Plans() {
                       +${calcAnnualYield.toFixed(2)}
                     </p>
                     <p className="text-[10px] text-emerald-800 font-bold mt-0.5 font-mono">
-                      {(planMonthlyRoi * 12).toFixed(1)}% APY
+                      {activeAnnualRoi}% APY
                     </p>
                   </div>
                 </div>

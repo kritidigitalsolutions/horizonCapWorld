@@ -59,12 +59,20 @@ exports.createDeposit = async (req, res) => {
       });
     }
 
+    if (!slipUrl || !slipUrl.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Proof of payment / deposit slip document is mandatory required.",
+      });
+    }
+
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ success: false, message: "Investor account not found." });
     }
 
     const newTrx = await Transaction.create({
+      customId: `TRX-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`,
       user: user._id,
       userName: user.name,
       userCustomId: user.customId || "HORIZON-USR-01",
@@ -133,6 +141,7 @@ exports.createWithdrawal = async (req, res) => {
     await user.save();
 
     const newTrx = await Transaction.create({
+      customId: `TRX-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`,
       user: user._id,
       userName: user.name,
       userCustomId: user.customId || "HORIZON-USR-01",

@@ -26,6 +26,18 @@ const adminSettingsSchema = new mongoose.Schema(
       type: String,
       default: "support@horizoncap.com",
     },
+    referralDepositCommissionEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    referralRoiShareEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    referralSystemEnabled: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

@@ -60,7 +60,10 @@ const {
 
 const {
   getReferralSettings,
+  updateReferralToggles,
+  createReferralTier,
   updateReferralSetting,
+  deleteReferralTier,
   getPromotersNetwork,
 } = require("../controllers/admin/adminReferralsController");
 
@@ -144,7 +147,10 @@ router.delete("/users/:id", protectAdmin, deleteUser);
 
 // ──────── 7. REFERRAL PLANS & PROMOTERS ────────
 router.get("/referrals/settings", protectAdmin, getReferralSettings);
+router.put("/referrals/toggles", protectAdmin, updateReferralToggles);
+router.post("/referrals/tiers", protectAdmin, createReferralTier);
 router.put("/referrals/settings/:id", protectAdmin, updateReferralSetting);
+router.delete("/referrals/tiers/:id", protectAdmin, deleteReferralTier);
 router.get("/referrals/promoters", protectAdmin, getPromotersNetwork);
 
 // ──────── 8. RANKS PROGRESSION LADDER ────────

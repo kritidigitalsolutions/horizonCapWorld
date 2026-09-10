@@ -37,9 +37,24 @@ const userInvestmentSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    dailyRoi: {
+      type: Number, // Daily ROI % (e.g. 0.25%, 0.35%, 0.55%, 0.75%, 1.00%)
+      default: 0.25,
+    },
     roi: {
-      type: Number, // Monthly ROI % (e.g. 1.5% or 10%)
+      type: Number, // Monthly ROI % (e.g. 7.5%, 10.5%, 16.5%, etc.)
       required: true,
+    },
+    annualRoi: {
+      type: Number, // Annual ROI % (e.g. 90%, 126%, 198%, etc.)
+      default: 90,
+    },
+    slabApplied: {
+      minAmount: Number,
+      maxAmount: Number,
+      dailyRoi: Number,
+      monthlyRoi: Number,
+      annualRoi: Number,
     },
     payoutInterval: {
       type: String,
@@ -95,9 +110,18 @@ userInvestmentSchema.pre("save", function () {
   if (!this.customId) {
     this.customId = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
   }
-  if (this.amount && this.roi) {
-    // roi is Monthly ROI % -> Daily return = (amount * (roi / 100)) / 30
-    this.dailyEarning = (this.amount * (this.roi / 100)) / 30;
+  if (this.amount) {
+    if (this.dailyRoi) {
+      // Daily ROI based
+      this.dailyEarning = this.amount * (this.dailyRoi / 100);
+      this.roi = this.roi || Number((this.dailyRoi * 30).toFixed(2));
+      this.annualRoi = this.annualRoi || Number((this.dailyRoi * 360).toFixed(2));
+    } else if (this.roi) {
+      // Monthly ROI based
+      this.dailyEarning = (this.amount * (this.roi / 100)) / 30;
+      this.dailyRoi = Number((this.roi / 30).toFixed(4));
+      this.annualRoi = Number((this.roi * 12).toFixed(2));
+    }
     // Per second = dailyEarning / 86400
     this.perSecondRate = this.dailyEarning / 86400;
   }

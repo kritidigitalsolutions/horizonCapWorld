@@ -50,7 +50,10 @@ exports.createPlan = async (req, res) => {
     const {
       name,
       category,
+      roiType,
       roi,
+      dailyRoi,
+      roiSlabs,
       duration,
       durationDays,
       isInfinite,
@@ -62,33 +65,71 @@ exports.createPlan = async (req, res) => {
       description,
     } = req.body;
 
-    if (!name || roi === undefined || !minAmount) {
+    if (!name) {
       return res.status(400).json({
         success: false,
-        message: "Plan name, Monthly ROI %, and minimum amount are required.",
+        message: "Plan name is required.",
       });
     }
 
-    const numMin = Number(minAmount) || 1000;
-    const numRoi = Number(roi) || 1.5;
-    // Calculate per-second streaming rate from Monthly ROI %
-    const secRate = ((numMin * (numRoi / 100)) / (30 * 86400)).toFixed(6);
+    const type = roiType === "fixed" ? "fixed" : "slab";
+
+    // Process slabs if slab type
+    let processedSlabs = [];
+    if (type === "slab" && Array.isArray(roiSlabs) && roiSlabs.length > 0) {
+      processedSlabs = roiSlabs.map((s) => {
+        const d = Number(s.dailyRoi) || 0;
+        return {
+          minAmount: Number(s.minAmount) || 0,
+          maxAmount: s.noMaxLimit ? null : Number(s.maxAmount) || null,
+          noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
+          dailyRoi: d,
+          monthlyRoi: Number((d * 30).toFixed(2)),
+          annualRoi: Number((d * 360).toFixed(2)),
+        };
+      });
+    }
+
+    const numMin =
+      type === "slab" && processedSlabs.length > 0
+        ? processedSlabs[0].minAmount
+        : Number(minAmount) || 10;
+
+    const numDailyRoi =
+      type === "slab" && processedSlabs.length > 0
+        ? processedSlabs[0].dailyRoi
+        : dailyRoi !== undefined
+        ? Number(dailyRoi)
+        : roi !== undefined
+        ? Number(roi) / 30
+        : 0.25;
+
+    const numMonthlyRoi = Number((numDailyRoi * 30).toFixed(2));
 
     const isInf = !!isInfinite || duration === "Infinite / Lifetime";
     const finalDuration = isInf ? "Infinite / Lifetime" : (duration || "12 Months");
     const finalDurationDays = isInf ? 0 : (Number(durationDays) || 365);
 
+    const hasNoMaxLimit =
+      type === "slab" && processedSlabs.length > 0
+        ? processedSlabs[processedSlabs.length - 1].noMaxLimit
+        : !!noMaxLimit;
+
+    const finalMaxAmount = hasNoMaxLimit ? null : Number(maxAmount) || null;
+
     const newPlan = await InvestmentPlan.create({
       name,
       category: category || "Renewable Energy",
-      roi: numRoi,
-      roiPerSec: `$${secRate} / sec`,
+      roiType: type,
+      roi: numMonthlyRoi,
+      dailyRoi: numDailyRoi,
+      roiSlabs: processedSlabs.length > 0 ? processedSlabs : undefined,
       duration: finalDuration,
       durationDays: finalDurationDays,
       isInfinite: isInf,
       minAmount: numMin,
-      maxAmount: noMaxLimit ? null : Number(maxAmount) || 50000,
-      noMaxLimit: !!noMaxLimit,
+      maxAmount: finalMaxAmount,
+      noMaxLimit: hasNoMaxLimit,
       payoutInterval: payoutInterval || "Per Second (Live)",
       status: status || "Active",
       description: description || "",
@@ -116,7 +157,10 @@ exports.updatePlan = async (req, res) => {
     const {
       name,
       category,
+      roiType,
       roi,
+      dailyRoi,
+      roiSlabs,
       duration,
       durationDays,
       isInfinite,
@@ -130,7 +174,44 @@ exports.updatePlan = async (req, res) => {
 
     if (name !== undefined) plan.name = name;
     if (category !== undefined) plan.category = category;
-    if (roi !== undefined) plan.roi = Number(roi);
+    if (roiType !== undefined) plan.roiType = roiType;
+
+    if (roiSlabs !== undefined && Array.isArray(roiSlabs)) {
+      plan.roiSlabs = roiSlabs.map((s) => {
+        const d = Number(s.dailyRoi) || 0;
+        return {
+          minAmount: Number(s.minAmount) || 0,
+          maxAmount: s.noMaxLimit ? null : Number(s.maxAmount) || null,
+          noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
+          dailyRoi: d,
+          monthlyRoi: Number((d * 30).toFixed(2)),
+          annualRoi: Number((d * 360).toFixed(2)),
+        };
+      });
+
+      if (plan.roiType === "slab" && plan.roiSlabs.length > 0) {
+        plan.dailyRoi = plan.roiSlabs[0].dailyRoi;
+        plan.roi = plan.roiSlabs[0].monthlyRoi;
+        plan.minAmount = plan.roiSlabs[0].minAmount;
+        const lastSlab = plan.roiSlabs[plan.roiSlabs.length - 1];
+        if (lastSlab?.noMaxLimit) {
+          plan.noMaxLimit = true;
+          plan.maxAmount = null;
+        } else if (lastSlab?.maxAmount) {
+          plan.maxAmount = lastSlab.maxAmount;
+          plan.noMaxLimit = false;
+        }
+      }
+    }
+
+    if (dailyRoi !== undefined) {
+      plan.dailyRoi = Number(dailyRoi);
+      plan.roi = Number((Number(dailyRoi) * 30).toFixed(2));
+    } else if (roi !== undefined) {
+      plan.roi = Number(roi);
+      plan.dailyRoi = Number((Number(roi) / 30).toFixed(4));
+    }
+
     if (isInfinite !== undefined) plan.isInfinite = !!isInfinite;
     if (duration !== undefined) plan.duration = duration;
     if (durationDays !== undefined) plan.durationDays = plan.isInfinite ? 0 : Number(durationDays);
@@ -140,10 +221,6 @@ exports.updatePlan = async (req, res) => {
     if (payoutInterval !== undefined) plan.payoutInterval = payoutInterval;
     if (status !== undefined) plan.status = status;
     if (description !== undefined) plan.description = description;
-
-    // Recalculate roiPerSec based on monthly ROI
-    const secRate = ((plan.minAmount * (plan.roi / 100)) / (30 * 86400)).toFixed(6);
-    plan.roiPerSec = `$${secRate} / sec`;
 
     await plan.save();
 
