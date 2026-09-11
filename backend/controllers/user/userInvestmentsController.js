@@ -142,6 +142,14 @@ exports.investInPlan = async (req, res) => {
     user.perSecondRate = parseFloat(((user.perSecondRate || 0) + perSecondRate).toFixed(8));
 
     // Create User Investment Record
+    const isInfinitePlan = Boolean(
+      plan.isInfinite ||
+      plan.duration === "Infinite / Lifetime" ||
+      plan.duration === "Lifetime" ||
+      plan.duration === "∞ Lifetime" ||
+      plan.durationDays === 0
+    );
+
     const newInvestment = await UserInvestment.create({
       user: user._id,
       userName: user.name,
@@ -166,13 +174,14 @@ exports.investInPlan = async (req, res) => {
       autoRenewalIncentive: 0.25,
       isCompounding: isAutoRenewal,
       payoutInterval: plan.payoutInterval,
-      duration: plan.duration,
-      durationDays: plan.durationDays,
-      isInfinite: plan.isInfinite,
+      duration: isInfinitePlan ? "Infinite / Lifetime" : (plan.duration || "12 Months"),
+      durationDays: isInfinitePlan ? 0 : (plan.durationDays || 365),
+      isInfinite: isInfinitePlan,
       dailyEarning,
       perSecondRate,
       status: "Active",
       startDate: new Date(),
+      endDate: isInfinitePlan ? null : undefined,
     });
 
     // Create Transaction Record
@@ -243,7 +252,30 @@ exports.getMyInvestments = async (req, res) => {
       query.planCategory = category;
     }
 
-    const investments = await UserInvestment.find(query).sort({ createdAt: -1 });
+    const rawInvestments = await UserInvestment.find(query).sort({ createdAt: -1 });
+    
+    const investments = rawInvestments.map(inv => {
+      const isInf = Boolean(
+        inv.isInfinite ||
+        inv.duration === "Infinite / Lifetime" ||
+        inv.duration === "Lifetime" ||
+        inv.duration === "∞ Lifetime" ||
+        inv.durationDays === 0
+      );
+
+      let daysRemaining = "Lifetime";
+      if (!isInf && inv.endDate) {
+        const diffMs = new Date(inv.endDate).getTime() - Date.now();
+        daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      }
+
+      return {
+        ...inv.toObject(),
+        isInfinite: isInf,
+        daysRemaining,
+      };
+    });
+
     res.status(200).json({ success: true, count: investments.length, investments });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

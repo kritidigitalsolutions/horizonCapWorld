@@ -138,6 +138,11 @@ const userSchema = new mongoose.Schema(
       enum: ["Active", "Inactive", "Suspended"],
       default: "Active",
     },
+    isSeenByAdmin: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   { timestamps: true }
 );

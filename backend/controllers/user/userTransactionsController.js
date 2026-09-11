@@ -2,6 +2,7 @@ const Transaction = require("../../models/Transaction");
 const PaymentMethod = require("../../models/PaymentMethod");
 const DepositVideo = require("../../models/DepositVideo");
 const User = require("../../models/User");
+const { notifyUser, notifyAdmin } = require("../../utils/notificationService");
 
 // @desc    Get Active Deposit Gateways (Fiat, Bank, Crypto)
 // @route   GET /api/user/deposits/gateways
@@ -71,8 +72,11 @@ exports.createDeposit = async (req, res) => {
       return res.status(404).json({ success: false, message: "Investor account not found." });
     }
 
+    const userEnteredTid = referenceNo && referenceNo.trim() ? referenceNo.trim() : null;
+    const assignedCustomId = userEnteredTid || `TRX-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`;
+
     const newTrx = await Transaction.create({
-      customId: `TRX-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`,
+      customId: assignedCustomId,
       user: user._id,
       userName: user.name,
       userCustomId: user.customId || "HORIZON-USR-01",
@@ -84,7 +88,7 @@ exports.createDeposit = async (req, res) => {
       fee: 0,
       netAmount: depositAmount,
       gateway: gateway || "Manual Transfer",
-      referenceNo: referenceNo || `DEP-${Date.now().toString().slice(-6)}`,
+      referenceNo: userEnteredTid || assignedCustomId,
       slipUrl: slipUrl || "",
       senderName: senderName || user.name,
       senderAccount: senderAccount || "",
@@ -92,7 +96,38 @@ exports.createDeposit = async (req, res) => {
       cryptoNetwork: cryptoNetwork || "",
       selectedToken: selectedToken || "",
       status: "Pending",
-      note: `Deposit via ${gateway} submitted for verification.`,
+      note: `Deposit via ${gateway} submitted for verification. TID / Hash: ${userEnteredTid || assignedCustomId}`,
+    });
+
+    // Notify Admin regarding the new deposit
+    await notifyAdmin({
+      title: "New Fund Deposit Submitted",
+      message: `${user.name} (${user.customId || user.email}) submitted a deposit of $${depositAmount.toLocaleString()} USD via ${gateway || "Manual Transfer"}. TID: ${userEnteredTid || assignedCustomId}`,
+      category: "FINANCIAL",
+      type: "deposit_submitted",
+      priority: "HIGH",
+      actionUrl: "/deposits",
+      metadata: {
+        transactionId: newTrx._id,
+        customId: newTrx.customId,
+        referenceNo: newTrx.referenceNo,
+        amount: depositAmount,
+        userId: user._id,
+        userName: user.name,
+        gateway: gateway || "Manual Transfer",
+      },
+      settingKey: "adminDepositAlerts",
+    });
+
+    // Notify User confirmation
+    await notifyUser({
+      userId: user._id,
+      title: "Deposit Submitted for Review",
+      message: `Your deposit of $${depositAmount.toLocaleString()} USD via ${gateway} (TID: ${userEnteredTid || assignedCustomId}) has been received and is pending treasury verification.`,
+      category: "FINANCIAL",
+      type: "deposit_pending",
+      priority: "NORMAL",
+      actionUrl: "/transactions",
     });
 
     res.status(201).json({
@@ -140,8 +175,11 @@ exports.createWithdrawal = async (req, res) => {
     user.totalWithdrawn = (user.totalWithdrawn || 0) + withdrawAmount;
     await user.save();
 
+    const userEnteredDest = (walletAddress && walletAddress.trim()) || (bankDetails?.accountNumber && bankDetails.accountNumber.trim()) || null;
+    const assignedCustomId = `WD-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`;
+
     const newTrx = await Transaction.create({
-      customId: `TRX-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`,
+      customId: assignedCustomId,
       user: user._id,
       userName: user.name,
       userCustomId: user.customId || "HORIZON-USR-01",
@@ -153,9 +191,40 @@ exports.createWithdrawal = async (req, res) => {
       fee,
       netAmount,
       gateway: gateway || "Crypto Wallet",
-      referenceNo: walletAddress || bankDetails?.accountNumber || `WD-${Date.now().toString().slice(-6)}`,
+      referenceNo: userEnteredDest || assignedCustomId,
       status: "Pending",
-      note: note || `Withdrawal request to ${gateway || "designated destination"}.`,
+      note: note || `Withdrawal request to ${gateway || "designated destination"} (${userEnteredDest || "Standard Payout"}).`,
+    });
+
+    // Notify Admin regarding withdrawal request
+    await notifyAdmin({
+      title: "New Withdrawal Request",
+      message: `${user.name} requested a withdrawal of $${withdrawAmount.toLocaleString()} USD (Net: $${netAmount.toLocaleString()}) via ${gateway || "Crypto Wallet"}. Destination: ${userEnteredDest || "Standard Payout"}`,
+      category: "FINANCIAL",
+      type: "withdrawal_requested",
+      priority: "HIGH",
+      actionUrl: "/withdrawals",
+      metadata: {
+        transactionId: newTrx._id,
+        customId: newTrx.customId,
+        referenceNo: newTrx.referenceNo,
+        amount: withdrawAmount,
+        netAmount,
+        userId: user._id,
+        userName: user.name,
+      },
+      settingKey: "adminWithdrawalAlerts",
+    });
+
+    // Notify User confirmation
+    await notifyUser({
+      userId: user._id,
+      title: "Withdrawal Request Received",
+      message: `Your withdrawal request of $${withdrawAmount.toLocaleString()} USD has been submitted and is currently being processed by treasury desk.`,
+      category: "FINANCIAL",
+      type: "withdrawal_pending",
+      priority: "NORMAL",
+      actionUrl: "/transactions",
     });
 
     res.status(201).json({

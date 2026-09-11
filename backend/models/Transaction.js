@@ -103,6 +103,11 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    isSeenByAdmin: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   { timestamps: true }
 );

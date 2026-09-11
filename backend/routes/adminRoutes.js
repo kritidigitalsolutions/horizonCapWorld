@@ -22,6 +22,7 @@ const {
   getDashboardKPIs,
   getDashboardCharts,
   getRecentActivities,
+  getSidebarCounters,
 } = require("../controllers/admin/adminDashboardController");
 
 const {
@@ -48,6 +49,7 @@ const {
   rejectTransaction,
   deleteTransaction,
   clearAllTransactions,
+  markTransactionsSeen,
 } = require("../controllers/admin/adminTransactionsController");
 
 const {
@@ -56,6 +58,7 @@ const {
   updateUserStatus,
   adjustUserWallet,
   deleteUser,
+  markUsersSeen,
 } = require("../controllers/admin/adminUsersController");
 
 const {
@@ -114,6 +117,7 @@ router.put("/auth/settings", protectAdmin, updateAdminSettings);
 router.get("/dashboard/kpis", protectAdmin, getDashboardKPIs);
 router.get("/dashboard/charts", protectAdmin, getDashboardCharts);
 router.get("/dashboard/activities", protectAdmin, getRecentActivities);
+router.get("/sidebar/counters", protectAdmin, getSidebarCounters);
 
 // ──────── 3. INVESTMENT PLANS ────────
 router.get("/plans", protectAdmin, getAllPlans);
@@ -132,6 +136,7 @@ router.put("/payment-methods/video/tutorial", protectAdmin, updateDepositVideo);
 
 // ──────── 5. TRANSACTIONS ────────
 router.get("/transactions", protectAdmin, getTransactions);
+router.put("/transactions/mark-seen", protectAdmin, markTransactionsSeen);
 router.delete("/transactions/clear/all", protectAdmin, clearAllTransactions);
 router.get("/transactions/:id", protectAdmin, getTransactionById);
 router.put("/transactions/:id/approve", protectAdmin, approveTransaction);
@@ -140,6 +145,7 @@ router.delete("/transactions/:id", protectAdmin, deleteTransaction);
 
 // ──────── 6. USERS MANAGEMENT ────────
 router.get("/users", protectAdmin, getAllUsers);
+router.put("/users/mark-seen", protectAdmin, markUsersSeen);
 router.get("/users/:id", protectAdmin, getUserById);
 router.put("/users/:id/status", protectAdmin, updateUserStatus);
 router.put("/users/:id/adjust-wallet", protectAdmin, adjustUserWallet);

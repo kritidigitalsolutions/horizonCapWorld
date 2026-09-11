@@ -86,15 +86,49 @@ const getInitialStreamingState = () => {
 };
 
 export default function UserDashboard() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, refreshUser } = useAuth();
   const streamAnchorRef = useRef(getInitialStreamingState());
   const [streamingValue, setStreamingValue] = useState(streamAnchorRef.current.baseValue);
   const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [copiedRef, setCopiedRef] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !localStorage.getItem('horizon_user'));
   const [avatar, setAvatar] = useState(() => localStorage.getItem('horizon_user_avatar') || '');
   const fileInputRef = useRef(null);
+
+  // Real-time synchronization with Admin deposit approvals, new investments & live wallet updates
+  useEffect(() => {
+    if (refreshUser) {
+      refreshUser();
+    }
+
+    const pollInterval = setInterval(() => {
+      if (refreshUser && document.visibilityState === 'visible') {
+        refreshUser();
+      }
+    }, 8000);
+
+    const handleSync = () => {
+      if (refreshUser) refreshUser();
+    };
+
+    window.addEventListener('focus', handleSync);
+    window.addEventListener('horizon-transactions-change', handleSync);
+    window.addEventListener('horizon-user-update', handleSync);
+    window.addEventListener('horizon-deposit-approved', handleSync);
+    window.addEventListener('horizon-investment-created', handleSync);
+    window.addEventListener('storage', handleSync);
+
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('horizon-transactions-change', handleSync);
+      window.removeEventListener('horizon-user-update', handleSync);
+      window.removeEventListener('horizon-deposit-approved', handleSync);
+      window.removeEventListener('horizon-investment-created', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, [refreshUser]);
 
   const referralLink = user?.referralLink || (user?.id || user?.customId ? getReferralLink(user?.customId || user?.id) : '');
   const userId = user?.customId || user?.id || '';
@@ -157,11 +191,15 @@ export default function UserDashboard() {
     }
   };
 
-  // Simulate loading
+  // Instant or smooth loading resolution
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(t);
-  }, []);
+    if (user) {
+      setLoading(false);
+    } else {
+      const t = setTimeout(() => setLoading(false), 150);
+      return () => clearTimeout(t);
+    }
+  }, [user]);
 
   // Live continuous high-frequency streaming ROI ticker
   useEffect(() => {

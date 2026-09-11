@@ -18,7 +18,8 @@ import {
   getAllUsers,
   updateUserStatus,
   adjustUserWallet,
-  deleteUser
+  deleteUser,
+  markUsersSeen
 } from '../api/usersApi';
 
 export default function Users() {
@@ -49,6 +50,7 @@ export default function Users() {
           country: u.country || 'Global',
           joined: u.createdAt ? u.createdAt.split('T')[0] : '2026-01-01',
           status: u.status || 'Active',
+          isSeenByAdmin: u.isSeenByAdmin !== undefined ? u.isSeenByAdmin : true,
           payoutType: 'Per Second (Live)',
           activeContracts: u.activeInvestments || 0,
           totalInvested: Number(u.totalInvested || 0),
@@ -67,6 +69,12 @@ export default function Users() {
           recentTransactions: [],
         }));
         setUserList(formatted);
+
+        // If there are unseen users, mark them seen in backend & sync sidebar
+        if (res.unseenCount > 0 || res.users.some(u => u.isSeenByAdmin === false)) {
+          markUsersSeen().catch(() => {});
+          window.dispatchEvent(new CustomEvent('admin-users-seen'));
+        }
       } else {
         setUserList([]);
       }
@@ -239,9 +247,16 @@ export default function Users() {
                           {user.name.split(' ').map(n => n[0]).join('')}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-700 truncate leading-tight font-poppins">
-                            {user.name}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-medium text-slate-700 truncate leading-tight font-poppins">
+                              {user.name}
+                            </p>
+                            {!user.isSeenByAdmin && (
+                              <span className="px-1.5 py-0.2 text-[9px] font-black rounded-md bg-amber-500 text-white shadow-2xs animate-pulse flex-shrink-0">
+                                NEW
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[11px] font-medium text-gold-600 font-poppins tracking-tight mt-0.5">
                             {userCustomId}
                           </p>

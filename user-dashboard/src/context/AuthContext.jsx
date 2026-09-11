@@ -96,6 +96,23 @@ export function AuthProvider({ children }) {
     refreshUser();
   }, [refreshUser]);
 
+  // Synchronize immediate user updates dispatched across windows/components
+  useEffect(() => {
+    const handleUserUpdateEvent = (e) => {
+      if (e.detail) {
+        const formatted = formatApiUser(e.detail);
+        setUser(formatted);
+        try {
+          localStorage.setItem('horizon_user', JSON.stringify(formatted));
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('horizon-user-update', handleUserUpdateEvent);
+    return () => {
+      window.removeEventListener('horizon-user-update', handleUserUpdateEvent);
+    };
+  }, []);
+
   const login = async (email, password, otp = '') => {
     try {
       const res = await loginUser({ email, password, otp });
@@ -110,8 +127,8 @@ export function AuthProvider({ children }) {
         setUser(formatted);
         localStorage.setItem('horizon_user', JSON.stringify(formatted));
         setIsAuthenticated(true);
-        // Refresh with latest streaming stats
-        await refreshUser();
+        // Refresh with latest streaming stats asynchronously in background
+        refreshUser().catch(() => null);
         return { success: true, user: formatted };
       }
       return { success: false, message: res?.message || 'Login failed' };

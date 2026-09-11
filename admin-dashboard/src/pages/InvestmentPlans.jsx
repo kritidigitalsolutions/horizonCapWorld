@@ -314,28 +314,48 @@ export default function InvestmentPlans() {
   };
 
   const handleAddSlab = () => {
-    const last = formData.roiSlabs[formData.roiSlabs.length - 1];
-    const newMin =
-      last && !last.noMaxLimit && last.maxAmount
-        ? Number(last.maxAmount) + 1
-        : 1500;
+    const slabs = formData.roiSlabs.map((s) => ({ ...s }));
+    const lastIndex = slabs.length - 1;
+    const last = slabs[lastIndex];
+
+    let newMin = 1500;
+    if (last) {
+      const lastMin = Number(last.minAmount) || 0;
+      let prevMax = Number(last.maxAmount);
+      if (!prevMax || prevMax <= lastMin || last.noMaxLimit) {
+        prevMax = lastMin + 999;
+        last.maxAmount = String(prevMax);
+      }
+      last.noMaxLimit = false;
+      newMin = prevMax + 1;
+    }
+
+    const prevDaily = last ? Number(last.dailyRoi) || 1.0 : 1.0;
+    const newDaily = parseFloat((prevDaily + 0.25).toFixed(2));
+
     const newSlab = {
-      minAmount: newMin,
+      minAmount: String(newMin),
       maxAmount: "",
       noMaxLimit: true,
-      dailyRoi: 1.25,
-      monthlyRoi: 37.5,
-      annualRoi: 450.0,
+      dailyRoi: String(newDaily),
+      monthlyRoi: parseFloat((newDaily * 30).toFixed(2)),
+      annualRoi: parseFloat((newDaily * 360).toFixed(2)),
     };
+
     setFormData({
       ...formData,
-      roiSlabs: [...formData.roiSlabs, newSlab],
+      roiSlabs: [...slabs, newSlab],
     });
   };
 
   const handleRemoveSlab = (index) => {
     if (formData.roiSlabs.length <= 1) return;
     const updated = formData.roiSlabs.filter((_, i) => i !== index);
+    const lastIdx = updated.length - 1;
+    if (lastIdx >= 0 && !updated.some((s) => s.noMaxLimit)) {
+      updated[lastIdx].noMaxLimit = true;
+      updated[lastIdx].maxAmount = "";
+    }
     setFormData({ ...formData, roiSlabs: updated });
   };
 
@@ -998,22 +1018,45 @@ export default function InvestmentPlans() {
                     {/* Max Amount + Unlimited checkbox */}
                     <div className="col-span-3 flex items-center gap-1">
                       {slab.noMaxLimit ? (
-                        <div className="w-full py-1.5 px-2 rounded-lg bg-gold-100/70 border border-gold-300 text-gold-900 font-extrabold text-xs text-center">
-                          1500$ ++ (No Limit)
+                        <div className="w-full flex items-center justify-between py-1 px-2 rounded-lg bg-gold-100/80 border border-gold-300 text-gold-900 font-extrabold text-xs">
+                          <span className="truncate">{slab.minAmount || 0}$ ++ (No Limit)</span>
+                          <button
+                            type="button"
+                            title="Set fixed max limit"
+                            onClick={() => {
+                              handleSlabChange(idx, "noMaxLimit", false);
+                              handleSlabChange(idx, "maxAmount", String((Number(slab.minAmount) || 0) + 999));
+                            }}
+                            className="text-[10px] text-gold-800 hover:text-gold-950 underline ml-1 cursor-pointer font-bold shrink-0"
+                          >
+                            Set Limit
+                          </button>
                         </div>
                       ) : (
-                        <div className="w-full flex items-center rounded-lg border border-gray-200 bg-gray-50/50 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
-                          <span className="text-gray-400 font-bold text-xs mr-1">$</span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={slab.maxAmount}
-                            onChange={(e) =>
-                              handleSlabChange(idx, "maxAmount", e.target.value)
-                            }
-                            className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
-                            placeholder="49"
-                          />
+                        <div className="w-full flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50/50 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
+                          <div className="flex items-center flex-1 min-w-0">
+                            <span className="text-gray-400 font-bold text-xs mr-1">$</span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={slab.maxAmount}
+                              onChange={(e) =>
+                                handleSlabChange(idx, "maxAmount", e.target.value)
+                              }
+                              className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
+                              placeholder="49"
+                            />
+                          </div>
+                          {idx === formData.roiSlabs.length - 1 && (
+                            <button
+                              type="button"
+                              title="Make this slab unlimited"
+                              onClick={() => handleSlabChange(idx, "noMaxLimit", true)}
+                              className="text-[10px] text-gold-700 hover:text-gold-950 font-bold ml-1 cursor-pointer whitespace-nowrap shrink-0"
+                            >
+                              ∞ No Limit
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

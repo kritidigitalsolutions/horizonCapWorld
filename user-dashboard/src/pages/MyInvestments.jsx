@@ -22,27 +22,55 @@ export default function MyInvestments() {
     try {
       const res = await getMyInvestments();
       if (res?.success && Array.isArray(res.investments)) {
-        const formatted = res.investments.map(inv => ({
-          _id: inv._id,
-          id: inv.customId || inv._id,
-          planName: inv.planName || 'Investment Contract',
-          planCategory: inv.planCategory || 'Renewable Energy',
-          amount: Number(inv.amount || 0),
-          dailyRoi: Number(inv.dailyRoi || ((inv.roi || 7.5) / 30)),
-          roi: Number(inv.roi || 7.5),
-          dailyEarning: Number(inv.dailyEarning || 0),
-          perSecondRate: Number(inv.perSecondRate || 0),
-          totalEarned: Number(inv.totalProfitEarned || inv.totalEarned || 0),
-          durationDays: inv.durationDays || 365,
-          daysRemaining: inv.daysRemaining !== undefined ? inv.daysRemaining : 365,
-          startDate: inv.startDate ? inv.startDate.split('T')[0] : '2026-08-01',
-          endDate: inv.endDate ? inv.endDate.split('T')[0] : '2027-08-01',
-          payoutInterval: inv.payoutInterval || 'Per Second (Live)',
-          autoRenewal: Boolean(inv.autoRenewal),
-          autoRenewalIncentive: inv.autoRenewalIncentive || 0.25,
-          isCompounding: Boolean(inv.isCompounding),
-          status: inv.status || 'Active',
-        }));
+        const formatted = res.investments.map(inv => {
+          const isInf = Boolean(
+            inv.isInfinite ||
+            inv.duration === 'Infinite / Lifetime' ||
+            inv.duration === 'Lifetime' ||
+            inv.duration === '∞ Lifetime' ||
+            inv.durationDays === 0 ||
+            inv.daysRemaining === 'Lifetime'
+          );
+
+          let daysRemaining = 'Lifetime';
+          if (!isInf) {
+            if (inv.daysRemaining !== undefined && inv.daysRemaining !== 'Lifetime') {
+              daysRemaining = inv.daysRemaining;
+            } else if (inv.endDate) {
+              const diffMs = new Date(inv.endDate).getTime() - Date.now();
+              daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+            } else {
+              daysRemaining = 365;
+            }
+          }
+
+          const startStr = inv.startDate ? inv.startDate.split('T')[0] : new Date().toISOString().split('T')[0];
+          const endStr = isInf ? 'Lifetime (No Expiry)' : (inv.endDate ? inv.endDate.split('T')[0] : 'Perpetual');
+
+          return {
+            _id: inv._id,
+            id: inv.customId || inv._id,
+            planName: inv.planName || 'Investment Contract',
+            planCategory: inv.planCategory || 'Renewable Energy',
+            amount: Number(inv.amount || 0),
+            dailyRoi: Number(inv.dailyRoi || ((inv.roi || 7.5) / 30)),
+            roi: Number(inv.roi || 7.5),
+            dailyEarning: Number(inv.dailyEarning || 0),
+            perSecondRate: Number(inv.perSecondRate || 0),
+            totalEarned: Number(inv.totalProfitEarned || inv.totalEarned || 0),
+            duration: isInf ? '∞ Lifetime' : (inv.duration || '12 Months'),
+            durationDays: isInf ? 0 : (inv.durationDays || 365),
+            isInfinite: isInf,
+            daysRemaining,
+            startDate: startStr,
+            endDate: endStr,
+            payoutInterval: inv.payoutInterval || 'Per Second (Live)',
+            autoRenewal: Boolean(inv.autoRenewal),
+            autoRenewalIncentive: inv.autoRenewalIncentive || 0.25,
+            isCompounding: Boolean(inv.isCompounding),
+            status: inv.status || 'Active',
+          };
+        });
         setInvestmentsList(formatted);
       } else {
         setInvestmentsList([]);
@@ -285,7 +313,15 @@ export default function MyInvestments() {
                       <p className={`text-base font-bold font-display tabular-nums mt-0.5 ${
                         isActive ? 'text-gold-700' : 'text-slate-500'
                       }`}>
-                        {isActive ? `${inv.daysRemaining} Days` : 'Completed'}
+                        {inv.isInfinite ? (
+                          <span className="inline-flex items-center gap-1 text-gold-700 bg-gold-50 px-2 py-0.5 rounded border border-gold-300 font-extrabold text-xs">
+                            <span>∞</span> Lifetime
+                          </span>
+                        ) : isActive ? (
+                          `${inv.daysRemaining} Days`
+                        ) : (
+                          'Completed'
+                        )}
                       </p>
                     </div>
                   </div>
@@ -294,7 +330,7 @@ export default function MyInvestments() {
 
               {/* Progress Bar & Contract Dates */}
               <div className="mt-5 pt-3.5 border-t border-gray-100 font-poppins">
-                <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+                <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5 flex-wrap gap-2">
                   <span className="flex items-center gap-1.5">
                     <RiCalendarLine size={13} className="text-slate-400" /> Start Date: <strong className="text-slate-700">{inv.startDate}</strong>
                   </span>
@@ -311,8 +347,10 @@ export default function MyInvestments() {
                         : 'bg-emerald-500'
                     }`}
                     style={{
-                      width: isActive
-                        ? `${Math.min(100, Math.max(15, Math.round(((365 - inv.daysRemaining) / 365) * 100)))}%`
+                      width: inv.isInfinite
+                        ? '100%'
+                        : isActive
+                        ? `${Math.min(100, Math.max(15, Math.round((((inv.durationDays || 365) - Number(inv.daysRemaining || 0)) / (inv.durationDays || 365)) * 100)))}%`
                         : '100%',
                     }}
                   />

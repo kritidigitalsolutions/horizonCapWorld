@@ -14,3 +14,8 @@ export const getRecentActivities = async () => {
   const response = await API.get('/admin/dashboard/activities');
   return response.data;
 };
+
+export const getSidebarCounters = async () => {
+  const response = await API.get('/admin/sidebar/counters');
+  return response.data;
+};

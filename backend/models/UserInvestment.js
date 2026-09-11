@@ -122,6 +122,19 @@ userInvestmentSchema.pre("save", function () {
   if (!this.customId) {
     this.customId = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
   }
+  const isInf = Boolean(
+    this.isInfinite ||
+    this.duration === "Infinite / Lifetime" ||
+    this.duration === "Lifetime" ||
+    this.duration === "∞ Lifetime" ||
+    this.durationDays === 0
+  );
+  if (isInf) {
+    this.isInfinite = true;
+    this.duration = "Infinite / Lifetime";
+    this.durationDays = 0;
+    this.endDate = null;
+  }
   if (this.amount) {
     if (this.dailyRoi) {
       // Daily ROI based

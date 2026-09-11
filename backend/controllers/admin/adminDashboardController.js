@@ -2,6 +2,30 @@ const User = require("../../models/User");
 const Transaction = require("../../models/Transaction");
 const InvestmentPlan = require("../../models/InvestmentPlan");
 const SupportTicket = require("../../models/SupportTicket");
+const Notification = require("../../models/Notification");
+
+// @desc    Get Sidebar Dot Counters (Unseen Users, Unseen Transactions, Unread Alerts, Open Tickets)
+// @route   GET /api/admin/sidebar/counters
+exports.getSidebarCounters = async (req, res) => {
+  try {
+    const unseenUsers = await User.countDocuments({ isSeenByAdmin: false });
+    const unseenTransactions = await Transaction.countDocuments({ isSeenByAdmin: false });
+    const unreadNotifications = await Notification.countDocuments({ recipientType: "ADMIN", read: false });
+    const openTickets = await SupportTicket.countDocuments({ status: "Open" });
+
+    res.status(200).json({
+      success: true,
+      counters: {
+        users: unseenUsers,
+        transactions: unseenTransactions,
+        notifications: unreadNotifications,
+        tickets: openTickets,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 // @desc    Get Admin Dashboard KPI Totals
 // @route   GET /api/admin/dashboard/kpis

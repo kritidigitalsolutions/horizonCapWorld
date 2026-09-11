@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getPlans, investInPlan } from '../api/plansApi';
 import {
   RiPercentLine, RiTimeLine, RiShieldFlashLine, RiLeafLine, RiCoinsLine,
@@ -50,9 +51,10 @@ export function matchRoiSlab(amount, slabs = []) {
 }
 
 export default function Plans() {
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [plansList, setPlansList] = useState([]);
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, updateUser } = useAuth();
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -130,6 +132,23 @@ export default function Plans() {
     fetchPlans();
   }, []);
 
+  // Auto-open invest modal if navigation came from global calculator
+  useEffect(() => {
+    if (plansList.length > 0 && location.state?.autoOpenPlanId) {
+      const targetPlan = plansList.find(
+        (p) => p.id === location.state.autoOpenPlanId || p._id === location.state.autoOpenPlanId
+      );
+      if (targetPlan) {
+        setSelectedPlan(targetPlan);
+        setInvestAmount(location.state.amount || targetPlan.minAmountNumeric || 100);
+        setAutoRenewal(Boolean(location.state.autoRenewal));
+        setInvestDrawerOpen(true);
+        // Clean up location state so modal does not re-pop on refresh
+        window.history.replaceState({}, document.title);
+      }
+    }
+  }, [plansList, location.state]);
+
   const handleOpenInvest = (plan) => {
     setSelectedPlan(plan);
     setInvestAmount(plan.minAmountNumeric || 100);
@@ -159,13 +178,25 @@ export default function Plans() {
       const res = await investInPlan(selectedPlan._id || selectedPlan.id, Number(investAmount), autoRenewal);
       if (res?.success) {
         setInvestSuccess(true);
-        if (refreshUser) await refreshUser();
-        await fetchPlans();
+        if (res.user && updateUser) {
+          updateUser(res.user);
+        }
+        window.dispatchEvent(new CustomEvent('horizon-transactions-change'));
+        window.dispatchEvent(new CustomEvent('horizon-user-update', { detail: res.user }));
+        if (res.investment) {
+          window.dispatchEvent(new CustomEvent('horizon-investment-created', { detail: res.investment }));
+        }
+        window.dispatchEvent(new CustomEvent('storage'));
+
+        // Refresh user overview and plans stats
+        if (refreshUser) refreshUser();
+        fetchPlans();
+
         setTimeout(() => {
           setInvestDrawerOpen(false);
           setInvestSuccess(false);
           setInvestSubmitting(false);
-        }, 2000);
+        }, 900);
       } else {
         setInvestError(res?.message || 'Failed to execute investment.');
         setInvestSubmitting(false);
@@ -286,9 +317,18 @@ export default function Plans() {
                 </div>
 
                 {/* Plan Title */}
-                <h3 className="text-lg font-bold text-gray-800 font-display mb-3 line-clamp-1 group-hover:text-gold-600 transition-colors">
+                <h3 className="text-lg font-bold text-gray-800 font-display mb-1.5 line-clamp-1 group-hover:text-gold-600 transition-colors">
                   {plan.name}
                 </h3>
+
+                {/* Plan Description from Admin */}
+                {plan.description ? (
+                  <p className="text-xs text-slate-600 mb-3.5 line-clamp-2 leading-relaxed font-poppins">
+                    {plan.description}
+                  </p>
+                ) : (
+                  <div className="mb-2" />
+                )}
 
                 {/* Amount-Wise Daily ROI Highlight Box */}
                 <div className="p-3.5 bg-gradient-to-r from-gold-50/90 to-amber-50/50 rounded-xl border border-gold-200/60 mb-4">
@@ -358,7 +398,7 @@ export default function Plans() {
                   >
                     <span className="flex items-center gap-1.5">
                       <RiStackLine size={14} className="text-gold-700" />
-                      <span>View 5 Amount-Wise ROI Slabs</span>
+                      <span>View {slabs.length} Amount-Wise ROI Slabs</span>
                     </span>
                     {isExpanded ? <RiArrowUpSLine size={16} /> : <RiArrowDownSLine size={16} />}
                   </button>
@@ -373,7 +413,7 @@ export default function Plans() {
                       {slabs.map((slab, idx) => (
                         <div key={idx} className="grid grid-cols-3 items-center py-1 border-b border-gray-100 last:border-none">
                           <span className="font-semibold text-gray-800">
-                            ${slab.minAmount} — {slab.noMaxLimit || !slab.maxAmount ? "1500$ ++" : `$${slab.maxAmount}`}
+                            ${slab.minAmount} — {slab.noMaxLimit || !slab.maxAmount ? `${slab.minAmount}$ ++` : `$${slab.maxAmount}`}
                           </span>
                           <span className="text-center font-bold text-emerald-600 font-mono">
                             {slab.dailyRoi}% / d
@@ -491,6 +531,18 @@ export default function Plans() {
             </div>
           )}
 
+          {/* Plan Description Highlight in Modal */}
+          {selectedPlan?.description && (
+            <div className="p-3.5 bg-gradient-to-r from-gold-50/80 via-white to-amber-50/50 rounded-2xl border border-gold-200 shadow-3xs">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gold-900 mb-1">
+                About {selectedPlan.name}
+              </p>
+              <p className="text-xs text-slate-700 leading-relaxed font-poppins">
+                {selectedPlan.description}
+              </p>
+            </div>
+          )}
+
           {/* Wallet Balance Info */}
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -507,7 +559,7 @@ export default function Plans() {
             )}
           </div>
 
-          {/* ──────── 5 AMOUNT-WISE DAILY ROI PERCENTAGE SLABS TABLE ──────── */}
+          {/* ──────── AMOUNT-WISE DAILY ROI PERCENTAGE SLABS TABLE ──────── */}
           <div className="p-3.5 bg-gradient-to-br from-amber-50/70 via-gold-50/40 to-white rounded-2xl border border-gold-300 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wide text-gold-950 flex items-center gap-1.5">
@@ -515,7 +567,7 @@ export default function Plans() {
                 Amount Wise Daily ROI Slabs
               </span>
               <span className="badge badge-gold text-[10px] font-bold">
-                Active Slab: ${activeMatchedSlab?.minAmount} – {activeMatchedSlab?.noMaxLimit ? "1500$ ++" : `$${activeMatchedSlab?.maxAmount}`} ({activeMatchedSlab?.dailyRoi}% / d)
+                Active Slab: ${activeMatchedSlab?.minAmount} – {activeMatchedSlab?.noMaxLimit ? `${activeMatchedSlab?.minAmount}$ ++` : `$${activeMatchedSlab?.maxAmount}`} ({activeMatchedSlab?.dailyRoi}% / d)
               </span>
             </div>
 
@@ -535,7 +587,7 @@ export default function Plans() {
                     }`}
                   >
                     <p className={`text-[10.5px] font-extrabold ${isMatched ? 'text-gray-950' : 'text-gray-500'}`}>
-                      ${slab.minAmount} — {slab.noMaxLimit || !slab.maxAmount ? '1500$ ++' : `$${slab.maxAmount}`}
+                      ${slab.minAmount} — {slab.noMaxLimit || !slab.maxAmount ? `${slab.minAmount}$ ++` : `$${slab.maxAmount}`}
                     </p>
                     <p className={`text-xs font-black font-mono mt-0.5 ${isMatched ? 'text-gray-950' : 'text-emerald-700'}`}>
                       {slabDaily}% daily
@@ -884,12 +936,6 @@ export default function Plans() {
         onClose={() => setCalcDrawerOpen(false)}
         initialPlanId={calcPlan?.id}
         plans={plansList}
-        onInvest={(plan, amt, autoRenew) => {
-          setSelectedPlan(plan);
-          setInvestAmount(amt);
-          setAutoRenewal(Boolean(autoRenew));
-          setInvestDrawerOpen(true);
-        }}
       />
     </div>
   );

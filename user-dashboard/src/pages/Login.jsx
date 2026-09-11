@@ -72,8 +72,7 @@ export default function Login() {
     }
 
     if (res?.success) {
-      setSuccess('Login successful! Redirecting to your dashboard...');
-      setTimeout(() => navigate('/'), 600);
+      navigate('/', { replace: true });
     } else {
       setError(res?.message || 'Invalid email or password.');
     }
@@ -93,8 +92,7 @@ export default function Login() {
     setLoading(false);
 
     if (res?.success) {
-      setSuccess('2FA verification successful! Accessing your account...');
-      setTimeout(() => navigate('/'), 600);
+      navigate('/', { replace: true });
     } else {
       setError(res?.message || 'Invalid or expired 2FA code.');
     }

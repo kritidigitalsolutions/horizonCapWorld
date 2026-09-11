@@ -31,6 +31,7 @@ exports.getAllUsers = async (req, res) => {
 
     const total = await User.countDocuments(query);
     const activeCount = await User.countDocuments({ status: "Active" });
+    const unseenCount = await User.countDocuments({ isSeenByAdmin: false });
     const users = await User.find(query)
       .select("-password")
       .sort({ createdAt: -1 })
@@ -41,10 +42,27 @@ exports.getAllUsers = async (req, res) => {
       success: true,
       total,
       activeCount,
+      unseenCount,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum) || 1,
       users,
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Mark All or Selected Users as Seen
+// @route   PUT /api/admin/users/mark-seen
+exports.markUsersSeen = async (req, res) => {
+  try {
+    const { userIds } = req.body;
+    let query = { isSeenByAdmin: false };
+    if (userIds && Array.isArray(userIds) && userIds.length > 0) {
+      query._id = { $in: userIds };
+    }
+    await User.updateMany(query, { $set: { isSeenByAdmin: true } });
+    res.status(200).json({ success: true, message: "Users marked as seen." });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

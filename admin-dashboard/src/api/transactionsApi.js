@@ -35,3 +35,9 @@ export const clearAllTransactions = async () => {
   const response = await API.delete("/admin/transactions/clear/all");
   return response.data;
 };
+
+// Mark all or selected transactions as seen
+export const markTransactionsSeen = async (transactionIds = []) => {
+  const response = await API.put("/admin/transactions/mark-seen", { transactionIds });
+  return response.data;
+};

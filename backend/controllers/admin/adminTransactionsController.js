@@ -36,6 +36,7 @@ exports.getTransactions = async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const total = await Transaction.countDocuments(query);
+    const unseenCount = await Transaction.countDocuments({ isSeenByAdmin: false });
     const transactions = await Transaction.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -62,6 +63,7 @@ exports.getTransactions = async (req, res) => {
     res.status(200).json({
       success: true,
       total,
+      unseenCount,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum) || 1,
       kpis: {
@@ -72,6 +74,22 @@ exports.getTransactions = async (req, res) => {
       },
       transactions,
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Mark All or Selected Transactions as Seen
+// @route   PUT /api/admin/transactions/mark-seen
+exports.markTransactionsSeen = async (req, res) => {
+  try {
+    const { transactionIds } = req.body;
+    let query = { isSeenByAdmin: false };
+    if (transactionIds && Array.isArray(transactionIds) && transactionIds.length > 0) {
+      query._id = { $in: transactionIds };
+    }
+    await Transaction.updateMany(query, { $set: { isSeenByAdmin: true } });
+    res.status(200).json({ success: true, message: "Transactions marked as seen." });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -1,11 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Modal from '../ui/Modal';
 import {
   RiCalculatorLine, RiArrowRightLine, RiInformationLine, RiFundsLine,
   RiSunLine, RiCopperCoinLine, RiCheckLine, RiFlashlightLine, RiSparklingLine,
-  RiGiftLine, RiRefreshLine,
+  RiGiftLine, RiRefreshLine, RiBuilding2Line, RiRocketLine,
 } from 'react-icons/ri';
 import { UilBolt } from '@iconscout/react-unicons';
+import { getPlans } from '../../api/plansApi';
 
 export const DEFAULT_ROI_SLABS = [
   { minAmount: 10, maxAmount: 49, noMaxLimit: false, dailyRoi: 0.25, monthlyRoi: 7.5, annualRoi: 90 },
@@ -39,18 +41,109 @@ function matchSlab(amount, slabs = []) {
   return list[0];
 }
 
-const categories = [
-  { id: 'all', label: 'All Categories', icon: RiFundsLine },
-  { id: 'Renewable Energy', label: 'Renewable Energy', icon: RiSunLine },
-  { id: 'Precious Metal', label: 'Precious Metals', icon: RiCopperCoinLine },
-];
-
 export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, initialPlanId, plans = [] }) {
-  const allPlans = plans && plans.length > 0 ? plans : [];
+  const navigate = useNavigate();
+  const [loadedPlans, setLoadedPlans] = useState([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+
+  // Dynamically fetch active plans if none passed from parent
+  useEffect(() => {
+    if (isOpen && (!plans || plans.length === 0)) {
+      setLoadingPlans(true);
+      getPlans()
+        .then((res) => {
+          if (res?.success && Array.isArray(res.plans) && res.plans.length > 0) {
+            const formatted = res.plans.map((p) => {
+              const isInf =
+                !!p.isInfinite ||
+                p.duration?.toLowerCase().includes('infinite') ||
+                p.duration?.toLowerCase().includes('lifetime');
+              const roiSlabs =
+                Array.isArray(p.roiSlabs) && p.roiSlabs.length > 0
+                  ? p.roiSlabs
+                  : DEFAULT_ROI_SLABS;
+              const loyaltySlabs =
+                Array.isArray(p.loyaltyBonusSlabs) && p.loyaltyBonusSlabs.length > 0
+                  ? p.loyaltyBonusSlabs
+                  : DEFAULT_LOYALTY_SLABS;
+              const minDaily = roiSlabs[0]?.dailyRoi || p.dailyRoi || 0.25;
+              const maxDaily = roiSlabs[roiSlabs.length - 1]?.dailyRoi || 1.0;
+
+              return {
+                _id: p._id,
+                id: p._id,
+                name: p.name,
+                category: p.category || 'Renewable Energy',
+                minAmount: `$${(p.minAmount || 10).toLocaleString()}`,
+                minAmountNumeric: Number(p.minAmount) || 10,
+                maxAmount: p.noMaxLimit ? 'No Limit' : (p.maxAmount ? `$${p.maxAmount.toLocaleString()}` : 'No Limit'),
+                maxAmountNumeric: p.noMaxLimit ? Infinity : (Number(p.maxAmount) || Infinity),
+                noMaxLimit: !!p.noMaxLimit,
+                duration: isInf ? '∞ Lifetime' : (p.duration || `${p.durationDays || 365} Days`),
+                durationDays: isInf ? 0 : (p.durationDays || 365),
+                isInfinite: isInf,
+                minDaily,
+                maxDaily,
+                roiSlabs,
+                loyaltyBonusEnabled: p.loyaltyBonusEnabled !== false,
+                loyaltyBonusTitle: p.loyaltyBonusTitle || 'Reward ( Loyalty Bonus )',
+                loyaltyBonusDescription: p.loyaltyBonusDescription || 'Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet',
+                loyaltyBonusSlabs: loyaltySlabs,
+                autoRenewalBoost: p.autoRenewalBoost || 0.25,
+                dailyRoi: minDaily,
+                roi: p.roi || 7.5,
+              };
+            });
+            setLoadedPlans(formatted);
+          }
+        })
+        .catch((err) => {
+          console.warn('Error fetching plans for calculator drawer:', err.message);
+        })
+        .finally(() => {
+          setLoadingPlans(false);
+        });
+    }
+  }, [isOpen, plans]);
+
+  const allPlans = useMemo(() => {
+    if (plans && plans.length > 0) return plans;
+    return loadedPlans;
+  }, [plans, loadedPlans]);
+
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId || allPlans[0]?.id || allPlans[0]?._id || '');
+  const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId || '');
   const [amount, setAmount] = useState(100);
   const [autoRenewal, setAutoRenewal] = useState(false);
+
+  // Keep selectedPlanId valid whenever allPlans change
+  useEffect(() => {
+    if (allPlans.length > 0) {
+      if (!selectedPlanId || !allPlans.some((p) => p.id === selectedPlanId || p._id === selectedPlanId)) {
+        setSelectedPlanId(initialPlanId || allPlans[0].id || allPlans[0]._id);
+      }
+    }
+  }, [allPlans, initialPlanId, selectedPlanId]);
+
+  // Categories dynamically constructed from active plans
+  const categories = useMemo(() => {
+    const cats = new Set();
+    allPlans.forEach((p) => {
+      if (p.category) cats.add(p.category);
+    });
+    const unique = Array.from(cats);
+    return [
+      { id: 'all', label: 'All Categories', icon: RiFundsLine },
+      ...unique.map((cat) => {
+        let icon = RiSunLine;
+        const low = cat.toLowerCase();
+        if (low.includes('metal') || low.includes('gold')) icon = RiCopperCoinLine;
+        else if (low.includes('estate') || low.includes('real')) icon = RiBuilding2Line;
+        else if (low.includes('venture') || low.includes('tech')) icon = RiRocketLine;
+        return { id: cat, label: cat, icon };
+      }),
+    ];
+  }, [allPlans]);
 
   // Filter plans by selected category tab
   const filteredPlans = useMemo(() => {
@@ -158,18 +251,16 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
       size="lg"
       footer={
         <div className="flex items-center justify-between w-full">
-          <button onClick={onClose} className="btn btn-secondary text-xs px-4 py-2.5">
-            Close
-          </button>
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-poppins">
+            <RiSparklingLine size={15} className="text-gold-600" />
+            <span>Real-time profit & ROI simulation preview</span>
+          </div>
           <button
-            onClick={() => {
-              const numAmt = Number(amount) || currentPlan?.minAmountNumeric || 10;
-              if (onInvest) onInvest(currentPlan, numAmt, autoRenewal);
-              onClose();
-            }}
-            className="btn btn-primary text-xs px-5 py-2.5 font-bold cursor-pointer"
+            type="button"
+            onClick={onClose}
+            className="btn btn-primary text-xs px-6 py-2.5 font-bold cursor-pointer shadow-gold"
           >
-            Invest {amount ? `$${Number(amount).toLocaleString()}` : ''} in {currentPlan?.name} <RiArrowRightLine size={14} />
+            Close Calculator
           </button>
         </div>
       }
@@ -255,7 +346,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
               Amount-Wise Daily ROI Slabs ({currentPlan?.name})
             </span>
             <span className="badge badge-gold text-[10px] font-bold">
-              Active: ${activeMatchedSlab?.minAmount} – {activeMatchedSlab?.noMaxLimit ? "1500$ ++" : `$${activeMatchedSlab?.maxAmount}`} ({calculations.dailyRate}% / day)
+              Active: ${activeMatchedSlab?.minAmount} – {activeMatchedSlab?.noMaxLimit || !activeMatchedSlab?.maxAmount ? `$${activeMatchedSlab?.minAmount}++` : `$${activeMatchedSlab?.maxAmount}`} ({calculations.dailyRate}% / day)
             </span>
           </div>
 
@@ -274,7 +365,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                   }`}
                 >
                   <p className={`text-[10px] font-extrabold ${isMatched ? 'text-gray-950' : 'text-gray-500'}`}>
-                    ${slab.minAmount} — {slab.noMaxLimit || !slab.maxAmount ? '1500$ ++' : `$${slab.maxAmount}`}
+                    ${slab.minAmount} — {slab.noMaxLimit || !slab.maxAmount ? `$${slab.minAmount}++` : `$${slab.maxAmount}`}
                   </p>
                   <p className={`text-xs font-black font-mono mt-0.5 ${isMatched ? 'text-gray-950' : 'text-emerald-700'}`}>
                     {slabDaily}% daily

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   RiDashboardLine, RiDashboardFill,
@@ -17,6 +17,7 @@ import {
   RiNotification3Line, RiNotification3Fill,
 } from 'react-icons/ri';
 import { UilAngleRight } from '@iconscout/react-unicons';
+import { getSidebarCounters } from '../../api/dashboardApi';
 
 const navSections = [
   {
@@ -51,6 +52,43 @@ const navSections = [
 export default function Sidebar({ isOpen, onToggle, isMobile }) {
   const location = useLocation();
   const [adminAvatar, setAdminAvatar] = useState(() => localStorage.getItem('horizon_admin_avatar') || '');
+  const [counters, setCounters] = useState({
+    users: 0,
+    transactions: 0,
+    notifications: 0,
+    tickets: 0,
+  });
+
+  const fetchCounters = useCallback(async () => {
+    try {
+      const res = await getSidebarCounters();
+      if (res?.success && res.counters) {
+        setCounters(res.counters);
+      }
+    } catch {
+      // Ignore background network errors
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCounters();
+    const interval = setInterval(fetchCounters, 15000); // 15s live poll
+
+    const handleCountersSync = () => fetchCounters();
+    const handleUsersSeen = () => setCounters(prev => ({ ...prev, users: 0 }));
+    const handleTxnsSeen = () => setCounters(prev => ({ ...prev, transactions: 0 }));
+
+    window.addEventListener('admin-counters-update', handleCountersSync);
+    window.addEventListener('admin-users-seen', handleUsersSeen);
+    window.addEventListener('admin-transactions-seen', handleTxnsSeen);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('admin-counters-update', handleCountersSync);
+      window.removeEventListener('admin-users-seen', handleUsersSeen);
+      window.removeEventListener('admin-transactions-seen', handleTxnsSeen);
+    };
+  }, [fetchCounters]);
 
   useEffect(() => {
     const handleAvatarSync = (e) => {
@@ -63,6 +101,14 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
       window.removeEventListener('storage', handleAvatarSync);
     };
   }, []);
+
+  const getItemCount = (itemPath) => {
+    if (itemPath === '/admin/users') return counters.users || 0;
+    if (itemPath === '/admin/transactions') return counters.transactions || 0;
+    if (itemPath === '/admin/notifications') return counters.notifications || 0;
+    if (itemPath === '/admin/support-tickets') return counters.tickets || 0;
+    return 0;
+  };
 
   return (
     <>
@@ -155,13 +201,14 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
                 {sec.items.map(item => {
                   const isActive = location.pathname === item.path;
                   const Icon = isActive ? item.activeIcon : item.icon;
+                  const count = getItemCount(item.path);
 
                   return (
                     <li key={item.path} className="relative group">
                       <NavLink
                         to={item.path}
                         onClick={() => isMobile && onToggle()}
-                        className={`flex items-center rounded-xl transition-all duration-150
+                        className={`flex items-center rounded-xl transition-all duration-150 relative
                           ${(isOpen || isMobile)
                             ? `gap-3 px-3.5 py-2.5 ${isActive
                                 ? 'bg-gold-50/90 text-gold-950 font-bold border border-gold-300/80 shadow-2xs'
@@ -184,19 +231,47 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
                           }
                         />
 
-                        {/* Label & Chevron (Expanded Mode Only) */}
+                        {/* Collapsed Mode Floating Notification Dot / Badge */}
+                        {!isOpen && !isMobile && count > 0 && (
+                          <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[9px] font-black flex items-center justify-center shadow-md ring-2 ring-white animate-pulse">
+                            {count > 9 ? '9+' : count}
+                          </span>
+                        )}
+
+                        {/* Label & Expanded Badge (Expanded Mode Only) */}
                         {(isOpen || isMobile) && (
                           <>
                             <span className="text-xs flex-1 truncate">{item.label}</span>
-                            {isActive && <UilAngleRight size={16} className="text-gold-700 flex-shrink-0" />}
+
+                            {/* Dot Counter Badge */}
+                            {count > 0 && (
+                              <span className="flex items-center gap-1.5 flex-shrink-0">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                </span>
+                                <span className="px-1.5 py-0.5 text-[10px] font-black rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-2xs">
+                                  {count > 99 ? '99+' : count}
+                                </span>
+                              </span>
+                            )}
+
+                            {isActive && count === 0 && (
+                              <UilAngleRight size={16} className="text-gold-700 flex-shrink-0" />
+                            )}
                           </>
                         )}
                       </NavLink>
 
                       {/* ──────────────── FLOATING HOVER TOOLTIP (COLLAPSED MODE) ──────────────── */}
                       {!isOpen && !isMobile && (
-                        <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap z-[99999] shadow-2xl pointer-events-none border border-slate-700 flex items-center gap-1.5">
+                        <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap z-[99999] shadow-2xl pointer-events-none border border-slate-700 flex items-center gap-2">
                           <span>{item.label}</span>
+                          {count > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-black">
+                              {count} new
+                            </span>
+                          )}
                           <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-y-4 border-y-transparent border-r-4 border-r-slate-900" />
                         </div>
                       )}

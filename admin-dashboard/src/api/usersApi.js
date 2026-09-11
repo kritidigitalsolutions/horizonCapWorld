@@ -29,3 +29,9 @@ export const deleteUser = async (id) => {
   const response = await API.delete(`/admin/users/${id}`);
   return response.data;
 };
+
+// Mark all or selected users as seen
+export const markUsersSeen = async (userIds = []) => {
+  const response = await API.put("/admin/users/mark-seen", { userIds });
+  return response.data;
+};

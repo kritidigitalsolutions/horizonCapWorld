@@ -21,7 +21,8 @@ import {
   approveTransaction,
   rejectTransaction,
   deleteTransaction,
-  clearAllTransactions
+  clearAllTransactions,
+  markTransactionsSeen
 } from '../api/transactionsApi';
 
 export default function Transactions() {
@@ -48,6 +49,13 @@ export default function Transactions() {
   const [datePreset, setDatePreset] = useState('all'); // all, today, last7, thisMonth, custom
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+
+  const handleCopyText = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedHash(true);
+    setTimeout(() => setCopiedHash(false), 2000);
+  };
 
   const fetchTxns = useCallback(async () => {
     try {
@@ -79,6 +87,7 @@ export default function Transactions() {
             date: t.date || (t.createdAt ? t.createdAt.split('T')[0] : '2026-08-20'),
             time: t.time || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12:00'),
             status: t.status || 'Pending',
+            isSeenByAdmin: t.isSeenByAdmin !== undefined ? t.isSeenByAdmin : true,
             fee: `$${Number(t.fee || 0).toFixed(2)}`,
             netAmount: `$${Number(t.netAmount || numAmt).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
             slipUrl: t.slipUrl || '',
@@ -88,6 +97,12 @@ export default function Transactions() {
           };
         });
         setTxnList(formatted);
+
+        // If there are unseen transactions, mark them seen in backend & sync sidebar
+        if (res.unseenCount > 0 || res.transactions.some(t => t.isSeenByAdmin === false)) {
+          markTransactionsSeen().catch(() => {});
+          window.dispatchEvent(new CustomEvent('admin-transactions-seen'));
+        }
       } else {
         setTxnList([]);
       }
@@ -597,11 +612,38 @@ export default function Transactions() {
                     className="animate-fade-in hover:bg-slate-50/70 transition-colors"
                     style={{ animationDelay: `${i * 30}ms` }}
                   >
-                    {/* 1. TXN ID */}
+                    {/* 1. TXN ID / TID */}
                     <td className="whitespace-nowrap">
-                      <span className="font-mono text-xs font-semibold text-slate-800 bg-slate-100/90 px-2.5 py-1 rounded-lg border border-slate-200/80 shadow-2xs">
-                        {txn.id}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1">
+                            <span
+                              className="font-mono text-xs font-bold text-slate-900 bg-gold-50/90 px-2 py-1 rounded-lg border border-gold-300/80 shadow-2xs max-w-[180px] truncate"
+                              title={txn.referenceNo || txn.id}
+                            >
+                              {txn.referenceNo || txn.id}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(txn.referenceNo || txn.id)}
+                              className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-gold-700 cursor-pointer transition-colors"
+                              title="Copy TID / Hash"
+                            >
+                              <RiFileCopyLine size={13} />
+                            </button>
+                          </div>
+                          {txn.referenceNo && txn.id && txn.referenceNo !== txn.id && (
+                            <span className="text-[10px] text-slate-400 font-mono mt-0.5 pl-0.5">
+                              Internal: {txn.id}
+                            </span>
+                          )}
+                        </div>
+                        {!txn.isSeenByAdmin && (
+                          <span className="px-1.5 py-0.2 text-[9px] font-black rounded-md bg-amber-500 text-white shadow-2xs animate-pulse flex-shrink-0">
+                            NEW
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* 2. Investor Details */}
@@ -927,7 +969,7 @@ export default function Transactions() {
                     {selectedTxn.referenceNo && (
                       <button
                         type="button"
-                        onClick={() => copyText(selectedTxn.referenceNo)}
+                        onClick={() => handleCopyText(selectedTxn.referenceNo)}
                         className="p-1 hover:bg-slate-200 rounded text-slate-600 cursor-pointer"
                         title="Copy Hash"
                       >
