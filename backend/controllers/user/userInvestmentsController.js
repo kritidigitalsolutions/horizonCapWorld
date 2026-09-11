@@ -47,8 +47,9 @@ exports.getPlanById = async (req, res) => {
 // @route   POST /api/user/investments
 exports.investInPlan = async (req, res) => {
   try {
-    const { planId, amount } = req.body;
+    const { planId, amount, autoRenewal } = req.body;
     const investAmount = Number(amount);
+    const isAutoRenewal = Boolean(autoRenewal);
 
     if (!planId || !investAmount || investAmount <= 0) {
       return res.status(400).json({
@@ -126,6 +127,13 @@ exports.investInPlan = async (req, res) => {
       }
     }
 
+    // Auto Renewal Mode Incentive: +0.25% monthly boost on each slab
+    if (isAutoRenewal) {
+      effectiveMonthlyRoi = Number((effectiveMonthlyRoi + 0.25).toFixed(4));
+      effectiveDailyRoi = Number((effectiveDailyRoi + (0.25 / 30)).toFixed(6));
+      effectiveAnnualRoi = Number((effectiveAnnualRoi + 3.0).toFixed(2));
+    }
+
     // Dynamic daily & per second calculations based on matched slab ROI
     const dailyEarning = investAmount * (effectiveDailyRoi / 100);
     const perSecondRate = dailyEarning / 86400;
@@ -154,6 +162,9 @@ exports.investInPlan = async (req, res) => {
             annualRoi: matchedSlab.annualRoi,
           }
         : undefined,
+      autoRenewal: isAutoRenewal,
+      autoRenewalIncentive: 0.25,
+      isCompounding: isAutoRenewal,
       payoutInterval: plan.payoutInterval,
       duration: plan.duration,
       durationDays: plan.durationDays,
@@ -179,7 +190,9 @@ exports.investInPlan = async (req, res) => {
       gateway: "Deposit Wallet",
       referenceNo: newInvestment.customId,
       status: "Approved",
-      note: `Active contract allocated in ${plan.name} (${plan.category}) @ ${effectiveDailyRoi}% daily ROI`,
+      note: `Active contract allocated in ${plan.name} (${plan.category}) @ ${effectiveDailyRoi}% daily ROI${
+        isAutoRenewal ? " (Auto Renewal Mode ON: +0.25%/mo Boost & Compounding)" : ""
+      }`,
     });
 
     // Increment plan investors count
@@ -194,7 +207,9 @@ exports.investInPlan = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `Successfully invested $${investAmount.toLocaleString()} USD in ${plan.name} at ${effectiveDailyRoi}% daily ROI.`,
+      message: `Successfully invested $${investAmount.toLocaleString()} USD in ${plan.name} at ${effectiveDailyRoi}% daily ROI${
+        isAutoRenewal ? " with Auto Renewal +0.25%/mo Boost" : ""
+      }.`,
       investment: newInvestment,
       transaction: newTrx,
       user: {
@@ -249,6 +264,76 @@ exports.getInvestmentById = async (req, res) => {
     }
 
     res.status(200).json({ success: true, investment });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Toggle Auto-Renewal on an Active Investment
+// @route   PUT /api/user/investments/:id/toggle-auto-renewal
+exports.toggleAutoRenewal = async (req, res) => {
+  try {
+    const investment = await UserInvestment.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+      status: "Active",
+    });
+
+    if (!investment) {
+      return res.status(404).json({
+        success: false,
+        message: "Active investment contract not found.",
+      });
+    }
+
+    const currentAutoRenewal = Boolean(investment.autoRenewal);
+    const newAutoRenewal = !currentAutoRenewal;
+
+    // Base slab values
+    const baseDailyRoi = investment.slabApplied?.dailyRoi || (currentAutoRenewal ? investment.dailyRoi - (0.25 / 30) : investment.dailyRoi);
+    const baseMonthlyRoi = investment.slabApplied?.monthlyRoi || (currentAutoRenewal ? investment.roi - 0.25 : investment.roi);
+    const baseAnnualRoi = investment.slabApplied?.annualRoi || (currentAutoRenewal ? investment.annualRoi - 3.0 : investment.annualRoi);
+
+    const oldDailyEarning = investment.dailyEarning || 0;
+    const oldPerSecRate = investment.perSecondRate || 0;
+
+    if (newAutoRenewal) {
+      investment.autoRenewal = true;
+      investment.isCompounding = true;
+      investment.autoRenewalIncentive = 0.25;
+      investment.roi = Number((baseMonthlyRoi + 0.25).toFixed(4));
+      investment.dailyRoi = Number((baseDailyRoi + (0.25 / 30)).toFixed(6));
+      investment.annualRoi = Number((baseAnnualRoi + 3.0).toFixed(2));
+    } else {
+      investment.autoRenewal = false;
+      investment.isCompounding = false;
+      investment.roi = Number(baseMonthlyRoi.toFixed(4));
+      investment.dailyRoi = Number(baseDailyRoi.toFixed(6));
+      investment.annualRoi = Number(baseAnnualRoi.toFixed(2));
+    }
+
+    const newDailyEarning = investment.amount * (investment.dailyRoi / 100);
+    const newPerSecRate = newDailyEarning / 86400;
+
+    investment.dailyEarning = newDailyEarning;
+    investment.perSecondRate = newPerSecRate;
+    await investment.save();
+
+    // Adjust user totals
+    const user = await User.findById(req.user._id);
+    if (user) {
+      user.dailyEarning = Math.max(0, parseFloat(((user.dailyEarning || 0) - oldDailyEarning + newDailyEarning).toFixed(4)));
+      user.perSecondRate = Math.max(0, parseFloat(((user.perSecondRate || 0) - oldPerSecRate + newPerSecRate).toFixed(8)));
+      await user.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: newAutoRenewal
+        ? "Auto Renewal Mode activated! +0.25% monthly boost applied to contract yield."
+        : "Auto Renewal Mode deactivated. Standard slab rates restored.",
+      investment,
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

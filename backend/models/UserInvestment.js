@@ -96,6 +96,18 @@ const userInvestmentSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    autoRenewal: {
+      type: Boolean,
+      default: false,
+    },
+    autoRenewalIncentive: {
+      type: Number, // Monthly % bonus when auto renewal is active (e.g. +0.25%)
+      default: 0.25,
+    },
+    isCompounding: {
+      type: Boolean,
+      default: false,
+    },
     status: {
       type: String,
       enum: ["Active", "Completed", "Cancelled"],

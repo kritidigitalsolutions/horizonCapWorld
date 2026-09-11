@@ -71,16 +71,16 @@ export default function NotificationDropdown() {
 
   const handleItemClick = async (n) => {
     setOpen(false);
-    try {
-      if (!n.read) {
+    if (!n.read) {
+      setNotifications(prev =>
+        prev.map(item => (item._id === n._id ? { ...item, read: true } : item))
+      );
+      setUnreadCount(c => Math.max(0, c - 1));
+      try {
         await markAsRead(n._id);
-        setNotifications(prev =>
-          prev.map(item => (item._id === n._id ? { ...item, read: true } : item))
-        );
-        setUnreadCount(c => Math.max(0, c - 1));
+      } catch (err) {
+        console.error('Error marking read on click:', err);
       }
-    } catch (err) {
-      console.error('Error marking read on click:', err);
     }
 
     if (n.actionUrl) {
@@ -89,8 +89,6 @@ export default function NotificationDropdown() {
       } else {
         navigate(n.actionUrl);
       }
-    } else {
-      navigate('/notifications');
     }
   };
 

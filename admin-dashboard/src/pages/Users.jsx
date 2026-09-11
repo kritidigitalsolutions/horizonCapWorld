@@ -414,7 +414,7 @@ export default function Users() {
                 <div className="p-3.5 bg-white rounded-xl border border-gold-200 shadow-2xs text-center">
                   <p className="text-[11px] text-slate-400 font-normal">Total Invested</p>
                   <p className="text-base font-semibold text-slate-800 font-poppins mt-0.5">
-                    {selectedUser.totalInvested || '$0'}
+                    ${Number(selectedUser.totalInvested || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
 
@@ -422,7 +422,7 @@ export default function Users() {
                 <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/70 shadow-2xs text-center">
                   <p className="text-[11px] text-emerald-700 font-normal">Total Profit Earned</p>
                   <p className="text-base font-semibold text-emerald-700 font-poppins mt-0.5">
-                    {selectedUser.totalProfit || '$0'}
+                    +${Number(selectedUser.totalEarned || selectedUser.totalProfit || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
 
@@ -430,7 +430,7 @@ export default function Users() {
                 <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs text-center">
                   <p className="text-[11px] text-slate-400 font-normal">Wallet Balance</p>
                   <p className="text-base font-semibold text-gold-600 font-poppins mt-0.5">
-                    {selectedUser.walletBalance || '$0'}
+                    ${Number((selectedUser.depositWallet || 0) + (selectedUser.earningWallet || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
 
@@ -438,7 +438,7 @@ export default function Users() {
                 <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs text-center">
                   <p className="text-[11px] text-slate-400 font-normal">Active Plans</p>
                   <p className="text-base font-semibold text-slate-700 font-poppins mt-0.5">
-                    {selectedUser.activePlans?.length || 0} Holdings
+                    {selectedUser.activePlans?.length || selectedUser.activeContracts || 0} Holdings
                   </p>
                 </div>
               </div>

@@ -141,41 +141,18 @@ export default function Referrals() {
         subtitle="Grow your multi-tier downline team and earn direct deposit & daily ROI profit-sharing commissions"
         badge={`${commissions.length}-Tier Active Network`}
         actions={
-          <button
-            type="button"
-            onClick={() => setCalculatorOpen(true)}
-            className="btn btn-outline-gold text-xs px-4 py-2.5 rounded-xl font-bold shadow-xs flex items-center gap-2 cursor-pointer bg-white"
-          >
-            <RiCalculatorLine size={18} className="text-gold-700" />
-            <span>Commission Calculator</span>
-          </button>
+          (depositEnabled || roiShareEnabled) ? (
+            <button
+              type="button"
+              onClick={() => setCalculatorOpen(true)}
+              className="btn btn-outline-gold text-xs px-4 py-2.5 rounded-xl font-bold shadow-xs flex items-center gap-2 cursor-pointer bg-white"
+            >
+              <RiCalculatorLine size={18} className="text-gold-700" />
+              <span>Commission Calculator</span>
+            </button>
+          ) : null
         }
       />
-
-      {/* ──────────────── REFERRAL STATUS NOTICE BANNER IF PAUSED BY ADMIN ──────────────── */}
-      {anyFeatureDisabled && (
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 shadow-sm space-y-1.5 animate-fade-in">
-          <div className="flex items-center gap-2.5 text-amber-900 font-bold text-sm">
-            <RiPauseCircleLine size={20} className="text-amber-600 flex-shrink-0" />
-            <span>Referral Commission Status Notice</span>
-          </div>
-          <div className="text-xs text-amber-800 space-y-1 pl-7">
-            {!depositEnabled && !roiShareEnabled ? (
-              <p>
-                <strong>Referral Reward Distributions are currently paused by platform administration.</strong> Downline registrations and tracking remain active, but commission distributions are temporarily disabled.
-              </p>
-            ) : !depositEnabled ? (
-              <p>
-                <strong>Direct Investment Deposit Commission is currently paused by administration.</strong> (Daily ROI Profit Share remains active).
-              </p>
-            ) : (
-              <p>
-                <strong>Daily / Per-Second ROI Profit Share is currently paused by administration.</strong> (Direct Investment Deposit Commission remains active).
-              </p>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ──────────────── 4 ROLLING ODOMETER KPI CARDS ──────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -498,141 +475,125 @@ export default function Referrals() {
       {/* ──────────────── TAB 2: MULTI-TIER COMMISSION STRUCTURE & PLANS ──────────────── */}
       {activeTab === 'plans' && (
         <div className="space-y-6 font-poppins">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 1. Direct Investment Deposit Commission Box */}
-            <div className={`card p-5 space-y-4 border shadow-sm ${
-              depositEnabled ? 'border-emerald-200/80' : 'border-rose-200/80 bg-rose-50/10'
-            }`}>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                    <RiTeamLine size={22} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-800 font-poppins">
-                      1. Direct Investment Deposit Commission
-                    </h4>
-                    <p className="text-xs text-slate-400">
-                      Commission credited instantly when downline members deposit into investment plans
-                    </p>
-                  </div>
-                </div>
-
-                <Badge variant={depositEnabled ? 'success' : 'danger'} size="sm">
-                  {depositEnabled ? 'Active' : 'Currently Unavailable'}
-                </Badge>
-              </div>
-
-              {!depositEnabled && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
-                  <RiAlertLine size={16} className="text-rose-600 flex-shrink-0" />
-                  <span>Deposit commission feature is currently unavailable / paused by administration.</span>
-                </div>
-              )}
-
-              <div className="space-y-2.5">
-                {commissions.map((tier) => (
-                  <div
-                    key={tier._id || tier.level}
-                    className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-emerald-50/30 transition-colors"
-                  >
+          {(depositEnabled || roiShareEnabled) ? (
+            <div className={`grid grid-cols-1 ${depositEnabled && roiShareEnabled ? 'md:grid-cols-2' : ''} gap-6`}>
+              {/* 1. Direct Investment Deposit Commission Box */}
+              {depositEnabled && (
+                <div className="card p-5 space-y-4 border border-emerald-200/80 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
-                        {tier.level}
-                      </span>
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                        <RiTeamLine size={22} />
+                      </div>
                       <div>
-                        <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
-                        <p className="text-[11px] text-slate-400">
-                          {networkList.filter(u => u.level === Number(String(tier.level).replace('L', ''))).length} Active Team Promoters
+                        <h4 className="text-sm font-bold text-slate-800 font-poppins">
+                          1. Direct Investment Deposit Commission
+                        </h4>
+                        <p className="text-xs text-slate-400">
+                          Commission credited instantly when downline members deposit into investment plans
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl shadow-2xs ${
-                        depositEnabled
-                          ? 'text-emerald-600 bg-emerald-50 border border-emerald-200'
-                          : 'text-slate-400 bg-slate-100 border border-slate-200 line-through'
-                      }`}>
-                        {tier.investCommission}
-                      </span>
-                    </div>
+                    <Badge variant="success" size="sm">
+                      Active
+                    </Badge>
                   </div>
-                ))}
-              </div>
 
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800">
-                <strong>Formula:</strong> Deposit Commission = Downline Deposit Amount × Tier % (e.g. $10,000 Level 1 deposit = $500 direct commission)
-              </div>
-            </div>
+                  <div className="space-y-2.5">
+                    {commissions.map((tier) => (
+                      <div
+                        key={tier._id || tier.level}
+                        className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-emerald-50/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
+                            {tier.level}
+                          </span>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
+                            <p className="text-[11px] text-slate-400">
+                              {networkList.filter(u => u.level === Number(String(tier.level).replace('L', ''))).length} Active Team Promoters
+                            </p>
+                          </div>
+                        </div>
 
-            {/* 2. Earnings / ROI Commission Box */}
-            <div className={`card p-5 space-y-4 border shadow-sm ${
-              roiShareEnabled ? 'border-amber-200/80' : 'border-rose-200/80 bg-rose-50/10'
-            }`}>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                    <RiFlashlightLine size={22} />
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl shadow-2xs text-emerald-600 bg-emerald-50 border border-emerald-200">
+                            {tier.investCommission}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-800 font-poppins">
-                      2. Daily / Per-Second ROI Profit Share
-                    </h4>
-                    <p className="text-xs text-slate-400">
-                      Continuous commission earned on the streaming interest profit earned by downlines
-                    </p>
+
+                  <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800">
+                    <strong>Formula:</strong> Deposit Commission = Downline Deposit Amount × Tier % (e.g. $10,000 Level 1 deposit = $500 direct commission)
                   </div>
-                </div>
-
-                <Badge variant={roiShareEnabled ? 'warning' : 'danger'} size="sm">
-                  {roiShareEnabled ? 'Active' : 'Currently Unavailable'}
-                </Badge>
-              </div>
-
-              {!roiShareEnabled && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
-                  <RiAlertLine size={16} className="text-rose-600 flex-shrink-0" />
-                  <span>Daily ROI profit share feature is currently unavailable / paused by administration.</span>
                 </div>
               )}
 
-              <div className="space-y-2.5">
-                {commissions.map((tier) => (
-                  <div
-                    key={tier._id || tier.level}
-                    className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-amber-50/30 transition-colors"
-                  >
+              {/* 2. Earnings / ROI Commission Box */}
+              {roiShareEnabled && (
+                <div className="card p-5 space-y-4 border border-amber-200/80 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
-                        {tier.level}
-                      </span>
+                      <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                        <RiFlashlightLine size={22} />
+                      </div>
                       <div>
-                        <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
-                        <p className="text-[11px] text-slate-400">
-                          {networkList.filter(u => u.level === Number(String(tier.level).replace('L', ''))).length} Active Team Promoters
+                        <h4 className="text-sm font-bold text-slate-800 font-poppins">
+                          2. Daily / Per-Second ROI Profit Share
+                        </h4>
+                        <p className="text-xs text-slate-400">
+                          Continuous commission earned on the streaming interest profit earned by downlines
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl shadow-2xs ${
-                        roiShareEnabled
-                          ? 'text-gold-700 bg-gold-50 border border-gold-300'
-                          : 'text-slate-400 bg-slate-100 border border-slate-200 line-through'
-                      }`}>
-                        {tier.earningsCommission}
-                      </span>
-                    </div>
+                    <Badge variant="warning" size="sm">
+                      Active
+                    </Badge>
                   </div>
-                ))}
-              </div>
 
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800">
-                <strong>Formula:</strong> ROI Profit Share = Downline Stream Interest ($/sec) × Tier % (e.g. $100 daily yield earned by L1 = $5/day ongoing)
-              </div>
+                  <div className="space-y-2.5">
+                    {commissions.map((tier) => (
+                      <div
+                        key={tier._id || tier.level}
+                        className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-amber-50/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
+                            {tier.level}
+                          </span>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
+                            <p className="text-[11px] text-slate-400">
+                              {networkList.filter(u => u.level === Number(String(tier.level).replace('L', ''))).length} Active Team Promoters
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl shadow-2xs text-gold-700 bg-gold-50 border border-gold-300">
+                            {tier.earningsCommission}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800">
+                    <strong>Formula:</strong> ROI Profit Share = Downline Stream Interest ($/sec) × Tier % (e.g. $100 daily yield earned by L1 = $5/day ongoing)
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="p-8 text-center text-slate-500 bg-slate-50 border border-slate-200 rounded-2xl">
+              Commission plans are currently not available.
+            </div>
+          )}
         </div>
       )}
 
@@ -800,7 +761,13 @@ export default function Referrals() {
         isOpen={calculatorOpen}
         onClose={() => setCalculatorOpen(false)}
         title="Affiliate Commission Calculator"
-        subtitle="Simulate direct deposit bonuses & multi-tier daily profit share"
+        subtitle={
+          depositEnabled && roiShareEnabled
+            ? "Simulate direct deposit bonuses & multi-tier daily profit share"
+            : depositEnabled
+            ? "Simulate direct deposit bonuses across all tiers"
+            : "Simulate multi-tier daily profit share earnings"
+        }
         size="md"
         footer={
           <button
@@ -813,36 +780,74 @@ export default function Referrals() {
         }
       >
         <div className="space-y-4 font-poppins text-xs">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Simulated Downline Investment Deposit ($)
-            </label>
-            <input
-              type="number"
-              value={calcDeposit}
-              onChange={e => setCalcDeposit(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 outline-none focus:border-gold-400"
-            />
-          </div>
+          {depositEnabled && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Simulated Downline Investment Deposit ($)
+              </label>
+              <input
+                type="number"
+                value={calcDeposit}
+                onChange={e => setCalcDeposit(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 outline-none focus:border-gold-400"
+              />
+            </div>
+          )}
+
+          {roiShareEnabled && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Simulated Downline Daily Yield ($/day)
+              </label>
+              <input
+                type="number"
+                value={calcYield}
+                onChange={e => setCalcYield(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 outline-none focus:border-gold-400"
+              />
+            </div>
+          )}
 
           {/* Breakdown per tier */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-            <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
-              Instant Deposit Commission Breakdown:
-            </h5>
-            {commissions.map(c => {
-              const rate = parseFloat(c.investCommission) / 100;
-              const bonus = (Number(calcDeposit) || 0) * rate;
-              return (
-                <div key={c._id || c.level} className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-600">Level {c.level} ({c.investCommission}):</span>
-                  <span className={`font-mono font-bold ${depositEnabled ? 'text-emerald-600' : 'text-slate-400 line-through'}`}>
-                    +${bonus.toFixed(2)} USD {depositEnabled ? '' : '(Paused)'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          {depositEnabled && (
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+              <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
+                Instant Deposit Commission Breakdown:
+              </h5>
+              {commissions.map(c => {
+                const rate = parseFloat(c.investCommission) / 100;
+                const bonus = (Number(calcDeposit) || 0) * rate;
+                return (
+                  <div key={c._id || c.level} className="flex justify-between py-1 border-b border-slate-200/60">
+                    <span className="text-slate-600">Level {c.level} ({c.investCommission}):</span>
+                    <span className="font-mono font-bold text-emerald-600">
+                      +${bonus.toFixed(2)} USD
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {roiShareEnabled && (
+            <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200 space-y-2">
+              <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
+                Daily ROI Profit Share Breakdown:
+              </h5>
+              {commissions.map(c => {
+                const rate = parseFloat(c.earningsCommission) / 100;
+                const bonus = (Number(calcYield) || 0) * rate;
+                return (
+                  <div key={c._id || c.level} className="flex justify-between py-1 border-b border-amber-200/60">
+                    <span className="text-slate-600">Level {c.level} ({c.earningsCommission}):</span>
+                    <span className="font-mono font-bold text-amber-700">
+                      +${bonus.toFixed(2)} / day
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </Modal>
     </div>

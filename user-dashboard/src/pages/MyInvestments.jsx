@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { getMyInvestments } from '../api/plansApi';
+import { getMyInvestments, toggleAutoRenewal } from '../api/plansApi';
 import {
   RiFundsLine, RiTimeLine, RiCheckLine, RiLeafLine, RiCoinsLine,
-  RiFlashlightLine, RiArrowRightLine, RiExchangeDollarLine, RiCalendarLine
+  RiFlashlightLine, RiArrowRightLine, RiExchangeDollarLine, RiCalendarLine,
+  RiRefreshLine,
 } from 'react-icons/ri';
 import { UilBolt, UilClock, UilMoneyBill } from '@iconscout/react-unicons';
 import KPICard from '../components/ui/KPICard';
@@ -15,6 +16,7 @@ export default function MyInvestments() {
   const [investmentsList, setInvestmentsList] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [togglingId, setTogglingId] = useState(null);
 
   const fetchInvestments = async () => {
     try {
@@ -36,6 +38,9 @@ export default function MyInvestments() {
           startDate: inv.startDate ? inv.startDate.split('T')[0] : '2026-08-01',
           endDate: inv.endDate ? inv.endDate.split('T')[0] : '2027-08-01',
           payoutInterval: inv.payoutInterval || 'Per Second (Live)',
+          autoRenewal: Boolean(inv.autoRenewal),
+          autoRenewalIncentive: inv.autoRenewalIncentive || 0.25,
+          isCompounding: Boolean(inv.isCompounding),
           status: inv.status || 'Active',
         }));
         setInvestmentsList(formatted);
@@ -47,6 +52,20 @@ export default function MyInvestments() {
       setInvestmentsList([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleAutoRenewal = async (id) => {
+    try {
+      setTogglingId(id);
+      const res = await toggleAutoRenewal(id);
+      if (res?.success) {
+        await fetchInvestments();
+      }
+    } catch (err) {
+      console.warn('Failed to toggle auto renewal:', err.message);
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -195,11 +214,20 @@ export default function MyInvestments() {
                   </div>
 
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="text-lg font-bold text-gray-800 font-display">{inv.planName}</h3>
                       <span className={`badge ${isActive ? 'badge-success' : 'badge-gold'} text-[10px] font-bold`}>
                         {inv.status}
                       </span>
+                      {inv.autoRenewal ? (
+                        <span className="badge badge-gold text-[10px] font-bold flex items-center gap-1">
+                          <RiRefreshLine size={12} className="animate-spin" /> Auto Renewal: ON (+0.25%/mo)
+                        </span>
+                      ) : (
+                        <span className="badge bg-slate-100 text-slate-500 text-[10px] font-medium">
+                          Auto Renewal: OFF
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 font-poppins">
@@ -207,7 +235,7 @@ export default function MyInvestments() {
                       <span>·</span>
                       <span className="flex items-center gap-1 text-emerald-700 font-bold">
                         <RiFlashlightLine size={13} className="text-amber-500" />
-                        {inv.dailyRoi.toFixed(2)}% Daily ({inv.roi}% / mo)
+                        {inv.dailyRoi.toFixed(3)}% Daily ({inv.roi.toFixed(2)}% / mo)
                       </span>
                       <span>·</span>
                       <span className="text-slate-400">
@@ -217,31 +245,49 @@ export default function MyInvestments() {
                   </div>
                 </div>
 
-                {/* Right: Key Figures Matrix */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 bg-white/60 p-4 rounded-xl border border-slate-100 font-poppins">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase text-slate-400">Invested Capital</p>
-                    <p className="text-base font-bold text-slate-900 font-display tabular-nums mt-0.5">
-                      ${inv.amount.toLocaleString()}
-                    </p>
-                  </div>
+                {/* Right: Key Figures Matrix & Quick Toggle */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  {isActive && (
+                    <button
+                      type="button"
+                      disabled={togglingId === inv._id}
+                      onClick={() => handleToggleAutoRenewal(inv._id)}
+                      className={`text-[11px] font-bold px-3 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 self-start sm:self-center ${
+                        inv.autoRenewal
+                          ? 'bg-amber-100/90 text-amber-950 border-amber-300 hover:bg-amber-200 shadow-2xs'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-gold-400 hover:text-gold-700 shadow-2xs'
+                      }`}
+                    >
+                      <RiRefreshLine size={13} className={togglingId === inv._id ? 'animate-spin' : ''} />
+                      {inv.autoRenewal ? 'Auto Renewal: ON' : 'Turn ON Auto Renewal'}
+                    </button>
+                  )}
 
-                  <div>
-                    <p className="text-[10px] font-bold uppercase text-slate-400">Profit Accrued</p>
-                    <p className="text-base font-bold text-emerald-600 font-display tabular-nums mt-0.5">
-                      +${inv.totalEarned.toLocaleString()}
-                    </p>
-                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 bg-white/60 p-4 rounded-xl border border-slate-100 font-poppins">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Invested Capital</p>
+                      <p className="text-base font-bold text-slate-900 font-display tabular-nums mt-0.5">
+                        ${inv.amount.toLocaleString()}
+                      </p>
+                    </div>
 
-                  <div className="col-span-2 sm:col-span-1">
-                    <p className="text-[10px] font-bold uppercase text-slate-400">
-                      {isActive ? 'Days Left' : 'Maturity Status'}
-                    </p>
-                    <p className={`text-base font-bold font-display tabular-nums mt-0.5 ${
-                      isActive ? 'text-gold-700' : 'text-slate-500'
-                    }`}>
-                      {isActive ? `${inv.daysRemaining} Days` : 'Completed'}
-                    </p>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Profit Accrued</p>
+                      <p className="text-base font-bold text-emerald-600 font-display tabular-nums mt-0.5">
+                        +${inv.totalEarned.toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div className="col-span-2 sm:col-span-1">
+                      <p className="text-[10px] font-bold uppercase text-slate-400">
+                        {isActive ? 'Days Left' : 'Maturity Status'}
+                      </p>
+                      <p className={`text-base font-bold font-display tabular-nums mt-0.5 ${
+                        isActive ? 'text-gold-700' : 'text-slate-500'
+                      }`}>
+                        {isActive ? `${inv.daysRemaining} Days` : 'Completed'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

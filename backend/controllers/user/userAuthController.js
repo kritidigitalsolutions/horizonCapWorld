@@ -222,17 +222,6 @@ exports.login = async (req, res) => {
     // Synchronize latest per-second streaming ROI earnings upon login
     user = await syncUserStreamingEarnings(user);
 
-    // Automated Security Login Alert
-    await notifyUser({
-      userId: user._id,
-      title: "Security Login Alert",
-      message: `Successful sign-in to your investor portal on ${new Date().toLocaleString()}.`,
-      category: "SECURITY",
-      type: "login_alert",
-      priority: "LOW",
-      settingKey: "autoNewDeviceLogin",
-    });
-
     const token = generateToken(user._id, "USER");
 
     res.status(200).json({

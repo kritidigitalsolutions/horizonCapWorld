@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { RiNotification3Line, RiCheckDoubleLine, RiExternalLinkLine } from 'react-icons/ri';
 import { Link } from 'react-router-dom';
-import { getAdminNotifications, markAllAdminNotificationsRead } from '../../api/notificationApi';
+import { getAdminNotifications, markAdminNotificationRead, markAllAdminNotificationsRead } from '../../api/notificationApi';
 
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -47,6 +47,21 @@ export default function NotificationDropdown() {
     }
   };
 
+  const handleNotificationClick = async (n) => {
+    setIsOpen(false);
+    if (!n.read && n._id) {
+      setNotifications(prev =>
+        prev.map(item => (item._id === n._id ? { ...item, read: true } : item))
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      try {
+        await markAdminNotificationRead(n._id);
+      } catch (err) {
+        console.warn('Failed to mark admin notification as read:', err.message);
+      }
+    }
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -86,7 +101,7 @@ export default function NotificationDropdown() {
               <Link
                 key={n._id}
                 to={n.actionUrl || '/admin/notifications'}
-                onClick={() => setIsOpen(false)}
+                onClick={() => handleNotificationClick(n)}
                 className={`p-3.5 hover:bg-gold-50/50 transition-colors cursor-pointer block ${
                   !n.read ? 'bg-gold-50/30' : ''
                 }`}

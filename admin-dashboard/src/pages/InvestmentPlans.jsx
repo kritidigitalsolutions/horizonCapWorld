@@ -46,6 +46,15 @@ export const DEFAULT_ROI_SLABS = [
   { minAmount: 1500, maxAmount: "", noMaxLimit: true, dailyRoi: 1.0, monthlyRoi: 30.0, annualRoi: 360 },
 ];
 
+// Default Reward (Loyalty Bonus) Slabs based on Capital not withdrawn
+export const DEFAULT_LOYALTY_SLABS = [
+  { days: 30, bonusPercentage: 0.50, label: "30 Days" },
+  { days: 90, bonusPercentage: 1.00, label: "90 Days" },
+  { days: 180, bonusPercentage: 3.00, label: "180 Days" },
+  { days: 365, bonusPercentage: 5.00, label: "365 Days" },
+  { days: 730, bonusPercentage: 10.00, label: "730 Days" },
+];
+
 // Helper to format duration string from DD, MM, YYYY values or infinite
 function formatDurationString(dd, mm, yyyy, isInfinite = false) {
   if (isInfinite) {
@@ -130,6 +139,10 @@ export default function InvestmentPlans() {
     roi: "7.5", // Monthly ROI (%)
     dailyRoi: "0.25", // Daily ROI (%)
     roiSlabs: DEFAULT_ROI_SLABS,
+    loyaltyBonusEnabled: true,
+    loyaltyBonusTitle: "Reward ( Loyalty Bonus )",
+    loyaltyBonusDescription: "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
+    loyaltyBonusSlabs: DEFAULT_LOYALTY_SLABS,
     isInfinite: false,
     durationDD: "",
     durationMM: "12",
@@ -182,6 +195,10 @@ export default function InvestmentPlans() {
       roi: "7.5",
       dailyRoi: "0.25",
       roiSlabs: DEFAULT_ROI_SLABS.map((s) => ({ ...s })),
+      loyaltyBonusEnabled: true,
+      loyaltyBonusTitle: "Reward ( Loyalty Bonus )",
+      loyaltyBonusDescription: "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
+      loyaltyBonusSlabs: DEFAULT_LOYALTY_SLABS.map((s) => ({ ...s })),
       isInfinite: false,
       durationDD: "",
       durationMM: "12",
@@ -222,6 +239,15 @@ export default function InvestmentPlans() {
           }))
         : DEFAULT_ROI_SLABS.map((s) => ({ ...s }));
 
+    const loyaltySlabs =
+      Array.isArray(plan.loyaltyBonusSlabs) && plan.loyaltyBonusSlabs.length > 0
+        ? plan.loyaltyBonusSlabs.map((s) => ({
+            days: s.days,
+            bonusPercentage: s.bonusPercentage,
+            label: s.label || `${s.days} Days`,
+          }))
+        : DEFAULT_LOYALTY_SLABS.map((s) => ({ ...s }));
+
     setFormData({
       name: plan.name || "",
       category: isCustomCat ? "custom" : plan.category || "Renewable Energy",
@@ -235,6 +261,10 @@ export default function InvestmentPlans() {
           ? (Number(plan.roi) / 30).toFixed(3)
           : "0.25",
       roiSlabs: slabs,
+      loyaltyBonusEnabled: plan.loyaltyBonusEnabled !== false,
+      loyaltyBonusTitle: plan.loyaltyBonusTitle || "Reward ( Loyalty Bonus )",
+      loyaltyBonusDescription: plan.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
+      loyaltyBonusSlabs: loyaltySlabs,
       isInfinite: isInf,
       durationDD: isInf ? "" : dd,
       durationMM: isInf ? "" : mm,
@@ -316,6 +346,25 @@ export default function InvestmentPlans() {
     });
   };
 
+  const handleLoyaltySlabChange = (index, field, value) => {
+    const updated = [...formData.loyaltyBonusSlabs];
+    const item = { ...updated[index] };
+    if (field === "bonusPercentage") {
+      item.bonusPercentage = value;
+    } else if (field === "days") {
+      item.days = Number(value.replace(/[^0-9]/g, "")) || 0;
+    }
+    updated[index] = item;
+    setFormData({ ...formData, loyaltyBonusSlabs: updated });
+  };
+
+  const handleResetLoyaltySlabs = () => {
+    setFormData({
+      ...formData,
+      loyaltyBonusSlabs: DEFAULT_LOYALTY_SLABS.map((s) => ({ ...s })),
+    });
+  };
+
   // 5. Handle Save (Create or Update API call)
   const handleSave = async () => {
     const finalCategory =
@@ -337,6 +386,12 @@ export default function InvestmentPlans() {
           };
         })
       : [];
+
+    const processedLoyaltySlabs = formData.loyaltyBonusSlabs.map((s) => ({
+      days: Number(s.days) || 30,
+      bonusPercentage: parseFloat(s.bonusPercentage) || 0.5,
+      label: s.label || `${s.days} Days`,
+    }));
 
     const minVal = isSlab && processedSlabs.length > 0
       ? processedSlabs[0].minAmount
@@ -385,6 +440,10 @@ export default function InvestmentPlans() {
       roi: roiVal,
       dailyRoi: dailyRoiVal,
       roiSlabs: processedSlabs,
+      loyaltyBonusEnabled: formData.loyaltyBonusEnabled,
+      loyaltyBonusTitle: formData.loyaltyBonusTitle,
+      loyaltyBonusDescription: formData.loyaltyBonusDescription,
+      loyaltyBonusSlabs: processedLoyaltySlabs,
       duration: finalDuration,
       durationDays: totalDays,
       isInfinite: formData.isInfinite,
@@ -681,6 +740,30 @@ export default function InvestmentPlans() {
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Reward (Loyalty Bonus) Information Box */}
+                {plan.loyaltyBonusEnabled !== false && (
+                  <div className="p-2.5 bg-gradient-to-r from-amber-50/90 via-gold-50/50 to-white rounded-xl border border-amber-200/80 mb-3 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-amber-900 flex items-center gap-1">
+                        <RiSparklingLine size={13} className="text-amber-600" />
+                        Reward (Loyalty Bonus)
+                      </span>
+                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded">Capital Benefit</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-tight">
+                      One time benefit directly given to the wallet (if not withdrawn):
+                    </p>
+                    <div className="grid grid-cols-5 gap-1 text-center">
+                      {(plan.loyaltyBonusSlabs && plan.loyaltyBonusSlabs.length > 0 ? plan.loyaltyBonusSlabs : DEFAULT_LOYALTY_SLABS).map((s, idx) => (
+                        <div key={idx} className="p-1 bg-white rounded-lg border border-amber-200/80 shadow-2xs">
+                          <span className="text-[9px] text-slate-400 font-bold block">{s.days}d</span>
+                          <span className="text-[10.5px] font-extrabold text-amber-700 block font-mono">+{s.bonusPercentage}%</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1097,6 +1180,70 @@ export default function InvestmentPlans() {
               </div>
             </div>
           )}
+
+          {/* ──────── REWARD ( LOYALTY BONUS ) SECTION ──────── */}
+          <div className="p-4 bg-gradient-to-br from-amber-50/70 via-gold-50/50 to-white rounded-2xl border border-gold-300/80 space-y-3.5 shadow-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-gold-200">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold shadow-2xs">
+                  <RiSparklingLine size={16} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
+                    Reward ( Loyalty Bonus )
+                  </h4>
+                  <p className="text-[11px] text-gray-500">
+                    Based on Capital not Withdrawn from the Account &bull; One time benefit directly given to the wallet
+                  </p>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={formData.loyaltyBonusEnabled}
+                  onChange={(e) => setFormData({ ...formData, loyaltyBonusEnabled: e.target.checked })}
+                  className="rounded border-gold-300 text-gold-500 focus:ring-gold-400"
+                />
+                <span>{formData.loyaltyBonusEnabled ? "Active" : "Disabled"}</span>
+              </label>
+            </div>
+
+            {formData.loyaltyBonusEnabled && (
+              <div className="space-y-2.5 animate-fade-in">
+                <div className="grid grid-cols-5 gap-2 text-center text-xs">
+                  {formData.loyaltyBonusSlabs.map((slab, idx) => (
+                    <div key={idx} className="p-2.5 bg-white rounded-xl border border-gold-200 shadow-2xs space-y-1">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-mono">
+                        {slab.days} Days
+                      </span>
+                      <div className="flex items-center justify-center rounded-lg border border-amber-200 bg-amber-50/60 px-1.5 py-1">
+                        <input
+                          type="text"
+                          value={slab.bonusPercentage}
+                          onChange={(e) => handleLoyaltySlabChange(idx, "bonusPercentage", e.target.value)}
+                          className="w-10 text-center bg-transparent outline-none font-extrabold text-amber-800 text-xs"
+                        />
+                        <span className="text-amber-600 font-bold text-[10px]">%</span>
+                      </div>
+                      <span className="text-[9.5px] text-slate-400 block font-medium">One-Time</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-2.5 bg-gold-50/60 rounded-xl border border-gold-200/80 text-[11px] text-gold-900 flex items-center justify-between">
+                  <span><strong>One-Time Benefit:</strong> Bonus % calculated on invested capital and credited to user wallet.</span>
+                  <button
+                    type="button"
+                    onClick={handleResetLoyaltySlabs}
+                    className="text-[10px] text-gold-800 font-bold underline hover:text-gold-950 ml-2 whitespace-nowrap cursor-pointer"
+                  >
+                    Reset Defaults
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Duration Selector (Infinite / Lifetime vs DD / MM / YYYY) */}
           <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-200/80 space-y-3">

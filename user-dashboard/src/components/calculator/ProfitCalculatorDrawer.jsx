@@ -3,15 +3,24 @@ import Modal from '../ui/Modal';
 import {
   RiCalculatorLine, RiArrowRightLine, RiInformationLine, RiFundsLine,
   RiSunLine, RiCopperCoinLine, RiCheckLine, RiFlashlightLine, RiSparklingLine,
+  RiGiftLine, RiRefreshLine,
 } from 'react-icons/ri';
 import { UilBolt } from '@iconscout/react-unicons';
 
-const DEFAULT_ROI_SLABS = [
+export const DEFAULT_ROI_SLABS = [
   { minAmount: 10, maxAmount: 49, noMaxLimit: false, dailyRoi: 0.25, monthlyRoi: 7.5, annualRoi: 90 },
   { minAmount: 50, maxAmount: 99, noMaxLimit: false, dailyRoi: 0.35, monthlyRoi: 10.5, annualRoi: 126 },
   { minAmount: 100, maxAmount: 499, noMaxLimit: false, dailyRoi: 0.55, monthlyRoi: 16.5, annualRoi: 198 },
   { minAmount: 500, maxAmount: 1500, noMaxLimit: false, dailyRoi: 0.75, monthlyRoi: 22.5, annualRoi: 270 },
   { minAmount: 1500, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, monthlyRoi: 30.0, annualRoi: 360 },
+];
+
+export const DEFAULT_LOYALTY_SLABS = [
+  { days: 30, bonusPercentage: 0.50, label: "30 Days" },
+  { days: 90, bonusPercentage: 1.00, label: "90 Days" },
+  { days: 180, bonusPercentage: 3.00, label: "180 Days" },
+  { days: 365, bonusPercentage: 5.00, label: "365 Days" },
+  { days: 730, bonusPercentage: 10.00, label: "730 Days" },
 ];
 
 function matchSlab(amount, slabs = []) {
@@ -41,6 +50,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId || allPlans[0]?.id || allPlans[0]?._id || '');
   const [amount, setAmount] = useState(100);
+  const [autoRenewal, setAutoRenewal] = useState(false);
 
   // Filter plans by selected category tab
   const filteredPlans = useMemo(() => {
@@ -68,7 +78,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
     return matchSlab(amount, slabs);
   }, [amount, slabs]);
 
-  // Real-time calculations based on Amount-Wise Daily ROI Slabs
+  // Real-time calculations based on Amount-Wise Daily ROI Slabs with Auto Renewal boost
   const calculations = useMemo(() => {
     const numAmount = Number(amount);
     if (!currentPlan || !amount || isNaN(numAmount) || numAmount <= 0) {
@@ -89,9 +99,19 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
       };
     }
 
-    const dailyRoi = Number(activeMatchedSlab?.dailyRoi) || 0.25;
-    const monthlyRoi = Number(activeMatchedSlab?.monthlyRoi) || dailyRoi * 30;
-    const annualRoi = Number(activeMatchedSlab?.annualRoi) || dailyRoi * 360;
+    const baseDailyRoi = Number(activeMatchedSlab?.dailyRoi) || 0.25;
+    const baseMonthlyRoi = Number(activeMatchedSlab?.monthlyRoi) || baseDailyRoi * 30;
+    const baseAnnualRoi = Number(activeMatchedSlab?.annualRoi) || baseDailyRoi * 360;
+
+    const dailyRoi = autoRenewal
+      ? Number((baseDailyRoi + (0.25 / 30)).toFixed(5))
+      : baseDailyRoi;
+    const monthlyRoi = autoRenewal
+      ? Number((baseMonthlyRoi + 0.25).toFixed(2))
+      : baseMonthlyRoi;
+    const annualRoi = autoRenewal
+      ? Number((baseAnnualRoi + 3.0).toFixed(1))
+      : baseAnnualRoi;
 
     const isInfinite =
       !!currentPlan.isInfinite ||
@@ -127,7 +147,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
       monthlyRoi,
       annualRoi,
     };
-  }, [currentPlan, amount, activeMatchedSlab]);
+  }, [currentPlan, amount, activeMatchedSlab, autoRenewal]);
 
   return (
     <Modal
@@ -144,7 +164,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
           <button
             onClick={() => {
               const numAmt = Number(amount) || currentPlan?.minAmountNumeric || 10;
-              if (onInvest) onInvest(currentPlan, numAmt);
+              if (onInvest) onInvest(currentPlan, numAmt, autoRenewal);
               onClose();
             }}
             className="btn btn-primary text-xs px-5 py-2.5 font-bold cursor-pointer"
@@ -235,13 +255,15 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
               Amount-Wise Daily ROI Slabs ({currentPlan?.name})
             </span>
             <span className="badge badge-gold text-[10px] font-bold">
-              Active: ${activeMatchedSlab?.minAmount} – {activeMatchedSlab?.noMaxLimit ? "1500$ ++" : `$${activeMatchedSlab?.maxAmount}`} ({activeMatchedSlab?.dailyRoi}% / day)
+              Active: ${activeMatchedSlab?.minAmount} – {activeMatchedSlab?.noMaxLimit ? "1500$ ++" : `$${activeMatchedSlab?.maxAmount}`} ({calculations.dailyRate}% / day)
             </span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-xs">
             {slabs.map((slab, idx) => {
               const isMatched = activeMatchedSlab?.minAmount === slab.minAmount;
+              const slabDaily = autoRenewal ? (Number(slab.dailyRoi) + (0.25 / 30)).toFixed(3) : slab.dailyRoi;
+              const slabMonthly = autoRenewal ? (Number(slab.monthlyRoi || slab.dailyRoi * 30) + 0.25).toFixed(2) : (slab.monthlyRoi || (slab.dailyRoi * 30).toFixed(1));
               return (
                 <div
                   key={idx}
@@ -255,16 +277,81 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                     ${slab.minAmount} — {slab.noMaxLimit || !slab.maxAmount ? '1500$ ++' : `$${slab.maxAmount}`}
                   </p>
                   <p className={`text-xs font-black font-mono mt-0.5 ${isMatched ? 'text-gray-950' : 'text-emerald-700'}`}>
-                    {slab.dailyRoi}% daily
+                    {slabDaily}% daily
                   </p>
                   <p className={`text-[9px] mt-0.5 ${isMatched ? 'text-gray-900 font-semibold' : 'text-gray-500'}`}>
-                    {slab.monthlyRoi || (slab.dailyRoi * 30).toFixed(1)}% mo &bull; {slab.annualRoi || (slab.dailyRoi * 360).toFixed(0)}% yr
+                    {slabMonthly}% mo {autoRenewal && <span className="text-emerald-800 font-bold">(+0.25%)</span>}
                   </p>
                 </div>
               );
             })}
           </div>
         </div>
+
+        {/* ──────── AUTO RENEWAL MODE INCENTIVE TOGGLE ──────── */}
+        <div className={`p-3.5 rounded-2xl border transition-all duration-300 font-poppins ${
+          autoRenewal
+            ? 'bg-gradient-to-r from-amber-500/15 via-gold-500/10 to-emerald-500/15 border-gold-400 ring-2 ring-gold-300/60 shadow-sm'
+            : 'bg-slate-50/80 border-slate-200 hover:border-slate-300'
+        }`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs transition-colors ${
+                autoRenewal ? 'bg-gold-500 text-slate-950 font-bold' : 'bg-slate-200 text-slate-600'
+              }`}>
+                <RiRefreshLine size={20} className={autoRenewal ? 'animate-spin' : ''} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                    Auto Renewal Mode
+                  </span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                    autoRenewal
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-gold-100 text-gold-800 border border-gold-300'
+                  }`}>
+                    +0.25% / Month Boost
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                  {autoRenewal ? (
+                    <span className="text-emerald-950 font-medium">
+                      <strong>Auto Renewal ON:</strong> +0.25% monthly boost added to simulator returns. Total returns compound automatically into capital wallet.
+                    </span>
+                  ) : (
+                    <span>
+                      Toggle ON to simulate an additional <strong>+0.25% monthly ROI</strong> across every slab (e.g. 16.50% &rarr; 16.75% / month) with compounding growth.
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+              {/* Interactive Switch with Visible Text */}
+              <button
+                type="button"
+                onClick={() => setAutoRenewal(!autoRenewal)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-xs border shrink-0 ${
+                  autoRenewal
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-emerald-500/20 ring-2 ring-emerald-200'
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                }`}
+                aria-label="Toggle Auto Renewal"
+              >
+                <div className={`w-8 h-4.5 rounded-full p-0.5 flex items-center transition-colors ${
+                  autoRenewal ? 'bg-emerald-800' : 'bg-slate-300'
+                }`}>
+                  <div className={`w-3.5 h-3.5 bg-white rounded-full shadow-md transform transition-transform ${
+                    autoRenewal ? 'translate-x-3.5' : 'translate-x-0'
+                  }`} />
+                </div>
+                <span className="font-extrabold uppercase tracking-wide">
+                  {autoRenewal ? 'ON (+0.25%)' : 'OFF'}
+                </span>
+              </button>
+            </div>
+          </div>
 
         {/* ──────── INVESTMENT AMOUNT INPUT & PRESET CHIPS ──────── */}
         <div>
@@ -383,6 +470,58 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
             </div>
           </div>
         </div>
+
+        {/* ──────── REWARD ( LOYALTY BONUS ) MILESTONES ──────── */}
+        {currentPlan?.loyaltyBonusEnabled !== false && (
+          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/90 via-gold-50/50 to-orange-50/40 border border-amber-300/80 space-y-2.5 shadow-xs font-poppins">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                  <RiGiftLine size={16} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wide">
+                    {currentPlan?.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
+                  </h4>
+                  <p className="text-[10.5px] text-gray-500">
+                    {currentPlan?.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet"}
+                  </p>
+                </div>
+              </div>
+              <span className="badge badge-gold text-[10px] font-bold">
+                Wallet Bonus
+              </span>
+            </div>
+
+            {/* Slabs Milestone Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+              {((currentPlan?.loyaltyBonusSlabs && currentPlan.loyaltyBonusSlabs.length > 0)
+                ? currentPlan.loyaltyBonusSlabs
+                : DEFAULT_LOYALTY_SLABS
+              ).map((slab, sIdx) => {
+                const bonusVal = (Number(amount) || 0) * (Number(slab.bonusPercentage) / 100);
+                return (
+                  <div key={sIdx} className="p-2 bg-white rounded-xl text-center border border-amber-200/80 shadow-2xs">
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                      {slab.label || `${slab.days} Days`}
+                    </p>
+                    <p className="text-xs font-extrabold text-amber-700 font-mono mt-0.5 truncate">
+                      +{slab.bonusPercentage}%
+                    </p>
+                    <p className="text-[10.5px] text-emerald-700 font-extrabold font-mono mt-0.5">
+                      +${bonusVal.toFixed(2)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="text-[10.5px] text-amber-900 bg-amber-100/60 p-2 rounded-lg border border-amber-200/70 flex items-center gap-1.5">
+              <RiInformationLine size={14} className="text-amber-600 shrink-0" />
+              <span>One-time loyalty bonus credited directly to your wallet for maintaining capital without premature withdrawal.</span>
+            </div>
+          </div>
+        )}
 
         {/* Live Streaming Info Note */}
         <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">

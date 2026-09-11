@@ -19,7 +19,7 @@ import {
   RiGroupLine,
   RiCheckLine,
 } from 'react-icons/ri';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   getAdminNotifications,
   markAdminNotificationRead,
@@ -53,6 +53,7 @@ const categoryStyles = {
 };
 
 export default function Notifications() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -132,6 +133,28 @@ export default function Notifications() {
       fetchAllInvestors();
     }
   }, [isPushModalOpen, usersList.length, fetchAllInvestors]);
+
+  const handleItemClick = async (n) => {
+    if (!n.read) {
+      setNotifications(prev =>
+        prev.map(item => (item._id === n._id ? { ...item, read: true } : item))
+      );
+      setUnreadCount(c => Math.max(0, c - 1));
+      try {
+        await markAdminNotificationRead(n._id);
+      } catch (err) {
+        console.error('Error marking as read:', err);
+      }
+    }
+
+    if (n.actionUrl) {
+      if (n.actionUrl.startsWith('http://') || n.actionUrl.startsWith('https://')) {
+        window.open(n.actionUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        navigate(n.actionUrl);
+      }
+    }
+  };
 
   const handleMarkAsRead = async (id) => {
     try {
@@ -433,8 +456,9 @@ export default function Notifications() {
               return (
                 <div
                   key={n._id}
-                  className={`py-4 px-3 sm:px-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
-                    !n.read ? 'bg-gold-50/20 border-l-4 border-gold-400' : 'hover:bg-slate-50/60'
+                  onClick={() => handleItemClick(n)}
+                  className={`py-4 px-3 sm:px-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors cursor-pointer ${
+                    !n.read ? 'bg-gold-50/20 border-l-4 border-gold-400 hover:bg-gold-50/40' : 'hover:bg-slate-50/80'
                   }`}
                 >
                   {/* Left: Icon & Content */}
@@ -471,12 +495,11 @@ export default function Notifications() {
                       <div className="flex flex-wrap items-center gap-3 pt-0.5 text-[11px] text-slate-400">
                         <span>{new Date(n.createdAt).toLocaleString()}</span>
                         {n.actionUrl && (
-                          <Link
-                            to={n.actionUrl}
+                          <span
                             className="text-gold-700 hover:text-gold-900 font-semibold inline-flex items-center gap-1 hover:underline"
                           >
                             Open Link <RiExternalLinkLine size={12} />
-                          </Link>
+                          </span>
                         )}
                       </div>
                     </div>
@@ -484,17 +507,11 @@ export default function Notifications() {
 
                   {/* Right Actions */}
                   <div className="flex items-center gap-1 self-end sm:self-center flex-shrink-0">
-                    {!n.read && (
-                      <button
-                        onClick={() => handleMarkAsRead(n._id)}
-                        className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                        title="Mark as read"
-                      >
-                        <RiCheckDoubleLine size={14} /> Read
-                      </button>
-                    )}
                     <button
-                      onClick={() => handleDelete(n._id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(n._id);
+                      }}
                       className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                       title="Delete alert"
                     >

@@ -1,5 +1,8 @@
 const User = require("../../models/User");
 const Transaction = require("../../models/Transaction");
+const UserInvestment = require("../../models/UserInvestment");
+const SupportTicket = require("../../models/SupportTicket");
+const Notification = require("../../models/Notification");
 
 // @desc    Get All Users (Search, Status Filter, Pagination)
 // @route   GET /api/admin/users
@@ -160,17 +163,81 @@ exports.adjustUserWallet = async (req, res) => {
   }
 };
 
-// @desc    Delete User
+// @desc    Delete User and Cascade Delete All Associated Data
 // @route   DELETE /api/admin/users/:id
 exports.deleteUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found." });
     }
+
+    const userId = user._id;
+    const userEmail = user.email;
+    const userCustomId = user.customId;
+
+    // 1. Delete all User Investments
+    await UserInvestment.deleteMany({
+      $or: [
+        { user: userId },
+        ...(userEmail ? [{ userEmail }] : []),
+      ],
+    });
+
+    // 2. Delete all Transactions (Deposits, Withdrawals, ROI payouts, Referral Bonuses, etc.)
+    await Transaction.deleteMany({
+      $or: [
+        { user: userId },
+        ...(userCustomId ? [{ userCustomId }] : []),
+        ...(userEmail ? [{ userEmail }] : []),
+      ],
+    });
+
+    // 3. Delete all Support Tickets and messages created by the user
+    await SupportTicket.deleteMany({
+      $or: [
+        { user: userId },
+        ...(userEmail ? [{ userEmail }] : []),
+      ],
+    });
+
+    // 4. Delete user-specific Notifications & remove user from broadcast read lists
+    await Notification.deleteMany({ userId: userId });
+    await Notification.updateMany(
+      { readBy: userId },
+      { $pull: { readBy: userId } }
+    );
+
+    // 5. Clean up referral downlines (reassign downlines to user's upline sponsor or "HORIZON-HQ")
+    const fallbackSponsor = user.sponsorId && user.sponsorId !== user.customId ? user.sponsorId : "HORIZON-HQ";
+    const sponsorIdentifiers = [userCustomId, String(userId)].filter(Boolean);
+    if (sponsorIdentifiers.length > 0) {
+      await User.updateMany(
+        { sponsorId: { $in: sponsorIdentifiers } },
+        { $set: { sponsorId: fallbackSponsor } }
+      );
+    }
+
+    // 6. Update upline sponsor direct referrals count if applicable
+    if (user.sponsorId && user.sponsorId !== "HORIZON-HQ") {
+      const sponsor = await User.findOne({
+        $or: [
+          { customId: user.sponsorId },
+          ...(/^[0-9a-fA-F]{24}$/.test(user.sponsorId) ? [{ _id: user.sponsorId }] : []),
+        ],
+      });
+      if (sponsor && typeof sponsor.directReferrals === "number" && sponsor.directReferrals > 0) {
+        sponsor.directReferrals = Math.max(0, sponsor.directReferrals - 1);
+        await sponsor.save();
+      }
+    }
+
+    // 7. Finally delete the user document
+    await User.findByIdAndDelete(userId);
+
     res.status(200).json({
       success: true,
-      message: "User deleted successfully.",
+      message: "User and all associated data deleted successfully.",
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

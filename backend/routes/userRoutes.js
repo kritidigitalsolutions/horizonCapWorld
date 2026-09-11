@@ -29,6 +29,7 @@ const {
   investInPlan,
   getMyInvestments,
   getInvestmentById,
+  toggleAutoRenewal,
 } = require("../controllers/user/userInvestmentsController");
 
 const {
@@ -84,6 +85,7 @@ router.get("/plans/:id", getPlanById);
 router.post("/investments", protectUser, investInPlan);
 router.get("/investments", protectUser, getMyInvestments);
 router.get("/investments/:id", protectUser, getInvestmentById);
+router.put("/investments/:id/toggle-auto-renewal", protectUser, toggleAutoRenewal);
 
 // ──────── 4. DEPOSITS & WITHDRAWALS ────────
 router.get("/deposits/gateways", protectUser, getDepositGateways);

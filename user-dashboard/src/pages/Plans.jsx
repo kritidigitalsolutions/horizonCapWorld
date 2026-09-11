@@ -4,7 +4,8 @@ import {
   RiPercentLine, RiTimeLine, RiShieldFlashLine, RiLeafLine, RiCoinsLine,
   RiFlashlightLine, RiCalculatorLine, RiArrowRightLine, RiWalletLine,
   RiCheckLine, RiSearchLine, RiAlertLine, RiInformationLine, RiStackLine,
-  RiArrowDownSLine, RiArrowUpSLine, RiSparklingLine,
+  RiArrowDownSLine, RiArrowUpSLine, RiSparklingLine, RiGiftLine, RiAwardLine,
+  RiRefreshLine,
 } from 'react-icons/ri';
 import { UilMoneyBill } from '@iconscout/react-unicons';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +20,14 @@ export const DEFAULT_ROI_SLABS = [
   { minAmount: 100, maxAmount: 499, noMaxLimit: false, dailyRoi: 0.55, monthlyRoi: 16.5, annualRoi: 198 },
   { minAmount: 500, maxAmount: 1500, noMaxLimit: false, dailyRoi: 0.75, monthlyRoi: 22.5, annualRoi: 270 },
   { minAmount: 1500, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, monthlyRoi: 30.0, annualRoi: 360 },
+];
+
+export const DEFAULT_LOYALTY_SLABS = [
+  { days: 30, bonusPercentage: 0.50, label: "30 Days" },
+  { days: 90, bonusPercentage: 1.00, label: "90 Days" },
+  { days: 180, bonusPercentage: 3.00, label: "180 Days" },
+  { days: 365, bonusPercentage: 5.00, label: "365 Days" },
+  { days: 730, bonusPercentage: 10.00, label: "730 Days" },
 ];
 
 // Helper to find matching slab for an amount
@@ -51,6 +60,7 @@ export default function Plans() {
   const [investDrawerOpen, setInvestDrawerOpen] = useState(false);
   const [calcDrawerOpen, setCalcDrawerOpen] = useState(false);
   const [investAmount, setInvestAmount] = useState(100);
+  const [autoRenewal, setAutoRenewal] = useState(false);
   const [investSuccess, setInvestSuccess] = useState(false);
   const [investSubmitting, setInvestSubmitting] = useState(false);
   const [investError, setInvestError] = useState('');
@@ -68,6 +78,10 @@ export default function Plans() {
             ? p.roiSlabs
             : DEFAULT_ROI_SLABS;
 
+          const loyaltySlabs = Array.isArray(p.loyaltyBonusSlabs) && p.loyaltyBonusSlabs.length > 0
+            ? p.loyaltyBonusSlabs
+            : DEFAULT_LOYALTY_SLABS;
+
           const minDaily = slabs[0]?.dailyRoi || 0.25;
           const maxDaily = slabs[slabs.length - 1]?.dailyRoi || 1.0;
 
@@ -81,6 +95,10 @@ export default function Plans() {
             dailyRoi: p.dailyRoi || minDaily,
             minDaily,
             maxDaily,
+            loyaltyBonusEnabled: p.loyaltyBonusEnabled !== false,
+            loyaltyBonusTitle: p.loyaltyBonusTitle || "Reward ( Loyalty Bonus )",
+            loyaltyBonusDescription: p.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
+            loyaltyBonusSlabs: loyaltySlabs,
             roi: typeof p.roi === 'string' ? p.roi : `${p.roi || 7.5}%`,
             roiNumeric: parseFloat(p.roi) || (minDaily * 30),
             minAmount: `$${(p.minAmount || slabs[0]?.minAmount || 10).toLocaleString()}`,
@@ -115,6 +133,7 @@ export default function Plans() {
   const handleOpenInvest = (plan) => {
     setSelectedPlan(plan);
     setInvestAmount(plan.minAmountNumeric || 100);
+    setAutoRenewal(false);
     setInvestSuccess(false);
     setInvestError('');
     setInvestDrawerOpen(true);
@@ -137,7 +156,7 @@ export default function Plans() {
 
     setInvestSubmitting(true);
     try {
-      const res = await investInPlan(selectedPlan._id || selectedPlan.id, Number(investAmount));
+      const res = await investInPlan(selectedPlan._id || selectedPlan.id, Number(investAmount), autoRenewal);
       if (res?.success) {
         setInvestSuccess(true);
         if (refreshUser) await refreshUser();
@@ -367,6 +386,46 @@ export default function Plans() {
                     </div>
                   )}
                 </div>
+
+                {/* ──────── REWARD (LOYALTY BONUS) SECTION ──────── */}
+                {plan.loyaltyBonusEnabled !== false && (
+                  <div className="mb-4 p-3 rounded-xl bg-gradient-to-br from-amber-500/10 via-gold-500/5 to-orange-500/10 border border-amber-300/70 shadow-2xs font-poppins">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-md bg-amber-500 text-white flex items-center justify-center text-[10px] shadow-xs">
+                          <RiGiftLine size={13} />
+                        </span>
+                        <span className="text-xs font-bold text-amber-950">
+                          {plan.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-extrabold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-300">
+                        Up to {(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS)[(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).length - 1]?.bonusPercentage || 10}% Extra
+                      </span>
+                    </div>
+
+                    <p className="text-[10.5px] text-gray-600 leading-snug mb-2">
+                      {plan.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet"}
+                    </p>
+
+                    {/* Slabs Grid */}
+                    <div className="grid grid-cols-5 gap-1 text-center">
+                      {(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).map((ls, idx) => (
+                        <div
+                          key={idx}
+                          className="bg-white/90 border border-amber-200/80 rounded-lg p-1 shadow-3xs"
+                        >
+                          <p className="text-[9.5px] text-gray-500 font-medium truncate">
+                            {ls.days} Days
+                          </p>
+                          <p className="text-[11px] font-black text-amber-700 font-mono">
+                            +{ls.bonusPercentage}%
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -464,6 +523,8 @@ export default function Plans() {
             <div className="grid grid-cols-1 sm:grid-cols-5 gap-1.5 text-xs">
               {(selectedPlan?.roiSlabs || DEFAULT_ROI_SLABS).map((slab, idx) => {
                 const isMatched = activeMatchedSlab?.minAmount === slab.minAmount;
+                const slabDaily = autoRenewal ? Number((Number(slab.dailyRoi) + (0.25 / 30)).toFixed(3)) : Number(slab.dailyRoi);
+                const slabMonthly = autoRenewal ? Number((Number(slab.monthlyRoi || slab.dailyRoi * 30) + 0.25).toFixed(2)) : Number(slab.monthlyRoi || (slab.dailyRoi * 30).toFixed(1));
                 return (
                   <div
                     key={idx}
@@ -477,14 +538,79 @@ export default function Plans() {
                       ${slab.minAmount} — {slab.noMaxLimit || !slab.maxAmount ? '1500$ ++' : `$${slab.maxAmount}`}
                     </p>
                     <p className={`text-xs font-black font-mono mt-0.5 ${isMatched ? 'text-gray-950' : 'text-emerald-700'}`}>
-                      {slab.dailyRoi}% daily
+                      {slabDaily}% daily
                     </p>
                     <p className={`text-[9.5px] mt-0.5 ${isMatched ? 'text-gray-900 font-semibold' : 'text-gray-500'}`}>
-                      {slab.monthlyRoi || (slab.dailyRoi * 30).toFixed(1)}% mo &bull; {slab.annualRoi || (slab.dailyRoi * 360).toFixed(0)}% yr
+                      {slabMonthly}% mo {autoRenewal && <span className="text-emerald-800 font-bold">(+0.25%)</span>}
                     </p>
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          {/* ──────── AUTO RENEWAL MODE INCENTIVE TOGGLE ──────── */}
+          <div className={`p-3.5 rounded-2xl border transition-all duration-300 font-poppins ${
+            autoRenewal
+              ? 'bg-gradient-to-r from-amber-500/15 via-gold-500/10 to-emerald-500/15 border-gold-400 ring-2 ring-gold-300/60 shadow-sm'
+              : 'bg-slate-50/80 border-slate-200 hover:border-slate-300'
+          }`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs transition-colors ${
+                  autoRenewal ? 'bg-gold-500 text-slate-950 font-bold' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  <RiRefreshLine size={20} className={autoRenewal ? 'animate-spin' : ''} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                      Auto Renewal Mode
+                    </span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                      autoRenewal
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-gold-100 text-gold-800 border border-gold-300'
+                    }`}>
+                      +0.25% / Month Boost
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                    {autoRenewal ? (
+                      <span className="text-emerald-950 font-medium">
+                        <strong>Auto Renewal ON:</strong> +0.25% monthly incentive applied across every slab. Returns are automatically added to your capital wallet for compounding benefit.
+                      </span>
+                    ) : (
+                      <span>
+                        Toggle ON to receive an additional <strong>+0.25% monthly ROI</strong> on each slab (e.g. 16.50% &rarr; 16.75% / month) with automatic compounding to capital wallet.
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Interactive Switch with Visible Text */}
+              <button
+                type="button"
+                onClick={() => setAutoRenewal(!autoRenewal)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-xs border shrink-0 ${
+                  autoRenewal
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-emerald-500/20 ring-2 ring-emerald-200'
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                }`}
+                aria-label="Toggle Auto Renewal"
+              >
+                <div className={`w-8 h-4.5 rounded-full p-0.5 flex items-center transition-colors ${
+                  autoRenewal ? 'bg-emerald-800' : 'bg-slate-300'
+                }`}>
+                  <div className={`w-3.5 h-3.5 bg-white rounded-full shadow-md transform transition-transform ${
+                    autoRenewal ? 'translate-x-3.5' : 'translate-x-0'
+                  }`} />
+                </div>
+                <span className="font-extrabold uppercase tracking-wide">
+                  {autoRenewal ? 'ON (+0.25%)' : 'OFF'}
+                </span>
+              </button>
             </div>
           </div>
 
@@ -538,9 +664,19 @@ export default function Plans() {
           {/* ──────── ROI & YIELD RETURN CALCULATOR (DAILY, WEEKLY, MONTHLY, QUARTERLY, ANNUALLY) ──────── */}
           {(() => {
             const currentInvestCapital = Number(investAmount) || 0;
-            const activeDailyRoi = Number(activeMatchedSlab?.dailyRoi) || 0.25;
-            const activeMonthlyRoi = Number(activeMatchedSlab?.monthlyRoi) || activeDailyRoi * 30;
-            const activeAnnualRoi = Number(activeMatchedSlab?.annualRoi) || activeDailyRoi * 360;
+            const baseDailyRoi = Number(activeMatchedSlab?.dailyRoi) || 0.25;
+            const baseMonthlyRoi = Number(activeMatchedSlab?.monthlyRoi) || baseDailyRoi * 30;
+            const baseAnnualRoi = Number(activeMatchedSlab?.annualRoi) || baseDailyRoi * 360;
+
+            const activeDailyRoi = autoRenewal
+              ? Number((baseDailyRoi + (0.25 / 30)).toFixed(5))
+              : baseDailyRoi;
+            const activeMonthlyRoi = autoRenewal
+              ? Number((baseMonthlyRoi + 0.25).toFixed(2))
+              : baseMonthlyRoi;
+            const activeAnnualRoi = autoRenewal
+              ? Number((baseAnnualRoi + 3.0).toFixed(1))
+              : baseAnnualRoi;
 
             const isPlanInfinite =
               !!selectedPlan?.isInfinite ||
@@ -690,6 +826,55 @@ export default function Plans() {
               </div>
             );
           })()}
+
+          {/* ──────── REWARD ( LOYALTY BONUS ) MILESTONE BENEFITS ──────── */}
+          {selectedPlan?.loyaltyBonusEnabled !== false && (
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 via-gold-50/50 to-orange-50/40 border border-amber-300/80 space-y-2.5 shadow-xs font-poppins">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                    <RiGiftLine size={16} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wide">
+                      {selectedPlan?.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
+                    </h4>
+                    <p className="text-[10.5px] text-gray-500">
+                      {selectedPlan?.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet"}
+                    </p>
+                  </div>
+                </div>
+                <span className="badge badge-gold text-[10px] font-bold">
+                  Wallet Bonus
+                </span>
+              </div>
+
+              {/* Slabs Milestone Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                {(selectedPlan?.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).map((slab, sIdx) => {
+                  const bonusVal = (Number(investAmount) || 0) * (Number(slab.bonusPercentage) / 100);
+                  return (
+                    <div key={sIdx} className="p-2.5 bg-white rounded-xl text-center border border-amber-200/80 shadow-2xs">
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                        {slab.label || `${slab.days} Days`}
+                      </p>
+                      <p className="text-xs font-extrabold text-amber-700 font-mono mt-0.5 truncate">
+                        +{slab.bonusPercentage}%
+                      </p>
+                      <p className="text-[10.5px] text-emerald-700 font-extrabold font-mono mt-0.5">
+                        +${bonusVal.toFixed(2)}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="text-[10.5px] text-amber-900 bg-amber-100/60 p-2 rounded-lg border border-amber-200/70 flex items-center gap-1.5">
+                <RiInformationLine size={14} className="text-amber-600 shrink-0" />
+                <span>One-time loyalty bonus credited directly to your wallet for keeping capital invested without premature withdrawal.</span>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -699,9 +884,10 @@ export default function Plans() {
         onClose={() => setCalcDrawerOpen(false)}
         initialPlanId={calcPlan?.id}
         plans={plansList}
-        onInvest={(plan, amt) => {
+        onInvest={(plan, amt, autoRenew) => {
           setSelectedPlan(plan);
           setInvestAmount(amt);
+          setAutoRenewal(Boolean(autoRenew));
           setInvestDrawerOpen(true);
         }}
       />

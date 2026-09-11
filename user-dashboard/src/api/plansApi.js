@@ -10,8 +10,8 @@ export const getPlanById = async (id) => {
   return response.data;
 };
 
-export const investInPlan = async (planId, amount) => {
-  const response = await API.post("/user/investments", { planId, amount });
+export const investInPlan = async (planId, amount, autoRenewal = false) => {
+  const response = await API.post("/user/investments", { planId, amount, autoRenewal });
   return response.data;
 };
 
@@ -22,5 +22,10 @@ export const getMyInvestments = async (params) => {
 
 export const getInvestmentById = async (id) => {
   const response = await API.get(`/user/investments/${id}`);
+  return response.data;
+};
+
+export const toggleAutoRenewal = async (id) => {
+  const response = await API.put(`/user/investments/${id}/toggle-auto-renewal`);
   return response.data;
 };

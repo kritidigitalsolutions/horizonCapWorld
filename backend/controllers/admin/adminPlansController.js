@@ -54,6 +54,10 @@ exports.createPlan = async (req, res) => {
       roi,
       dailyRoi,
       roiSlabs,
+      loyaltyBonusEnabled,
+      loyaltyBonusTitle,
+      loyaltyBonusDescription,
+      loyaltyBonusSlabs,
       duration,
       durationDays,
       isInfinite,
@@ -90,6 +94,16 @@ exports.createPlan = async (req, res) => {
       });
     }
 
+    // Process loyalty bonus slabs
+    let processedLoyaltySlabs = undefined;
+    if (Array.isArray(loyaltyBonusSlabs) && loyaltyBonusSlabs.length > 0) {
+      processedLoyaltySlabs = loyaltyBonusSlabs.map((ls) => ({
+        days: Number(ls.days) || 30,
+        bonusPercentage: Number(ls.bonusPercentage) || 0.5,
+        label: ls.label || `${ls.days} Days`,
+      }));
+    }
+
     const numMin =
       type === "slab" && processedSlabs.length > 0
         ? processedSlabs[0].minAmount
@@ -124,6 +138,10 @@ exports.createPlan = async (req, res) => {
       roi: numMonthlyRoi,
       dailyRoi: numDailyRoi,
       roiSlabs: processedSlabs.length > 0 ? processedSlabs : undefined,
+      loyaltyBonusEnabled: loyaltyBonusEnabled !== undefined ? Boolean(loyaltyBonusEnabled) : true,
+      loyaltyBonusTitle: loyaltyBonusTitle || "Reward ( Loyalty Bonus )",
+      loyaltyBonusDescription: loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
+      loyaltyBonusSlabs: processedLoyaltySlabs,
       duration: finalDuration,
       durationDays: finalDurationDays,
       isInfinite: isInf,
@@ -161,6 +179,10 @@ exports.updatePlan = async (req, res) => {
       roi,
       dailyRoi,
       roiSlabs,
+      loyaltyBonusEnabled,
+      loyaltyBonusTitle,
+      loyaltyBonusDescription,
+      loyaltyBonusSlabs,
       duration,
       durationDays,
       isInfinite,
@@ -202,6 +224,23 @@ exports.updatePlan = async (req, res) => {
           plan.noMaxLimit = false;
         }
       }
+    }
+
+    if (loyaltyBonusEnabled !== undefined) {
+      plan.loyaltyBonusEnabled = Boolean(loyaltyBonusEnabled);
+    }
+    if (loyaltyBonusTitle !== undefined) {
+      plan.loyaltyBonusTitle = loyaltyBonusTitle;
+    }
+    if (loyaltyBonusDescription !== undefined) {
+      plan.loyaltyBonusDescription = loyaltyBonusDescription;
+    }
+    if (loyaltyBonusSlabs !== undefined && Array.isArray(loyaltyBonusSlabs)) {
+      plan.loyaltyBonusSlabs = loyaltyBonusSlabs.map((ls) => ({
+        days: Number(ls.days) || 30,
+        bonusPercentage: Number(ls.bonusPercentage) || 0.5,
+        label: ls.label || `${ls.days} Days`,
+      }));
     }
 
     if (dailyRoi !== undefined) {

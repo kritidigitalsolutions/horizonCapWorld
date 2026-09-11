@@ -40,6 +40,32 @@ const defaultRoiSlabs = [
   { minAmount: 1500, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, monthlyRoi: 30.0, annualRoi: 360 },
 ];
 
+const loyaltyBonusSlabSchema = new mongoose.Schema(
+  {
+    days: {
+      type: Number,
+      required: true,
+    },
+    bonusPercentage: {
+      type: Number,
+      required: true,
+    },
+    label: {
+      type: String,
+      default: "",
+    },
+  },
+  { _id: false }
+);
+
+const defaultLoyaltyBonusSlabs = [
+  { days: 30, bonusPercentage: 0.50, label: "30 Days" },
+  { days: 90, bonusPercentage: 1.0, label: "90 Days" },
+  { days: 180, bonusPercentage: 3.0, label: "180 Days" },
+  { days: 365, bonusPercentage: 5.0, label: "365 Days" },
+  { days: 730, bonusPercentage: 10.0, label: "730 Days" },
+];
+
 const investmentPlanSchema = new mongoose.Schema(
   {
     name: {
@@ -69,6 +95,22 @@ const investmentPlanSchema = new mongoose.Schema(
     roiSlabs: {
       type: [roiSlabSchema],
       default: defaultRoiSlabs,
+    },
+    loyaltyBonusEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    loyaltyBonusTitle: {
+      type: String,
+      default: "Reward ( Loyalty Bonus )",
+    },
+    loyaltyBonusDescription: {
+      type: String,
+      default: "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
+    },
+    loyaltyBonusSlabs: {
+      type: [loyaltyBonusSlabSchema],
+      default: defaultLoyaltyBonusSlabs,
     },
     roiPerSec: {
       type: String,
