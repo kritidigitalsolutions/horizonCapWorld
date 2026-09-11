@@ -42,29 +42,36 @@ const quickLinkIcons = {
 // Helper to retrieve and restore continuous streaming state across page refreshes
 const getInitialStreamingState = () => {
   try {
-    const savedStream = localStorage.getItem('horizon_streaming_state');
     const savedUser = localStorage.getItem('horizon_user');
     const userObj = savedUser ? JSON.parse(savedUser) : null;
 
     let baseProfit = Number(userObj?.totalProfit || userObj?.totalEarned || 0);
-    let rate = Number(userObj?.perSecondRate || 0.0000008);
+    let rate = Number(userObj?.perSecondRate || 0);
     let baseTime = Date.now();
 
+    // If user has NO active streaming rate, don't accrue fake earnings
+    if (rate <= 0) {
+      return { baseValue: baseProfit, baseTime, rate: 0 };
+    }
+
+    const savedStream = localStorage.getItem('horizon_streaming_state');
     if (savedStream) {
       const streamObj = JSON.parse(savedStream);
       if (streamObj && typeof streamObj.baseProfit === 'number' && streamObj.timestamp) {
-        const streamRate = Number(streamObj.rate || rate);
-        const elapsedSec = Math.max(0, (Date.now() - streamObj.timestamp) / 1000);
-        const accruedSinceSave = streamObj.baseProfit + (elapsedSec * streamRate);
-        if (accruedSinceSave >= baseProfit) {
-          baseProfit = accruedSinceSave;
-          rate = streamRate;
-          baseTime = Date.now();
+        const streamRate = Number(streamObj.rate !== undefined ? streamObj.rate : rate);
+        if (streamRate > 0) {
+          const elapsedSec = Math.max(0, (Date.now() - streamObj.timestamp) / 1000);
+          const accruedSinceSave = streamObj.baseProfit + (elapsedSec * streamRate);
+          if (accruedSinceSave >= baseProfit) {
+            baseProfit = accruedSinceSave;
+            rate = streamRate;
+            baseTime = Date.now();
+          }
         }
       }
     }
 
-    if (userObj && userObj.lastYieldSync) {
+    if (userObj && userObj.lastYieldSync && rate > 0) {
       const syncElapsedSec = Math.max(0, (Date.now() - new Date(userObj.lastYieldSync).getTime()) / 1000);
       const userAccrued = Number(userObj.totalProfit || userObj.totalEarned || 0) + (syncElapsedSec * rate);
       if (userAccrued > baseProfit) {
@@ -74,7 +81,7 @@ const getInitialStreamingState = () => {
 
     return { baseValue: baseProfit, baseTime, rate };
   } catch (e) {
-    return { baseValue: 0, baseTime: Date.now(), rate: 0.0000008 };
+    return { baseValue: 0, baseTime: Date.now(), rate: 0 };
   }
 };
 
@@ -93,6 +100,9 @@ export default function UserDashboard() {
   const userId = user?.customId || user?.id || '';
   const userName = user?.fullName || user?.name || 'Investor';
   const userSponsor = user?.sponsorId || 'HORIZON-HQ';
+
+  const hasActiveStreaming = Number(user?.perSecondRate || 0) > 0 || Number(user?.activeInvestments || 0) > 0;
+  const activeRate = hasActiveStreaming ? Number(user?.perSecondRate || 0) : 0;
 
   // Dynamic greeting based on time of day
   const getGreeting = () => {
@@ -155,11 +165,26 @@ export default function UserDashboard() {
 
   // Live continuous high-frequency streaming ROI ticker
   useEffect(() => {
-    const activeRate = Number(user?.perSecondRate !== undefined && user?.perSecondRate !== null && user?.perSecondRate > 0
-      ? user.perSecondRate
-      : (streamAnchorRef.current.rate || 0.0000008));
+    const currentRate = (user?.perSecondRate !== undefined && user?.perSecondRate !== null && Number(user.perSecondRate) > 0)
+      ? Number(user.perSecondRate)
+      : 0;
 
-    streamAnchorRef.current.rate = activeRate;
+    streamAnchorRef.current.rate = currentRate;
+
+    if (currentRate <= 0) {
+      const baseProfit = Number(user?.totalProfit || user?.totalEarned || 0);
+      streamAnchorRef.current.baseValue = baseProfit;
+      streamAnchorRef.current.baseTime = Date.now();
+      setStreamingValue(baseProfit);
+      try {
+        localStorage.setItem('horizon_streaming_state', JSON.stringify({
+          baseProfit,
+          timestamp: Date.now(),
+          rate: 0,
+        }));
+      } catch (err) {}
+      return;
+    }
 
     const tickStream = () => {
       const now = Date.now();
@@ -199,18 +224,36 @@ export default function UserDashboard() {
       window.removeEventListener('pagehide', persistStreamState);
       document.removeEventListener('visibilitychange', persistStreamState);
     };
-  }, [user?.perSecondRate]);
+  }, [user?.perSecondRate, user?.totalProfit, user?.totalEarned]);
 
   // Synchronize when backend user data updates (monotonically progressive)
   useEffect(() => {
     if (!user) return;
-    const rate = Number(user?.perSecondRate !== undefined && user?.perSecondRate !== null && user?.perSecondRate > 0
-      ? user.perSecondRate
-      : (streamAnchorRef.current.rate || 0.0000008));
+    const currentRate = (user?.perSecondRate !== undefined && user?.perSecondRate !== null && Number(user.perSecondRate) > 0)
+      ? Number(user.perSecondRate)
+      : 0;
     const backendProfit = Number(user?.totalProfit || user?.totalEarned || 0);
+
+    if (currentRate <= 0) {
+      streamAnchorRef.current = {
+        baseValue: backendProfit,
+        baseTime: Date.now(),
+        rate: 0,
+      };
+      setStreamingValue(backendProfit);
+      try {
+        localStorage.setItem('horizon_streaming_state', JSON.stringify({
+          baseProfit: backendProfit,
+          timestamp: Date.now(),
+          rate: 0,
+        }));
+      } catch (err) {}
+      return;
+    }
+
     const lastSyncTime = user?.lastYieldSync ? new Date(user.lastYieldSync).getTime() : Date.now();
     const elapsedSinceSync = Math.max(0, (Date.now() - lastSyncTime) / 1000);
-    const backendAccrued = backendProfit + (elapsedSinceSync * rate);
+    const backendAccrued = backendProfit + (elapsedSinceSync * currentRate);
 
     const currentLocal = streamAnchorRef.current.baseValue +
       (Math.max(0, (Date.now() - streamAnchorRef.current.baseTime) / 1000) * streamAnchorRef.current.rate);
@@ -221,7 +264,7 @@ export default function UserDashboard() {
     streamAnchorRef.current = {
       baseValue: newBaseline,
       baseTime: Date.now(),
-      rate,
+      rate: currentRate,
     };
     setStreamingValue(newBaseline);
 
@@ -229,13 +272,18 @@ export default function UserDashboard() {
       localStorage.setItem('horizon_streaming_state', JSON.stringify({
         baseProfit: newBaseline,
         timestamp: Date.now(),
-        rate,
+        rate: currentRate,
       }));
     } catch (err) {}
   }, [user?.totalProfit, user?.totalEarned, user?.perSecondRate, user?.lastYieldSync]);
 
-  // Countdown to next daily payout (midnight)
+  // Countdown to next daily payout (midnight) - active only when user has investments
   useEffect(() => {
+    if (!hasActiveStreaming) {
+      setCountdown({ hours: '00', minutes: '00', seconds: '00' });
+      return;
+    }
+
     const tick = () => {
       const now = new Date();
       const tomorrow = new Date(now);
@@ -251,7 +299,7 @@ export default function UserDashboard() {
     tick();
     const iv = setInterval(tick, 1000);
     return () => clearInterval(iv);
-  }, []);
+  }, [hasActiveStreaming]);
 
   const copyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);
@@ -296,10 +344,17 @@ export default function UserDashboard() {
           {/* Top Status & Date Pill */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gold-200/80 pb-4 text-xs font-poppins">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-100/90 text-emerald-900 border border-emerald-300 text-xs font-extrabold shadow-2xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                Live Multi-Asset Yield Streaming Active
-              </span>
+              {hasActiveStreaming ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-100/90 text-emerald-900 border border-emerald-300 text-xs font-extrabold shadow-2xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  Live Multi-Asset Yield Streaming Active
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold shadow-2xs">
+                  <span className="w-2 h-2 rounded-full bg-slate-400" />
+                  Yield Streaming Idle • No Active Plans
+                </span>
+              )}
               <span className="text-slate-400 font-medium hidden sm:inline">•</span>
               <span className="text-slate-600 font-semibold hidden sm:flex items-center gap-1">
                 <RiCalendarLine size={14} className="text-gold-600" /> {currentDateFormatted}
@@ -308,9 +363,15 @@ export default function UserDashboard() {
 
             <div className="flex items-center gap-2">
               <span className="text-slate-500 font-medium text-xs">Next Daily Settlement:</span>
-              <span className="px-3 py-1 rounded-xl bg-gold-100 text-gold-900 border border-gold-300 font-mono font-bold text-xs shadow-2xs">
-                {countdown.hours}h {countdown.minutes}m {countdown.seconds}s
-              </span>
+              {hasActiveStreaming ? (
+                <span className="px-3 py-1 rounded-xl bg-gold-100 text-gold-900 border border-gold-300 font-mono font-bold text-xs shadow-2xs">
+                  {countdown.hours}h {countdown.minutes}m {countdown.seconds}s
+                </span>
+              ) : (
+                <span className="px-3 py-1 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 font-mono font-bold text-xs">
+                  --h --m --s (No Active Plan)
+                </span>
+              )}
             </div>
           </div>
 
@@ -482,8 +543,8 @@ export default function UserDashboard() {
                   </div>
                 </div>
               </div>
-              <span className="text-[11px] font-bold text-emerald-700 font-mono">
-                +${(user?.perSecondRate !== undefined && user?.perSecondRate !== null && user?.perSecondRate > 0 ? user.perSecondRate : (streamAnchorRef.current?.rate || 0.0000008)).toFixed(7)}/s
+              <span className={`text-[11px] font-bold font-mono ${hasActiveStreaming ? 'text-emerald-700' : 'text-slate-500'}`}>
+                +${activeRate.toFixed(7)}/s
               </span>
             </div>
           </div>
@@ -496,13 +557,13 @@ export default function UserDashboard() {
           {/* Left: Streaming counter */}
           <div className="flex-1 space-y-2">
             <div className="flex items-center gap-2">
-              <div className="live-dot"></div>
-              <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-emerald-800 font-poppins">
-                Live Real-Time Investment Profit Streaming
+              <div className={hasActiveStreaming ? "live-dot" : "w-2.5 h-2.5 rounded-full bg-slate-400"}></div>
+              <span className={`text-xs font-extrabold uppercase tracking-[0.14em] font-poppins ${hasActiveStreaming ? 'text-emerald-800' : 'text-slate-700'}`}>
+                {hasActiveStreaming ? 'Live Real-Time Investment Profit Streaming' : 'Live Real-Time Investment Profit Streaming (Idle)'}
               </span>
             </div>
             <div className="flex items-baseline gap-1">
-              <UilBolt size={36} className="text-gold-500 flex-shrink-0" />
+              <UilBolt size={36} className={`${hasActiveStreaming ? 'text-gold-500' : 'text-slate-400'} flex-shrink-0`} />
               <span className="streaming-value text-4xl sm:text-6xl font-black text-slate-950 font-poppins">
                 ${streamingValue.toFixed(7).split('.')[0]}
               </span>
@@ -512,9 +573,11 @@ export default function UserDashboard() {
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-700 font-poppins font-medium">
-              Streaming rate: <span className="text-emerald-700 font-extrabold font-mono">+${(user?.perSecondRate !== undefined && user?.perSecondRate !== null && user?.perSecondRate > 0 ? user.perSecondRate : (streamAnchorRef.current?.rate || 0.0000008)).toFixed(7)}/sec</span>
+              Streaming rate: <span className={`font-extrabold font-mono ${hasActiveStreaming ? 'text-emerald-700' : 'text-slate-600'}`}>+${activeRate.toFixed(7)}/sec</span>
               {' · '}
-              <span className="text-slate-600">Active Assets: {user?.activeAssetNames || 'Solar Eco Farm & Platinum Vault Offtake'}</span>
+              <span className="text-slate-600">
+                Active Assets: {user?.activeAssetNames || (hasActiveStreaming ? 'Active Portfolio' : 'None (No Active Investments)')}
+              </span>
             </p>
 
             <div className="flex items-center gap-3 pt-2">
@@ -523,7 +586,7 @@ export default function UserDashboard() {
                 className="px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-gold-400 to-amber-500 hover:from-gold-500 hover:to-amber-600 text-slate-950 shadow-gold flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <UilBolt size={16} />
-                <span>Explore Yield Plans</span>
+                <span>{hasActiveStreaming ? 'Explore Yield Plans' : 'Start an Investment Plan'}</span>
               </Link>
               <Link
                 to="/investments"
@@ -536,26 +599,41 @@ export default function UserDashboard() {
           </div>
 
           {/* Right: Countdown to next settlement */}
-          <div className="flex flex-col items-center gap-2 bg-white/90 p-5 rounded-2xl border border-gold-200 shadow-sm flex-shrink-0">
+          <div className="flex flex-col items-center gap-2 bg-white/90 p-5 rounded-2xl border border-gold-200 shadow-sm flex-shrink-0 min-w-[210px]">
             <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-600 font-poppins">
               Next Daily Settlement
             </span>
-            <div className="flex items-center gap-2.5">
-              <div className="text-center">
-                <div className="countdown-digit text-xl font-bold font-mono">{countdown.hours}</div>
-                <div className="countdown-label text-[10px]">HR</div>
+            {hasActiveStreaming ? (
+              <div className="flex items-center gap-2.5">
+                <div className="text-center">
+                  <div className="countdown-digit text-xl font-bold font-mono">{countdown.hours}</div>
+                  <div className="countdown-label text-[10px]">HR</div>
+                </div>
+                <span className="text-xl font-bold text-slate-400 mb-4">:</span>
+                <div className="text-center">
+                  <div className="countdown-digit text-xl font-bold font-mono">{countdown.minutes}</div>
+                  <div className="countdown-label text-[10px]">MIN</div>
+                </div>
+                <span className="text-xl font-bold text-slate-400 mb-4">:</span>
+                <div className="text-center">
+                  <div className="countdown-digit text-xl font-bold font-mono">{countdown.seconds}</div>
+                  <div className="countdown-label text-[10px]">SEC</div>
+                </div>
               </div>
-              <span className="text-xl font-bold text-slate-400 mb-4">:</span>
-              <div className="text-center">
-                <div className="countdown-digit text-xl font-bold font-mono">{countdown.minutes}</div>
-                <div className="countdown-label text-[10px]">MIN</div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-1">
+                <div className="flex items-center gap-2 text-slate-300 font-mono text-xl font-bold">
+                  <span>00</span>
+                  <span>:</span>
+                  <span>00</span>
+                  <span>:</span>
+                  <span>00</span>
+                </div>
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full mt-1.5 shadow-2xs">
+                  Awaiting Investment
+                </span>
               </div>
-              <span className="text-xl font-bold text-slate-400 mb-4">:</span>
-              <div className="text-center">
-                <div className="countdown-digit text-xl font-bold font-mono">{countdown.seconds}</div>
-                <div className="countdown-label text-[10px]">SEC</div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

@@ -33,6 +33,10 @@ const syncUserStreamingEarnings = async (user) => {
     });
 
     if (!activeInvestments || activeInvestments.length === 0) {
+      if (userDoc.dailyEarning !== 0 || userDoc.perSecondRate !== 0) {
+        userDoc.dailyEarning = 0;
+        userDoc.perSecondRate = 0;
+      }
       userDoc.lastYieldSync = now;
       await userDoc.save();
       return userDoc;

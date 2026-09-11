@@ -40,6 +40,12 @@ exports.getDashboardOverview = async (req, res) => {
       user.dailyEarning = Number(totalDailyEarning.toFixed(4));
       user.perSecondRate = Number(totalPerSecondRate.toFixed(8));
       await user.save();
+    } else {
+      if (user.dailyEarning !== 0 || user.perSecondRate !== 0) {
+        user.dailyEarning = 0;
+        user.perSecondRate = 0;
+        await user.save();
+      }
     }
 
     // Recent Transactions
@@ -63,7 +69,7 @@ exports.getDashboardOverview = async (req, res) => {
       payoutType: user.payoutType || "Per Second (Live)",
       lastYieldSync: user.lastYieldSync || new Date(),
       serverTime: new Date().toISOString(),
-      activeAssetNames: activeAssetNames.length > 0 ? activeAssetNames.join(" & ") : "Solar Eco Farm & Platinum Vault Offtake",
+      activeAssetNames: activeAssetNames.length > 0 ? activeAssetNames.join(" & ") : "",
     };
 
     // Affiliate Network stats

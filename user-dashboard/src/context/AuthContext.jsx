@@ -103,6 +103,7 @@ export function AuthProvider({ children }) {
         return { success: true, require2FA: true, message: res.message, email: res.email };
       }
       if (res?.success && res.token) {
+        localStorage.removeItem('horizon_streaming_state');
         localStorage.setItem('horizon_user_token', res.token);
         setToken(res.token);
         const formatted = formatApiUser(res.user);
@@ -134,6 +135,7 @@ export function AuthProvider({ children }) {
       };
       const res = await registerUser(payload);
       if (res?.success && res.token) {
+        localStorage.removeItem('horizon_streaming_state');
         localStorage.setItem('horizon_user_token', res.token);
         setToken(res.token);
         const formatted = formatApiUser(res.user);
@@ -159,6 +161,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('horizon_user_token');
     localStorage.removeItem('horizon_user_avatar');
     localStorage.removeItem('horizon_transactions');
+    localStorage.removeItem('horizon_streaming_state');
   };
 
   const updateUser = (updates) => {
