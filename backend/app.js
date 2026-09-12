@@ -12,8 +12,8 @@ const app = express();
 
 // ──────── DYNAMIC CORS ORIGIN CONFIGURATION ────────
 const defaultAllowedOrigins = [
-  "https://horizon-cap-world-edlz.vercel.app",
-  "https://horizon-cap-world-6j9c.vercel.app",
+  "https://horizon-cap-world-client.vercel.app",
+  "https://horizon-cap-world-admin.vercel.app",
   "https://horizon-cap-world.vercel.app",
   "http://localhost:5173",
   "http://localhost:5174",

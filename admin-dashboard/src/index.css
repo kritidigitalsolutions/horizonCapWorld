@@ -34,6 +34,29 @@
   box-sizing: border-box;
 }
 
+::selection {
+  background-color: #ffe066;
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+}
+::-moz-selection {
+  background-color: #ffe066;
+  color: #0f172a;
+}
+
+.gold-gradient-title {
+  background: linear-gradient(to right, #B8860B, #D49800, #8C6200);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #B8860B;
+}
+
+.gold-gradient-title::selection {
+  -webkit-text-fill-color: #0f172a !important;
+  background-color: #ffe066 !important;
+}
+
 html {
   font-size: 16px;
   scroll-behavior: smooth;
