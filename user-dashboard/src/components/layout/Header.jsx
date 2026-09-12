@@ -1,32 +1,35 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
-import { RiMenuLine, RiSearchLine, RiUser3Line, RiLogoutBoxRLine, RiSettings3Line, RiCalculatorLine } from 'react-icons/ri';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { RiMenuLine, RiMenuFoldLine, RiMenuUnfoldLine, RiSearchLine, RiUser3Line, RiLogoutBoxRLine, RiSettings3Line, RiCalculatorLine } from 'react-icons/ri';
 import { UilAngleDown } from '@iconscout/react-unicons';
-import NotificationDropdown from '../ui/NotificationDropdown';
 import { useAuth } from '../../context/AuthContext';
+import NotificationDropdown from '../ui/NotificationDropdown';
 
 const pageTitles = {
   '/': 'Dashboard',
   '/plans': 'Investment Plans',
   '/investments': 'My Investments',
-  '/transactions': 'Transactions',
-  '/deposit': 'Deposit Funds',
-  '/withdraw': 'Withdraw Funds',
-  '/referrals': 'Referral Network',
-  '/referral-plans': 'Referral Commission Plans',
   '/ranks': 'Rank Progression Ladder',
-  '/news': 'News & Media Broadcasts',
-  '/notifications': 'Notification Center',
+  '/referrals': 'Referral Network',
+  '/referral-plans': 'Referral Plans & Tiers',
+  '/deposit': 'Deposit Capital',
+  '/withdraw': 'Withdraw Funds',
+  '/transactions': 'Transaction History',
+  '/notifications': 'Notifications',
+  '/support': 'Support & Helpdesk',
+  '/news': 'News & Insights',
   '/profile': 'My Profile',
-  '/support': 'Investor Support Desk',
 };
 
-export default function Header({ onMenuToggle, onOpenCalculator }) {
+export default function Header({ onMenuToggle, onOpenCalculator, isSidebarOpen = true }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
-  const [userAvatar, setUserAvatar] = useState(() => localStorage.getItem('horizon_user_avatar') || '');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [userAvatar, setUserAvatar] = useState(() => localStorage.getItem('horizon_user_avatar') || user?.avatar || '');
   const profileRef = useRef(null);
+
   const pageTitle = pageTitles[location.pathname] || 'Dashboard';
 
   useEffect(() => {
@@ -39,10 +42,10 @@ export default function Header({ onMenuToggle, onOpenCalculator }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Listen for user avatar changes from Profile page
+  // Sync avatar changes live across components
   useEffect(() => {
     const handleAvatarUpdate = (e) => {
-      const newAvatar = e.detail !== undefined ? e.detail : localStorage.getItem('horizon_user_avatar');
+      const newAvatar = e.detail !== undefined ? e.detail : (localStorage.getItem('horizon_user_avatar') || user?.avatar || '');
       setUserAvatar(newAvatar || '');
     };
     window.addEventListener('user-avatar-change', handleAvatarUpdate);
@@ -51,21 +54,28 @@ export default function Header({ onMenuToggle, onOpenCalculator }) {
       window.removeEventListener('user-avatar-change', handleAvatarUpdate);
       window.removeEventListener('storage', handleAvatarUpdate);
     };
-  }, []);
+  }, [user?.avatar]);
+
+  const handleLogout = () => {
+    setProfileOpen(false);
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
-    <header className="h-[72px] bg-white/80 backdrop-blur-xl border-b border-gray-100 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30">
+    <header className="h-[72px] bg-white/80 backdrop-blur-xl border-b border-gray-100 flex items-center justify-between px-3 sm:px-6 sticky top-0 z-30">
       {/* Left */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 sm:gap-3">
         <button
           onClick={onMenuToggle}
-          className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gold-50 transition-colors text-gray-500 hover:text-gold-500 lg:hidden"
+          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl hover:bg-gold-50 transition-all text-gray-600 hover:text-gold-600 border border-gray-200/80 shadow-2xs cursor-pointer active:scale-95"
+          title={isSidebarOpen ? "Collapse Sidebar (More Workspace)" : "Expand Sidebar"}
         >
-          <RiMenuLine size={22} />
+          {isSidebarOpen ? <RiMenuFoldLine size={20} /> : <RiMenuUnfoldLine size={20} />}
         </button>
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-gray-800 font-display">{pageTitle}</h2>
-          <p className="text-xs text-gray-400 hidden sm:block">Welcome back, {user?.fullName || 'Investor'}</p>
+          <h2 className="text-base sm:text-xl font-bold text-gray-800 font-display leading-tight">{pageTitle}</h2>
+          <p className="text-[11px] sm:text-xs text-gray-400 hidden sm:block">Welcome back, {user?.fullName || 'Investor'}</p>
         </div>
       </div>
 

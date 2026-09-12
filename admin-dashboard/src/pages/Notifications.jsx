@@ -309,7 +309,7 @@ export default function Notifications() {
       </div>
 
       {/* Metric Counters */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
         <div className="card p-4 border border-slate-100 flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-2xl bg-gold-50 text-gold-700 border border-gold-200 flex items-center justify-center flex-shrink-0">
             <RiNotification3Line size={20} />

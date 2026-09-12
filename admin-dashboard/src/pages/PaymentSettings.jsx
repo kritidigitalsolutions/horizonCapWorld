@@ -816,7 +816,7 @@ export default function PaymentSettings() {
       </div>
 
       {/* ──────────────── TOP SUMMARY METRICS ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
         <div className="card p-4 flex items-center gap-3.5 border-l-4 border-l-emerald-500 shadow-2xs">
           <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
             <RiSmartphoneLine size={22} />

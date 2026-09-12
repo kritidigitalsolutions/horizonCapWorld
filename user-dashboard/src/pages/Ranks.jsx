@@ -290,7 +290,7 @@ export default function Ranks() {
       />
 
       {/* ──────────────── 4 ROLLING ODOMETER KPI CARDS ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Rank Rewards Distributed"
           numericValue={leaderboardList.reduce((sum, l) => sum + Number(l.rewardsEarned || l.reward || 0), 0)}
@@ -607,7 +607,7 @@ export default function Ranks() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-5">
             {ranks.map((r, i) => {
               const isAchieved = r.level <= currentLevel;
               const isCurrent = r.level === currentLevel;

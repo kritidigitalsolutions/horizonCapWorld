@@ -414,8 +414,8 @@ export default function UserDashboard() {
           </div>
 
           {/* Main Hero Row: Avatar + Dynamic Name + Badges + CTAs */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="flex items-center gap-5 sm:gap-7 min-w-0">
+          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5 sm:gap-6">
+            <div className="flex items-center gap-4 sm:gap-6 min-w-0">
               {/* 👑 PROMINENT LUXURY GOLD LAYERED AVATAR 👑 */}
               <div className="relative flex-shrink-0 group">
                 <input
@@ -429,7 +429,7 @@ export default function UserDashboard() {
                 {/* Triple-Layer Gold Ring Frame */}
                 <div className="p-1 rounded-full bg-gradient-to-tr from-amber-500 via-gold-300 to-amber-600 shadow-gold ring-4 ring-gold-200/90">
                   <div className="p-0.5 rounded-full bg-white">
-                    <div className="w-22 h-22 sm:w-26 sm:h-26 md:w-28 md:h-28 rounded-full overflow-hidden bg-slate-900 flex items-center justify-center shadow-inner relative">
+                    <div className="w-18 h-18 sm:w-22 sm:h-22 md:w-24 md:h-24 xl:w-28 xl:h-28 rounded-full overflow-hidden bg-slate-900 flex items-center justify-center shadow-inner relative">
                       {avatar ? (
                         <img
                           src={avatar}
@@ -437,7 +437,7 @@ export default function UserDashboard() {
                           className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
-                        <span className="text-4xl sm:text-5xl font-black text-gold-400 font-poppins">
+                        <span className="text-3xl sm:text-4xl xl:text-5xl font-black text-gold-400 font-poppins">
                           {(userName || 'User').charAt(0)}
                         </span>
                       )}
@@ -449,7 +449,7 @@ export default function UserDashboard() {
                         className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-gold-300 text-[11px] font-bold cursor-pointer gap-1"
                         title="Change Profile Photo"
                       >
-                        <RiCameraLine size={22} />
+                        <RiCameraLine size={20} />
                         <span>Update</span>
                       </button>
                     </div>
@@ -466,16 +466,16 @@ export default function UserDashboard() {
                   </span>
                 </div>
 
-                <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black font-poppins tracking-tight text-slate-950">
+                <h1 className="text-2xl sm:text-3xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-black font-poppins tracking-tight text-slate-950 truncate">
                   {userName}
                 </h1>
 
                 {/* User Badges & ID Row */}
-                <div className="flex flex-wrap items-center gap-2.5 mt-2.5 text-xs">
+                <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
                   <button
                     type="button"
                     onClick={copyUserId}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white hover:bg-gold-50 border border-slate-200 text-slate-800 font-mono font-bold transition-colors cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white hover:bg-gold-50 border border-slate-200 text-slate-800 font-mono font-bold transition-colors cursor-pointer shadow-2xs"
                     title="Click to copy User ID"
                   >
                     <span>ID: {userId}</span>
@@ -483,7 +483,7 @@ export default function UserDashboard() {
                     {copiedId && <span className="text-[10px] text-emerald-600 font-sans font-bold">Copied!</span>}
                   </button>
 
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-gradient-to-r from-gold-400 to-amber-400 text-slate-950 font-extrabold shadow-gold text-xs font-poppins">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-gold-400 to-amber-400 text-slate-950 font-extrabold shadow-gold text-xs font-poppins">
                     <RiAwardLine size={14} /> Level {user?.rank?.level || 1} {user?.rank?.name || user?.currentRank || 'Bronze Explorer'}
                   </span>
 
@@ -495,11 +495,11 @@ export default function UserDashboard() {
             </div>
 
             {/* Quick Action CTAs */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 self-start lg:self-auto flex-shrink-0">
+            <div className="flex flex-wrap items-center gap-2 self-start xl:self-auto flex-shrink-0">
               {/* Button 1: Make Deposit */}
               <Link
                 to="/deposit"
-                className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-gold-400 to-amber-500 hover:from-gold-500 hover:to-amber-600 text-slate-950 shadow-gold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-gold-400 to-amber-500 hover:from-gold-500 hover:to-amber-600 text-slate-950 shadow-gold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
               >
                 <RiArrowDownLine size={16} />
                 <span>Make Deposit</span>
@@ -508,7 +508,7 @@ export default function UserDashboard() {
               {/* Button 2: Explore Plans */}
               <Link
                 to="/plans"
-                className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-gold-50 text-slate-900 border-2 border-gold-400 hover:border-gold-500 shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-white hover:bg-gold-50 text-slate-900 border-2 border-gold-400 hover:border-gold-500 shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
               >
                 <RiFundsLine size={16} className="text-gold-600" />
                 <span>Explore Plans</span>
@@ -517,7 +517,7 @@ export default function UserDashboard() {
               {/* Button 3: Withdraw */}
               <Link
                 to="/withdraw"
-                className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
               >
                 <RiArrowUpLine size={16} />
                 <span>Withdraw</span>
@@ -526,53 +526,53 @@ export default function UserDashboard() {
           </div>
 
           {/* 3 Highlight Metric Cards Embedded In Hero */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-4 border-t border-gold-200/80">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-gold-200/80">
             {/* 1. Deposit Wallet */}
-            <div className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-gold-300 transition-colors shadow-2xs flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs">
-                  <RiWallet3Line size={20} />
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 hover:border-gold-300 transition-colors shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs flex-shrink-0">
+                  <RiWallet3Line size={18} />
                 </div>
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Deposit Wallet</span>
-                  <span className="text-xl font-bold font-mono text-slate-900 tabular-nums">
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">Deposit Wallet</span>
+                  <span className="text-lg sm:text-xl font-bold font-mono text-slate-900 tabular-nums truncate block">
                     ${(user?.depositWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
-              <Link to="/deposit" className="text-xs font-bold text-gold-700 hover:text-gold-900 underline">
+              <Link to="/deposit" className="text-xs font-bold text-gold-700 hover:text-gold-900 underline flex-shrink-0 ml-1">
                 + Add
               </Link>
             </div>
 
             {/* 2. Earning Wallet */}
-            <div className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 transition-colors shadow-2xs flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-2xs">
-                  <RiSafeLine size={20} />
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 transition-colors shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-2xs flex-shrink-0">
+                  <RiSafeLine size={18} />
                 </div>
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Earning Wallet</span>
-                  <span className="text-xl font-bold font-mono text-emerald-700 tabular-nums">
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">Earning Wallet</span>
+                  <span className="text-lg sm:text-xl font-bold font-mono text-emerald-700 tabular-nums truncate block">
                     ${(user?.earningWallet || user?.earningsWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
-              <Link to="/withdraw" className="text-xs font-bold text-emerald-700 hover:text-emerald-900 underline">
+              <Link to="/withdraw" className="text-xs font-bold text-emerald-700 hover:text-emerald-900 underline flex-shrink-0 ml-1">
                 Payout
               </Link>
             </div>
 
             {/* 3. Live Streaming Yield */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-gold-100/70 to-amber-100/50 border border-gold-300 shadow-2xs flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-gold-300 flex items-center justify-center text-gold-600 shadow-2xs">
-                  <UilBolt size={22} />
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-gold-100/70 to-amber-100/50 border border-gold-300 shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gold-300 flex items-center justify-center text-gold-600 shadow-2xs flex-shrink-0">
+                  <UilBolt size={20} />
                 </div>
-                <div>
-                  <span className="text-[10px] font-bold text-gold-900 uppercase tracking-wider block">Live Yield Streaming</span>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold text-gold-900 uppercase tracking-wider block truncate">Live Yield Streaming</span>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-black font-mono text-slate-950">
+                    <span className="text-lg sm:text-xl font-black font-mono text-slate-950">
                       ${streamingValue.toFixed(6).split('.')[0]}
                     </span>
                     <span className="text-xs font-black font-mono text-gold-700">
@@ -581,7 +581,7 @@ export default function UserDashboard() {
                   </div>
                 </div>
               </div>
-              <span className={`text-[11px] font-bold font-mono ${hasActiveStreaming ? 'text-emerald-700' : 'text-slate-500'}`}>
+              <span className={`text-[10px] sm:text-[11px] font-bold font-mono flex-shrink-0 ml-1 ${hasActiveStreaming ? 'text-emerald-700' : 'text-slate-500'}`}>
                 +${activeRate.toFixed(7)}/s
               </span>
             </div>
@@ -590,8 +590,8 @@ export default function UserDashboard() {
       </div>
 
       {/* ──────────────── REAL-TIME STREAMING DETAIL CARD ──────────────── */}
-      <div className="card-gold p-6 sm:p-7 relative overflow-hidden rounded-3xl shadow-card border border-gold-300">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
+      <div className="card-gold p-5 sm:p-7 relative overflow-hidden rounded-3xl shadow-card border border-gold-300">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5 sm:gap-6 relative z-10">
           {/* Left: Streaming counter */}
           <div className="flex-1 space-y-2">
             <div className="flex items-center gap-2">
@@ -600,13 +600,13 @@ export default function UserDashboard() {
                 {hasActiveStreaming ? 'Live Real-Time Investment Profit Streaming' : 'Live Real-Time Investment Profit Streaming (Idle)'}
               </span>
             </div>
-            <div className="flex items-baseline gap-1">
-              <UilBolt size={36} className={`${hasActiveStreaming ? 'text-gold-500' : 'text-slate-400'} flex-shrink-0`} />
-              <span className="streaming-value text-4xl sm:text-6xl font-black text-slate-950 font-poppins">
+            <div className="flex items-baseline gap-1 flex-wrap">
+              <UilBolt size={32} className={`${hasActiveStreaming ? 'text-gold-500' : 'text-slate-400'} flex-shrink-0`} />
+              <span className="streaming-value text-3xl sm:text-5xl 2xl:text-6xl font-black text-slate-950 font-poppins">
                 ${streamingValue.toFixed(7).split('.')[0]}
               </span>
-              <span className="streaming-value text-4xl sm:text-6xl font-black text-slate-950">.</span>
-              <span className="streaming-value text-3xl sm:text-5xl font-black text-gold-600 font-poppins">
+              <span className="streaming-value text-3xl sm:text-5xl 2xl:text-6xl font-black text-slate-950">.</span>
+              <span className="streaming-value text-2xl sm:text-4xl 2xl:text-5xl font-black text-gold-600 font-poppins">
                 {streamingValue.toFixed(7).split('.')[1]}
               </span>
             </div>
@@ -618,17 +618,17 @@ export default function UserDashboard() {
               </span>
             </p>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-2.5 sm:gap-3 pt-2 flex-wrap">
               <Link
                 to="/plans"
-                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-gold-400 to-amber-500 hover:from-gold-500 hover:to-amber-600 text-slate-950 shadow-gold flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-gold-400 to-amber-500 hover:from-gold-500 hover:to-amber-600 text-slate-950 shadow-gold flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <UilBolt size={16} />
                 <span>{hasActiveStreaming ? 'Explore Yield Plans' : 'Start an Investment Plan'}</span>
               </Link>
               <Link
                 to="/investments"
-                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <span>My Active Portfolios</span>
                 <RiArrowRightLine size={14} />
@@ -637,7 +637,7 @@ export default function UserDashboard() {
           </div>
 
           {/* Right: Countdown to next settlement */}
-          <div className="flex flex-col items-center gap-2 bg-white/90 p-5 rounded-2xl border border-gold-200 shadow-sm flex-shrink-0 min-w-[210px]">
+          <div className="flex flex-col items-center gap-2 bg-white/90 p-4 sm:p-5 rounded-2xl border border-gold-200 shadow-sm flex-shrink-0 min-w-[200px] self-start xl:self-center">
             <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-600 font-poppins">
               Next Daily Settlement
             </span>

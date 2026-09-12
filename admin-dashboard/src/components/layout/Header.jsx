@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { RiMenuLine, RiSearchLine, RiUser3Line, RiLogoutBoxRLine, RiSettings3Line } from 'react-icons/ri';
+import { RiMenuLine, RiMenuFoldLine, RiMenuUnfoldLine, RiSearchLine, RiUser3Line, RiLogoutBoxRLine, RiSettings3Line } from 'react-icons/ri';
 import { UilAngleDown } from '@iconscout/react-unicons';
 import NotificationDropdown from '../ui/NotificationDropdown';
 
@@ -21,7 +21,7 @@ const pageTitles = {
   '/admin/settings': 'Settings',
 };
 
-export default function Header({ onMenuToggle }) {
+export default function Header({ onMenuToggle, isSidebarOpen = true }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -76,18 +76,19 @@ export default function Header({ onMenuToggle }) {
   };
 
   return (
-    <header className="h-[72px] bg-white/80 backdrop-blur-xl border-b border-gray-100 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30">
+    <header className="h-[72px] bg-white/80 backdrop-blur-xl border-b border-gray-100 flex items-center justify-between px-3 sm:px-6 sticky top-0 z-30">
       {/* Left */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 sm:gap-3">
         <button
           onClick={onMenuToggle}
-          className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gold-50 transition-colors text-gray-500 hover:text-gold-500 lg:hidden"
+          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl hover:bg-gold-50 transition-all text-gray-600 hover:text-gold-600 border border-gray-200/80 shadow-2xs cursor-pointer active:scale-95"
+          title={isSidebarOpen ? "Collapse Sidebar (More Workspace)" : "Expand Sidebar"}
         >
-          <RiMenuLine size={22} />
+          {isSidebarOpen ? <RiMenuFoldLine size={20} /> : <RiMenuUnfoldLine size={20} />}
         </button>
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-gray-800 font-display">{pageTitle}</h2>
-          <p className="text-xs text-gray-400 hidden sm:block">Welcome back, {adminName}</p>
+          <h2 className="text-base sm:text-xl font-bold text-gray-800 font-display leading-tight">{pageTitle}</h2>
+          <p className="text-[11px] sm:text-xs text-gray-400 hidden sm:block">Welcome back, {adminName}</p>
         </div>
       </div>
 

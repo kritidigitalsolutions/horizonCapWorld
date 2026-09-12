@@ -304,7 +304,7 @@ export default function SupportTickets() {
     return (
       <div className="space-y-6 font-poppins">
         <div className="skeleton w-56 h-8 rounded-lg"></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
           <SkeletonLoader type="card" count={4} />
         </div>
       </div>
@@ -330,7 +330,7 @@ export default function SupportTickets() {
       />
 
       {/* ──────────────── ROLLING ODOMETER SUMMARY STAT CARDS ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Total Support Inquiries"
           numericValue={totalCount}

@@ -365,7 +365,7 @@ export default function Ranks() {
     return (
       <div className="space-y-6">
         <div className="skeleton w-56 h-8 rounded-lg"></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
           <SkeletonLoader type="card" count={4} />
         </div>
       </div>
@@ -399,7 +399,7 @@ export default function Ranks() {
       />
 
       {/* ──────────────── ROLLING ODOMETER SUMMARY KPI CARDS ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Rank Rewards Distributed"
           numericValue={leaderboardList.reduce((sum, l) => sum + Number(l.rewardsEarned || l.reward || 0), 0)}
@@ -637,7 +637,7 @@ export default function Ranks() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-5">
             {ranks.map((r, i) => (
               <div
                 key={r.level}

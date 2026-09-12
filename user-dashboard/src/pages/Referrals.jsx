@@ -155,7 +155,7 @@ export default function Referrals() {
       />
 
       {/* ──────────────── 4 ROLLING ODOMETER KPI CARDS ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Total Referral Commissions Paid"
           numericValue={Math.round(overviewData?.commissions?.totalEarned || 0)}

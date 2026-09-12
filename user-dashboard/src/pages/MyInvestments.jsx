@@ -117,7 +117,7 @@ export default function MyInvestments() {
   if (loading) {
     return (
       <div className="page-enter space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
           {[1, 2, 3, 4].map(i => <div key={i} className="skeleton h-36 rounded-2xl" />)}
         </div>
         <div className="skeleton h-14 w-full rounded-2xl" />
@@ -146,7 +146,7 @@ export default function MyInvestments() {
       />
 
       {/* ──────── KPI SUMMARY ROW (EXACT DESIGN.MD KPICARD) ──────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Total Capital Invested"
           numericValue={totalInvested}

@@ -604,7 +604,7 @@ export default function InvestmentPlans() {
       </div>
 
       {/* Plans Card Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-5">
         {filtered.map((plan, i) => {
           const isRenewable = plan.category === "Renewable Energy";
           const isMetal = plan.category === "Precious Metal";

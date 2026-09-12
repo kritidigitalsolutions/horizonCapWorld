@@ -186,7 +186,7 @@ export default function SupportChannels() {
     return (
       <div className="space-y-6 font-poppins">
         <div className="skeleton w-56 h-8 rounded-lg"></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
           <SkeletonLoader type="card" count={4} />
         </div>
       </div>
@@ -212,7 +212,7 @@ export default function SupportChannels() {
       />
 
       {/* ──────────────── ROLLING ODOMETER STAT CARDS ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Active Support Desks"
           numericValue={channels.filter(c => c.status === 'Active').length}
@@ -297,7 +297,7 @@ export default function SupportChannels() {
       </div>
 
       {/* ──────────────── CHANNELS GRID (PURE WHITE & GOLD LIGHT THEME) ──────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-5">
         {filteredChannels.map((c, i) => {
           const chanKey = c._id || c.id || `chan-${i}`;
           return (
