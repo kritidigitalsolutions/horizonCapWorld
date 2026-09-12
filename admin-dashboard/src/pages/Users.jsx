@@ -247,12 +247,12 @@ export default function Users() {
                           {user.name.split(' ').map(n => n[0]).join('')}
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-medium text-slate-700 truncate leading-tight font-poppins">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-slate-800 truncate leading-tight font-poppins">
                               {user.name}
                             </p>
                             {!user.isSeenByAdmin && (
-                              <span className="px-1.5 py-0.2 text-[9px] font-black rounded-md bg-amber-500 text-white shadow-2xs animate-pulse flex-shrink-0">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs flex-shrink-0">
                                 NEW
                               </span>
                             )}

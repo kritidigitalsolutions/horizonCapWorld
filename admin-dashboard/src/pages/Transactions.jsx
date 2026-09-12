@@ -588,7 +588,7 @@ export default function Transactions() {
                           )}
                         </div>
                         {!txn.isSeenByAdmin && (
-                          <span className="px-1.5 py-0.2 text-[9px] font-black rounded-md bg-amber-500 text-white shadow-2xs animate-pulse flex-shrink-0">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs flex-shrink-0">
                             NEW
                           </span>
                         )}

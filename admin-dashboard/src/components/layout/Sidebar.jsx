@@ -241,7 +241,7 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
 
                         {/* Collapsed Mode Floating Notification Dot / Badge */}
                         {!isOpen && !isMobile && count > 0 && (
-                          <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[9px] font-black flex items-center justify-center shadow-md ring-2 ring-white animate-pulse">
+                          <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 rounded-full bg-gold-400 text-slate-950 text-[11px] font-black flex items-center justify-center shadow-xs ring-2 ring-white tabular-nums">
                             {count > 9 ? '9+' : count}
                           </span>
                         )}
@@ -251,16 +251,16 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
                           <>
                             <span className="text-xs flex-1 truncate">{item.label}</span>
 
-                            {/* Dot Counter Badge */}
+                            {/* Minimal Luxury Counter Badge (DESIGN.md Gold Pill) */}
                             {count > 0 && (
-                              <span className="flex items-center gap-1.5 flex-shrink-0">
-                                <span className="relative flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                                </span>
-                                <span className="px-1.5 py-0.5 text-[10px] font-black rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-2xs">
-                                  {count > 99 ? '99+' : count}
-                                </span>
+                              <span
+                                className={`min-w-[24px] h-[22px] px-2 rounded-full text-xs font-bold tabular-nums flex items-center justify-center flex-shrink-0 transition-all shadow-2xs ${
+                                  isActive
+                                    ? 'bg-gold-400 text-slate-950 font-black shadow-xs'
+                                    : 'bg-gold-100 text-gold-900 border border-gold-300/90 group-hover:bg-gold-200/80 group-hover:border-gold-400'
+                                }`}
+                              >
+                                {count > 99 ? '99+' : count}
                               </span>
                             )}
 
@@ -276,8 +276,8 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
                         <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap z-[99999] shadow-2xl pointer-events-none border border-slate-700 flex items-center gap-2">
                           <span>{item.label}</span>
                           {count > 0 && (
-                            <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-black">
-                              {count} new
+                            <span className="px-2 py-0.5 rounded-full bg-gold-400 text-slate-950 text-[10px] font-bold tabular-nums">
+                              {count > 99 ? '99+' : count} new
                             </span>
                           )}
                           <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-y-4 border-y-transparent border-r-4 border-r-slate-900" />

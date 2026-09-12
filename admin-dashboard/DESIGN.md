@@ -171,6 +171,8 @@
 | `warning` | `#FEF3C7` | `#92400E` |
 | `info` | `#DBEAFE` | `#1E40AF` |
 | `gold` | Gradient `#FFF9E6 → #FFF0B3` | `#9A7B00` + gold border |
+| `sidebar-counter` | Inactive: `bg-gold-100 text-gold-900 border border-gold-300/90` / Active: `bg-gold-400 text-slate-950` | 24px pill, `text-xs font-bold tabular-nums`, clean shadow |
+| `new-tag` | `bg-gold-100 text-gold-900 border border-gold-300` | Minimal `rounded-full` pill, `text-[10px] font-bold tracking-wider uppercase` |
 
 ### Cards
 | Type | Background | Border | Special |
@@ -394,11 +396,11 @@ animation: shimmer 1.5s ease-in-out infinite;
 | 2026-08-20 | Converted Donut Chart to Solid Pie Chart with slice-colored interactive hover tooltips; fixed collapsed sidebar hover tooltips floating freely with overflow-visible; removed mobile sidebar blur overlay | DonutChart.jsx, Sidebar.jsx, AGENTS.md, DESIGN.md |
 | 2026-08-20 | Optimized Sidebar collapsed & expanded mode vertical distribution with flex-1 justify-evenly across Core Platform, Financial & Growth, and Desk & System sections to gracefully cover the full sidebar height without bottom voids | Sidebar.jsx, Layout.jsx, AGENTS.md, DESIGN.md |
 | 2026-08-20 | Saved official logo image into `public/admin/logo.png`, extracted crystal-sharp round logo icon to `public/admin/icon.png` & `src/assets/admin/icon.png`; enlarged emblem circle to 48px rendering the actual logo image with seamless full-bleed circular fit; formatted "HORIZON CAP WORLDS" with prominent gold gradient and clean "Super Admin" subtitle | Sidebar.jsx, index.html, AGENTS.md, DESIGN.md |
-| 2026-08-20 | Built Horizon Cap Worlds User Platform & Investor Dashboard in `user/` folder with 11 pages, live streaming ROI ticker, dual wallets, 5-tier referrals, 10-tier ranks, dark institutional theme, and dedicated AGENTS.md/DESIGN.md documentation | `user/*`, AGENTS.md, DESIGN.md |
+| 2026-09-12 | Redesigned sidebar item counter badges & new member tags: sized up sidebar counter pill (24px, text-xs font-bold, bg-gold-100/text-gold-900 with border-gold-300); replaced boxy pulsating NEW user tags with luxury gold rounded-full pills (`bg-gold-100 text-gold-900 border-gold-300 font-bold uppercase`) | Sidebar.jsx, Users.jsx, Transactions.jsx, DESIGN.md |
 
 ---
 
-*Last Updated: 2026-08-20*
+*Last Updated: 2026-09-12*
 
 
 
