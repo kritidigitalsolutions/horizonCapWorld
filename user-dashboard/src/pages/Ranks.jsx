@@ -148,7 +148,7 @@ const defaultRanksList = [
 
 export default function Ranks() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('ladder'); // 'ladder', 'cards', 'leaderboard'
+  const [activeTab, setActiveTab] = useState('ladder'); // 'ladder', 'leaderboard'
   const [search, setSearch] = useState('');
   const [selectedRankDrawer, setSelectedRankDrawer] = useState(null);
   const [ranks, setRanks] = useState(defaultRanksList);
@@ -410,8 +410,7 @@ export default function Ranks() {
       <div className="card p-2">
         <div className="flex items-center gap-2 overflow-x-auto font-poppins">
           {[
-            { id: 'ladder', label: 'Rank Ladder (Spreadsheet View)', count: `${ranks.length} Tiers`, icon: <RiTrophyLine /> },
-            { id: 'cards', label: 'Milestone Cards Grid', count: 'Visual', icon: <RiAwardLine /> },
+            { id: 'ladder', label: 'Rank Ladder', count: `${ranks.length} Tiers`, icon: <RiTrophyLine /> },
             { id: 'leaderboard', label: 'Top Rank Achievers Leaderboard', count: `${leaderboardList.length} Leaders`, icon: <RiGroupLine /> },
           ].map(tab => (
             <button
@@ -433,40 +432,49 @@ export default function Ranks() {
         </div>
       </div>
 
-      {/* ──────────────── TAB 1: RANK LADDER SPREADSHEET TABLE (MATCHING USER SCREENSHOT) ──────────────── */}
+      {/* ──────────────── TAB 1: RANK LADDER TABLE (LUXURY WHITE & GOLD THEME) ──────────────── */}
       {activeTab === 'ladder' && (
-        <div className="space-y-6">
-          <div className="card overflow-hidden shadow-sm border border-gold-300">
-            {/* Bright Yellow Header Banner matching exact spreadsheet design */}
-            <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 px-5 py-3.5 flex items-center justify-between text-slate-950 font-poppins">
-              <div className="flex items-center gap-2.5">
-                <RiTrophyLine size={22} className="text-slate-950" />
-                <h3 className="text-base sm:text-lg font-black uppercase tracking-wider">
-                  Rank Ladder
-                </h3>
+        <div className="mt-6 space-y-6">
+          <div className="card p-5 sm:p-6 space-y-5 shadow-card border border-slate-200/80">
+            {/* Elegant Top Toolbar with proper margin & padding */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 font-poppins">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-gold-400/20 text-gold-700 flex items-center justify-center border border-gold-300 shadow-2xs flex-shrink-0">
+                  <RiTrophyLine size={22} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                      Rank Ladder
+                    </h3>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs">
+                      {ranks.length} Active Leadership Tiers
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Career progression tiers, required client volumes, cash bonus rewards & profit sharing
+                  </p>
+                </div>
               </div>
-              <span className="text-xs font-black bg-slate-950 text-gold-300 px-3.5 py-1 rounded-full uppercase tracking-wider shadow-2xs">
-                {ranks.length} Active Leadership Tiers
-              </span>
             </div>
 
-            {/* Exact Spreadsheet Columns Table */}
-            <div className="overflow-x-auto">
+            {/* Grid Table with proper spacing from top */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-2xs bg-white">
               <table className="w-full text-left border-collapse font-poppins">
                 <thead>
-                  <tr className="bg-amber-100/70 border-b border-amber-300 text-slate-950 text-xs font-extrabold uppercase tracking-wider">
-                    <th className="py-3 px-4 text-center border-r border-amber-200/80 w-14">#</th>
-                    <th className="py-3 px-4 border-r border-amber-200/80 min-w-[170px]">Rank Name</th>
-                    <th className="py-3 px-4 text-center border-r border-amber-200/80 min-w-[110px]">Own Deposit</th>
-                    <th className="py-3 px-4 text-center border-r border-amber-200/80 min-w-[140px]">Total Client Deposit</th>
-                    <th className="py-3 px-4 border-r border-amber-200/80 min-w-[200px]">Condition</th>
-                    <th className="py-3 px-4 text-center border-r border-amber-200/80 min-w-[140px]">One Time Cash Reward</th>
-                    <th className="py-3 px-4 border-r border-amber-200/80 min-w-[230px]">Company Profit %ge</th>
-                    <th className="py-3 px-4 border-r border-amber-200/80 min-w-[230px]">Downline Structure required</th>
-                    <th className="py-3 px-4 text-right pr-6 min-w-[110px]">Status</th>
+                  <tr className="bg-gradient-to-r from-amber-50/90 via-gold-50/70 to-amber-50/50 border-b-2 border-gold-300 text-slate-900 text-[11px] font-extrabold uppercase tracking-wider">
+                    <th className="py-3 px-3 text-center border-r border-slate-200/90 w-12">#</th>
+                    <th className="py-3 px-3.5 text-left border-r border-slate-200/90 min-w-[170px]">Rank Name</th>
+                    <th className="py-3 px-3 text-center border-r border-slate-200/90 min-w-[110px]">Own Deposit ($)</th>
+                    <th className="py-3 px-3 text-center border-r border-slate-200/90 min-w-[140px]">Total Client Deposit ($)</th>
+                    <th className="py-3 px-3.5 text-left border-r border-slate-200/90 min-w-[190px]">Condition</th>
+                    <th className="py-3 px-3 text-center border-r border-slate-200/90 min-w-[130px]">One Time Cash Reward ($)</th>
+                    <th className="py-3 px-3 text-center border-r border-slate-200/90 min-w-[180px]">Company Profit %ge</th>
+                    <th className="py-3 px-3.5 text-left border-r border-slate-200/90 min-w-[210px]">Downline Structure Required</th>
+                    <th className="py-3 px-3 text-center min-w-[110px]">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 text-xs text-slate-800">
+                <tbody className="divide-y divide-slate-200 text-xs text-slate-700">
                   {ranks.map((r, i) => {
                     const ownDep = Number(r.ownDeposit !== undefined ? r.ownDeposit : 0);
                     const clientDep = Number(r.totalClientDeposit !== undefined ? r.totalClientDeposit : (r.minInvest || 0));
@@ -481,97 +489,114 @@ export default function Ranks() {
                     return (
                       <tr
                         key={r._id || r.level}
-                        className={`hover:bg-amber-50/60 transition-colors ${
+                        className={`hover:bg-amber-50/40 transition-colors ${
                           isCurrent
-                            ? 'bg-amber-50/90 font-semibold ring-1 ring-gold-400'
+                            ? 'bg-amber-50/80 font-medium'
                             : i % 2 === 0
                             ? 'bg-white'
                             : 'bg-slate-50/50'
                         }`}
                       >
                         {/* Level Index */}
-                        <td className="py-3.5 px-4 text-center font-black text-slate-900 font-mono text-sm bg-amber-50/40 border-r border-slate-200">
-                          {r.level}
+                        <td className="py-3 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-200 bg-gold-50/30">
+                          <span className={`w-6 h-6 rounded-md font-bold border inline-flex items-center justify-center shadow-2xs ${
+                            isCurrent
+                              ? 'bg-gold-400 text-slate-950 border-gold-500 font-black'
+                              : 'bg-gold-100/90 text-gold-950 border-gold-300'
+                          }`}>
+                            {r.level}
+                          </span>
                         </td>
 
                         {/* Rank Name */}
-                        <td className="py-3.5 px-4 border-r border-slate-200">
+                        <td className="py-3 px-3.5 border-r border-slate-200">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-white border border-gold-300 shadow-2xs flex items-center justify-center flex-shrink-0">
+                            <div className={`w-8 h-8 rounded-lg border shadow-2xs flex items-center justify-center flex-shrink-0 ${
+                              isCurrent
+                                ? 'bg-gold-400/30 border-gold-400'
+                                : 'bg-gold-50/90 border-gold-300'
+                            }`}>
                               {getRankIcon(r.level)}
                             </div>
                             <div>
-                              <span className="font-extrabold text-slate-900 text-sm block font-poppins">
-                                {r.name}
-                              </span>
-                              {isCurrent && (
-                                <span className="text-[10px] font-black bg-slate-950 text-gold-300 px-2 py-0.5 rounded uppercase tracking-wider">
-                                  Your Rank
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-slate-900 text-xs block font-poppins leading-tight">
+                                  {r.name}
                                 </span>
-                              )}
+                                {isCurrent && (
+                                  <span className="text-[9px] font-black bg-slate-950 text-gold-300 px-1.5 py-0.2 rounded uppercase tracking-wider">
+                                    You
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] font-bold text-gold-900 bg-gold-100/90 border border-gold-300 px-1.5 py-0.2 rounded uppercase tracking-wider inline-block">
+                                Tier {r.level}
+                              </span>
                             </div>
                           </div>
                         </td>
 
                         {/* Own Deposit */}
-                        <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-900 text-sm border-r border-slate-200">
+                        <td className="py-3 px-3 text-center font-mono font-bold text-slate-800 text-xs border-r border-slate-200">
                           ${ownDep.toLocaleString()}
                         </td>
 
                         {/* Total Client Deposit */}
-                        <td className="py-3.5 px-4 text-center font-mono font-extrabold text-slate-950 text-sm border-r border-slate-200">
+                        <td className="py-3 px-3 text-center font-mono font-black text-slate-950 text-xs border-r border-slate-200">
                           ${clientDep.toLocaleString()}
                         </td>
 
                         {/* Condition */}
-                        <td className="py-3.5 px-4 text-xs font-medium text-slate-700 border-r border-slate-200">
-                          <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 font-mono text-[11px]">
+                        <td className="py-3 px-3.5 border-r border-slate-200">
+                          <span className="inline-block px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[11px] leading-snug">
                             {condText}
                           </span>
                         </td>
 
                         {/* One Time Cash Reward */}
-                        <td className="py-3.5 px-4 text-center font-mono font-black text-emerald-700 text-sm border-r border-slate-200 bg-emerald-50/20">
-                          +${rewardAmt.toLocaleString()}
+                        <td className="py-3 px-3 text-center border-r border-slate-200 bg-emerald-50/20">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs">
+                            +${rewardAmt.toLocaleString()}
+                          </span>
                         </td>
 
                         {/* Company Profit %ge */}
-                        <td className="py-3.5 px-4 text-xs border-r border-slate-200">
+                        <td className="py-3 px-3 text-center border-r border-slate-200">
                           {profitShare === '0' || profitShare === 0 || !profitShare ? (
-                            <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-mono font-bold">
+                            <span className="inline-block px-2.5 py-1 rounded bg-slate-100 text-slate-500 font-mono font-bold text-xs border border-slate-200">
                               0
                             </span>
                           ) : (
-                            <span className="inline-block px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 font-bold border border-purple-200 text-[11px] leading-tight">
+                            <span className="inline-block px-2.5 py-1 rounded-md bg-purple-50 text-purple-900 font-medium border border-purple-200 text-[11px] leading-tight text-left">
                               {profitShare}
                             </span>
                           )}
                         </td>
 
                         {/* Downline Structure required */}
-                        <td className="py-3.5 px-4 text-xs border-r border-slate-200">
-                          <span className="inline-block px-2.5 py-1 rounded-lg bg-amber-50 text-amber-950 font-semibold border border-amber-200 text-[11px]">
+                        <td className="py-3 px-3.5 border-r border-slate-200">
+                          <span className="inline-block px-2.5 py-1 rounded-md bg-amber-50 text-amber-950 font-medium border border-amber-200 text-[11px] leading-tight">
                             {downlineReq}
                           </span>
                         </td>
 
                         {/* Status */}
-                        <td className="py-3.5 px-4 text-right pr-6">
+                        <td className="py-3 px-3 text-center">
                           {isCurrent ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 text-[11px] font-black border border-amber-300 shadow-2xs">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gold-400 text-slate-950 text-xs font-black shadow-2xs border border-gold-500">
                               <RiStarLine size={12} /> Current
                             </span>
                           ) : isUnlocked ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-300 shadow-2xs">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
                               <RiCheckLine size={12} /> Claimed
                             </span>
                           ) : (
                             <button
                               type="button"
                               onClick={() => setSelectedRankDrawer(r)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-gold-100 text-slate-700 hover:text-slate-900 text-[11px] font-bold border border-slate-200 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-slate-950 border border-slate-200 text-xs font-bold transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
                             >
-                              <RiLockLine size={12} /> Audit
+                              <RiLockLine size={12} /> View Audit
                             </button>
                           )}
                         </td>
@@ -581,124 +606,6 @@ export default function Ranks() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ──────────────── TAB 2: MILESTONE CARDS GRID ──────────────── */}
-      {activeTab === 'cards' && (
-        <div className="space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 bg-gold-50/50 rounded-2xl border border-gold-200/70">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gold-400 text-slate-900 flex items-center justify-center font-bold shadow-xs">
-                <RiTrophyLine size={22} />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 font-poppins">
-                  Milestone Cash Bonus Ladder
-                </h3>
-                <p className="text-xs text-slate-500 font-normal">
-                  Unlock one-time instant cash bonuses as your downline referral investment reaches turnover milestones.
-                </p>
-              </div>
-            </div>
-            <span className="text-xs font-semibold px-3 py-1 bg-white rounded-xl border border-gold-200 text-gold-800 shadow-2xs self-start sm:self-auto">
-              Auto-Credited to Earning Wallet
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-5">
-            {ranks.map((r, i) => {
-              const isAchieved = r.level <= currentLevel;
-              const isCurrent = r.level === currentLevel;
-
-              return (
-                <div
-                  key={r.level}
-                  onClick={() => setSelectedRankDrawer(r)}
-                  className={`card p-5 animate-slide-up hover:shadow-card-hover transition-all border flex flex-col justify-between relative cursor-pointer group ${
-                    isCurrent
-                      ? 'border-gold-400 ring-2 ring-gold-300 bg-gradient-to-br from-gold-50/60 via-white to-white shadow-gold'
-                      : isAchieved
-                      ? 'border-emerald-200 bg-emerald-50/20 hover:border-emerald-300'
-                      : 'border-slate-200/90 hover:border-gold-300'
-                  }`}
-                  style={{ animationDelay: `${i * 45}ms` }}
-                >
-                  {/* Status Badge in Corner */}
-                  {isCurrent && (
-                    <div className="absolute -top-2.5 right-4 px-3 py-0.5 rounded-full bg-slate-950 text-gold-400 text-[10px] font-extrabold uppercase shadow-sm border border-gold-400">
-                      Your Current Rank
-                    </div>
-                  )}
-
-                  <div className="space-y-4">
-                    {/* Top Row: Icon + Level + Name */}
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                          {getRankIcon(r.level)}
-                        </div>
-                        <div>
-                          <span className="text-[11px] font-semibold text-gold-700 uppercase tracking-wider block">
-                            Level {r.level}
-                          </span>
-                          <h4 className="text-base font-bold text-slate-900 font-poppins leading-tight">
-                            {r.name}
-                          </h4>
-                        </div>
-                      </div>
-
-                      <Badge variant={isAchieved ? 'success' : 'default'} size="sm">
-                        {isAchieved ? 'Unlocked' : 'Locked'}
-                      </Badge>
-                    </div>
-
-                    {/* Requirements & Rewards Grid */}
-                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-xs">
-                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/70 text-center">
-                        <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">Own Dep.</span>
-                        <span className="text-xs font-bold text-slate-900 font-mono mt-0.5 block">
-                          ${Number(r.ownDeposit || 0).toLocaleString()}
-                        </span>
-                      </div>
-
-                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/70 text-center">
-                        <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">Client Dep.</span>
-                        <span className="text-xs font-bold text-slate-900 font-mono mt-0.5 block">
-                          ${Number(r.totalClientDeposit || r.minInvest || 0).toLocaleString()}
-                        </span>
-                      </div>
-
-                      <div className="p-2.5 bg-emerald-50/80 rounded-xl border border-emerald-200/70 text-center">
-                        <span className="text-[10px] text-emerald-700 font-medium block uppercase tracking-wider">Cash Reward</span>
-                        <span className="text-xs font-extrabold text-emerald-700 font-mono mt-0.5 block">
-                          +${Number(r.reward || 0).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Downline Structure */}
-                    <div className="p-2.5 bg-amber-50/50 rounded-xl border border-amber-200/70 text-[11px] text-slate-700">
-                      <strong className="text-amber-950 font-bold block mb-0.5">Required Downline:</strong>
-                      <span>{r.downlineStructureRequired || 'Direct Clients'}</span>
-                    </div>
-                  </div>
-
-                  {/* Card Footer: Achievers + Prominent Audit CTA */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <span className="inline-flex items-center gap-1">
-                      <RiGroupLine size={14} className="text-gold-600" />
-                      <strong>{(Number(r.achievers) || 0).toLocaleString()}</strong> Active Achievers
-                    </span>
-
-                    <span className="text-xs font-bold text-gold-800 group-hover:text-gold-950 inline-flex items-center gap-1 transition-colors">
-                      Audit Milestone <RiArrowRightLine size={14} />
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}

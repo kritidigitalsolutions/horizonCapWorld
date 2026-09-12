@@ -155,7 +155,7 @@ const defaultRanksList = [
 
 export default function Ranks() {
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('ladder'); // 'ladder', 'cards', 'achievers'
+  const [activeTab, setActiveTab] = useState('ladder'); // 'ladder', 'achievers'
   const [ranks, setRanks] = useState(defaultRanksList);
   const [leaderboardList, setLeaderboardList] = useState([]);
   const [search, setSearch] = useState('');
@@ -442,8 +442,7 @@ export default function Ranks() {
       <div className="card p-2">
         <div className="flex items-center gap-2 overflow-x-auto">
           {[
-            { id: 'ladder', label: 'Rank Ladder (Spreadsheet View)', count: `${ranks.length} Tiers`, icon: <RiTrophyLine /> },
-            { id: 'cards', label: 'Milestone Cards Grid', count: 'Visual', icon: <RiAwardLine /> },
+            { id: 'ladder', label: 'Rank Ladder', count: `${ranks.length} Tiers`, icon: <RiTrophyLine /> },
             { id: 'achievers', label: 'Rank Achievers Directory', count: `${filteredLeaders.length} Members`, icon: <RiGroupLine /> },
           ].map(tab => (
             <button
@@ -465,22 +464,31 @@ export default function Ranks() {
         </div>
       </div>
 
-      {/* ──────────────── TAB 1: RANK LADDER SPREADSHEET TABLE (MATCHING USER SCREENSHOT) ──────────────── */}
+      {/* ──────────────── TAB 1: RANK LADDER TABLE (LUXURY WHITE & GOLD THEME) ──────────────── */}
       {activeTab === 'ladder' && (
-        <div className="space-y-6">
-          <div className="card overflow-hidden shadow-sm border border-gold-300">
-            {/* Bright Yellow Header Banner matching exact spreadsheet design */}
-            <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 px-5 py-3.5 flex items-center justify-between text-slate-950 font-poppins">
-              <div className="flex items-center gap-2.5">
-                <RiTrophyLine size={22} className="text-slate-950" />
-                <h3 className="text-base sm:text-lg font-black uppercase tracking-wider">
-                  Rank Ladder
-                </h3>
+        <div className="mt-6 space-y-6">
+          <div className="card p-5 sm:p-6 space-y-5 shadow-card border border-slate-200/80">
+            {/* Elegant Top Toolbar with proper margin & padding */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 font-poppins">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-gold-400/20 text-gold-700 flex items-center justify-center border border-gold-300 shadow-2xs flex-shrink-0">
+                  <RiTrophyLine size={22} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                      Rank Ladder
+                    </h3>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs">
+                      {ranks.length} Active Ranks
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Official progression tiers, turnover thresholds, instant cash rewards & profit-sharing bonuses
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black bg-slate-950 text-gold-300 px-3 py-1 rounded-full uppercase tracking-wider">
-                  {ranks.length} Active Ranks
-                </span>
+              <div className="flex items-center gap-2.5">
                 <button
                   type="button"
                   onClick={() => {
@@ -492,30 +500,30 @@ export default function Ranks() {
                     setNewRankDesc('');
                     setIsAddRankOpen(true);
                   }}
-                  className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-950 font-extrabold text-xs rounded-lg shadow-2xs border border-slate-300 transition-all flex items-center gap-1 cursor-pointer"
+                  className="px-4 py-2 bg-gradient-to-r from-gold-400 to-gold-500 hover:from-gold-500 hover:to-gold-600 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
                 >
-                  <RiAddLine size={15} /> Add Rank
+                  <RiAddLine size={16} /> Add Rank
                 </button>
               </div>
             </div>
 
-            {/* Exact Spreadsheet Columns Table */}
-            <div className="overflow-x-auto">
+            {/* Grid Table with proper spacing from top */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-2xs bg-white">
               <table className="w-full text-left border-collapse font-poppins">
                 <thead>
-                  <tr className="bg-amber-100/70 border-b border-amber-300 text-slate-950 text-xs font-extrabold uppercase tracking-wider">
-                    <th className="py-3 px-4 text-center border-r border-amber-200/80 w-16">#</th>
-                    <th className="py-3 px-4 border-r border-amber-200/80 min-w-[170px]">Rank Name</th>
-                    <th className="py-3 px-4 text-center border-r border-amber-200/80 min-w-[120px]">Own Deposit ($)</th>
-                    <th className="py-3 px-4 text-center border-r border-amber-200/80 min-w-[150px]">Total Client Deposit ($)</th>
-                    <th className="py-3 px-4 border-r border-amber-200/80 min-w-[220px]">Condition</th>
-                    <th className="py-3 px-4 text-center border-r border-amber-200/80 min-w-[150px]">One Time Cash Reward ($)</th>
-                    <th className="py-3 px-4 border-r border-amber-200/80 min-w-[240px]">Company Profit %ge</th>
-                    <th className="py-3 px-4 border-r border-amber-200/80 min-w-[240px]">Downline Structure required</th>
-                    <th className="py-3 px-4 text-right pr-6 min-w-[100px]">Action</th>
+                  <tr className="bg-gradient-to-r from-amber-50/90 via-gold-50/70 to-amber-50/50 border-b-2 border-gold-300 text-slate-900 text-[11px] font-extrabold uppercase tracking-wider">
+                    <th className="py-3 px-3 text-center border-r border-slate-200/90 w-12">#</th>
+                    <th className="py-3 px-3.5 text-left border-r border-slate-200/90 min-w-[170px]">Rank Name</th>
+                    <th className="py-3 px-3 text-center border-r border-slate-200/90 min-w-[110px]">Own Deposit ($)</th>
+                    <th className="py-3 px-3 text-center border-r border-slate-200/90 min-w-[140px]">Total Client Deposit ($)</th>
+                    <th className="py-3 px-3.5 text-left border-r border-slate-200/90 min-w-[190px]">Condition</th>
+                    <th className="py-3 px-3 text-center border-r border-slate-200/90 min-w-[130px]">One Time Cash Reward ($)</th>
+                    <th className="py-3 px-3 text-center border-r border-slate-200/90 min-w-[180px]">Company Profit %ge</th>
+                    <th className="py-3 px-3.5 text-left border-r border-slate-200/90 min-w-[210px]">Downline Structure Required</th>
+                    <th className="py-3 px-3 text-center min-w-[95px]">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 text-xs text-slate-800">
+                <tbody className="divide-y divide-slate-200 text-xs text-slate-700">
                   {ranks.map((r, i) => {
                     const ownDep = Number(r.ownDeposit !== undefined ? r.ownDeposit : 0);
                     const clientDep = Number(r.totalClientDeposit !== undefined ? r.totalClientDeposit : (r.minInvest || 0));
@@ -527,26 +535,28 @@ export default function Ranks() {
                     return (
                       <tr
                         key={r._id || r.level}
-                        className={`hover:bg-amber-50/60 transition-colors ${
+                        className={`hover:bg-amber-50/40 transition-colors ${
                           i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
                         }`}
                       >
                         {/* Level Index */}
-                        <td className="py-3.5 px-4 text-center font-black text-slate-900 font-mono text-sm bg-amber-50/40 border-r border-slate-200">
-                          {r.level}
+                        <td className="py-3 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-200 bg-gold-50/30">
+                          <span className="w-6 h-6 rounded-md bg-gold-100/90 text-gold-950 font-bold border border-gold-300 inline-flex items-center justify-center shadow-2xs">
+                            {r.level}
+                          </span>
                         </td>
 
                         {/* Rank Name with Icon */}
-                        <td className="py-3.5 px-4 border-r border-slate-200">
+                        <td className="py-3 px-3.5 border-r border-slate-200">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-white border border-gold-300 shadow-2xs flex items-center justify-center flex-shrink-0">
+                            <div className="w-8 h-8 rounded-lg bg-gold-50/90 border border-gold-300 shadow-2xs flex items-center justify-center flex-shrink-0">
                               {getRankIcon(r.level)}
                             </div>
                             <div>
-                              <span className="font-extrabold text-slate-900 text-sm block font-poppins">
+                              <span className="font-bold text-slate-900 text-xs block font-poppins leading-tight">
                                 {r.name}
                               </span>
-                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded uppercase tracking-wider">
+                              <span className="text-[10px] font-bold text-gold-900 bg-gold-100/90 border border-gold-300 px-1.5 py-0.2 rounded uppercase tracking-wider inline-block">
                                 Tier {r.level}
                               </span>
                             </div>
@@ -554,53 +564,55 @@ export default function Ranks() {
                         </td>
 
                         {/* Own Deposit */}
-                        <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-900 text-sm border-r border-slate-200">
+                        <td className="py-3 px-3 text-center font-mono font-bold text-slate-800 text-xs border-r border-slate-200">
                           ${ownDep.toLocaleString()}
                         </td>
 
                         {/* Total Client Deposit */}
-                        <td className="py-3.5 px-4 text-center font-mono font-extrabold text-slate-950 text-sm border-r border-slate-200">
+                        <td className="py-3 px-3 text-center font-mono font-black text-slate-950 text-xs border-r border-slate-200">
                           ${clientDep.toLocaleString()}
                         </td>
 
                         {/* Condition */}
-                        <td className="py-3.5 px-4 text-xs font-medium text-slate-700 border-r border-slate-200">
-                          <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 font-mono text-[11px]">
+                        <td className="py-3 px-3.5 border-r border-slate-200">
+                          <span className="inline-block px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[11px] leading-snug">
                             {condText}
                           </span>
                         </td>
 
                         {/* One Time Cash Reward */}
-                        <td className="py-3.5 px-4 text-center font-mono font-black text-emerald-700 text-sm border-r border-slate-200 bg-emerald-50/20">
-                          +${rewardAmt.toLocaleString()}
+                        <td className="py-3 px-3 text-center border-r border-slate-200 bg-emerald-50/20">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs">
+                            +${rewardAmt.toLocaleString()}
+                          </span>
                         </td>
 
                         {/* Company Profit %ge */}
-                        <td className="py-3.5 px-4 text-xs border-r border-slate-200">
+                        <td className="py-3 px-3 text-center border-r border-slate-200">
                           {profitShare === '0' || profitShare === 0 || !profitShare ? (
-                            <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-mono font-bold">
+                            <span className="inline-block px-2.5 py-1 rounded bg-slate-100 text-slate-500 font-mono font-bold text-xs border border-slate-200">
                               0
                             </span>
                           ) : (
-                            <span className="inline-block px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 font-bold border border-purple-200 text-[11px] leading-tight">
+                            <span className="inline-block px-2.5 py-1 rounded-md bg-purple-50 text-purple-900 font-medium border border-purple-200 text-[11px] leading-tight text-left">
                               {profitShare}
                             </span>
                           )}
                         </td>
 
                         {/* Downline Structure required */}
-                        <td className="py-3.5 px-4 text-xs border-r border-slate-200">
-                          <span className="inline-block px-2.5 py-1 rounded-lg bg-amber-50 text-amber-950 font-semibold border border-amber-200 text-[11px]">
+                        <td className="py-3 px-3.5 border-r border-slate-200">
+                          <span className="inline-block px-2.5 py-1 rounded-md bg-amber-50 text-amber-950 font-medium border border-amber-200 text-[11px] leading-tight">
                             {downlineReq}
                           </span>
                         </td>
 
                         {/* Action */}
-                        <td className="py-3.5 px-4 text-right pr-6">
+                        <td className="py-3 px-3 text-center">
                           <button
                             type="button"
                             onClick={() => openEditRank(r)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold transition-all border border-gold-500 shadow-2xs active:scale-95 cursor-pointer"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold transition-all shadow-2xs border border-gold-500 active:scale-95 cursor-pointer"
                           >
                             <RiEditLine size={13} /> Edit
                           </button>
@@ -611,106 +623,6 @@ export default function Ranks() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ──────────────── TAB 2: MILESTONE CARDS GRID ──────────────── */}
-      {activeTab === 'cards' && (
-        <div className="space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 bg-gold-50/50 rounded-2xl border border-gold-200/70">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gold-400 text-slate-900 flex items-center justify-center font-bold shadow-xs">
-                <RiTrophyLine size={22} />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 font-poppins">
-                  {ranks.length}-Tier Rank Progression Milestone Grid
-                </h3>
-                <p className="text-xs text-slate-500 font-normal">
-                  Investors unlock one-time instant cash bonus rewards as their total downline referral investment reaches milestone volume.
-                </p>
-              </div>
-            </div>
-            <span className="text-xs font-semibold px-3 py-1 bg-white rounded-xl border border-gold-200 text-gold-800 shadow-2xs self-start sm:self-auto">
-              Auto-Credited Upon Milestone
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-5">
-            {ranks.map((r, i) => (
-              <div
-                key={r.level}
-                className={`card p-5 animate-slide-up hover:shadow-card-hover transition-all border ${
-                  r.level === ranks.length
-                    ? 'border-gold-400 bg-gradient-to-br from-amber-50/60 via-gold-50/40 to-white ring-2 ring-gold-300 shadow-gold'
-                    : 'border-slate-200/90'
-                }`}
-                style={{ animationDelay: `${i * 45}ms` }}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center flex-shrink-0">
-                      {getRankIcon(r.level)}
-                    </div>
-                    <div>
-                      <span className="text-[11px] font-semibold text-gold-700 uppercase tracking-wider">
-                        Level {r.level}
-                      </span>
-                      <h4 className="text-base font-bold text-slate-900 font-poppins leading-tight">
-                        {r.name}
-                      </h4>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => openEditRank(r)}
-                    className="p-1.5 rounded-xl bg-slate-100 hover:bg-gold-50 text-slate-600 hover:text-gold-800 border border-slate-200 shadow-2xs transition-colors cursor-pointer"
-                    title="Edit Rank Thresholds"
-                  >
-                    <RiEditLine size={15} />
-                  </button>
-                </div>
-
-                {/* Requirements & Rewards Grid */}
-                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100 text-xs">
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/70 text-center">
-                    <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">Own Dep.</span>
-                    <span className="text-xs font-bold text-slate-800 font-mono mt-0.5 block">
-                      ${Number(r.ownDeposit || 0).toLocaleString()}
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/70 text-center">
-                    <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">Client Dep.</span>
-                    <span className="text-xs font-bold text-slate-800 font-mono mt-0.5 block">
-                      ${Number(r.totalClientDeposit || r.minInvest || 0).toLocaleString()}
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 bg-emerald-50/80 rounded-xl border border-emerald-200/70 text-center">
-                    <span className="text-[10px] text-emerald-700 font-medium block uppercase tracking-wider">Cash Reward</span>
-                    <span className="text-xs font-extrabold text-emerald-700 font-mono mt-0.5 block">
-                      +${Number(r.reward || 0).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Structure requirement */}
-                <div className="mt-3 p-2 bg-amber-50/50 rounded-xl border border-amber-200/70 text-[11px] text-slate-700">
-                  <strong className="text-amber-950 font-bold block mb-0.5">Required Downline:</strong>
-                  <span>{r.downlineStructureRequired || 'Direct Clients Required'}</span>
-                </div>
-
-                {/* Profit sharing if any */}
-                {r.companyProfitSharing && r.companyProfitSharing !== '0' && (
-                  <div className="mt-2 p-2 bg-purple-50/50 rounded-xl border border-purple-200/70 text-[11px] text-purple-950">
-                    <strong className="font-bold block mb-0.5">Profit %ge & Salary:</strong>
-                    <span>{r.companyProfitSharing}</span>
-                  </div>
-                )}
-              </div>
-            ))}
           </div>
         </div>
       )}

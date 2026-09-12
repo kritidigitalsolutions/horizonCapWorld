@@ -475,36 +475,45 @@ export default function Referrals() {
       {/* ──────────────── TAB 2: MULTI-TIER COMMISSION STRUCTURE & PLANS ──────────────── */}
       {activeTab === 'plans' && (
         <div className="space-y-6 font-poppins">
-          {/* ──────── 1. LEVEL ROI PER DAY INCOME SPREADSHEET TABLE ──────── */}
-          <div className="card overflow-hidden shadow-xs border border-gold-300">
-            {/* Bright Yellow Header Banner matching spreadsheet */}
-            <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 px-4 py-3 flex items-center justify-between text-slate-950 font-poppins">
-              <div className="flex items-center gap-2">
-                <RiCoinsLine size={20} className="text-slate-950" />
-                <h3 className="text-sm sm:text-base font-black uppercase tracking-wider">
-                  Level ROI Per day Income
-                </h3>
+          {/* ──────── 1. LEVEL ROI PER DAY INCOME TABLE (LUXURY WHITE & GOLD THEME) ──────── */}
+          <div className="card p-5 sm:p-6 space-y-5 shadow-card border border-slate-200/80">
+            {/* Elegant Top Toolbar with proper margin & padding */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 font-poppins">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-gold-400/20 text-gold-700 flex items-center justify-center border border-gold-300 shadow-2xs flex-shrink-0">
+                  <RiCoinsLine size={22} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                      Level ROI Per Day Income
+                    </h3>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs">
+                      {commissions.length} Active Levels
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Multi-tier direct and downline daily ROI profit sharing matrix and qualification rules
+                  </p>
+                </div>
               </div>
-              <span className="text-xs font-black bg-slate-950 text-gold-300 px-3 py-1 rounded-full uppercase tracking-wider">
-                {commissions.length} Active Levels
-              </span>
             </div>
 
-            {/* Spreadsheet Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left font-poppins">
+            {/* Grid Table with proper spacing and full vertical & horizontal gridlines */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-2xs bg-white">
+              <table className="w-full text-left border-collapse font-poppins">
                 <thead>
-                  <tr className="bg-amber-100/70 border-b border-amber-200 text-[11px] font-black text-slate-900 uppercase tracking-wider">
-                    <th className="py-3 px-4 text-center w-20">Levels</th>
-                    <th className="py-3 px-4 text-center w-28">Deposit in $</th>
-                    <th className="py-3 px-4 text-center w-28">Profit in $</th>
-                    <th className="py-3 px-4 text-center w-36 text-amber-950">ROI per Day in $</th>
-                    <th className="py-3 px-4">Eligible Conditions</th>
-                    <th className="py-3 px-4 text-right pr-6 w-36">My Eligibility</th>
+                  <tr className="bg-gradient-to-r from-amber-50/90 via-gold-50/70 to-amber-50/50 border-b-2 border-gold-300 text-slate-900 text-[11px] font-extrabold uppercase tracking-wider">
+                    <th className="py-3 px-3 text-center border-r border-slate-200/90 w-16">Level</th>
+                    <th className="py-3 px-3.5 text-center border-r border-slate-200/90 min-w-[130px]">Deposit in $</th>
+                    <th className="py-3 px-3.5 text-center border-r border-slate-200/90 min-w-[130px]">Profit in $</th>
+                    <th className="py-3 px-3.5 text-center border-r border-slate-200/90 min-w-[150px]">ROI per Day in $</th>
+                    <th className="py-3 px-3.5 text-left border-r border-slate-200/90 min-w-[240px]">Eligible Conditions</th>
+                    <th className="py-3 px-3 text-center min-w-[130px]">My Eligibility</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-amber-100/70 font-medium text-slate-800">
-                  {commissions.map((tier) => {
+                <tbody className="divide-y divide-slate-200 text-xs text-slate-700">
+                  {commissions.map((tier, i) => {
                     const levelNum = tier.levelNumber || parseInt(String(tier.level).replace('L', ''), 10) || 1;
                     const depAmt = Number(tier.depositAmount || 0);
                     const profitAmt = Number(tier.profitAmount || 0);
@@ -519,35 +528,55 @@ export default function Referrals() {
                     const isEligible = (minVol === 0 && minDir === 0) || (userVolume >= minVol && userDirects >= minDir);
 
                     return (
-                      <tr key={tier._id || tier.level} className="hover:bg-amber-50/50 transition-colors">
-                        <td className="py-3 px-4 text-center font-bold text-slate-900 font-mono text-sm bg-amber-50/30">
-                          {levelNum}
+                      <tr
+                        key={tier._id || tier.level}
+                        className={`hover:bg-amber-50/40 transition-colors ${
+                          i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
+                        }`}
+                      >
+                        {/* Level Index */}
+                        <td className="py-3 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-200 bg-gold-50/30">
+                          <span className="w-7 h-7 rounded-lg bg-gold-100/90 text-gold-950 font-bold border border-gold-300 inline-flex items-center justify-center shadow-2xs">
+                            L{levelNum}
+                          </span>
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-semibold text-slate-700">
-                          {depAmt > 0 ? depAmt.toLocaleString() : (depAmt === 0 ? '0' : '')}
+
+                        {/* Deposit in $ */}
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-800 text-xs border-r border-slate-200">
+                          {depAmt > 0 ? `$${depAmt.toLocaleString()}` : (depAmt === 0 ? '$0' : '-')}
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-semibold text-slate-700">
-                          {profitAmt > 0 ? profitAmt.toLocaleString() : '0'}
+
+                        {/* Profit in $ */}
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-800 text-xs border-r border-slate-200">
+                          {profitAmt > 0 ? `$${profitAmt.toLocaleString()}` : '$0'}
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-extrabold text-amber-900 text-sm">
-                          {roiDay}
+
+                        {/* ROI per Day in $ */}
+                        <td className="py-3 px-3.5 text-center border-r border-slate-200 bg-emerald-50/20">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs">
+                            +${roiDay}
+                          </span>
                         </td>
-                        <td className="py-3 px-4 text-xs font-semibold text-slate-700">
-                          <span className={`inline-block px-2.5 py-1 rounded-lg ${
+
+                        {/* Eligible Conditions */}
+                        <td className="py-3 px-3.5 text-left border-r border-slate-200">
+                          <span className={`inline-block px-2.5 py-1 rounded-md text-[11px] leading-snug ${
                             conditions.toLowerCase().includes('no condition')
-                              ? 'bg-slate-100 text-slate-600 border border-slate-200'
-                              : 'bg-amber-100/60 text-amber-900 border border-amber-200/80'
+                              ? 'bg-slate-100 text-slate-600 border border-slate-200 font-mono'
+                              : 'bg-amber-50 text-amber-950 border border-amber-200 font-medium'
                           }`}>
                             {conditions}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-right pr-6">
+
+                        {/* My Eligibility */}
+                        <td className="py-3 px-3 text-center">
                           {isEligible ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-300 shadow-2xs">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shadow-2xs">
                               <RiCheckLine size={13} className="font-black" /> Unlocked
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-[11px] font-semibold border border-slate-200">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200">
                               {userDirects}/{minDir} Directs
                             </span>
                           )}

@@ -166,19 +166,15 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
             </div>
           )}
 
-          {isMobile ? (
-            <button onClick={onToggle} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400">
-              <RiCloseLine size={20} />
-            </button>
-          ) : isOpen ? (
+          {isMobile && (
             <button
               onClick={onToggle}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gold-50 text-slate-400 hover:text-gold-600 transition-colors cursor-pointer"
-              title="Collapse to icons"
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400"
+              aria-label="Close mobile sidebar"
             >
-              <RiMenuFoldLine size={18} />
+              <RiCloseLine size={20} />
             </button>
-          ) : null}
+          )}
         </div>
 
         {/* ──────────────── CATEGORIZED NAVIGATION LIST (EVEN DISTRIBUTION) ──────────────── */}

@@ -31,11 +31,11 @@ const userSchema = new mongoose.Schema(
     },
     country: {
       type: String,
-      default: "United States",
+      default: " ",
     },
     city: {
       type: String,
-      default: "New York",
+      default: " ",
     },
     address: {
       type: String,
