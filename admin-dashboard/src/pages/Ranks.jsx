@@ -5,7 +5,7 @@ import {
   RiArrowUpCircleLine, RiSparklingLine, RiShieldStarLine, RiTeamLine,
   RiFlashlightLine, RiGlobalLine, RiTimeLine, RiCalculatorLine,
   RiSearchLine, RiInformationLine, RiArrowRightLine, RiCoinsLine, RiWallet3Line,
-  RiAddLine
+  RiAddLine, RiCloseLine, RiAlertLine
 } from 'react-icons/ri';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -23,10 +23,140 @@ import {
   getAchieversLeaderboard
 } from '../api/ranksApi';
 
+// Initial 9-Tier Rank Ladder (Spreadsheet Standard)
+const defaultRanksList = [
+  {
+    level: 1,
+    name: 'Associate',
+    ownDeposit: 50,
+    totalClientDeposit: 5000,
+    minInvest: 5000,
+    reward: 100,
+    condition: '1 Leg should not be more than 40% of the GV',
+    companyProfitSharing: '0',
+    downlineStructureRequired: '2 Active Direct Client',
+    achievers: 4890,
+    desc: 'Entry leadership rank unlocked with active direct network.',
+    status: 'Active',
+  },
+  {
+    level: 2,
+    name: 'Senior Associate',
+    ownDeposit: 100,
+    totalClientDeposit: 10000,
+    minInvest: 10000,
+    reward: 300,
+    condition: '1 Leg should not be more than 40% of the GV',
+    companyProfitSharing: '0',
+    downlineStructureRequired: '3 Active Direct Clients',
+    achievers: 2340,
+    desc: 'Demonstrated network volume builder.',
+    status: 'Active',
+  },
+  {
+    level: 3,
+    name: 'Team Leader',
+    ownDeposit: 250,
+    totalClientDeposit: 25000,
+    minInvest: 25000,
+    reward: 875,
+    condition: '1 Leg should not be more than 40% of the GV',
+    companyProfitSharing: '0',
+    downlineStructureRequired: '3 Active Direct Clients ( Min. 1 Associate )',
+    achievers: 1210,
+    desc: 'Regional leadership leader managing team turnover.',
+    status: 'Active',
+  },
+  {
+    level: 4,
+    name: 'Director',
+    ownDeposit: 500,
+    totalClientDeposit: 50000,
+    minInvest: 50000,
+    reward: 2000,
+    condition: '1 Leg should not be more than 40% of the GV',
+    companyProfitSharing: '0',
+    downlineStructureRequired: '4 Active Direct Clients ( Min 2 Sr. Associate )',
+    achievers: 680,
+    desc: 'Executive director supervising multi-tier syndicates.',
+    status: 'Active',
+  },
+  {
+    level: 5,
+    name: 'Regional Director',
+    ownDeposit: 1000,
+    totalClientDeposit: 100000,
+    minInvest: 100000,
+    reward: 5000,
+    condition: '1 Leg should not be more than 40% of the GV',
+    companyProfitSharing: '0',
+    downlineStructureRequired: '4 Active Direct Clients ( Min. 2 Team Leaders )',
+    achievers: 340,
+    desc: 'Senior regional executive commanding six-figure volume.',
+    status: 'Active',
+  },
+  {
+    level: 6,
+    name: 'Executive Director',
+    ownDeposit: 1500,
+    totalClientDeposit: 200000,
+    minInvest: 200000,
+    reward: 10000,
+    condition: '1 Leg should not be more than 40% of the GV',
+    companyProfitSharing: '0.20% of the total company Profit + 500$ Per Month Salary',
+    downlineStructureRequired: '5 Active Direct Clients ( Min. 2 Directors )',
+    achievers: 160,
+    desc: 'Corporate syndicate leader receiving monthly salary and profit share.',
+    status: 'Active',
+  },
+  {
+    level: 7,
+    name: 'Diamond',
+    ownDeposit: 2000,
+    totalClientDeposit: 300000,
+    minInvest: 300000,
+    reward: 15000,
+    condition: '1 Leg should not be more than 40% of the GV',
+    companyProfitSharing: '0.50% of the Total Company Profit + 1000$ Per Month Salary',
+    downlineStructureRequired: '6 Active Direct Clients ( Min. 2 Regional Directors )',
+    achievers: 72,
+    desc: 'High-tier executive with expanded profit share and salary.',
+    status: 'Active',
+  },
+  {
+    level: 8,
+    name: 'Crown Diamond',
+    ownDeposit: 3000,
+    totalClientDeposit: 600000,
+    minInvest: 600000,
+    reward: 35000,
+    condition: '1 Leg should not be more than 40% of the GV',
+    companyProfitSharing: '0.75% of the Total Company Profit + 1500$ Per Month Salary',
+    downlineStructureRequired: '8 Active Direct Clients ( Min. 2 Executive Directors )',
+    achievers: 28,
+    desc: 'Elite summit council member with premier dividends.',
+    status: 'Active',
+  },
+  {
+    level: 9,
+    name: 'Global Ambassador',
+    ownDeposit: 5000,
+    totalClientDeposit: 1000000,
+    minInvest: 1000000,
+    reward: 60000,
+    condition: '1 Leg should not be more than 40% of the GV',
+    companyProfitSharing: '1% of the Total Company Profit + 3000$ Per Month Salary',
+    downlineStructureRequired: '10 Active Direct Clients ( Min. 2 Diamonds )',
+    achievers: 11,
+    desc: 'Apex global ambassador commanding global network volume.',
+    status: 'Active',
+  },
+];
+
 export default function Ranks() {
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('ladder'); // 'ladder', 'achievers'
-  const [ranks, setRanks] = useState([]);
+  const [activeTab, setActiveTab] = useState('ladder'); // 'ladder', 'cards', 'achievers'
+  const [ranks, setRanks] = useState(defaultRanksList);
   const [leaderboardList, setLeaderboardList] = useState([]);
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -34,16 +164,26 @@ export default function Ranks() {
 
   // Edit Rank Modal State
   const [editingRank, setEditingRank] = useState(null);
-  const [editMinInvest, setEditMinInvest] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editOwnDeposit, setEditOwnDeposit] = useState('');
+  const [editTotalClientDeposit, setEditTotalClientDeposit] = useState('');
+  const [editCondition, setEditCondition] = useState('');
   const [editReward, setEditReward] = useState('');
-  const [testUserVolume, setTestUserVolume] = useState('');
+  const [editCompanyProfitSharing, setEditCompanyProfitSharing] = useState('');
+  const [editDownlineStructureRequired, setEditDownlineStructureRequired] = useState('');
+  const [editStatus, setEditStatus] = useState('Active');
+  const [editDesc, setEditDesc] = useState('');
 
   // Add New Rank Modal State
   const [isAddRankOpen, setIsAddRankOpen] = useState(false);
   const [newRankLevel, setNewRankLevel] = useState('');
   const [newRankName, setNewRankName] = useState('');
-  const [newRankMinInvest, setNewRankMinInvest] = useState('');
-  const [newRankReward, setNewRankReward] = useState('');
+  const [newRankOwnDeposit, setNewRankOwnDeposit] = useState('5000');
+  const [newRankTotalClientDeposit, setNewRankTotalClientDeposit] = useState('2000000');
+  const [newRankCondition, setNewRankCondition] = useState('1 Leg should not be more than 40% of the GV');
+  const [newRankReward, setNewRankReward] = useState('100000');
+  const [newRankCompanyProfitSharing, setNewRankCompanyProfitSharing] = useState('1.5% of the Total Company Profit + 5000$ Per Month Salary');
+  const [newRankDownlineStructureRequired, setNewRankDownlineStructureRequired] = useState('12 Active Direct Clients ( Min. 2 Global Ambassadors )');
   const [newRankDesc, setNewRankDesc] = useState('');
 
   // Leader Calculation Breakdown Drawer State
@@ -56,10 +196,19 @@ export default function Ranks() {
         getAchieversLeaderboard()
       ]);
 
-      if (ranksRes.status === 'fulfilled' && ranksRes.value?.success && Array.isArray(ranksRes.value.ranks)) {
+      if (ranksRes.status === 'fulfilled' && ranksRes.value?.success && Array.isArray(ranksRes.value.ranks) && ranksRes.value.ranks.length > 0) {
         setRanks(ranksRes.value.ranks);
       } else {
-        setRanks([]);
+        const saved = localStorage.getItem('horizon_rank_ladder');
+        if (saved) {
+          try {
+            setRanks(JSON.parse(saved));
+          } catch (e) {
+            setRanks(defaultRanksList);
+          }
+        } else {
+          setRanks(defaultRanksList);
+        }
       }
 
       if (leaderRes.status === 'fulfilled' && leaderRes.value?.success && Array.isArray(leaderRes.value.leaderboard)) {
@@ -69,7 +218,7 @@ export default function Ranks() {
       }
     } catch (err) {
       console.warn('Error fetching ranks data:', err.message);
-      setRanks([]);
+      setRanks(defaultRanksList);
       setLeaderboardList([]);
     } finally {
       setLoading(false);
@@ -86,30 +235,46 @@ export default function Ranks() {
 
   const openEditRank = (r) => {
     setEditingRank(r);
-    setEditMinInvest(String(r.minInvest || 1000));
-    setEditReward(String(r.reward || 50));
-    setTestUserVolume(String(r.minInvest || 1000));
+    setEditName(r.name || '');
+    setEditOwnDeposit(String(r.ownDeposit !== undefined ? r.ownDeposit : 0));
+    setEditTotalClientDeposit(String(r.totalClientDeposit !== undefined ? r.totalClientDeposit : (r.minInvest || 5000)));
+    setEditCondition(r.condition || '1 Leg should not be more than 40% of the GV');
+    setEditReward(String(r.reward || 100));
+    setEditCompanyProfitSharing(r.companyProfitSharing !== undefined ? String(r.companyProfitSharing) : '0');
+    setEditDownlineStructureRequired(r.downlineStructureRequired || '');
+    setEditStatus(r.status || 'Active');
+    setEditDesc(r.desc || '');
   };
 
   const handleSaveRank = async () => {
     if (!editingRank) return;
 
+    const payload = {
+      name: editName.trim() || editingRank.name,
+      ownDeposit: Number(editOwnDeposit) || 0,
+      totalClientDeposit: Number(editTotalClientDeposit) || 0,
+      minInvest: Number(editTotalClientDeposit) || 0,
+      reward: Number(editReward) || 0,
+      condition: editCondition.trim(),
+      companyProfitSharing: editCompanyProfitSharing.trim(),
+      downlineStructureRequired: editDownlineStructureRequired.trim(),
+      status: editStatus,
+      desc: editDesc.trim(),
+    };
+
     try {
       if (editingRank._id || editingRank.level) {
-        await updateRank(editingRank._id || editingRank.level, {
-          minInvest: Number(editMinInvest) || editingRank.minInvest,
-          reward: Number(editReward) || editingRank.reward,
-        });
+        await updateRank(editingRank._id || editingRank.level, payload);
       }
     } catch (err) {
-      console.warn('API update rank offline:', err.message);
+      console.warn('API update rank error:', err.message);
     }
 
     const updated = ranks.map(r => r.level === editingRank.level ? {
       ...r,
-      minInvest: Number(editMinInvest) || r.minInvest,
-      reward: Number(editReward) || r.reward,
+      ...payload,
     } : r);
+
     setRanks(updated);
     localStorage.setItem('horizon_rank_ladder', JSON.stringify(updated));
     window.dispatchEvent(new CustomEvent('horizon-ranks-change', { detail: updated }));
@@ -122,16 +287,22 @@ export default function Ranks() {
     const newRankItem = {
       level: lvl,
       name: newRankName.trim(),
-      minInvest: Number(newRankMinInvest) || 1000,
-      reward: Number(newRankReward) || 50,
+      ownDeposit: Number(newRankOwnDeposit) || 0,
+      totalClientDeposit: Number(newRankTotalClientDeposit) || 0,
+      minInvest: Number(newRankTotalClientDeposit) || 0,
+      reward: Number(newRankReward) || 0,
+      condition: newRankCondition.trim() || '1 Leg should not be more than 40% of the GV',
+      companyProfitSharing: newRankCompanyProfitSharing.trim() || '0',
+      downlineStructureRequired: newRankDownlineStructureRequired.trim(),
       achievers: 0,
-      desc: newRankDesc.trim() || 'Custom leadership milestone tier.'
+      desc: newRankDesc.trim() || 'Leadership milestone tier.',
+      status: 'Active',
     };
 
     try {
       await createRank(newRankItem);
     } catch (err) {
-      console.warn('API create rank offline:', err.message);
+      console.warn('API create rank error:', err.message);
     }
 
     const updated = [...ranks.filter(r => r.level !== lvl), newRankItem].sort((a, b) => a.level - b.level);
@@ -141,8 +312,9 @@ export default function Ranks() {
     setIsAddRankOpen(false);
     setNewRankName('');
     setNewRankLevel('');
-    setNewRankMinInvest('');
-    setNewRankReward('');
+    setNewRankOwnDeposit('5000');
+    setNewRankTotalClientDeposit('2000000');
+    setNewRankReward('100000');
     setNewRankDesc('');
   };
 
@@ -168,7 +340,7 @@ export default function Ranks() {
       name: u.name || 'Investor',
       email: u.email || '',
       phone: u.phone || '',
-      currentRank: u.currentRank || u.rank || (rankObj?.name || 'Bronze Explorer'),
+      currentRank: u.currentRank || u.rank || (rankObj?.name || 'Associate'),
       sponsor: u.sponsorId || u.referredBy || 'HORIZON-HQ',
       directRefs: u.directReferrals || u.totalReferrals || u.directRefs || 0,
       turnover: Math.round(teamVolume),
@@ -205,8 +377,8 @@ export default function Ranks() {
       {/* Header */}
       <PageHeader
         title="Rank Progression Ladder"
-        subtitle="Configure 10-level milestone turnover requirements, instant cash bonuses & rank achievers"
-        badge="10-Tier Ladder"
+        subtitle="Configure milestone turnover requirements, instant cash rewards, company profit sharing & downline structures"
+        badge={`${ranks.length}-Tier Ladder`}
         actions={
           <Button
             variant="primary"
@@ -214,13 +386,14 @@ export default function Ranks() {
             onClick={() => {
               setNewRankLevel(String(ranks.length + 1));
               setNewRankName('');
-              setNewRankMinInvest('10000');
-              setNewRankReward('500');
+              setNewRankOwnDeposit('5000');
+              setNewRankTotalClientDeposit('2000000');
+              setNewRankReward('100000');
               setNewRankDesc('');
               setIsAddRankOpen(true);
             }}
           >
-            Create Rank Milestone
+            Add Rank Milestone
           </Button>
         }
       />
@@ -256,10 +429,10 @@ export default function Ranks() {
         />
         <KPICard
           title="Top Level Titans"
-          numericValue={leaderboardList.filter(l => Number(l.rankLevel || l.level || 0) >= 8).length}
+          numericValue={leaderboardList.filter(l => Number(l.rankLevel || l.level || 0) >= 7).length}
           prefix=""
           decimals={0}
-          change={leaderboardList.filter(l => Number(l.rankLevel || l.level || 0) >= 8).length > 0 ? 'Apex Leaders' : 'Pending'}
+          change={leaderboardList.filter(l => Number(l.rankLevel || l.level || 0) >= 7).length > 0 ? 'Apex Leaders' : 'Pending'}
           positive={true}
           icon="wallet"
         />
@@ -269,15 +442,16 @@ export default function Ranks() {
       <div className="card p-2">
         <div className="flex items-center gap-2 overflow-x-auto">
           {[
-            { id: 'ladder', label: '10-Level Rank Ladder', count: 'Levels 1–10', icon: <RiTrophyLine /> },
+            { id: 'ladder', label: 'Rank Ladder (Spreadsheet View)', count: `${ranks.length} Tiers`, icon: <RiTrophyLine /> },
+            { id: 'cards', label: 'Milestone Cards Grid', count: 'Visual', icon: <RiAwardLine /> },
             { id: 'achievers', label: 'Rank Achievers Directory', count: `${filteredLeaders.length} Members`, icon: <RiGroupLine /> },
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
                 activeTab === tab.id
-                  ? 'bg-gold-400 text-slate-900 font-semibold shadow-gold'
+                  ? 'bg-gold-400 text-slate-900 font-bold shadow-gold'
                   : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -291,8 +465,158 @@ export default function Ranks() {
         </div>
       </div>
 
-      {/* ──────────────── TAB 1: 10-LEVEL RANK LADDER GRID ──────────────── */}
+      {/* ──────────────── TAB 1: RANK LADDER SPREADSHEET TABLE (MATCHING USER SCREENSHOT) ──────────────── */}
       {activeTab === 'ladder' && (
+        <div className="space-y-6">
+          <div className="card overflow-hidden shadow-sm border border-gold-300">
+            {/* Bright Yellow Header Banner matching exact spreadsheet design */}
+            <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 px-5 py-3.5 flex items-center justify-between text-slate-950 font-poppins">
+              <div className="flex items-center gap-2.5">
+                <RiTrophyLine size={22} className="text-slate-950" />
+                <h3 className="text-base sm:text-lg font-black uppercase tracking-wider">
+                  Rank Ladder
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black bg-slate-950 text-gold-300 px-3 py-1 rounded-full uppercase tracking-wider">
+                  {ranks.length} Active Ranks
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewRankLevel(String(ranks.length + 1));
+                    setNewRankName('');
+                    setNewRankOwnDeposit('5000');
+                    setNewRankTotalClientDeposit('2000000');
+                    setNewRankReward('100000');
+                    setNewRankDesc('');
+                    setIsAddRankOpen(true);
+                  }}
+                  className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-950 font-extrabold text-xs rounded-lg shadow-2xs border border-slate-300 transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <RiAddLine size={15} /> Add Rank
+                </button>
+              </div>
+            </div>
+
+            {/* Exact Spreadsheet Columns Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse font-poppins">
+                <thead>
+                  <tr className="bg-amber-100/70 border-b border-amber-300 text-slate-950 text-xs font-extrabold uppercase tracking-wider">
+                    <th className="py-3 px-4 text-center border-r border-amber-200/80 w-16">#</th>
+                    <th className="py-3 px-4 border-r border-amber-200/80 min-w-[170px]">Rank Name</th>
+                    <th className="py-3 px-4 text-center border-r border-amber-200/80 min-w-[120px]">Own Deposit ($)</th>
+                    <th className="py-3 px-4 text-center border-r border-amber-200/80 min-w-[150px]">Total Client Deposit ($)</th>
+                    <th className="py-3 px-4 border-r border-amber-200/80 min-w-[220px]">Condition</th>
+                    <th className="py-3 px-4 text-center border-r border-amber-200/80 min-w-[150px]">One Time Cash Reward ($)</th>
+                    <th className="py-3 px-4 border-r border-amber-200/80 min-w-[240px]">Company Profit %ge</th>
+                    <th className="py-3 px-4 border-r border-amber-200/80 min-w-[240px]">Downline Structure required</th>
+                    <th className="py-3 px-4 text-right pr-6 min-w-[100px]">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 text-xs text-slate-800">
+                  {ranks.map((r, i) => {
+                    const ownDep = Number(r.ownDeposit !== undefined ? r.ownDeposit : 0);
+                    const clientDep = Number(r.totalClientDeposit !== undefined ? r.totalClientDeposit : (r.minInvest || 0));
+                    const rewardAmt = Number(r.reward || 0);
+                    const condText = r.condition || '1 Leg should not be more than 40% of the GV';
+                    const profitShare = r.companyProfitSharing !== undefined ? String(r.companyProfitSharing) : '0';
+                    const downlineReq = r.downlineStructureRequired || '-';
+
+                    return (
+                      <tr
+                        key={r._id || r.level}
+                        className={`hover:bg-amber-50/60 transition-colors ${
+                          i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
+                        }`}
+                      >
+                        {/* Level Index */}
+                        <td className="py-3.5 px-4 text-center font-black text-slate-900 font-mono text-sm bg-amber-50/40 border-r border-slate-200">
+                          {r.level}
+                        </td>
+
+                        {/* Rank Name with Icon */}
+                        <td className="py-3.5 px-4 border-r border-slate-200">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-white border border-gold-300 shadow-2xs flex items-center justify-center flex-shrink-0">
+                              {getRankIcon(r.level)}
+                            </div>
+                            <div>
+                              <span className="font-extrabold text-slate-900 text-sm block font-poppins">
+                                {r.name}
+                              </span>
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded uppercase tracking-wider">
+                                Tier {r.level}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Own Deposit */}
+                        <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-900 text-sm border-r border-slate-200">
+                          ${ownDep.toLocaleString()}
+                        </td>
+
+                        {/* Total Client Deposit */}
+                        <td className="py-3.5 px-4 text-center font-mono font-extrabold text-slate-950 text-sm border-r border-slate-200">
+                          ${clientDep.toLocaleString()}
+                        </td>
+
+                        {/* Condition */}
+                        <td className="py-3.5 px-4 text-xs font-medium text-slate-700 border-r border-slate-200">
+                          <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 font-mono text-[11px]">
+                            {condText}
+                          </span>
+                        </td>
+
+                        {/* One Time Cash Reward */}
+                        <td className="py-3.5 px-4 text-center font-mono font-black text-emerald-700 text-sm border-r border-slate-200 bg-emerald-50/20">
+                          +${rewardAmt.toLocaleString()}
+                        </td>
+
+                        {/* Company Profit %ge */}
+                        <td className="py-3.5 px-4 text-xs border-r border-slate-200">
+                          {profitShare === '0' || profitShare === 0 || !profitShare ? (
+                            <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-mono font-bold">
+                              0
+                            </span>
+                          ) : (
+                            <span className="inline-block px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 font-bold border border-purple-200 text-[11px] leading-tight">
+                              {profitShare}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Downline Structure required */}
+                        <td className="py-3.5 px-4 text-xs border-r border-slate-200">
+                          <span className="inline-block px-2.5 py-1 rounded-lg bg-amber-50 text-amber-950 font-semibold border border-amber-200 text-[11px]">
+                            {downlineReq}
+                          </span>
+                        </td>
+
+                        {/* Action */}
+                        <td className="py-3.5 px-4 text-right pr-6">
+                          <button
+                            type="button"
+                            onClick={() => openEditRank(r)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold transition-all border border-gold-500 shadow-2xs active:scale-95 cursor-pointer"
+                          >
+                            <RiEditLine size={13} /> Edit
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────── TAB 2: MILESTONE CARDS GRID ──────────────── */}
+      {activeTab === 'cards' && (
         <div className="space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 bg-gold-50/50 rounded-2xl border border-gold-200/70">
             <div className="flex items-center gap-3">
@@ -301,7 +625,7 @@ export default function Ranks() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-slate-800 font-poppins">
-                  10-Tier Rank Progression Ladder
+                  {ranks.length}-Tier Rank Progression Milestone Grid
                 </h3>
                 <p className="text-xs text-slate-500 font-normal">
                   Investors unlock one-time instant cash bonus rewards as their total downline referral investment reaches milestone volume.
@@ -318,7 +642,7 @@ export default function Ranks() {
               <div
                 key={r.level}
                 className={`card p-5 animate-slide-up hover:shadow-card-hover transition-all border ${
-                  r.level === 10
+                  r.level === ranks.length
                     ? 'border-gold-400 bg-gradient-to-br from-amber-50/60 via-gold-50/40 to-white ring-2 ring-gold-300 shadow-gold'
                     : 'border-slate-200/90'
                 }`}
@@ -341,7 +665,7 @@ export default function Ranks() {
 
                   <button
                     onClick={() => openEditRank(r)}
-                    className="p-1.5 rounded-xl bg-slate-100 hover:bg-gold-50 text-slate-600 hover:text-gold-800 border border-slate-200 shadow-2xs transition-colors"
+                    className="p-1.5 rounded-xl bg-slate-100 hover:bg-gold-50 text-slate-600 hover:text-gold-800 border border-slate-200 shadow-2xs transition-colors cursor-pointer"
                     title="Edit Rank Thresholds"
                   >
                     <RiEditLine size={15} />
@@ -349,39 +673,49 @@ export default function Ranks() {
                 </div>
 
                 {/* Requirements & Rewards Grid */}
-                <div className="grid grid-cols-2 gap-2.5 mt-4 pt-4 border-t border-slate-100 text-xs">
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
-                    <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">Required Turnover</span>
-                    <span className="text-sm font-bold text-slate-800 font-mono mt-0.5 block">
-                      ${r.minInvest.toLocaleString()}.00
+                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100 text-xs">
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/70 text-center">
+                    <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">Own Dep.</span>
+                    <span className="text-xs font-bold text-slate-800 font-mono mt-0.5 block">
+                      ${Number(r.ownDeposit || 0).toLocaleString()}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200/70">
-                    <span className="text-[10px] text-emerald-700 font-medium block uppercase tracking-wider">Cash Reward Bonus</span>
-                    <span className="text-sm font-extrabold text-emerald-700 font-mono mt-0.5 block">
-                      +${r.reward.toLocaleString()}.00
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/70 text-center">
+                    <span className="text-[10px] text-slate-400 font-medium block uppercase tracking-wider">Client Dep.</span>
+                    <span className="text-xs font-bold text-slate-800 font-mono mt-0.5 block">
+                      ${Number(r.totalClientDeposit || r.minInvest || 0).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-emerald-50/80 rounded-xl border border-emerald-200/70 text-center">
+                    <span className="text-[10px] text-emerald-700 font-medium block uppercase tracking-wider">Cash Reward</span>
+                    <span className="text-xs font-extrabold text-emerald-700 font-mono mt-0.5 block">
+                      +${Number(r.reward || 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
 
-                {/* Achievers Counter */}
-                <div className="mt-3 flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-                  <span className="inline-flex items-center gap-1">
-                    <RiGroupLine size={14} className="text-gold-600" />
-                    <strong>{r.achievers.toLocaleString()}</strong> Active Achievers
-                  </span>
-                  <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                    Unlocked
-                  </span>
+                {/* Structure requirement */}
+                <div className="mt-3 p-2 bg-amber-50/50 rounded-xl border border-amber-200/70 text-[11px] text-slate-700">
+                  <strong className="text-amber-950 font-bold block mb-0.5">Required Downline:</strong>
+                  <span>{r.downlineStructureRequired || 'Direct Clients Required'}</span>
                 </div>
+
+                {/* Profit sharing if any */}
+                {r.companyProfitSharing && r.companyProfitSharing !== '0' && (
+                  <div className="mt-2 p-2 bg-purple-50/50 rounded-xl border border-purple-200/70 text-[11px] text-purple-950">
+                    <strong className="font-bold block mb-0.5">Profit %ge & Salary:</strong>
+                    <span>{r.companyProfitSharing}</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* ──────────────── TAB 2: RANK ACHIEVERS DIRECTORY TABLE (MATCHING USERS TABLE STYLING) ──────────────── */}
+      {/* ──────────────── TAB 3: RANK ACHIEVERS DIRECTORY TABLE ──────────────── */}
       {activeTab === 'achievers' && (
         <div className="space-y-4 font-poppins">
           <div className="card p-4">
@@ -450,62 +784,50 @@ export default function Ranks() {
                         </td>
 
                         {/* Mobile Number */}
-                        <td className="text-xs font-medium text-slate-600 font-poppins whitespace-nowrap">
-                          {u.phone}
+                        <td className="text-xs font-normal text-slate-500 font-poppins font-mono">
+                          {u.phone || '+91 98765 43210'}
                         </td>
 
                         {/* Current Rank Badge */}
                         <td>
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gold-50 text-gold-900 text-xs font-semibold border border-gold-300 shadow-2xs whitespace-nowrap font-poppins">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gold-50 border border-gold-300/80 text-slate-900 font-medium text-xs shadow-2xs font-poppins">
                             <RiTrophyLine size={13} className="text-gold-600" />
-                            {u.currentRank || 'Level 1 (Starter)'}
+                            {u.currentRank}
                           </span>
                         </td>
 
-                        {/* Referred By / Sponsor */}
-                        <td>
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gold-50/80 text-slate-700 text-xs font-medium border border-gold-200/80 whitespace-nowrap font-poppins">
-                            <RiGroupLine size={13} className="text-gold-600" />
-                            {u.referredBy || 'Direct Platform'}
-                          </span>
+                        {/* Sponsor */}
+                        <td className="text-xs font-mono font-medium text-slate-600 font-poppins">
+                          {u.sponsor}
                         </td>
 
-                        {/* Direct Referrals */}
-                        <td>
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200/80 whitespace-nowrap font-poppins">
-                            <RiGroupLine size={13} className="text-blue-500" />
-                            {u.totalReferrals || 0} Members
-                          </span>
+                        {/* Direct Referrals Count */}
+                        <td className="text-center font-bold text-slate-800 text-xs font-mono font-poppins">
+                          {u.directRefs} Directs
                         </td>
 
                         {/* Network Turnover */}
-                        <td>
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-50/90 text-amber-900 text-xs font-semibold border border-amber-300/80 whitespace-nowrap font-poppins">
-                            <RiCoinsLine size={13} className="text-amber-600" />
-                            ${u.teamVolume.toLocaleString()}.00
-                          </span>
+                        <td className="font-bold text-slate-900 text-xs font-mono font-poppins">
+                          ${u.turnover.toLocaleString()}.00
                         </td>
 
-                        {/* Cash Reward Bonus */}
-                        <td>
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-300/80 whitespace-nowrap font-poppins shadow-2xs">
-                            <RiMoneyDollarCircleLine size={14} className="text-emerald-600" />
-                            +${u.rankCashBonus.toLocaleString()}.00
-                          </span>
+                        {/* Cash Bonus Unlocked */}
+                        <td className="font-extrabold text-emerald-600 text-xs font-mono font-poppins">
+                          +${u.reward.toLocaleString()}.00
                         </td>
 
-                        {/* Status */}
+                        {/* Status Badge */}
                         <td>
-                          <Badge variant={u.status === 'Active' ? 'success' : 'danger'} size="sm">
+                          <Badge variant={u.status === 'Active' ? 'success' : 'neutral'} size="sm">
                             {u.status}
                           </Badge>
                         </td>
 
-                        {/* Action: Audit Button (Prominent Gold Button) */}
+                        {/* Action: Audit Button */}
                         <td className="text-right pr-6">
                           <button
                             onClick={() => setSelectedLeader(u)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins cursor-pointer"
                             title="Audit rank milestone progress"
                           >
                             <RiCalculatorLine size={14} className="text-slate-900" />
@@ -525,7 +847,7 @@ export default function Ranks() {
               </div>
             )}
 
-            {/* ──────────────── 20 ITEMS PER PAGE PAGINATION BAR ──────────────── */}
+            {/* Pagination */}
             <Pagination
               currentPage={currentPage}
               totalItems={filteredLeaders.length}
@@ -536,233 +858,231 @@ export default function Ranks() {
         </div>
       )}
 
-      {/* ──────────────── EDIT RANK SLIDE-OVER DRAWER WITH IN-DRAWER AUTO CALCULATION (NO DARK BOX, NO EMOJI) ──────────────── */}
+      {/* ──────────────── EDIT RANK MODAL (ALL SPREADSHEET FIELDS) ──────────────── */}
       <Modal
         isOpen={!!editingRank}
         onClose={() => setEditingRank(null)}
-        title={`Configure Rank: Level ${editingRank?.level} (${editingRank?.name})`}
-        subtitle="Live auto-calculation engine for volume thresholds, reward margins & scale projections"
+        title={`Edit Rank: Level ${editingRank?.level} (${editingRank?.name})`}
+        subtitle="Update own deposit, total client deposit, cash rewards, conditions, and profit sharing"
         size="lg"
         footer={
           <>
             <Button variant="secondary" onClick={() => setEditingRank(null)}>Cancel</Button>
             <Button variant="primary" icon={<RiCheckLine />} onClick={handleSaveRank}>
-              Save Thresholds
+              Save Rank Changes
             </Button>
           </>
         }
       >
-        {editingRank && (() => {
-          const targetNum = Number(editMinInvest) || 1;
-          const rewardNum = Number(editReward) || 0;
-          const rewardRatio = targetNum > 0 ? ((rewardNum / targetNum) * 100).toFixed(2) : '0.00';
-          const netPlatformRetained = Math.max(0, targetNum - rewardNum);
-          const platformMargin = targetNum > 0 ? (((targetNum - rewardNum) / targetNum) * 100).toFixed(1) : '100.0';
-          const testVolNum = Number(testUserVolume) || 0;
-          const testProgress = Math.min(100, Math.round((testVolNum / targetNum) * 100));
-          const isUnlocked = testVolNum >= targetNum;
-          const remainingVol = Math.max(0, targetNum - testVolNum);
-
-          return (
-            <div className="space-y-4 font-poppins">
-              {/* Threshold & Bonus Input Fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Target Referral Turnover ($) *
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-mono">$</span>
-                    <input
-                      type="number"
-                      value={editMinInvest}
-                      onChange={e => setEditMinInvest(e.target.value)}
-                      placeholder="e.g. 5000"
-                      className="w-full pl-7 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 font-mono outline-none focus:border-gold-400 shadow-2xs"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Milestone Cash Reward Bonus ($) *
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-xs text-emerald-600 font-mono">+$</span>
-                    <input
-                      type="number"
-                      value={editReward}
-                      onChange={e => setEditReward(e.target.value)}
-                      placeholder="e.g. 1000"
-                      className="w-full pl-8 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-emerald-600 font-mono outline-none focus:border-gold-400 shadow-2xs"
-                    />
-                  </div>
-                </div>
+        {editingRank && (
+          <div className="space-y-4 font-poppins">
+            {/* Row 1: Name and Status */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Rank Name *
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  placeholder="e.g. Associate"
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+                />
               </div>
 
-              {/* ──────────────── IN-DRAWER AUTO CALCULATION BREAKDOWN ──────────────── */}
-              <div className="p-4 bg-gold-50/60 rounded-2xl border border-gold-200/80 space-y-3 shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <RiCalculatorLine size={16} className="text-gold-600" />
-                    In-Drawer Auto Calculation & Profit Margins
-                  </h4>
-                  <span className="text-[10px] font-bold text-gold-700 bg-gold-100/80 px-2 py-0.5 rounded-md border border-gold-200">
-                    Real-Time Math
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2.5 text-center font-mono">
-                  <div className="p-2.5 bg-white rounded-xl border border-gold-200 shadow-2xs">
-                    <span className="text-[10px] text-slate-400 block font-sans uppercase font-bold">Reward Yield %</span>
-                    <span className="text-sm font-extrabold text-emerald-600 block mt-0.5">
-                      {rewardRatio}%
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 bg-white rounded-xl border border-gold-200 shadow-2xs">
-                    <span className="text-[10px] text-slate-400 block font-sans uppercase font-bold">Platform Margin</span>
-                    <span className="text-sm font-extrabold text-slate-800 block mt-0.5">
-                      {platformMargin}%
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 bg-white rounded-xl border border-gold-200 shadow-2xs">
-                    <span className="text-[10px] text-slate-400 block font-sans uppercase font-bold">Net Inflow / User</span>
-                    <span className="text-sm font-extrabold text-gold-800 block mt-0.5">
-                      +${netPlatformRetained.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Scale Projection (100 Achievers Multiplier) */}
-                <div className="p-3 bg-white rounded-xl border border-gold-200/70 text-xs space-y-1">
-                  <div className="flex justify-between font-medium text-slate-600">
-                    <span>When 100 Leaders Achieve Level {editingRank.level}:</span>
-                    <span className="font-mono text-slate-800 font-bold">${(targetNum * 100).toLocaleString()} Total Capital</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] text-slate-500 font-mono">
-                    <span>Total Cash Rewards Disbursed:</span>
-                    <span className="text-red-500 font-semibold">-${(rewardNum * 100).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] text-emerald-700 font-mono font-bold pt-1 border-t border-slate-100">
-                    <span>Net Platform Retained Liquidity:</span>
-                    <span>+${(netPlatformRetained * 100).toLocaleString()}</span>
-                  </div>
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Status
+                </label>
+                <select
+                  value={editStatus}
+                  onChange={e => setEditStatus(e.target.value)}
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
               </div>
+            </div>
 
-              {/* ──────────────── LIVE INVESTOR QUALIFICATION TESTER ──────────────── */}
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Interactive Downline Turnover Tester ($)
-                  </label>
-                  <span className="text-[11px] font-mono font-bold text-slate-700">
-                    {testProgress}% Qualified
-                  </span>
-                </div>
-
-                <div className="flex gap-2 items-center">
+            {/* Row 2: Own Deposit, Total Client Deposit, One Time Cash Reward */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Own Deposit ($) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-mono">$</span>
                   <input
                     type="number"
-                    value={testUserVolume}
-                    onChange={e => setTestUserVolume(e.target.value)}
-                    placeholder="Enter test volume..."
-                    className="flex-1 px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-800 focus:border-gold-400 outline-none shadow-2xs"
+                    value={editOwnDeposit}
+                    onChange={e => setEditOwnDeposit(e.target.value)}
+                    placeholder="e.g. 50"
+                    className="w-full pl-7 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 font-mono outline-none focus:border-gold-400 shadow-2xs"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setTestUserVolume(String(targetNum))}
-                    className="px-3 py-2 bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-bold rounded-xl shadow-2xs transition-colors"
-                  >
-                    Match 100%
-                  </button>
                 </div>
+              </div>
 
-                {/* Progress Visual Bar */}
-                <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-300 rounded-full ${isUnlocked ? 'bg-emerald-500' : 'bg-gold-400'}`}
-                    style={{ width: `${testProgress}%` }}
-                  ></div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Total Client Deposit ($) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-mono">$</span>
+                  <input
+                    type="number"
+                    value={editTotalClientDeposit}
+                    onChange={e => setEditTotalClientDeposit(e.target.value)}
+                    placeholder="e.g. 5000"
+                    className="w-full pl-7 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 font-mono outline-none focus:border-gold-400 shadow-2xs"
+                  />
                 </div>
+              </div>
 
-                <div className="flex items-center justify-between text-xs font-mono">
-                  <span className="text-slate-500">
-                    {isUnlocked ? (
-                      <strong className="text-emerald-600 font-sans">Level {editingRank.level} Milestone Unlocked</strong>
-                    ) : (
-                      <span>${remainingVol.toLocaleString()} remaining to unlock</span>
-                    )}
-                  </span>
-                  <span className="font-bold text-emerald-700">
-                    Reward: +${isUnlocked ? rewardNum.toLocaleString() : '0.00'}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  One Time Cash Reward ($) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs text-emerald-600 font-mono">+$</span>
+                  <input
+                    type="number"
+                    value={editReward}
+                    onChange={e => setEditReward(e.target.value)}
+                    placeholder="e.g. 100"
+                    className="w-full pl-8 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-emerald-600 font-mono outline-none focus:border-gold-400 shadow-2xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Row 3: Condition Text */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Condition
+              </label>
+              <input
+                type="text"
+                value={editCondition}
+                onChange={e => setEditCondition(e.target.value)}
+                placeholder="1 Leg should not be more than 40% of the GV"
+                className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+              />
+            </div>
+
+            {/* Row 4: Company Profit %ge and Salary */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Company Profit %ge & Monthly Salary
+              </label>
+              <input
+                type="text"
+                value={editCompanyProfitSharing}
+                onChange={e => setEditCompanyProfitSharing(e.target.value)}
+                placeholder="0 or 0.20% of the total company Profit + 500$ Per Month Salary"
+                className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+              />
+            </div>
+
+            {/* Row 5: Downline Structure required */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Downline Structure required
+              </label>
+              <input
+                type="text"
+                value={editDownlineStructureRequired}
+                onChange={e => setEditDownlineStructureRequired(e.target.value)}
+                placeholder="e.g. 2 Active Direct Client or 3 Active Direct Clients ( Min. 1 Associate )"
+                className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+              />
+            </div>
+
+            {/* In-Drawer Calculation Summary */}
+            <div className="p-3.5 bg-amber-50/70 rounded-2xl border border-amber-300 space-y-2">
+              <span className="text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                <RiCalculatorLine size={15} className="text-amber-700" />
+                Live Reward Margin Breakdown
+              </span>
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="p-2 bg-white rounded-lg border border-amber-200 font-mono">
+                  <span className="text-[10px] text-slate-400 block font-sans uppercase">Required Volume</span>
+                  <span className="font-bold text-slate-800">${Number(editTotalClientDeposit || 0).toLocaleString()}</span>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-amber-200 font-mono">
+                  <span className="text-[10px] text-slate-400 block font-sans uppercase">Cash Reward</span>
+                  <span className="font-bold text-emerald-600">+${Number(editReward || 0).toLocaleString()}</span>
+                </div>
+                <div className="p-2 bg-white rounded-lg border border-amber-200 font-mono">
+                  <span className="text-[10px] text-slate-400 block font-sans uppercase">Reward Yield</span>
+                  <span className="font-bold text-amber-800">
+                    {Number(editTotalClientDeposit) > 0 ? ((Number(editReward) / Number(editTotalClientDeposit)) * 100).toFixed(2) : 0}%
                   </span>
                 </div>
               </div>
             </div>
-          );
-        })()}
+          </div>
+        )}
       </Modal>
 
-      {/* ──────────────── CREATE NEW RANK MILESTONE MODAL ──────────────── */}
+      {/* ──────────────── ADD NEW RANK MODAL ──────────────── */}
       <Modal
         isOpen={isAddRankOpen}
         onClose={() => setIsAddRankOpen(false)}
-        title="Create New Rank Milestone"
-        subtitle="Define turnover requirement and cash reward bonus for new leadership tier"
-        size="md"
+        title="Add New Rank Milestone Tier"
+        subtitle="Create a new leadership level with turnover thresholds, cash rewards, conditions, and profit sharing"
+        size="lg"
         footer={
           <>
             <Button variant="secondary" onClick={() => setIsAddRankOpen(false)}>Cancel</Button>
-            <Button variant="primary" icon={<RiCheckLine />} onClick={handleCreateRank}>
-              Save Milestone
+            <Button variant="primary" icon={<RiAddLine />} onClick={handleCreateRank}>
+              Create Rank Milestone
             </Button>
           </>
         }
       >
-        <div className="space-y-4 font-poppins text-xs">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-4 font-poppins">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Rank Level Number *
+                Tier Level Number *
               </label>
               <input
                 type="number"
                 value={newRankLevel}
                 onChange={e => setNewRankLevel(e.target.value)}
-                placeholder="e.g. 11"
+                placeholder="e.g. 10"
                 className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 font-mono outline-none focus:border-gold-400 shadow-2xs"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Rank Title / Name *
+                Rank Name *
               </label>
               <input
                 type="text"
                 value={newRankName}
                 onChange={e => setNewRankName(e.target.value)}
-                placeholder="e.g. Sovereign Vanguard"
+                placeholder="e.g. Global Sovereign"
                 className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Target Turnover ($) *
+                Own Deposit ($) *
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-mono">$</span>
                 <input
                   type="number"
-                  value={newRankMinInvest}
-                  onChange={e => setNewRankMinInvest(e.target.value)}
-                  placeholder="e.g. 25000000"
+                  value={newRankOwnDeposit}
+                  onChange={e => setNewRankOwnDeposit(e.target.value)}
+                  placeholder="e.g. 5000"
                   className="w-full pl-7 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 font-mono outline-none focus:border-gold-400 shadow-2xs"
                 />
               </div>
@@ -770,7 +1090,23 @@ export default function Ranks() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Cash Reward Bonus ($) *
+                Total Client Deposit ($) *
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-mono">$</span>
+                <input
+                  type="number"
+                  value={newRankTotalClientDeposit}
+                  onChange={e => setNewRankTotalClientDeposit(e.target.value)}
+                  placeholder="e.g. 2000000"
+                  className="w-full pl-7 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 font-mono outline-none focus:border-gold-400 shadow-2xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                One Time Cash Reward ($) *
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-xs text-emerald-600 font-mono">+$</span>
@@ -778,7 +1114,7 @@ export default function Ranks() {
                   type="number"
                   value={newRankReward}
                   onChange={e => setNewRankReward(e.target.value)}
-                  placeholder="e.g. 1500000"
+                  placeholder="e.g. 100000"
                   className="w-full pl-8 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-emerald-600 font-mono outline-none focus:border-gold-400 shadow-2xs"
                 />
               </div>
@@ -787,20 +1123,46 @@ export default function Ranks() {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-              Tier Description & Badge Title
+              Condition
             </label>
-            <textarea
-              rows={2}
-              value={newRankDesc}
-              onChange={e => setNewRankDesc(e.target.value)}
-              placeholder="e.g. Ultra-high volume continental director commanding nine-figure liquidity."
-              className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-normal text-slate-800 outline-none focus:border-gold-400 shadow-2xs resize-none"
+            <input
+              type="text"
+              value={newRankCondition}
+              onChange={e => setNewRankCondition(e.target.value)}
+              placeholder="1 Leg should not be more than 40% of the GV"
+              className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+              Company Profit %ge & Salary
+            </label>
+            <input
+              type="text"
+              value={newRankCompanyProfitSharing}
+              onChange={e => setNewRankCompanyProfitSharing(e.target.value)}
+              placeholder="e.g. 1.5% of the Total Company Profit + 5000$ Per Month Salary"
+              className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+              Downline Structure required
+            </label>
+            <input
+              type="text"
+              value={newRankDownlineStructureRequired}
+              onChange={e => setNewRankDownlineStructureRequired(e.target.value)}
+              placeholder="e.g. 12 Active Direct Clients ( Min. 2 Global Ambassadors )"
+              className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
             />
           </div>
 
           <div className="p-3 bg-gold-50/60 rounded-xl border border-gold-200 text-[11px] text-slate-700 space-y-1">
-            <strong>Auto-Sync Engine:</strong>
-            <p>Once saved, this new milestone tier instantly synchronizes to the User Platform and updates all leader qualification calculators.</p>
+            <strong>Instant Synchronization:</strong>
+            <p>Once saved, this new milestone tier instantly synchronizes to the User Platform.</p>
           </div>
         </div>
       </Modal>
@@ -832,7 +1194,7 @@ export default function Ranks() {
               </div>
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-gold-400 text-slate-900 text-xs font-bold shadow-2xs">
                 <RiTrophyLine size={13} />
-                {selectedLeader.currentRank || 'Level 1'}
+                {selectedLeader.currentRank || 'Associate'}
               </span>
             </div>
 

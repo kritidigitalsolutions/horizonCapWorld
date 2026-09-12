@@ -47,9 +47,10 @@ exports.getPlanById = async (req, res) => {
 // @route   POST /api/user/investments
 exports.investInPlan = async (req, res) => {
   try {
-    const { planId, amount, autoRenewal } = req.body;
+    const { planId, amount, autoRenewal, lockInPeriod } = req.body;
     const investAmount = Number(amount);
     const isAutoRenewal = Boolean(autoRenewal);
+    const isLockIn = lockInPeriod === "3 Months" || Boolean(req.body.has3MonthsLockIn);
 
     if (!planId || !investAmount || investAmount <= 0) {
       return res.status(400).json({
@@ -98,8 +99,16 @@ exports.investInPlan = async (req, res) => {
     user.depositWallet -= investAmount;
     user.totalInvested = (user.totalInvested || 0) + investAmount;
 
+    // Check if this is the user's first investment ever (before saving new record)
+    const existingInvestmentsCount = await UserInvestment.countDocuments({ user: user._id });
+    const isFirstInvestment = existingInvestmentsCount === 0 && !user.hasReceivedReferralBonus;
+
+    if (!user.firstInvestmentAmount) {
+      user.firstInvestmentAmount = investAmount;
+    }
+
     // Determine effective ROI rate (Slab matching or fixed)
-    let effectiveDailyRoi = plan.dailyRoi || (plan.roi ? plan.roi / 30 : 0.25);
+    let effectiveDailyRoi = plan.dailyRoi || (plan.roi ? plan.roi / 30 : 0.3);
     let effectiveMonthlyRoi = plan.roi || Number((effectiveDailyRoi * 30).toFixed(2));
     let effectiveAnnualRoi = Number((effectiveDailyRoi * 360).toFixed(2));
     let matchedSlab = null;
@@ -121,9 +130,15 @@ exports.investInPlan = async (req, res) => {
       }
 
       if (matchedSlab) {
-        effectiveDailyRoi = Number(matchedSlab.dailyRoi);
-        effectiveMonthlyRoi = matchedSlab.monthlyRoi || Number((effectiveDailyRoi * 30).toFixed(2));
-        effectiveAnnualRoi = matchedSlab.annualRoi || Number((effectiveDailyRoi * 360).toFixed(2));
+        if (isLockIn) {
+          effectiveDailyRoi = Number(matchedSlab.lockInDailyRoi || (matchedSlab.dailyRoi + 0.1).toFixed(4));
+          effectiveMonthlyRoi = matchedSlab.lockInMonthlyRoi || Number((effectiveDailyRoi * 30).toFixed(2));
+          effectiveAnnualRoi = matchedSlab.lockInAnnualRoi || Number((effectiveDailyRoi * 360).toFixed(2));
+        } else {
+          effectiveDailyRoi = Number(matchedSlab.dailyRoi);
+          effectiveMonthlyRoi = matchedSlab.monthlyRoi || Number((effectiveDailyRoi * 30).toFixed(2));
+          effectiveAnnualRoi = matchedSlab.annualRoi || Number((effectiveDailyRoi * 360).toFixed(2));
+        }
       }
     }
 
@@ -150,6 +165,10 @@ exports.investInPlan = async (req, res) => {
       plan.durationDays === 0
     );
 
+    const lockInUntilDate = isLockIn
+      ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+      : undefined;
+
     const newInvestment = await UserInvestment.create({
       user: user._id,
       userName: user.name,
@@ -166,10 +185,17 @@ exports.investInPlan = async (req, res) => {
             minAmount: matchedSlab.minAmount,
             maxAmount: matchedSlab.maxAmount,
             dailyRoi: matchedSlab.dailyRoi,
+            lockInDailyRoi: matchedSlab.lockInDailyRoi,
             monthlyRoi: matchedSlab.monthlyRoi,
+            lockInMonthlyRoi: matchedSlab.lockInMonthlyRoi,
             annualRoi: matchedSlab.annualRoi,
+            isLockInApplied: isLockIn,
           }
         : undefined,
+      lockInPeriod: isLockIn ? "3 Months" : "None",
+      isLocked: isLockIn,
+      lockInDays: isLockIn ? 90 : 0,
+      lockInUntil: lockInUntilDate,
       autoRenewal: isAutoRenewal,
       autoRenewalIncentive: 0.25,
       isCompounding: isAutoRenewal,
@@ -209,10 +235,14 @@ exports.investInPlan = async (req, res) => {
     await plan.save();
     await user.save();
 
-    // Trigger multi-tier referral deposit commissions asynchronously
-    distributeReferralCommissions(user._id, investAmount, "investment").catch((err) =>
-      console.warn("[Affiliate] Investment commission distribution notice:", err.message)
-    );
+    // Trigger multi-tier referral deposit commissions ONLY for the 1st investment
+    if (isFirstInvestment) {
+      distributeReferralCommissions(user._id, investAmount, "investment").catch((err) =>
+        console.warn("[Affiliate] Investment commission distribution notice:", err.message)
+      );
+    } else {
+      console.log(`[Affiliate] Subsequent investment by ${user.customId || user.email}. Referral bonus skipped (1st investment only).`);
+    }
 
     res.status(201).json({
       success: true,

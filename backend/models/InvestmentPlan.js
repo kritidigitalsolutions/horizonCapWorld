@@ -16,28 +16,39 @@ const roiSlabSchema = new mongoose.Schema(
       default: false,
     },
     dailyRoi: {
-      type: Number, // e.g. 0.25 for 0.25% daily
+      type: Number, // Without Lock In Period Daily ROI % (e.g. 0.3%, 0.5%, 0.8%, 1.0%)
       required: true,
-      default: 0.25,
+      default: 0.3,
+    },
+    lockInDailyRoi: {
+      type: Number, // 3 Months Lock In Daily ROI % (e.g. 0.4%, 0.6%, 0.9%, 1.1%)
+      default: 0.4,
     },
     monthlyRoi: {
-      type: Number, // e.g. 7.5 for 7.5% monthly (dailyRoi * 30)
-      default: 7.5,
+      type: Number, // Without lock-in monthly ROI (dailyRoi * 30)
+      default: 9.0,
+    },
+    lockInMonthlyRoi: {
+      type: Number, // 3 Months lock-in monthly ROI (lockInDailyRoi * 30)
+      default: 12.0,
     },
     annualRoi: {
-      type: Number, // e.g. 90 for 90% annual (dailyRoi * 360)
-      default: 90,
+      type: Number, // Without lock-in annual ROI (dailyRoi * 360)
+      default: 108.0,
+    },
+    lockInAnnualRoi: {
+      type: Number, // 3 Months lock-in annual ROI (lockInDailyRoi * 360)
+      default: 144.0,
     },
   },
   { _id: false }
 );
 
 const defaultRoiSlabs = [
-  { minAmount: 10, maxAmount: 49, noMaxLimit: false, dailyRoi: 0.25, monthlyRoi: 7.5, annualRoi: 90 },
-  { minAmount: 50, maxAmount: 99, noMaxLimit: false, dailyRoi: 0.35, monthlyRoi: 10.5, annualRoi: 126 },
-  { minAmount: 100, maxAmount: 499, noMaxLimit: false, dailyRoi: 0.55, monthlyRoi: 16.5, annualRoi: 198 },
-  { minAmount: 500, maxAmount: 1500, noMaxLimit: false, dailyRoi: 0.75, monthlyRoi: 22.5, annualRoi: 270 },
-  { minAmount: 1500, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, monthlyRoi: 30.0, annualRoi: 360 },
+  { minAmount: 10, maxAmount: 100, noMaxLimit: false, dailyRoi: 0.3, lockInDailyRoi: 0.4, monthlyRoi: 9.0, lockInMonthlyRoi: 12.0, annualRoi: 108.0, lockInAnnualRoi: 144.0 },
+  { minAmount: 101, maxAmount: 500, noMaxLimit: false, dailyRoi: 0.5, lockInDailyRoi: 0.6, monthlyRoi: 15.0, lockInMonthlyRoi: 18.0, annualRoi: 180.0, lockInAnnualRoi: 216.0 },
+  { minAmount: 501, maxAmount: 5000, noMaxLimit: false, dailyRoi: 0.8, lockInDailyRoi: 0.9, monthlyRoi: 24.0, lockInMonthlyRoi: 27.0, annualRoi: 288.0, lockInAnnualRoi: 324.0 },
+  { minAmount: 5001, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, lockInDailyRoi: 1.1, monthlyRoi: 30.0, lockInMonthlyRoi: 33.0, annualRoi: 360.0, lockInAnnualRoi: 396.0 },
 ];
 
 const loyaltyBonusSlabSchema = new mongoose.Schema(
@@ -84,17 +95,33 @@ const investmentPlanSchema = new mongoose.Schema(
       default: "slab",
     },
     roi: {
-      type: Number, // Monthly ROI percentage e.g. 7.5 or 15
+      type: Number, // Monthly ROI percentage e.g. 9.0
       required: true,
-      default: 7.5,
+      default: 9.0,
     },
     dailyRoi: {
-      type: Number, // Daily ROI percentage e.g. 0.25
-      default: 0.25,
+      type: Number, // Daily ROI percentage e.g. 0.3
+      default: 0.3,
     },
     roiSlabs: {
       type: [roiSlabSchema],
       default: defaultRoiSlabs,
+    },
+    hasLockInOption: {
+      type: Boolean,
+      default: true,
+    },
+    lockInPeriodDays: {
+      type: Number,
+      default: 90, // 3 Months standard lock-in
+    },
+    minDepositAmount: {
+      type: Number,
+      default: 10,
+    },
+    minWithdrawalAmount: {
+      type: Number,
+      default: 5,
     },
     loyaltyBonusEnabled: {
       type: Boolean,
@@ -165,17 +192,23 @@ const investmentPlanSchema = new mongoose.Schema(
 
 // Calculate roiPerSec and sync slabs before saving
 investmentPlanSchema.pre("save", function () {
-  // Ensure each slab has computed monthly and annual ROI
+  // Ensure each slab has computed monthly and annual ROI for both Standard and Lock-In
   if (this.roiSlabs && this.roiSlabs.length > 0) {
     this.roiSlabs = this.roiSlabs.map((slab) => {
       const daily = Number(slab.dailyRoi) || 0;
+      const lockInDaily = slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null
+        ? Number(slab.lockInDailyRoi)
+        : Number((daily + 0.1).toFixed(4));
       return {
         minAmount: Number(slab.minAmount) || 0,
         maxAmount: slab.noMaxLimit ? null : Number(slab.maxAmount) || null,
         noMaxLimit: !!slab.noMaxLimit || !slab.maxAmount,
         dailyRoi: daily,
+        lockInDailyRoi: lockInDaily,
         monthlyRoi: Number((daily * 30).toFixed(2)),
+        lockInMonthlyRoi: Number((lockInDaily * 30).toFixed(2)),
         annualRoi: Number((daily * 360).toFixed(2)),
+        lockInAnnualRoi: Number((lockInDaily * 360).toFixed(2)),
       };
     });
 
@@ -197,7 +230,7 @@ investmentPlanSchema.pre("save", function () {
   }
 
   // Calculate base roiPerSec
-  const baseDailyRoi = this.dailyRoi || (this.roi ? this.roi / 30 : 0.25);
+  const baseDailyRoi = this.dailyRoi || (this.roi ? this.roi / 30 : 0.3);
   const baseMin = this.minAmount || 10;
   const secRate = ((baseMin * (baseDailyRoi / 100)) / 86400).toFixed(6);
   this.roiPerSec = `$${secRate} / sec`;

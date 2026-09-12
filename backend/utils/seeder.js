@@ -41,24 +41,27 @@ const seedInitialData = async () => {
     }
 
     // 3. Seed Investment Plans
+    const standardSlabs = [
+      { minAmount: 10, maxAmount: 100, noMaxLimit: false, dailyRoi: 0.3, lockInDailyRoi: 0.4, monthlyRoi: 9.0, lockInMonthlyRoi: 12.0, annualRoi: 108.0, lockInAnnualRoi: 144.0 },
+      { minAmount: 101, maxAmount: 500, noMaxLimit: false, dailyRoi: 0.5, lockInDailyRoi: 0.6, monthlyRoi: 15.0, lockInMonthlyRoi: 18.0, annualRoi: 180.0, lockInAnnualRoi: 216.0 },
+      { minAmount: 501, maxAmount: 5000, noMaxLimit: false, dailyRoi: 0.8, lockInDailyRoi: 0.9, monthlyRoi: 24.0, lockInMonthlyRoi: 27.0, annualRoi: 288.0, lockInAnnualRoi: 324.0 },
+      { minAmount: 5001, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, lockInDailyRoi: 1.1, monthlyRoi: 30.0, lockInMonthlyRoi: 33.0, annualRoi: 360.0, lockInAnnualRoi: 396.0 },
+    ];
+
     const plansCount = await InvestmentPlan.countDocuments();
     if (plansCount === 0) {
-      const standardSlabs = [
-        { minAmount: 10, maxAmount: 49, noMaxLimit: false, dailyRoi: 0.25, monthlyRoi: 7.5, annualRoi: 90 },
-        { minAmount: 50, maxAmount: 99, noMaxLimit: false, dailyRoi: 0.35, monthlyRoi: 10.5, annualRoi: 126 },
-        { minAmount: 100, maxAmount: 499, noMaxLimit: false, dailyRoi: 0.55, monthlyRoi: 16.5, annualRoi: 198 },
-        { minAmount: 500, maxAmount: 1500, noMaxLimit: false, dailyRoi: 0.75, monthlyRoi: 22.5, annualRoi: 270 },
-        { minAmount: 1500, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, monthlyRoi: 30.0, annualRoi: 360 },
-      ];
-
       const defaultPlans = [
         {
           name: "Solar Eco Farm Yield",
           category: "Renewable Energy",
           roiType: "slab",
-          roi: 7.5,
-          dailyRoi: 0.25,
+          roi: 9.0,
+          dailyRoi: 0.3,
           roiSlabs: standardSlabs,
+          hasLockInOption: true,
+          lockInPeriodDays: 90,
+          minDepositAmount: 10,
+          minWithdrawalAmount: 5,
           duration: "12 Months",
           durationDays: 365,
           minAmount: 10,
@@ -73,9 +76,13 @@ const seedInitialData = async () => {
           name: "Physical Gold Bullion Vault",
           category: "Precious Metal",
           roiType: "slab",
-          roi: 7.5,
-          dailyRoi: 0.25,
+          roi: 9.0,
+          dailyRoi: 0.3,
           roiSlabs: standardSlabs,
+          hasLockInOption: true,
+          lockInPeriodDays: 90,
+          minDepositAmount: 10,
+          minWithdrawalAmount: 5,
           duration: "6 Months",
           durationDays: 180,
           minAmount: 10,
@@ -90,9 +97,13 @@ const seedInitialData = async () => {
           name: "Wind Turbine Clean Power",
           category: "Renewable Energy",
           roiType: "slab",
-          roi: 7.5,
-          dailyRoi: 0.25,
+          roi: 9.0,
+          dailyRoi: 0.3,
           roiSlabs: standardSlabs,
+          hasLockInOption: true,
+          lockInPeriodDays: 90,
+          minDepositAmount: 10,
+          minWithdrawalAmount: 5,
           duration: "24 Months",
           durationDays: 730,
           minAmount: 10,
@@ -107,9 +118,13 @@ const seedInitialData = async () => {
           name: "Platinum Reserve Vault",
           category: "Precious Metal",
           roiType: "slab",
-          roi: 7.5,
-          dailyRoi: 0.25,
+          roi: 9.0,
+          dailyRoi: 0.3,
           roiSlabs: standardSlabs,
+          hasLockInOption: true,
+          lockInPeriodDays: 90,
+          minDepositAmount: 10,
+          minWithdrawalAmount: 5,
           duration: "18 Months",
           durationDays: 540,
           minAmount: 10,
@@ -124,9 +139,13 @@ const seedInitialData = async () => {
           name: "Green Hydrogen Catalyst",
           category: "Renewable Energy",
           roiType: "slab",
-          roi: 7.5,
-          dailyRoi: 0.25,
+          roi: 9.0,
+          dailyRoi: 0.3,
           roiSlabs: standardSlabs,
+          hasLockInOption: true,
+          lockInPeriodDays: 90,
+          minDepositAmount: 10,
+          minWithdrawalAmount: 5,
           duration: "3 Months",
           durationDays: 90,
           minAmount: 10,
@@ -142,31 +161,27 @@ const seedInitialData = async () => {
       for (const p of defaultPlans) {
         await InvestmentPlan.create(p);
       }
-      console.log("Default Investment Plans seeded with Amount-Wise Daily ROI Slabs.");
+      console.log("Default Investment Plans seeded with 4-Tier Daily ROI Slabs & Lock-In.");
     } else {
-      const standardSlabs = [
-        { minAmount: 10, maxAmount: 49, noMaxLimit: false, dailyRoi: 0.25, monthlyRoi: 7.5, annualRoi: 90 },
-        { minAmount: 50, maxAmount: 99, noMaxLimit: false, dailyRoi: 0.35, monthlyRoi: 10.5, annualRoi: 126 },
-        { minAmount: 100, maxAmount: 499, noMaxLimit: false, dailyRoi: 0.55, monthlyRoi: 16.5, annualRoi: 198 },
-        { minAmount: 500, maxAmount: 1500, noMaxLimit: false, dailyRoi: 0.75, monthlyRoi: 22.5, annualRoi: 270 },
-        { minAmount: 1500, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, monthlyRoi: 30.0, annualRoi: 360 },
-      ];
-      const plansWithoutSlabs = await InvestmentPlan.find({
-        $or: [{ roiSlabs: { $exists: false } }, { roiSlabs: { $size: 0 } }],
-      });
-      if (plansWithoutSlabs.length > 0) {
-        for (const plan of plansWithoutSlabs) {
+      // Sync any existing plans to the new 4 standard slabs if they have old 5 slabs or missing lockIn
+      const existingPlans = await InvestmentPlan.find();
+      for (const plan of existingPlans) {
+        if (!plan.roiSlabs || plan.roiSlabs.length !== 4 || plan.roiSlabs[0].dailyRoi !== 0.3) {
           plan.roiType = "slab";
           plan.roiSlabs = standardSlabs;
-          plan.dailyRoi = 0.25;
-          plan.roi = 7.5;
+          plan.dailyRoi = 0.3;
+          plan.roi = 9.0;
           plan.minAmount = 10;
+          plan.minDepositAmount = 10;
+          plan.minWithdrawalAmount = 5;
+          plan.hasLockInOption = true;
+          plan.lockInPeriodDays = 90;
           plan.noMaxLimit = true;
           plan.maxAmount = null;
           await plan.save();
         }
-        console.log(`Updated ${plansWithoutSlabs.length} existing plans with standard Amount-Wise Daily ROI Slabs.`);
       }
+      console.log(`Synced existing investment plans with new 4-tier ROI slabs and lock-in options.`);
     }
 
     // 4. Seed Payment Methods
@@ -269,38 +284,177 @@ const seedInitialData = async () => {
       console.log("Default Payment Methods seeded.");
     }
 
-    // 5. Seed 5-Tier Referral Commission Settings
+    // 5. Seed 11-Tier Level ROI Referral Commission Settings
+    const defaultRefSettings = [
+      { level: "L1", levelNumber: 1, name: "Level 1", depositAmount: 0, profitAmount: 0, roiPerDay: 0.08, eligibleConditions: "Group Volume Min.25,000$, 11 Direct Clients", groupVolumeMin: 25000, directClientsMin: 11, investCommission: "5%", investCommissionRate: 5, earningsCommission: "5%", earningsCommissionRate: 5, activePromoters: 3420, totalVolume: "$1,250,000" },
+      { level: "L2", levelNumber: 2, name: "Level 2", depositAmount: 0, profitAmount: 0, roiPerDay: 0.08, eligibleConditions: "Group Volume Min. 20,000$, 11 Direct Clients", groupVolumeMin: 20000, directClientsMin: 11, investCommission: "4%", investCommissionRate: 4, earningsCommission: "4%", earningsCommissionRate: 4, activePromoters: 2180, totalVolume: "$890,000" },
+      { level: "L3", levelNumber: 3, name: "Level 3", depositAmount: 0, profitAmount: 0, roiPerDay: 0.08, eligibleConditions: "Group Volume Min. 15,000$, 11 Direct Clients", groupVolumeMin: 15000, directClientsMin: 11, investCommission: "3%", investCommissionRate: 3, earningsCommission: "3%", earningsCommissionRate: 3, activePromoters: 1420, totalVolume: "$520,000" },
+      { level: "L4", levelNumber: 4, name: "Level 4", depositAmount: 0, profitAmount: 0, roiPerDay: 0.16, eligibleConditions: "Group Volume Min. 10,000$, 11 Direct Clients", groupVolumeMin: 10000, directClientsMin: 11, investCommission: "2%", investCommissionRate: 2, earningsCommission: "2%", earningsCommissionRate: 2, activePromoters: 840, totalVolume: "$310,000" },
+      { level: "L5", levelNumber: 5, name: "Level 5", depositAmount: 0, profitAmount: 0, roiPerDay: 0.24, eligibleConditions: "Group Volume Min. 5,000$, 10 Direct Clients", groupVolumeMin: 5000, directClientsMin: 10, investCommission: "1.5%", investCommissionRate: 1.5, earningsCommission: "1.5%", earningsCommissionRate: 1.5, activePromoters: 490, totalVolume: "$185,000" },
+      { level: "L6", levelNumber: 6, name: "Level 6", depositAmount: 0, profitAmount: 0, roiPerDay: 0.40, eligibleConditions: "Group Volume Min. 4000$, 5 Direct Clients", groupVolumeMin: 4000, directClientsMin: 5, investCommission: "1%", investCommissionRate: 1, earningsCommission: "1%", earningsCommissionRate: 1, activePromoters: 280, totalVolume: "$95,000" },
+      { level: "L7", levelNumber: 7, name: "Level 7", depositAmount: 0, profitAmount: 0, roiPerDay: 0.48, eligibleConditions: "Group Volume Min. 3000$, 4 Direct Clients", groupVolumeMin: 3000, directClientsMin: 4, investCommission: "0.8%", investCommissionRate: 0.8, earningsCommission: "0.8%", earningsCommissionRate: 0.8, activePromoters: 160, totalVolume: "$55,000" },
+      { level: "L8", levelNumber: 8, name: "Level 8", depositAmount: 0, profitAmount: 0, roiPerDay: 0.64, eligibleConditions: "Group Volume Min. 2000$, 3 Direct Clients", groupVolumeMin: 2000, directClientsMin: 3, investCommission: "0.6%", investCommissionRate: 0.6, earningsCommission: "0.6%", earningsCommissionRate: 0.6, activePromoters: 95, totalVolume: "$30,000" },
+      { level: "L9", levelNumber: 9, name: "Level 9", depositAmount: 0, profitAmount: 0, roiPerDay: 0.80, eligibleConditions: "Group Volume Min. 1000$, 2 Direct Clients", groupVolumeMin: 1000, directClientsMin: 2, investCommission: "0.5%", investCommissionRate: 0.5, earningsCommission: "0.5%", earningsCommissionRate: 0.5, activePromoters: 50, totalVolume: "$15,000" },
+      { level: "L10", levelNumber: 10, name: "Level 10", depositAmount: 0, profitAmount: 0, roiPerDay: 1.20, eligibleConditions: "No Condition", groupVolumeMin: 0, directClientsMin: 0, investCommission: "0.4%", investCommissionRate: 0.4, earningsCommission: "0.4%", earningsCommissionRate: 0.4, activePromoters: 25, totalVolume: "$8,000" },
+      { level: "L11", levelNumber: 11, name: "Level 11", depositAmount: 1000, profitAmount: 8, roiPerDay: 0.80, eligibleConditions: "Deposit $1000 => Profit $8", groupVolumeMin: 0, directClientsMin: 0, investCommission: "0.3%", investCommissionRate: 0.3, earningsCommission: "0.3%", earningsCommissionRate: 0.3, activePromoters: 10, totalVolume: "$5,000" },
+    ];
+
     const refCount = await ReferralSetting.countDocuments();
     if (refCount === 0) {
-      const defaultRefSettings = [
-        { level: "L1", levelNumber: 1, name: "Direct Referrals (Level 1)", investCommission: "5%", investCommissionRate: 5, earningsCommission: "5%", earningsCommissionRate: 5, activePromoters: 3420, totalVolume: "$1,250,000" },
-        { level: "L2", levelNumber: 2, name: "Sub-Referrals (Level 2)", investCommission: "4%", investCommissionRate: 4, earningsCommission: "4%", earningsCommissionRate: 4, activePromoters: 2180, totalVolume: "$890,000" },
-        { level: "L3", levelNumber: 3, name: "Network Tier (Level 3)", investCommission: "3%", investCommissionRate: 3, earningsCommission: "3%", earningsCommissionRate: 3, activePromoters: 1420, totalVolume: "$520,000" },
-        { level: "L4", levelNumber: 4, name: "Network Tier (Level 4)", investCommission: "2%", investCommissionRate: 2, earningsCommission: "2%", earningsCommissionRate: 2, activePromoters: 840, totalVolume: "$310,000" },
-        { level: "L5", levelNumber: 5, name: "Global Depth (Level 5)", investCommission: "1%", investCommissionRate: 1, earningsCommission: "1%", earningsCommissionRate: 1, activePromoters: 490, totalVolume: "$185,000" },
-      ];
       await ReferralSetting.insertMany(defaultRefSettings);
-      console.log("Default 5-Tier Referral Settings seeded.");
+      console.log("Default 11-Tier Level ROI Referral Settings seeded.");
+    } else {
+      for (const tierData of defaultRefSettings) {
+        await ReferralSetting.findOneAndUpdate(
+          { level: tierData.level },
+          { $set: tierData },
+          { upsert: true, new: true }
+        );
+      }
+      console.log("Synchronized 11-Tier Level ROI Referral Settings.");
     }
 
-    // 6. Seed 10-Tier Rank Ladder
-    const rankCount = await Rank.countDocuments();
-    if (rankCount === 0) {
-      const defaultRanks = [
-        { level: 1, name: "Bronze Explorer", minInvest: 100, reward: 7.5, achievers: 4890, desc: "Entry leadership rank unlocked upon team initiation." },
-        { level: 2, name: "Silver Vanguard", minInvest: 500, reward: 35, achievers: 2340, desc: "Proven team builder with active direct network." },
-        { level: 3, name: "Gold Sovereign", minInvest: 2500, reward: 175, achievers: 1210, desc: "Established regional network promoter." },
-        { level: 4, name: "Platinum Luminary", minInvest: 10000, reward: 700, achievers: 680, desc: "Senior network leader commanding high turnover." },
-        { level: 5, name: "Sapphire Viceroy", minInvest: 50000, reward: 3500, achievers: 340, desc: "Elite portfolio leader with multi-tier downlines." },
-        { level: 6, name: "Emerald Chancellor", minInvest: 150000, reward: 10500, achievers: 160, desc: "Continental executive commanding six-figure volume." },
-        { level: 7, name: "Ruby High Commander", minInvest: 500000, reward: 35000, achievers: 72, desc: "Global leadership council member." },
-        { level: 8, name: "Diamond Archon", minInvest: 1500000, reward: 105000, achievers: 28, desc: "Institutional syndicate director." },
-        { level: 9, name: "Crown Imperator", minInvest: 5000000, reward: 350000, achievers: 11, desc: "Supreme network architect with multi-million turnover." },
-        { level: 10, name: "Apex Zenith Titan", minInvest: 10000000, reward: 700000, achievers: 8, desc: "Pinnacle summit partner with permanent revenue share." },
-      ];
-      await Rank.insertMany(defaultRanks);
-      console.log("Default 10-Tier Rank Ladder seeded.");
+    // 6. Seed 9-Tier Rank Ladder (Spreadsheet Specification)
+    const defaultRanks = [
+      {
+        level: 1,
+        name: "Associate",
+        ownDeposit: 50,
+        totalClientDeposit: 5000,
+        minInvest: 5000,
+        reward: 100,
+        condition: "1 Leg should not be more than 40% of the GV",
+        companyProfitSharing: "0",
+        downlineStructureRequired: "2 Active Direct Client",
+        achievers: 4890,
+        desc: "Entry leadership milestone unlocked with active direct network.",
+        status: "Active",
+      },
+      {
+        level: 2,
+        name: "Senior Associate",
+        ownDeposit: 100,
+        totalClientDeposit: 10000,
+        minInvest: 10000,
+        reward: 300,
+        condition: "1 Leg should not be more than 40% of the GV",
+        companyProfitSharing: "0",
+        downlineStructureRequired: "3 Active Direct Clients",
+        achievers: 2340,
+        desc: "Demonstrated network volume builder.",
+        status: "Active",
+      },
+      {
+        level: 3,
+        name: "Team Leader",
+        ownDeposit: 250,
+        totalClientDeposit: 25000,
+        minInvest: 25000,
+        reward: 875,
+        condition: "1 Leg should not be more than 40% of the GV",
+        companyProfitSharing: "0",
+        downlineStructureRequired: "3 Active Direct Clients ( Min. 1 Associate )",
+        achievers: 1210,
+        desc: "Regional leadership leader managing team turnover.",
+        status: "Active",
+      },
+      {
+        level: 4,
+        name: "Director",
+        ownDeposit: 500,
+        totalClientDeposit: 50000,
+        minInvest: 50000,
+        reward: 2000,
+        condition: "1 Leg should not be more than 40% of the GV",
+        companyProfitSharing: "0",
+        downlineStructureRequired: "4 Active Direct Clients ( Min 2 Sr. Associate )",
+        achievers: 680,
+        desc: "Executive director supervising multi-tier syndicates.",
+        status: "Active",
+      },
+      {
+        level: 5,
+        name: "Regional Director",
+        ownDeposit: 1000,
+        totalClientDeposit: 100000,
+        minInvest: 100000,
+        reward: 5000,
+        condition: "1 Leg should not be more than 40% of the GV",
+        companyProfitSharing: "0",
+        downlineStructureRequired: "4 Active Direct Clients ( Min. 2 Team Leaders )",
+        achievers: 340,
+        desc: "Senior regional executive commanding six-figure volume.",
+        status: "Active",
+      },
+      {
+        level: 6,
+        name: "Executive Director",
+        ownDeposit: 1500,
+        totalClientDeposit: 200000,
+        minInvest: 200000,
+        reward: 10000,
+        condition: "1 Leg should not be more than 40% of the GV",
+        companyProfitSharing: "0.20% of the total company Profit + 500$ Per Month Salary",
+        downlineStructureRequired: "5 Active Direct Clients ( Min. 2 Directors )",
+        achievers: 160,
+        desc: "Corporate syndicate leader receiving monthly salary and profit share.",
+        status: "Active",
+      },
+      {
+        level: 7,
+        name: "Diamond",
+        ownDeposit: 2000,
+        totalClientDeposit: 300000,
+        minInvest: 300000,
+        reward: 15000,
+        condition: "1 Leg should not be more than 40% of the GV",
+        companyProfitSharing: "0.50% of the Total Company Profit + 1000$ Per Month Salary",
+        downlineStructureRequired: "6 Active Direct Clients ( Min. 2 Regional Directors )",
+        achievers: 72,
+        desc: "High-tier executive with expanded profit share and salary.",
+        status: "Active",
+      },
+      {
+        level: 8,
+        name: "Crown Diamond",
+        ownDeposit: 3000,
+        totalClientDeposit: 600000,
+        minInvest: 600000,
+        reward: 35000,
+        condition: "1 Leg should not be more than 40% of the GV",
+        companyProfitSharing: "0.75% of the Total Company Profit + 1500$ Per Month Salary",
+        downlineStructureRequired: "8 Active Direct Clients ( Min. 2 Executive Directors )",
+        achievers: 28,
+        desc: "Elite summit council member with premier dividends.",
+        status: "Active",
+      },
+      {
+        level: 9,
+        name: "Global Ambassador",
+        ownDeposit: 5000,
+        totalClientDeposit: 1000000,
+        minInvest: 1000000,
+        reward: 60000,
+        condition: "1 Leg should not be more than 40% of the GV",
+        companyProfitSharing: "1% of the Total Company Profit + 3000$ Per Month Salary",
+        downlineStructureRequired: "10 Active Direct Clients ( Min. 2 Diamonds )",
+        achievers: 11,
+        desc: "Apex global ambassador commanding global network volume.",
+        status: "Active",
+      },
+    ];
+
+    // Clear obsolete ranks above level 9 if any exist
+    await Rank.deleteMany({ level: { $gt: 9 } });
+
+    for (const r of defaultRanks) {
+      await Rank.findOneAndUpdate(
+        { level: r.level },
+        { $set: r },
+        { upsert: true, new: true }
+      );
     }
+    console.log("Synchronized 9-Tier Rank Ladder (Spreadsheet Specification).");
 
     // 7. Seed Deposit Video Tutorial
     const videoCount = await DepositVideo.countDocuments();

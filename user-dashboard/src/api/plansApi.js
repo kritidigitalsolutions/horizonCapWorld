@@ -10,8 +10,11 @@ export const getPlanById = async (id) => {
   return response.data;
 };
 
-export const investInPlan = async (planId, amount, autoRenewal = false) => {
-  const response = await API.post("/user/investments", { planId, amount, autoRenewal });
+export const investInPlan = async (planId, amount, autoRenewal = false, lockInPeriod = "None") => {
+  const payload = typeof planId === "object"
+    ? planId
+    : { planId, amount, autoRenewal, lockInPeriod };
+  const response = await API.post("/user/investments", payload);
   return response.data;
 };
 

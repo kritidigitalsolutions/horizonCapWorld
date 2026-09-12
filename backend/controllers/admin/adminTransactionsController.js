@@ -35,29 +35,35 @@ exports.getTransactions = async (req, res) => {
     const limitNum = parseInt(limit, 10) || 20;
     const skip = (pageNum - 1) * limitNum;
 
-    const total = await Transaction.countDocuments(query);
-    const unseenCount = await Transaction.countDocuments({ isSeenByAdmin: false });
-    const transactions = await Transaction.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
-
-    // KPI Aggregations
-    const totalDeposits = await Transaction.aggregate([
-      { $match: { type: "Deposit", status: "Approved" } },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
-    ]);
-    const totalWithdrawals = await Transaction.aggregate([
-      { $match: { type: "Withdrawal", status: "Approved" } },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
-    ]);
-    const totalRoi = await Transaction.aggregate([
-      { $match: { type: "ROI Return" } },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
-    ]);
-    const totalReferral = await Transaction.aggregate([
-      { $match: { type: "Referral Bonus" } },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
+    // Run all count, find, and KPI aggregations concurrently in parallel
+    const [
+      total,
+      unseenCount,
+      transactions,
+      totalDeposits,
+      totalWithdrawals,
+      totalRoi,
+      totalReferral,
+    ] = await Promise.all([
+      Transaction.countDocuments(query),
+      Transaction.countDocuments({ isSeenByAdmin: false }),
+      Transaction.find(query).sort({ createdAt: -1 }).skip(skip).limit(limitNum).lean(),
+      Transaction.aggregate([
+        { $match: { type: "Deposit", status: "Approved" } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+      Transaction.aggregate([
+        { $match: { type: "Withdrawal", status: "Approved" } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+      Transaction.aggregate([
+        { $match: { type: { $in: ["ROI Return", "ROI Earning"] } } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+      Transaction.aggregate([
+        { $match: { type: { $in: ["Referral Bonus", "Rank Bonus"] } } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
     ]);
 
     res.status(200).json({
@@ -126,12 +132,12 @@ exports.approveTransaction = async (req, res) => {
     transaction.rejectReason = "";
     await transaction.save();
 
-    // If Deposit, credit user depositWallet & trigger automated notification
+    // If Deposit, credit user depositWallet & trigger automated notification asynchronously
     if (transaction.type === "Deposit" && transaction.user) {
       await User.findByIdAndUpdate(transaction.user, {
         $inc: { depositWallet: transaction.amount },
       });
-      await notifyUser({
+      notifyUser({
         userId: transaction.user,
         title: "Deposit Approved & Vault Credited",
         message: `Your deposit of $${Number(transaction.amount || 0).toLocaleString()} via ${transaction.gateway || "Vault"} has been verified and credited to your Deposit Wallet.`,
@@ -141,15 +147,15 @@ exports.approveTransaction = async (req, res) => {
         actionUrl: "/transactions",
         metadata: { amount: transaction.amount, transactionId: transaction.customId },
         settingKey: "autoDepositApproval",
-      });
+      }).catch((err) => console.warn("[Notification] Deposit approved notice warning:", err.message));
     }
 
-    // If Withdrawal, increment totalWithdrawn & trigger automated notification
+    // If Withdrawal, increment totalWithdrawn & trigger automated notification asynchronously
     if (transaction.type === "Withdrawal" && transaction.user) {
       await User.findByIdAndUpdate(transaction.user, {
         $inc: { totalWithdrawn: transaction.amount },
       });
-      await notifyUser({
+      notifyUser({
         userId: transaction.user,
         title: "Withdrawal Approved & Dispatched",
         message: `Your withdrawal of $${Number(transaction.amount || 0).toLocaleString()} via ${transaction.gateway || "Blockchain"} has cleared and the payout was processed.`,
@@ -159,7 +165,7 @@ exports.approveTransaction = async (req, res) => {
         actionUrl: "/transactions",
         metadata: { amount: transaction.amount, transactionId: transaction.customId },
         settingKey: "autoWithdrawalBroadcast",
-      });
+      }).catch((err) => console.warn("[Notification] Withdrawal approved notice warning:", err.message));
     }
 
     res.status(200).json({
@@ -201,9 +207,9 @@ exports.rejectTransaction = async (req, res) => {
     transaction.rejectReason = reason || "Verification failed / Invalid receipt.";
     await transaction.save();
 
-    // Trigger rejection notification
+    // Trigger rejection notification asynchronously
     if (transaction.user) {
-      await notifyUser({
+      notifyUser({
         userId: transaction.user,
         title: `${transaction.type} Request Rejected`,
         message: `Your ${transaction.type.toLowerCase()} request of $${Number(transaction.amount || 0).toLocaleString()} was rejected: ${transaction.rejectReason}`,
@@ -212,7 +218,7 @@ exports.rejectTransaction = async (req, res) => {
         priority: "NORMAL",
         actionUrl: "/transactions",
         metadata: { amount: transaction.amount, reason: transaction.rejectReason },
-      });
+      }).catch((err) => console.warn("[Notification] Rejection notice warning:", err.message));
     }
 
     res.status(200).json({

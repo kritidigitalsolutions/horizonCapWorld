@@ -475,6 +475,91 @@ export default function Referrals() {
       {/* ──────────────── TAB 2: MULTI-TIER COMMISSION STRUCTURE & PLANS ──────────────── */}
       {activeTab === 'plans' && (
         <div className="space-y-6 font-poppins">
+          {/* ──────── 1. LEVEL ROI PER DAY INCOME SPREADSHEET TABLE ──────── */}
+          <div className="card overflow-hidden shadow-xs border border-gold-300">
+            {/* Bright Yellow Header Banner matching spreadsheet */}
+            <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 px-4 py-3 flex items-center justify-between text-slate-950 font-poppins">
+              <div className="flex items-center gap-2">
+                <RiCoinsLine size={20} className="text-slate-950" />
+                <h3 className="text-sm sm:text-base font-black uppercase tracking-wider">
+                  Level ROI Per day Income
+                </h3>
+              </div>
+              <span className="text-xs font-black bg-slate-950 text-gold-300 px-3 py-1 rounded-full uppercase tracking-wider">
+                {commissions.length} Active Levels
+              </span>
+            </div>
+
+            {/* Spreadsheet Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left font-poppins">
+                <thead>
+                  <tr className="bg-amber-100/70 border-b border-amber-200 text-[11px] font-black text-slate-900 uppercase tracking-wider">
+                    <th className="py-3 px-4 text-center w-20">Levels</th>
+                    <th className="py-3 px-4 text-center w-28">Deposit in $</th>
+                    <th className="py-3 px-4 text-center w-28">Profit in $</th>
+                    <th className="py-3 px-4 text-center w-36 text-amber-950">ROI per Day in $</th>
+                    <th className="py-3 px-4">Eligible Conditions</th>
+                    <th className="py-3 px-4 text-right pr-6 w-36">My Eligibility</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-amber-100/70 font-medium text-slate-800">
+                  {commissions.map((tier) => {
+                    const levelNum = tier.levelNumber || parseInt(String(tier.level).replace('L', ''), 10) || 1;
+                    const depAmt = Number(tier.depositAmount || 0);
+                    const profitAmt = Number(tier.profitAmount || 0);
+                    const roiDay = Number(tier.roiPerDay || 0.08);
+                    const conditions = tier.eligibleConditions || (tier.directClientsMin || tier.groupVolumeMin ? `Group Volume Min.${Number(tier.groupVolumeMin).toLocaleString()}$, ${tier.directClientsMin} Direct Clients` : 'No Condition');
+
+                    const userDirects = Number(overviewData?.directReferralsCount || networkList.filter(u => u.level === 1).length || 0);
+                    const userVolume = Number(overviewData?.totalTeamVolume || networkList.reduce((sum, u) => sum + Number(u.invested || 0), 0) || 0);
+                    const minVol = Number(tier.groupVolumeMin || 0);
+                    const minDir = Number(tier.directClientsMin || 0);
+
+                    const isEligible = (minVol === 0 && minDir === 0) || (userVolume >= minVol && userDirects >= minDir);
+
+                    return (
+                      <tr key={tier._id || tier.level} className="hover:bg-amber-50/50 transition-colors">
+                        <td className="py-3 px-4 text-center font-bold text-slate-900 font-mono text-sm bg-amber-50/30">
+                          {levelNum}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono font-semibold text-slate-700">
+                          {depAmt > 0 ? depAmt.toLocaleString() : (depAmt === 0 ? '0' : '')}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono font-semibold text-slate-700">
+                          {profitAmt > 0 ? profitAmt.toLocaleString() : '0'}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono font-extrabold text-amber-900 text-sm">
+                          {roiDay}
+                        </td>
+                        <td className="py-3 px-4 text-xs font-semibold text-slate-700">
+                          <span className={`inline-block px-2.5 py-1 rounded-lg ${
+                            conditions.toLowerCase().includes('no condition')
+                              ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                              : 'bg-amber-100/60 text-amber-900 border border-amber-200/80'
+                          }`}>
+                            {conditions}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right pr-6">
+                          {isEligible ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-300 shadow-2xs">
+                              <RiCheckLine size={13} className="font-black" /> Unlocked
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-[11px] font-semibold border border-slate-200">
+                              {userDirects}/{minDir} Directs
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           {(depositEnabled || roiShareEnabled) ? (
             <div className={`grid grid-cols-1 ${depositEnabled && roiShareEnabled ? 'md:grid-cols-2' : ''} gap-6`}>
               {/* 1. Direct Investment Deposit Commission Box */}

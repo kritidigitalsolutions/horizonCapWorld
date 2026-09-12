@@ -5,9 +5,9 @@ import { createWithdrawal } from '../api/withdrawalsApi';
 import PageHeader from '../components/ui/PageHeader';
 
 const withdrawMethods = [
-  { id: 'usdt-trc20', name: 'USDT (TRC20)', minWithdraw: 10 },
-  { id: 'btc', name: 'Bitcoin (BTC)', minWithdraw: 50 },
-  { id: 'bank', name: 'Bank Wire Transfer', minWithdraw: 100 },
+  { id: 'usdt-trc20', name: 'USDT (TRC20)', minWithdraw: 5 },
+  { id: 'btc', name: 'Bitcoin (BTC)', minWithdraw: 5 },
+  { id: 'bank', name: 'Bank Wire Transfer', minWithdraw: 5 },
 ];
 
 export default function Withdraw() {

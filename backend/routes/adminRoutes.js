@@ -66,6 +66,7 @@ const {
   updateReferralToggles,
   createReferralTier,
   updateReferralSetting,
+  bulkUpdateReferralSettings,
   deleteReferralTier,
   getPromotersNetwork,
 } = require("../controllers/admin/adminReferralsController");
@@ -74,6 +75,7 @@ const {
   getAllRanks,
   createRank,
   updateRank,
+  bulkUpdateRanks,
   deleteRank,
   getAchieversLeaderboard,
 } = require("../controllers/admin/adminRanksController");
@@ -155,6 +157,7 @@ router.delete("/users/:id", protectAdmin, deleteUser);
 router.get("/referrals/settings", protectAdmin, getReferralSettings);
 router.put("/referrals/toggles", protectAdmin, updateReferralToggles);
 router.post("/referrals/tiers", protectAdmin, createReferralTier);
+router.put("/referrals/bulk-settings", protectAdmin, bulkUpdateReferralSettings);
 router.put("/referrals/settings/:id", protectAdmin, updateReferralSetting);
 router.delete("/referrals/tiers/:id", protectAdmin, deleteReferralTier);
 router.get("/referrals/promoters", protectAdmin, getPromotersNetwork);
@@ -162,6 +165,7 @@ router.get("/referrals/promoters", protectAdmin, getPromotersNetwork);
 // ──────── 8. RANKS PROGRESSION LADDER ────────
 router.get("/ranks", protectAdmin, getAllRanks);
 router.post("/ranks", protectAdmin, createRank);
+router.put("/ranks/bulk", protectAdmin, bulkUpdateRanks);
 router.put("/ranks/:id", protectAdmin, updateRank);
 router.delete("/ranks/:id", protectAdmin, deleteRank);
 router.get("/ranks/leaderboard", protectAdmin, getAchieversLeaderboard);

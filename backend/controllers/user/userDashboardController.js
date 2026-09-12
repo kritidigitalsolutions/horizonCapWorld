@@ -77,7 +77,7 @@ exports.getDashboardOverview = async (req, res) => {
       totalReferrals: user.totalReferrals || 0,
       directReferrals: user.directReferrals || 0,
       teamTurnover: user.teamTurnover || 0,
-      currentRank: user.currentRank || "Bronze Explorer",
+      currentRank: user.currentRank || "Associate",
       rankLevel: user.rankLevel || 1,
       sponsorId: user.sponsorId || "HORIZON-HQ",
       customId: user.customId || "HORIZON-USR-01",

@@ -29,14 +29,17 @@ exports.getAllUsers = async (req, res) => {
     const limitNum = parseInt(limit, 10) || 20;
     const skip = (pageNum - 1) * limitNum;
 
-    const total = await User.countDocuments(query);
-    const activeCount = await User.countDocuments({ status: "Active" });
-    const unseenCount = await User.countDocuments({ isSeenByAdmin: false });
-    const users = await User.find(query)
-      .select("-password")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+    const [total, activeCount, unseenCount, users] = await Promise.all([
+      User.countDocuments(query),
+      User.countDocuments({ status: "Active" }),
+      User.countDocuments({ isSeenByAdmin: false }),
+      User.find(query)
+        .select("-password")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+    ]);
 
     res.status(200).json({
       success: true,

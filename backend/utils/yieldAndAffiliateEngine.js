@@ -119,6 +119,31 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
       return;
     }
 
+    // Direct investment referral bonus is ONLY eligible on the user's FIRST investment
+    if (commissionType === "investment") {
+      if (investor.hasReceivedReferralBonus) {
+        console.log(`[Affiliate Engine] Investor ${investor.customId || investor.name} has already received referral bonus for their 1st investment. Skipping subsequent investment.`);
+        return;
+      }
+
+      // Check if investor already has more than 1 investment or previous referral bonus transactions
+      const invCount = await UserInvestment.countDocuments({ user: investor._id });
+      const existingRefTxn = await Transaction.findOne({
+        type: "Referral Bonus",
+        note: { $regex: investor.customId, $options: "i" },
+      });
+
+      if (invCount > 1 || existingRefTxn) {
+        console.log(`[Affiliate Engine] Investor ${investor.customId || investor.name} already completed their 1st investment previously. Skipping.`);
+        investor.hasReceivedReferralBonus = true;
+        if (!investor.firstInvestmentAmount) {
+          investor.firstInvestmentAmount = amount;
+        }
+        await investor.save();
+        return;
+      }
+    }
+
     // Load only active referral tiers ordered by levelNumber
     const refSettings = await ReferralSetting.find({ status: { $ne: "Inactive" } }).sort({ levelNumber: 1 });
     if (!refSettings || refSettings.length === 0) return;
@@ -148,7 +173,7 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
         }
         await sponsor.save();
 
-        const typeLabel = commissionType === "investment" ? "Deposit Commission" : "Daily ROI Profit Share";
+        const typeLabel = commissionType === "investment" ? "1st Investment Deposit Commission" : "Daily ROI Profit Share";
 
         await Transaction.create({
           user: sponsor._id,
@@ -169,6 +194,15 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
       }
 
       currentSponsorId = sponsor.sponsorId;
+    }
+
+    // Mark that 1st investment referral bonus has been distributed for this investor
+    if (commissionType === "investment") {
+      investor.hasReceivedReferralBonus = true;
+      if (!investor.firstInvestmentAmount) {
+        investor.firstInvestmentAmount = amount;
+      }
+      await investor.save();
     }
   } catch (error) {
     console.error("[Affiliate Engine] distributeReferralCommissions error:", error.message);

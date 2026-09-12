@@ -24,6 +24,12 @@ export const updateReferralSetting = async (id, tierData) => {
   return response.data;
 };
 
+// Bulk update all referral tier settings
+export const bulkUpdateReferralSettings = async (tiers) => {
+  const response = await API.put('/admin/referrals/bulk-settings', { tiers });
+  return response.data;
+};
+
 // Delete a custom referral tier level
 export const deleteReferralTier = async (id) => {
   const response = await API.delete(`/admin/referrals/tiers/${id}`);

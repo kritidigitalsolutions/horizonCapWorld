@@ -59,7 +59,7 @@ const userSchema = new mongoose.Schema(
     },
     currentRank: {
       type: String,
-      default: "Bronze Explorer",
+      default: "Associate",
     },
     rankLevel: {
       type: Number,
@@ -76,6 +76,14 @@ const userSchema = new mongoose.Schema(
     totalInvested: {
       type: Number,
       default: 0,
+    },
+    firstInvestmentAmount: {
+      type: Number,
+      default: 0,
+    },
+    hasReceivedReferralBonus: {
+      type: Boolean,
+      default: false,
     },
     totalProfit: {
       type: Number,

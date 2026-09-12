@@ -41,6 +41,7 @@ export default function Transactions() {
   const [isRejecting, setIsRejecting] = useState(false);
   const [customRejectReason, setCustomRejectReason] = useState('');
   const [actionSuccessMsg, setActionSuccessMsg] = useState('');
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
@@ -165,7 +166,8 @@ export default function Transactions() {
 
   // ──────────────── ADMIN APPROVE DEPOSIT ACTION ────────────────
   const handleApproveDeposit = async (txn) => {
-    if (!txn) return;
+    if (!txn || isActionLoading) return;
+    setIsActionLoading(true);
     const amountNum = txn.rawAmount || parseAmount(txn.amount);
 
     try {
@@ -173,55 +175,20 @@ export default function Transactions() {
         await approveTransaction(txn._id);
       }
     } catch (err) {
-      console.warn('API approve offline, updating local cache:', err.message);
+      console.warn('API approve error:', err.message);
     }
 
-    const updatedList = txnList.map(t => {
-      if (t.id === txn.id) {
-        return {
-          ...t,
-          status: 'Approved',
-          netAmount: typeof t.amount === 'number' ? `$${t.amount.toFixed(2)}` : t.amount,
-          approvedAt: new Date().toLocaleString(),
-          adminApprovedBy: 'Super Admin',
-        };
-      }
-      return t;
-    });
+    // Instantly refresh the entire transactions table & metrics from backend
+    await fetchTxns();
 
-    setTxnList(updatedList);
-    localStorage.setItem('horizon_transactions', JSON.stringify(updatedList));
+    // Close review modal and reset state
+    setSelectedTxn(null);
+    setIsRejecting(false);
+    setIsActionLoading(false);
 
-    // Automatically Credit Client's Deposit Wallet in horizon_user
-    try {
-      const savedUser = localStorage.getItem('horizon_user');
-      if (savedUser) {
-        const userObj = JSON.parse(savedUser);
-        const currentDeposit = parseFloat(userObj.depositWallet || 0);
-        const newDeposit = currentDeposit + amountNum;
-        const updatedUser = {
-          ...userObj,
-          depositWallet: newDeposit,
-          totalInvested: (parseFloat(userObj.totalInvested || 0) + amountNum)
-        };
-        localStorage.setItem('horizon_user', JSON.stringify(updatedUser));
-        window.dispatchEvent(new CustomEvent('horizon-user-update', { detail: updatedUser }));
-        window.dispatchEvent(new CustomEvent('storage'));
-      }
-    } catch (e) {
-      console.error('Error updating user wallet:', e);
-    }
-
-    window.dispatchEvent(new CustomEvent('horizon-transactions-change', { detail: updatedList }));
-
-    if (selectedTxn?.id === txn.id) {
-      setSelectedTxn({
-        ...selectedTxn,
-        status: 'Approved',
-        netAmount: typeof selectedTxn.amount === 'number' ? `$${selectedTxn.amount.toFixed(2)}` : selectedTxn.amount,
-        approvedAt: new Date().toLocaleString()
-      });
-    }
+    // Sync admin sidebar counters
+    window.dispatchEvent(new CustomEvent('admin-counters-update'));
+    window.dispatchEvent(new CustomEvent('horizon-transactions-change'));
 
     setActionSuccessMsg(`Deposit request ${txn.id} approved! $${amountNum.toLocaleString()} credited to ${txn.user || 'Investor'}'s wallet.`);
     setTimeout(() => setActionSuccessMsg(''), 4000);
@@ -229,7 +196,8 @@ export default function Transactions() {
 
   // ──────────────── ADMIN REJECT DEPOSIT ACTION ────────────────
   const handleRejectDeposit = async (txn, reason) => {
-    if (!txn) return;
+    if (!txn || isActionLoading) return;
+    setIsActionLoading(true);
     const finalReason = reason || customRejectReason || 'Payment verification failed / Transaction hash invalid';
 
     try {
@@ -237,37 +205,22 @@ export default function Transactions() {
         await rejectTransaction(txn._id, { reason: finalReason });
       }
     } catch (err) {
-      console.warn('API reject offline, updating local cache:', err.message);
+      console.warn('API reject error:', err.message);
     }
 
-    const updatedList = txnList.map(t => {
-      if (t.id === txn.id) {
-        return {
-          ...t,
-          status: 'Rejected',
-          rejectReason: finalReason,
-          rejectedAt: new Date().toLocaleString(),
-          adminRejectedBy: 'Super Admin'
-        };
-      }
-      return t;
-    });
+    // Instantly refresh the entire transactions table & metrics from backend
+    await fetchTxns();
 
-    setTxnList(updatedList);
-    localStorage.setItem('horizon_transactions', JSON.stringify(updatedList));
-    window.dispatchEvent(new CustomEvent('horizon-transactions-change', { detail: updatedList }));
-
-    if (selectedTxn?.id === txn.id) {
-      setSelectedTxn({
-        ...selectedTxn,
-        status: 'Rejected',
-        rejectReason: finalReason,
-        rejectedAt: new Date().toLocaleString()
-      });
-    }
-
+    // Close review modal and reset state
+    setSelectedTxn(null);
     setIsRejecting(false);
     setCustomRejectReason('');
+    setIsActionLoading(false);
+
+    // Sync admin sidebar counters
+    window.dispatchEvent(new CustomEvent('admin-counters-update'));
+    window.dispatchEvent(new CustomEvent('horizon-transactions-change'));
+
     setActionSuccessMsg(`Deposit request ${txn.id} marked as Rejected.`);
     setTimeout(() => setActionSuccessMsg(''), 4000);
   };
@@ -311,17 +264,15 @@ export default function Transactions() {
   // Export CSV Functionality
   const handleExportCSV = () => {
     if (filtered.length === 0) return;
-    const headers = ['TXN ID', 'Investor', 'User ID', 'Country', 'Type', 'Amount', 'Gateway', 'Date', 'Time', 'Status', 'Reference No'];
+    const headers = ['TXN ID', 'Investor', 'User ID', 'Type', 'Amount', 'Gateway', 'Date', 'Status', 'Reference No'];
     const rows = filtered.map(t => [
       t.id,
       `"${t.user || 'Investor'}"`,
       t.userCustomId || '',
-      `"${t.country || ''}"`,
       t.type,
       `"${t.amount}"`,
       `"${t.gateway || ''}"`,
       t.date,
-      t.time || '',
       t.status,
       `"${t.referenceNo || ''}"`
     ]);
@@ -588,12 +539,10 @@ export default function Transactions() {
                 <th className="font-medium text-slate-500 whitespace-nowrap">TXN ID</th>
                 <th className="font-medium text-slate-500 whitespace-nowrap">Investor</th>
                 <th className="font-medium text-slate-500 whitespace-nowrap">Email</th>
-                <th className="font-medium text-slate-500 whitespace-nowrap">Country</th>
                 <th className="font-medium text-slate-500 whitespace-nowrap">Type</th>
                 <th className="font-medium text-slate-500 whitespace-nowrap">Amount</th>
                 <th className="font-medium text-slate-500 whitespace-nowrap">Gateway / Channel</th>
-                <th className="font-medium text-slate-500 whitespace-nowrap">Proof Slip</th>
-                <th className="font-medium text-slate-500 whitespace-nowrap">Date & Time</th>
+                <th className="font-medium text-slate-500 whitespace-nowrap">Date</th>
                 <th className="font-medium text-slate-500 whitespace-nowrap">Status</th>
                 <th className="text-right pr-6 font-medium text-slate-500 whitespace-nowrap">Action</th>
               </tr>
@@ -646,16 +595,11 @@ export default function Transactions() {
                       </div>
                     </td>
 
-                    {/* 2. Investor Details */}
+                    {/* 2. Investor Details (Clean text without avatar circle) */}
                     <td className="whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-300 to-amber-500 text-slate-950 font-bold flex items-center justify-center flex-shrink-0 text-xs shadow-2xs">
-                          {(txn.user || 'Investor').charAt(0)}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-slate-800 text-xs">{txn.user || 'William Max'}</div>
-                          <div className="font-mono text-[10px] text-gold-700 font-bold">{userCustomId}</div>
-                        </div>
+                      <div>
+                        <div className="font-semibold text-slate-800 text-xs">{txn.user || 'William Max'}</div>
+                        <div className="font-mono text-[10px] text-gold-700 font-bold">{userCustomId}</div>
                       </div>
                     </td>
 
@@ -664,52 +608,29 @@ export default function Transactions() {
                       {txn.userEmail || 'investor@horizoncap.io'}
                     </td>
 
-                    {/* 4. Country */}
-                    <td className="whitespace-nowrap text-xs text-slate-700">
-                      {txn.country || 'India'}
-                    </td>
-
-                    {/* 5. Type */}
+                    {/* 4. Type */}
                     <td className="whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800">
                         {typeIcon(txn.type)} {txn.type}
                       </span>
                     </td>
 
-                    {/* 6. Amount */}
+                    {/* 5. Amount */}
                     <td className="whitespace-nowrap font-mono font-bold text-xs text-slate-900">
                       {formattedAmt}
                     </td>
 
-                    {/* 7. Gateway */}
+                    {/* 6. Gateway */}
                     <td className="whitespace-nowrap text-xs text-slate-600 font-medium">
                       {txn.gateway || 'System Direct'}
                     </td>
 
-                    {/* 8. Proof of Payment Doc */}
-                    <td className="whitespace-nowrap">
-                      {txn.proofOfPayment ? (
-                        <button
-                          type="button"
-                          onClick={() => setPreviewProofModal(txn.proofOfPayment)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gold-50 hover:bg-gold-100 text-gold-900 border border-gold-300 text-[11px] font-bold cursor-pointer transition-colors shadow-2xs"
-                        >
-                          {txn.proofOfPayment.isPdf ? <RiFilePdfLine size={13} className="text-red-500" /> : <RiImageLine size={13} className="text-emerald-600" />}
-                          <span>View Doc</span>
-                        </button>
-                      ) : (
-                        <span className="text-slate-400 text-[11px] font-mono">
-                          {txn.referenceNo ? 'Hash Only' : '—'}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* 9. Date & Time */}
+                    {/* 7. Date */}
                     <td className="whitespace-nowrap text-xs text-slate-500 font-mono">
-                      {txn.date} {txn.time ? `• ${txn.time}` : ''}
+                      {txn.date}
                     </td>
 
-                    {/* 10. Status */}
+                    {/* 8. Status */}
                     <td className="whitespace-nowrap">
                       <Badge variant={statusVariant(txn.status)} size="sm">
                         {isPending && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse mr-1 inline-block" />}
@@ -717,7 +638,7 @@ export default function Transactions() {
                       </Badge>
                     </td>
 
-                    {/* 11. Action Buttons */}
+                    {/* 9. Action Buttons */}
                     <td className="text-right pr-6 whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         {isPending ? (
@@ -764,7 +685,7 @@ export default function Transactions() {
 
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="text-center py-12 text-slate-400 text-xs font-medium">
+                  <td colSpan={9} className="text-center py-12 text-slate-400 text-xs font-medium">
                     No transactions found matching your filter criteria.
                   </td>
                 </tr>
@@ -785,7 +706,7 @@ export default function Transactions() {
       {/* ════════ REVIEW & ACTION POP-UP MODAL (selectedTxn) ════════ */}
       <Modal
         isOpen={!!selectedTxn}
-        onClose={() => { setSelectedTxn(null); setIsRejecting(false); }}
+        onClose={() => { if (!isActionLoading) { setSelectedTxn(null); setIsRejecting(false); } }}
         title={selectedTxn?.type === 'Deposit' ? 'Deposit Request Verification & Audit' : 'Transaction Audit Slip'}
         subtitle={`Transaction ID: ${selectedTxn?.id || ''}`}
         size="lg"
@@ -797,6 +718,7 @@ export default function Transactions() {
                 size="sm"
                 icon={<RiPrinterLine />}
                 onClick={() => handlePrintSingleReceipt(selectedTxn)}
+                disabled={isActionLoading}
               >
                 Print Receipt
               </Button>
@@ -807,17 +729,29 @@ export default function Transactions() {
                 <>
                   <button
                     type="button"
+                    disabled={isActionLoading}
                     onClick={() => setIsRejecting(true)}
-                    className="btn px-4 py-2.5 rounded-xl border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                    className="btn px-4 py-2.5 rounded-xl border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     <RiCloseLine size={16} /> Reject Deposit
                   </button>
                   <button
                     type="button"
+                    disabled={isActionLoading}
                     onClick={() => handleApproveDeposit(selectedTxn)}
-                    className="btn btn-primary px-5 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 text-white"
+                    className="btn btn-primary px-5 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 text-white disabled:opacity-60"
                   >
-                    <RiCheckLine size={16} /> Approve & Credit Wallet
+                    {isActionLoading ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RiCheckLine size={16} />
+                        <span>Approve & Credit Wallet</span>
+                      </>
+                    )}
                   </button>
                 </>
               ) : (

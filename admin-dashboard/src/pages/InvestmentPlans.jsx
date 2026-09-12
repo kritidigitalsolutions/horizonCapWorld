@@ -39,11 +39,10 @@ import {
 
 // Default standard Amount-Wise Daily ROI Percentage Slabs requested by client
 export const DEFAULT_ROI_SLABS = [
-  { minAmount: 10, maxAmount: 49, noMaxLimit: false, dailyRoi: 0.25, monthlyRoi: 7.5, annualRoi: 90 },
-  { minAmount: 50, maxAmount: 99, noMaxLimit: false, dailyRoi: 0.35, monthlyRoi: 10.5, annualRoi: 126 },
-  { minAmount: 100, maxAmount: 499, noMaxLimit: false, dailyRoi: 0.55, monthlyRoi: 16.5, annualRoi: 198 },
-  { minAmount: 500, maxAmount: 1500, noMaxLimit: false, dailyRoi: 0.75, monthlyRoi: 22.5, annualRoi: 270 },
-  { minAmount: 1500, maxAmount: "", noMaxLimit: true, dailyRoi: 1.0, monthlyRoi: 30.0, annualRoi: 360 },
+  { minAmount: 10, maxAmount: 100, noMaxLimit: false, dailyRoi: 0.3, lockInDailyRoi: 0.4, monthlyRoi: 9.0, lockInMonthlyRoi: 12.0, annualRoi: 108.0, lockInAnnualRoi: 144.0 },
+  { minAmount: 101, maxAmount: 500, noMaxLimit: false, dailyRoi: 0.5, lockInDailyRoi: 0.6, monthlyRoi: 15.0, lockInMonthlyRoi: 18.0, annualRoi: 180.0, lockInAnnualRoi: 216.0 },
+  { minAmount: 501, maxAmount: 5000, noMaxLimit: false, dailyRoi: 0.8, lockInDailyRoi: 0.9, monthlyRoi: 24.0, lockInMonthlyRoi: 27.0, annualRoi: 288.0, lockInAnnualRoi: 324.0 },
+  { minAmount: 5001, maxAmount: "", noMaxLimit: true, dailyRoi: 1.0, lockInDailyRoi: 1.1, monthlyRoi: 30.0, lockInMonthlyRoi: 33.0, annualRoi: 360.0, lockInAnnualRoi: 396.0 },
 ];
 
 // Default Reward (Loyalty Bonus) Slabs based on Capital not withdrawn
@@ -136,9 +135,13 @@ export default function InvestmentPlans() {
     category: "Renewable Energy",
     customCategory: "",
     roiType: "slab", // "slab" | "fixed"
-    roi: "7.5", // Monthly ROI (%)
-    dailyRoi: "0.25", // Daily ROI (%)
+    roi: "9.0", // Monthly ROI (%)
+    dailyRoi: "0.3", // Daily ROI (%)
     roiSlabs: DEFAULT_ROI_SLABS,
+    minDepositAmount: "10",
+    minWithdrawalAmount: "5",
+    hasLockInOption: true,
+    lockInPeriodDays: 90,
     loyaltyBonusEnabled: true,
     loyaltyBonusTitle: "Reward ( Loyalty Bonus )",
     loyaltyBonusDescription: "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
@@ -192,9 +195,13 @@ export default function InvestmentPlans() {
       category: "Renewable Energy",
       customCategory: "",
       roiType: "slab",
-      roi: "7.5",
-      dailyRoi: "0.25",
+      roi: "9.0",
+      dailyRoi: "0.3",
       roiSlabs: DEFAULT_ROI_SLABS.map((s) => ({ ...s })),
+      minDepositAmount: "10",
+      minWithdrawalAmount: "5",
+      hasLockInOption: true,
+      lockInPeriodDays: 90,
       loyaltyBonusEnabled: true,
       loyaltyBonusTitle: "Reward ( Loyalty Bonus )",
       loyaltyBonusDescription: "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
@@ -229,14 +236,23 @@ export default function InvestmentPlans() {
 
     const slabs =
       Array.isArray(plan.roiSlabs) && plan.roiSlabs.length > 0
-        ? plan.roiSlabs.map((s) => ({
-            minAmount: s.minAmount,
-            maxAmount: s.maxAmount || "",
-            noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
-            dailyRoi: s.dailyRoi || Number(((s.monthlyRoi || plan.roi || 7.5) / 30).toFixed(3)),
-            monthlyRoi: s.monthlyRoi || Number(((s.dailyRoi || 0.25) * 30).toFixed(2)),
-            annualRoi: s.annualRoi || Number(((s.dailyRoi || 0.25) * 360).toFixed(2)),
-          }))
+        ? plan.roiSlabs.map((s) => {
+            const d = Number(s.dailyRoi) || 0.3;
+            const lockInD = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null
+              ? Number(s.lockInDailyRoi)
+              : Number((d + 0.1).toFixed(3));
+            return {
+              minAmount: s.minAmount,
+              maxAmount: s.maxAmount || "",
+              noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
+              dailyRoi: d,
+              lockInDailyRoi: lockInD,
+              monthlyRoi: s.monthlyRoi || Number((d * 30).toFixed(2)),
+              lockInMonthlyRoi: s.lockInMonthlyRoi || Number((lockInD * 30).toFixed(2)),
+              annualRoi: s.annualRoi || Number((d * 360).toFixed(2)),
+              lockInAnnualRoi: s.lockInAnnualRoi || Number((lockInD * 360).toFixed(2)),
+            };
+          })
         : DEFAULT_ROI_SLABS.map((s) => ({ ...s }));
 
     const loyaltySlabs =
@@ -253,14 +269,18 @@ export default function InvestmentPlans() {
       category: isCustomCat ? "custom" : plan.category || "Renewable Energy",
       customCategory: isCustomCat ? plan.category : "",
       roiType: plan.roiType || (plan.roiSlabs?.length > 0 ? "slab" : "fixed"),
-      roi: plan.roi !== undefined ? plan.roi.toString() : "7.5",
+      roi: plan.roi !== undefined ? plan.roi.toString() : "9.0",
       dailyRoi:
         plan.dailyRoi !== undefined
           ? plan.dailyRoi.toString()
           : plan.roi !== undefined
           ? (Number(plan.roi) / 30).toFixed(3)
-          : "0.25",
+          : "0.3",
       roiSlabs: slabs,
+      minDepositAmount: plan.minDepositAmount ? plan.minDepositAmount.toString() : "10",
+      minWithdrawalAmount: plan.minWithdrawalAmount ? plan.minWithdrawalAmount.toString() : "5",
+      hasLockInOption: plan.hasLockInOption !== false,
+      lockInPeriodDays: plan.lockInPeriodDays || 90,
       loyaltyBonusEnabled: plan.loyaltyBonusEnabled !== false,
       loyaltyBonusTitle: plan.loyaltyBonusTitle || "Reward ( Loyalty Bonus )",
       loyaltyBonusDescription: plan.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
@@ -290,6 +310,16 @@ export default function InvestmentPlans() {
       const numDaily = parseFloat(value) || 0;
       item.monthlyRoi = parseFloat((numDaily * 30).toFixed(2));
       item.annualRoi = parseFloat((numDaily * 360).toFixed(2));
+      if (!item.lockInDailyRoi || parseFloat(item.lockInDailyRoi) <= numDaily) {
+        item.lockInDailyRoi = parseFloat((numDaily + 0.1).toFixed(2));
+        item.lockInMonthlyRoi = parseFloat(((numDaily + 0.1) * 30).toFixed(2));
+        item.lockInAnnualRoi = parseFloat(((numDaily + 0.1) * 360).toFixed(2));
+      }
+    } else if (field === "lockInDailyRoi") {
+      item.lockInDailyRoi = value;
+      const numLock = parseFloat(value) || 0;
+      item.lockInMonthlyRoi = parseFloat((numLock * 30).toFixed(2));
+      item.lockInAnnualRoi = parseFloat((numLock * 360).toFixed(2));
     } else if (field === "monthlyRoi") {
       item.monthlyRoi = value;
       const numMonthly = parseFloat(value) || 0;
@@ -318,12 +348,12 @@ export default function InvestmentPlans() {
     const lastIndex = slabs.length - 1;
     const last = slabs[lastIndex];
 
-    let newMin = 1500;
+    let newMin = 5001;
     if (last) {
       const lastMin = Number(last.minAmount) || 0;
       let prevMax = Number(last.maxAmount);
       if (!prevMax || prevMax <= lastMin || last.noMaxLimit) {
-        prevMax = lastMin + 999;
+        prevMax = lastMin + 4999;
         last.maxAmount = String(prevMax);
       }
       last.noMaxLimit = false;
@@ -331,15 +361,19 @@ export default function InvestmentPlans() {
     }
 
     const prevDaily = last ? Number(last.dailyRoi) || 1.0 : 1.0;
-    const newDaily = parseFloat((prevDaily + 0.25).toFixed(2));
+    const newDaily = parseFloat((prevDaily + 0.2).toFixed(2));
+    const newLockInDaily = parseFloat((newDaily + 0.1).toFixed(2));
 
     const newSlab = {
       minAmount: String(newMin),
       maxAmount: "",
       noMaxLimit: true,
       dailyRoi: String(newDaily),
+      lockInDailyRoi: String(newLockInDaily),
       monthlyRoi: parseFloat((newDaily * 30).toFixed(2)),
+      lockInMonthlyRoi: parseFloat((newLockInDaily * 30).toFixed(2)),
       annualRoi: parseFloat((newDaily * 360).toFixed(2)),
+      lockInAnnualRoi: parseFloat((newLockInDaily * 360).toFixed(2)),
     };
 
     setFormData({
@@ -396,13 +430,19 @@ export default function InvestmentPlans() {
     const processedSlabs = isSlab
       ? formData.roiSlabs.map((s) => {
           const d = Number(s.dailyRoi) || 0;
+          const lockInD = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null && s.lockInDailyRoi !== ""
+            ? Number(s.lockInDailyRoi)
+            : Number((d + 0.1).toFixed(3));
           return {
             minAmount: Number(s.minAmount) || 0,
-            maxAmount: s.noMaxLimit ? null : Number(s.maxAmount) || null,
+            maxAmount: s.noMaxLimit ? null : (s.maxAmount ? Number(s.maxAmount) : null),
             noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
             dailyRoi: d,
+            lockInDailyRoi: lockInD,
             monthlyRoi: Number((d * 30).toFixed(2)),
+            lockInMonthlyRoi: Number((lockInD * 30).toFixed(2)),
             annualRoi: Number((d * 360).toFixed(2)),
+            lockInAnnualRoi: Number((lockInD * 360).toFixed(2)),
           };
         })
       : [];
@@ -431,7 +471,7 @@ export default function InvestmentPlans() {
 
     const roiVal = isSlab && processedSlabs.length > 0
       ? processedSlabs[0].monthlyRoi
-      : parseFloat(formData.roi) || 7.5;
+      : parseFloat(formData.roi) || 9.0;
 
     const dailyRoiVal = isSlab && processedSlabs.length > 0
       ? processedSlabs[0].dailyRoi
@@ -460,6 +500,10 @@ export default function InvestmentPlans() {
       roi: roiVal,
       dailyRoi: dailyRoiVal,
       roiSlabs: processedSlabs,
+      minDepositAmount: parseFloat(formData.minDepositAmount) || 10,
+      minWithdrawalAmount: parseFloat(formData.minWithdrawalAmount) || 5,
+      hasLockInOption: formData.hasLockInOption !== false,
+      lockInPeriodDays: Number(formData.lockInPeriodDays) || 90,
       loyaltyBonusEnabled: formData.loyaltyBonusEnabled,
       loyaltyBonusTitle: formData.loyaltyBonusTitle,
       loyaltyBonusDescription: formData.loyaltyBonusDescription,
@@ -646,28 +690,26 @@ export default function InvestmentPlans() {
                         size={15}
                         className="text-amber-500 animate-pulse"
                       />
-                      {hasSlabs ? "Daily ROI Slabs" : "Daily / Monthly ROI"}
+                      ROI Slabs Per Day
                     </span>
                     <div className="text-right">
                       <span className="text-sm sm:text-base font-extrabold text-emerald-700 font-display">
                         {hasSlabs
-                          ? `${minSlabDaily}% – ${maxSlabDaily}% Daily`
-                          : `${((plan.dailyRoi || plan.roi / 30) || 0.25).toFixed(2)}% Daily`}
+                          ? `${minSlabDaily}% – ${maxSlabDaily}% / day`
+                          : `${((plan.dailyRoi || plan.roi / 30) || 0.3).toFixed(2)}% / day`}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40">
-                    <span>Monthly / Annual Range</span>
-                    <span className="font-bold text-gray-800 font-mono">
-                      {hasSlabs
-                        ? `${minSlabMonthly}% – ${maxSlabMonthly}% / mo`
-                        : `${plan.roi}% / mo (${(Number(plan.roi || 0) * 12).toFixed(1)}% APY)`}
+                    <span>3 Months Lock-In Boost</span>
+                    <span className="font-bold text-amber-700 font-mono">
+                      +0.10% / day ({((Number(minSlabDaily) + 0.1)).toFixed(2)}% – {((Number(maxSlabDaily) + 0.1)).toFixed(2)}%)
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
-                    <span>Payout Mode</span>
+                    <span>Deposit &bull; Withdrawal Min</span>
                     <span className="font-semibold text-gray-800 font-mono">
-                      {plan.payoutInterval || "Per Second (Live)"}
+                      Min Dep: ${plan.minDepositAmount || 10} &bull; Min WD: ${plan.minWithdrawalAmount || 5}
                     </span>
                   </div>
                 </div>
@@ -688,7 +730,7 @@ export default function InvestmentPlans() {
 
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
-                      <RiTimeLine size={16} /> Duration
+                      <RiTimeLine size={16} /> Duration & Lock-In
                     </span>
                     <span className="font-bold text-gray-800 text-xs flex items-center gap-1">
                       {isPlanInfinite ? (
@@ -696,7 +738,7 @@ export default function InvestmentPlans() {
                           <span>∞</span> Lifetime
                         </span>
                       ) : (
-                        plan.duration
+                        `${plan.duration || "12 Months"} (3 Mo Lock-In Option)`
                       )}
                     </span>
                   </div>
@@ -719,11 +761,11 @@ export default function InvestmentPlans() {
                       onClick={() =>
                         setExpandedSlabsPlanId(isExpanded ? null : plan._id)
                       }
-                      className="w-full py-1.5 px-2.5 rounded-lg bg-gold-100/50 hover:bg-gold-100 text-gold-900 border border-gold-300/70 text-[11px] font-bold flex items-center justify-between transition-all"
+                      className="w-full py-1.5 px-2.5 rounded-lg bg-yellow-400/90 hover:bg-yellow-400 text-gray-950 border border-yellow-500 text-[11px] font-extrabold flex items-center justify-between transition-all shadow-2xs"
                     >
                       <span className="flex items-center gap-1.5">
-                        <RiStackLine size={14} className="text-gold-600" />
-                        <span>View 5 Amount-Wise ROI Slabs</span>
+                        <RiStackLine size={14} className="text-gray-950" />
+                        <span>ROI Slabs Per Day (Without vs 3 Mo Lock-In)</span>
                       </span>
                       {isExpanded ? (
                         <RiArrowUpSLine size={16} />
@@ -733,31 +775,43 @@ export default function InvestmentPlans() {
                     </button>
 
                     {isExpanded && (
-                      <div className="mt-2 p-2.5 bg-slate-50 rounded-xl border border-gold-200 space-y-1.5 animate-fade-in text-[11px]">
-                        <div className="grid grid-cols-3 font-bold text-gray-500 uppercase text-[9.5px] pb-1 border-b border-gray-200">
-                          <span>Amount Slab</span>
-                          <span className="text-center">Daily ROI</span>
-                          <span className="text-right">Monthly (Annual)</span>
+                      <div className="mt-2 overflow-hidden rounded-xl border border-yellow-400 shadow-xs bg-white text-[11px] animate-fade-in">
+                        {/* Yellow Banner Header matching Spreadsheet */}
+                        <div className="bg-yellow-300 py-1.5 px-3 text-center text-xs font-black text-gray-950 uppercase tracking-wide border-b border-yellow-400">
+                          ROI Slabs Per Day
                         </div>
-                        {slabsList.map((slab, idx) => (
-                          <div
-                            key={idx}
-                            className="grid grid-cols-3 items-center py-1 border-b border-gray-100 last:border-none"
-                          >
-                            <span className="font-semibold text-gray-800">
-                              ${slab.minAmount} —{" "}
-                              {slab.noMaxLimit || !slab.maxAmount
-                                ? "$1500++"
-                                : `$${slab.maxAmount}`}
-                            </span>
-                            <span className="text-center font-bold text-emerald-600 font-mono">
-                              {slab.dailyRoi}% / d
-                            </span>
-                            <span className="text-right font-semibold text-gray-600 font-mono">
-                              {slab.monthlyRoi || (slab.dailyRoi * 30).toFixed(1)}% ({slab.annualRoi || (slab.dailyRoi * 360).toFixed(0)}%)
-                            </span>
-                          </div>
-                        ))}
+                        <div className="grid grid-cols-3 font-bold text-gray-700 bg-yellow-50/60 text-[10px] py-1.5 px-2.5 border-b border-yellow-200 text-center">
+                          <span className="text-left">Amount</span>
+                          <span>Without Lock In</span>
+                          <span className="text-right">3 Months Lock In</span>
+                        </div>
+                        {slabsList.map((slab, idx) => {
+                          const lockInRate = slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null
+                            ? slab.lockInDailyRoi
+                            : Number((Number(slab.dailyRoi || 0.3) + 0.1).toFixed(2));
+                          return (
+                            <div
+                              key={idx}
+                              className="grid grid-cols-3 items-center py-1.5 px-2.5 border-b border-gray-100 last:border-none text-[11px] hover:bg-yellow-50/30 transition-colors"
+                            >
+                              <span className="font-bold text-gray-900 text-left">
+                                {slab.noMaxLimit || !slab.maxAmount
+                                  ? `${slab.minAmount}$ +`
+                                  : `${slab.minAmount}$ to ${slab.maxAmount}$`}
+                              </span>
+                              <span className="text-center font-bold text-emerald-700 font-mono">
+                                {slab.dailyRoi}%
+                              </span>
+                              <span className="text-right font-extrabold text-amber-700 font-mono">
+                                {lockInRate}%
+                              </span>
+                            </div>
+                          );
+                        })}
+                        <div className="bg-slate-50 p-2 border-t border-gray-200 text-[10px] text-gray-600 flex justify-between font-medium">
+                          <span>Min. Deposit: <b>${plan.minDepositAmount || 10}</b></span>
+                          <span>Min Withdrawal: <b>${plan.minWithdrawalAmount || 5}</b></span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -922,6 +976,47 @@ export default function InvestmentPlans() {
             )}
           </div>
 
+          {/* Min Deposit & Min Withdrawal Settings */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-gray-200">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                Min. Deposit Amount ($)
+              </label>
+              <div className="flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 focus-within:border-gold-400">
+                <span className="text-gray-400 font-bold text-xs mr-1">$</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formData.minDepositAmount}
+                  onChange={(e) =>
+                    setFormData({ ...formData, minDepositAmount: e.target.value.replace(/[^0-9]/g, "") })
+                  }
+                  className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
+                  placeholder="10"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                Min. Withdrawal Amount ($)
+              </label>
+              <div className="flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 focus-within:border-gold-400">
+                <span className="text-gray-400 font-bold text-xs mr-1">$</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formData.minWithdrawalAmount}
+                  onChange={(e) =>
+                    setFormData({ ...formData, minWithdrawalAmount: e.target.value.replace(/[^0-9]/g, "") })
+                  }
+                  className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
+                  placeholder="5"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* ROI Structure Mode Toggle */}
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
@@ -961,15 +1056,15 @@ export default function InvestmentPlans() {
             <div className="p-4 bg-gradient-to-br from-amber-50/70 via-gold-50/50 to-white rounded-2xl border border-gold-300/80 space-y-3.5 shadow-xs">
               <div className="flex items-center justify-between pb-2 border-b border-gold-200">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-gold-400 text-gray-950 flex items-center justify-center font-bold">
+                  <div className="w-7 h-7 rounded-lg bg-yellow-400 text-gray-950 flex items-center justify-center font-bold shadow-2xs">
                     <RiSparklingLine size={16} />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                      Amount-Wise Daily ROI Slabs
+                      ROI Slabs Per Day (Without vs 3 Months Lock In)
                     </h4>
                     <p className="text-[11px] text-gray-500">
-                      Calculations: Daily ROI auto-computes Monthly & Annually APY
+                      Standard Daily ROI vs 3 Months Lock In Boost (+0.1% daily)
                     </p>
                   </div>
                 </div>
@@ -979,18 +1074,17 @@ export default function InvestmentPlans() {
                   onClick={handleResetSlabs}
                   className="px-2.5 py-1 rounded-lg bg-white border border-gold-300 text-gold-900 hover:bg-gold-50 text-[11px] font-bold flex items-center gap-1 shadow-2xs"
                 >
-                  <RiRefreshLine size={13} /> Reset Standard Slabs
+                  <RiRefreshLine size={13} /> Reset Standard 4 Slabs
                 </button>
               </div>
 
               {/* Slabs Table Header */}
               <div className="space-y-2">
-                <div className="grid grid-cols-12 gap-2 text-[10.5px] font-extrabold text-gray-500 uppercase px-1">
-                  <span className="col-span-3">Min Amount ($)</span>
+                <div className="grid grid-cols-12 gap-2 text-[10.5px] font-extrabold text-gray-600 uppercase px-1">
+                  <span className="col-span-3">Amount Range ($)</span>
                   <span className="col-span-3">Max Amount ($)</span>
-                  <span className="col-span-2">Daily ROI (%)</span>
-                  <span className="col-span-2">Monthly (30d)</span>
-                  <span className="col-span-1 text-center">Annual</span>
+                  <span className="col-span-2">Without Lock In</span>
+                  <span className="col-span-3">3 Mo Lock In</span>
                   <span className="col-span-1 text-right">Del</span>
                 </div>
 
@@ -1019,13 +1113,13 @@ export default function InvestmentPlans() {
                     <div className="col-span-3 flex items-center gap-1">
                       {slab.noMaxLimit ? (
                         <div className="w-full flex items-center justify-between py-1 px-2 rounded-lg bg-gold-100/80 border border-gold-300 text-gold-900 font-extrabold text-xs">
-                          <span className="truncate">{slab.minAmount || 0}$ ++ (No Limit)</span>
+                          <span className="truncate">{slab.minAmount || 0}$ + (No Limit)</span>
                           <button
                             type="button"
                             title="Set fixed max limit"
                             onClick={() => {
                               handleSlabChange(idx, "noMaxLimit", false);
-                              handleSlabChange(idx, "maxAmount", String((Number(slab.minAmount) || 0) + 999));
+                              handleSlabChange(idx, "maxAmount", String((Number(slab.minAmount) || 0) + 499));
                             }}
                             className="text-[10px] text-gold-800 hover:text-gold-950 underline ml-1 cursor-pointer font-bold shrink-0"
                           >
@@ -1044,7 +1138,7 @@ export default function InvestmentPlans() {
                                 handleSlabChange(idx, "maxAmount", e.target.value)
                               }
                               className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
-                              placeholder="49"
+                              placeholder="100"
                             />
                           </div>
                           {idx === formData.roiSlabs.length - 1 && (
@@ -1061,7 +1155,7 @@ export default function InvestmentPlans() {
                       )}
                     </div>
 
-                    {/* Daily ROI (%) */}
+                    {/* Without Lock In Daily ROI (%) */}
                     <div className="col-span-2 flex items-center rounded-lg border border-emerald-300 bg-emerald-50/60 px-2 py-1.5 focus-within:border-emerald-500 focus-within:bg-white">
                       <input
                         type="text"
@@ -1069,29 +1163,24 @@ export default function InvestmentPlans() {
                         onChange={(e) =>
                           handleSlabChange(idx, "dailyRoi", e.target.value)
                         }
-                        className="w-full bg-transparent outline-none font-extrabold text-emerald-700 text-xs"
-                        placeholder="0.25"
+                        className="w-full bg-transparent outline-none font-extrabold text-emerald-700 text-xs text-center"
+                        placeholder="0.3"
                       />
                       <span className="text-emerald-600 font-bold text-[10px]">%</span>
                     </div>
 
-                    {/* Monthly ROI (%) [Auto computed or editable] */}
-                    <div className="col-span-2 flex items-center rounded-lg border border-gold-200 bg-gold-50/40 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
+                    {/* 3 Months Lock In Daily ROI (%) */}
+                    <div className="col-span-3 flex items-center rounded-lg border border-amber-300 bg-amber-50/60 px-2 py-1.5 focus-within:border-amber-500 focus-within:bg-white">
                       <input
                         type="text"
-                        value={slab.monthlyRoi}
+                        value={slab.lockInDailyRoi !== undefined ? slab.lockInDailyRoi : (Number(slab.dailyRoi || 0.3) + 0.1).toFixed(2)}
                         onChange={(e) =>
-                          handleSlabChange(idx, "monthlyRoi", e.target.value)
+                          handleSlabChange(idx, "lockInDailyRoi", e.target.value)
                         }
-                        className="w-full bg-transparent outline-none font-bold text-gold-900 text-xs"
-                        placeholder="7.50"
+                        className="w-full bg-transparent outline-none font-extrabold text-amber-800 text-xs text-center"
+                        placeholder="0.4"
                       />
-                      <span className="text-gold-700 font-bold text-[10px]">%</span>
-                    </div>
-
-                    {/* Annual ROI (%) */}
-                    <div className="col-span-1 text-center font-bold text-gray-700 font-mono text-[11px]">
-                      {slab.annualRoi}%
+                      <span className="text-amber-600 font-bold text-[10px]">%</span>
                     </div>
 
                     {/* Delete button */}

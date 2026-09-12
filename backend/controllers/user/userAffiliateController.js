@@ -193,7 +193,7 @@ exports.getReferralNetwork = async (req, res) => {
 
       const downlines = await User.find({
         sponsorId: { $in: currentParentIds },
-      }).select("customId name email phone totalInvested sponsorId createdAt status");
+      }).select("customId name email phone totalInvested firstInvestmentAmount hasReceivedReferralBonus sponsorId createdAt status");
 
       levelCounts[`level${lvl}`] = downlines.length;
 
@@ -201,7 +201,8 @@ exports.getReferralNetwork = async (req, res) => {
 
       downlines.forEach((u) => {
         const invested = u.totalInvested || 0;
-        const comm = (invested * rate) / 100;
+        const eligibleBaseAmount = u.firstInvestmentAmount || (u.hasReceivedReferralBonus ? u.firstInvestmentAmount || invested : (invested > 0 ? invested : 0));
+        const comm = (eligibleBaseAmount * rate) / 100;
         formattedNetwork.push({
           id: u.customId,
           name: u.name,
@@ -210,6 +211,7 @@ exports.getReferralNetwork = async (req, res) => {
           level: lvl,
           sponsor: u.sponsorId,
           invested,
+          firstInvestmentAmount: eligibleBaseAmount,
           directComm: lvl === 1 ? comm : 0,
           multiTierComm: lvl > 1 ? comm : 0,
           totalComm: comm,
@@ -237,24 +239,25 @@ exports.getReferralNetwork = async (req, res) => {
   }
 };
 
-// @desc    Get 10-Tier Rank Progression Ladder
+const defaultLadderRanks = [
+  { level: 1, name: "Associate", ownDeposit: 50, totalClientDeposit: 5000, minInvest: 5000, reward: 100, condition: "1 Leg should not be more than 40% of the GV", companyProfitSharing: "0", downlineStructureRequired: "2 Active Direct Client", achievers: 4890, desc: "Entry leadership milestone unlocked with active direct network." },
+  { level: 2, name: "Senior Associate", ownDeposit: 100, totalClientDeposit: 10000, minInvest: 10000, reward: 300, condition: "1 Leg should not be more than 40% of the GV", companyProfitSharing: "0", downlineStructureRequired: "3 Active Direct Clients", achievers: 2340, desc: "Demonstrated network volume builder." },
+  { level: 3, name: "Team Leader", ownDeposit: 250, totalClientDeposit: 25000, minInvest: 25000, reward: 875, condition: "1 Leg should not be more than 40% of the GV", companyProfitSharing: "0", downlineStructureRequired: "3 Active Direct Clients ( Min. 1 Associate )", achievers: 1210, desc: "Regional leadership leader managing team turnover." },
+  { level: 4, name: "Director", ownDeposit: 500, totalClientDeposit: 50000, minInvest: 50000, reward: 2000, condition: "1 Leg should not be more than 40% of the GV", companyProfitSharing: "0", downlineStructureRequired: "4 Active Direct Clients ( Min 2 Sr. Associate )", achievers: 680, desc: "Executive director supervising multi-tier syndicates." },
+  { level: 5, name: "Regional Director", ownDeposit: 1000, totalClientDeposit: 100000, minInvest: 100000, reward: 5000, condition: "1 Leg should not be more than 40% of the GV", companyProfitSharing: "0", downlineStructureRequired: "4 Active Direct Clients ( Min. 2 Team Leaders )", achievers: 340, desc: "Senior regional executive commanding six-figure volume." },
+  { level: 6, name: "Executive Director", ownDeposit: 1500, totalClientDeposit: 200000, minInvest: 200000, reward: 10000, condition: "1 Leg should not be more than 40% of the GV", companyProfitSharing: "0.20% of the total company Profit + 500$ Per Month Salary", downlineStructureRequired: "5 Active Direct Clients ( Min. 2 Directors )", achievers: 160, desc: "Corporate syndicate leader receiving monthly salary and profit share." },
+  { level: 7, name: "Diamond", ownDeposit: 2000, totalClientDeposit: 300000, minInvest: 300000, reward: 15000, condition: "1 Leg should not be more than 40% of the GV", companyProfitSharing: "0.50% of the Total Company Profit + 1000$ Per Month Salary", downlineStructureRequired: "6 Active Direct Clients ( Min. 2 Regional Directors )", achievers: 72, desc: "High-tier executive with expanded profit share and salary." },
+  { level: 8, name: "Crown Diamond", ownDeposit: 3000, totalClientDeposit: 600000, minInvest: 600000, reward: 35000, condition: "1 Leg should not be more than 40% of the GV", companyProfitSharing: "0.75% of the Total Company Profit + 1500$ Per Month Salary", downlineStructureRequired: "8 Active Direct Clients ( Min. 2 Executive Directors )", achievers: 28, desc: "Elite summit council member with premier dividends." },
+  { level: 9, name: "Global Ambassador", ownDeposit: 5000, totalClientDeposit: 1000000, minInvest: 1000000, reward: 60000, condition: "1 Leg should not be more than 40% of the GV", companyProfitSharing: "1% of the Total Company Profit + 3000$ Per Month Salary", downlineStructureRequired: "10 Active Direct Clients ( Min. 2 Diamonds )", achievers: 11, desc: "Apex global ambassador commanding global network volume." },
+];
+
+// @desc    Get 9-Tier Rank Progression Ladder
 // @route   GET /api/user/ranks/ladder
 exports.getRankLadder = async (req, res) => {
   try {
     let ranks = await Rank.find({ status: "Active" }).sort({ level: 1 });
     if (!ranks || ranks.length === 0) {
-      ranks = [
-        { level: 1, name: "Bronze Explorer", minInvest: 100, reward: 7.5, achievers: 4890, desc: "Entry leadership rank unlocked upon team initiation." },
-        { level: 2, name: "Silver Vanguard", minInvest: 500, reward: 35, achievers: 2340, desc: "Proven team builder with active direct network." },
-        { level: 3, name: "Gold Sovereign", minInvest: 2500, reward: 175, achievers: 1210, desc: "Established regional network promoter." },
-        { level: 4, name: "Platinum Luminary", minInvest: 10000, reward: 700, achievers: 680, desc: "Senior network leader commanding high turnover." },
-        { level: 5, name: "Sapphire Viceroy", minInvest: 50000, reward: 3500, achievers: 340, desc: "Elite portfolio leader with multi-tier downlines." },
-        { level: 6, name: "Emerald Chancellor", minInvest: 150000, reward: 10500, achievers: 160, desc: "Continental executive commanding six-figure volume." },
-        { level: 7, name: "Ruby High Commander", minInvest: 500000, reward: 35000, achievers: 72, desc: "Global leadership council member." },
-        { level: 8, name: "Diamond Archon", minInvest: 1500000, reward: 105000, achievers: 28, desc: "Institutional syndicate director." },
-        { level: 9, name: "Crown Imperator", minInvest: 5000000, reward: 350000, achievers: 11, desc: "Supreme network architect with multi-million turnover." },
-        { level: 10, name: "Apex Zenith Titan", minInvest: 10000000, reward: 700000, achievers: 8, desc: "Pinnacle summit partner with permanent revenue share." },
-      ];
+      ranks = defaultLadderRanks;
     }
 
     res.status(200).json({
@@ -279,25 +282,16 @@ exports.getMyRankStatus = async (req, res) => {
     const currentLevel = user.rankLevel || 1;
     let ranks = await Rank.find({ status: "Active" }).sort({ level: 1 });
     if (!ranks || ranks.length === 0) {
-      ranks = [
-        { level: 1, name: "Bronze Explorer", minInvest: 100, reward: 7.5 },
-        { level: 2, name: "Silver Vanguard", minInvest: 500, reward: 35 },
-        { level: 3, name: "Gold Sovereign", minInvest: 2500, reward: 175 },
-        { level: 4, name: "Platinum Luminary", minInvest: 10000, reward: 700 },
-        { level: 5, name: "Sapphire Viceroy", minInvest: 50000, reward: 3500 },
-        { level: 6, name: "Emerald Chancellor", minInvest: 150000, reward: 10500 },
-        { level: 7, name: "Ruby High Commander", minInvest: 500000, reward: 35000 },
-        { level: 8, name: "Diamond Archon", minInvest: 1500000, reward: 105000 },
-        { level: 9, name: "Crown Imperator", minInvest: 5000000, reward: 350000 },
-        { level: 10, name: "Apex Zenith Titan", minInvest: 10000000, reward: 700000 },
-      ];
+      ranks = defaultLadderRanks;
     }
 
     const currentRank = ranks.find((r) => r.level === currentLevel) || ranks[0];
     const nextRank = ranks.find((r) => r.level === currentLevel + 1) || currentRank;
 
     const turnover = user.teamTurnover || user.totalInvested || 0;
-    const turnoverTarget = nextRank.minInvest || 1000;
+    const ownInvested = user.totalInvested || user.wallet || 0;
+    const turnoverTarget = nextRank.totalClientDeposit || nextRank.minInvest || 5000;
+    const ownDepositTarget = nextRank.ownDeposit || 50;
     const progressPercent = Math.min(100, Math.round((turnover / turnoverTarget) * 100));
 
     res.status(200).json({
@@ -307,13 +301,21 @@ exports.getMyRankStatus = async (req, res) => {
         currentRankName: user.currentRank || currentRank.name,
         rewardUnlocked: currentRank.reward || 0,
         teamTurnover: turnover,
+        ownInvested,
+        currentRank,
         nextRank: {
           level: nextRank.level,
           name: nextRank.name,
-          minInvestRequired: nextRank.minInvest,
+          ownDepositRequired: ownDepositTarget,
+          totalClientDepositRequired: turnoverTarget,
+          minInvestRequired: turnoverTarget,
           rewardOnUnlock: nextRank.reward,
+          condition: nextRank.condition,
+          companyProfitSharing: nextRank.companyProfitSharing,
+          downlineStructureRequired: nextRank.downlineStructureRequired,
           progressPercent,
           remainingTurnover: Math.max(0, turnoverTarget - turnover),
+          remainingOwnDeposit: Math.max(0, ownDepositTarget - ownInvested),
         },
       },
     });

@@ -46,10 +46,10 @@ exports.createDeposit = async (req, res) => {
     const { amount, rawAmount, gateway, referenceNo, slipUrl, senderName, senderAccount, senderPhone, cryptoNetwork, selectedToken } = req.body;
     const depositAmount = Number(amount);
 
-    if (!depositAmount || depositAmount <= 0) {
+    if (!depositAmount || depositAmount < 10) {
       return res.status(400).json({
         success: false,
-        message: "Valid deposit amount is required.",
+        message: "Minimum deposit amount is $10 USD.",
       });
     }
 
@@ -147,10 +147,10 @@ exports.createWithdrawal = async (req, res) => {
     const { amount, gateway, walletAddress, bankDetails, note } = req.body;
     const withdrawAmount = Number(amount);
 
-    if (!withdrawAmount || withdrawAmount <= 0) {
+    if (!withdrawAmount || withdrawAmount < 5) {
       return res.status(400).json({
         success: false,
-        message: "Valid withdrawal amount is required.",
+        message: "Minimum withdrawal amount is $5 USD.",
       });
     }
 

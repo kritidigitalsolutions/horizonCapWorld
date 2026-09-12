@@ -53,8 +53,27 @@ const userInvestmentSchema = new mongoose.Schema(
       minAmount: Number,
       maxAmount: Number,
       dailyRoi: Number,
+      lockInDailyRoi: Number,
       monthlyRoi: Number,
+      lockInMonthlyRoi: Number,
       annualRoi: Number,
+      isLockInApplied: Boolean,
+    },
+    lockInPeriod: {
+      type: String,
+      enum: ["None", "3 Months"],
+      default: "None",
+    },
+    isLocked: {
+      type: Boolean,
+      default: false,
+    },
+    lockInDays: {
+      type: Number,
+      default: 0,
+    },
+    lockInUntil: {
+      type: Date,
     },
     payoutInterval: {
       type: String,

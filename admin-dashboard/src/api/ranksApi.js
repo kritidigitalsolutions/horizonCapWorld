@@ -18,6 +18,12 @@ export const updateRank = async (id, rankData) => {
   return response.data;
 };
 
+// Bulk update ranks
+export const bulkUpdateRanks = async (ranks) => {
+  const response = await API.put('/admin/ranks/bulk', { ranks });
+  return response.data;
+};
+
 // Delete rank
 export const deleteRank = async (id) => {
   const response = await API.delete(`/admin/ranks/${id}`);
