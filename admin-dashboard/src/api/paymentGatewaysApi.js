@@ -49,3 +49,23 @@ export const updateDepositVideo = async (videoData) => {
     const response = await API.put("/admin/payment-methods/video/tutorial", videoData)
     return response.data;
 }
+
+export const getWithdrawalSettings = async () => {
+    try {
+        const response = await API.get("/admin/payment-methods/withdrawal-settings");
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching withdrawal settings:", error);
+        throw error;
+    }
+};
+
+export const updateWithdrawalSettings = async (settingsData) => {
+    try {
+        const response = await API.put("/admin/payment-methods/withdrawal-settings", settingsData);
+        return response.data;
+    } catch (error) {
+        console.error("Error updating withdrawal settings:", error);
+        throw error;
+    }
+};

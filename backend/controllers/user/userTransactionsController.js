@@ -1,6 +1,7 @@
 const Transaction = require("../../models/Transaction");
 const PaymentMethod = require("../../models/PaymentMethod");
 const DepositVideo = require("../../models/DepositVideo");
+const AdminSettings = require("../../models/AdminSettings");
 const User = require("../../models/User");
 const { notifyUser, notifyAdmin } = require("../../utils/notificationService");
 
@@ -140,6 +141,36 @@ exports.createDeposit = async (req, res) => {
   }
 };
 
+// @desc    Get Dynamic Withdrawal Settings & Charges (Public / User)
+// @route   GET /api/user/withdrawals/settings
+exports.getWithdrawalSettings = async (req, res) => {
+  try {
+    let settings = await AdminSettings.findOne();
+    if (!settings) {
+      settings = await AdminSettings.create({});
+    }
+
+    const ws = settings.withdrawalSettings || {};
+    res.status(200).json({
+      success: true,
+      withdrawalSettings: {
+        feeType: ws.feeType || "percentage",
+        feePercentage: ws.feePercentage !== undefined ? ws.feePercentage : 5,
+        fixedFee: ws.fixedFee !== undefined ? ws.fixedFee : 0,
+        minWithdrawal: ws.minWithdrawal !== undefined ? ws.minWithdrawal : 5,
+        maxWithdrawal: ws.maxWithdrawal !== undefined ? ws.maxWithdrawal : 50000,
+        processingTime: ws.processingTime || "12 - 24 Hours",
+        feeEnabled: ws.feeEnabled !== undefined ? ws.feeEnabled : true,
+        termsNotice:
+          ws.termsNotice ||
+          "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission.",
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Submit Withdrawal Request
 // @route   POST /api/user/withdrawals
 exports.createWithdrawal = async (req, res) => {
@@ -147,10 +178,30 @@ exports.createWithdrawal = async (req, res) => {
     const { amount, gateway, walletAddress, bankDetails, note } = req.body;
     const withdrawAmount = Number(amount);
 
-    if (!withdrawAmount || withdrawAmount < 5) {
+    // Fetch dynamic withdrawal charges from admin settings
+    let settings = await AdminSettings.findOne();
+    if (!settings) {
+      settings = await AdminSettings.create({});
+    }
+    const ws = settings.withdrawalSettings || {};
+    const minWithdrawal = ws.minWithdrawal !== undefined ? Number(ws.minWithdrawal) : 5;
+    const maxWithdrawal = ws.maxWithdrawal !== undefined ? Number(ws.maxWithdrawal) : 50000;
+    const feeEnabled = ws.feeEnabled !== undefined ? !!ws.feeEnabled : true;
+    const feeType = ws.feeType || "percentage";
+    const feePercentage = ws.feePercentage !== undefined ? Number(ws.feePercentage) : 5;
+    const fixedFee = ws.fixedFee !== undefined ? Number(ws.fixedFee) : 0;
+
+    if (!withdrawAmount || withdrawAmount < minWithdrawal) {
       return res.status(400).json({
         success: false,
-        message: "Minimum withdrawal amount is $5 USD.",
+        message: `Minimum withdrawal amount is $${minWithdrawal} USD.`,
+      });
+    }
+
+    if (withdrawAmount > maxWithdrawal) {
+      return res.status(400).json({
+        success: false,
+        message: `Maximum withdrawal limit is $${maxWithdrawal.toLocaleString()} USD per request.`,
       });
     }
 
@@ -166,16 +217,26 @@ exports.createWithdrawal = async (req, res) => {
       });
     }
 
-    // 5% standard protocol withdrawal fee or 0
-    const fee = parseFloat((withdrawAmount * 0.05).toFixed(2));
-    const netAmount = parseFloat((withdrawAmount - fee).toFixed(2));
+    // Dynamic fee calculation
+    let fee = 0;
+    if (feeEnabled) {
+      if (feeType === "fixed") {
+        fee = parseFloat(fixedFee.toFixed(2));
+      } else {
+        fee = parseFloat(((withdrawAmount * feePercentage) / 100).toFixed(2));
+      }
+    }
+    const netAmount = parseFloat(Math.max(0, withdrawAmount - fee).toFixed(2));
 
     // Deduct from earning wallet immediately to prevent double spending
     user.earningWallet -= withdrawAmount;
     user.totalWithdrawn = (user.totalWithdrawn || 0) + withdrawAmount;
     await user.save();
 
-    const userEnteredDest = (walletAddress && walletAddress.trim()) || (bankDetails?.accountNumber && bankDetails.accountNumber.trim()) || null;
+    const userEnteredDest =
+      (walletAddress && walletAddress.trim()) ||
+      (bankDetails?.accountNumber && bankDetails.accountNumber.trim()) ||
+      null;
     const assignedCustomId = `WD-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newTrx = await Transaction.create({
@@ -193,13 +254,15 @@ exports.createWithdrawal = async (req, res) => {
       gateway: gateway || "Crypto Wallet",
       referenceNo: userEnteredDest || assignedCustomId,
       status: "Pending",
-      note: note || `Withdrawal request to ${gateway || "designated destination"} (${userEnteredDest || "Standard Payout"}).`,
+      note:
+        note ||
+        `Withdrawal request to ${gateway || "designated destination"} (${userEnteredDest || "Standard Payout"}). Fee: $${fee} (Net: $${netAmount})`,
     });
 
     // Notify Admin regarding withdrawal request
     await notifyAdmin({
       title: "New Withdrawal Request",
-      message: `${user.name} requested a withdrawal of $${withdrawAmount.toLocaleString()} USD (Net: $${netAmount.toLocaleString()}) via ${gateway || "Crypto Wallet"}. Destination: ${userEnteredDest || "Standard Payout"}`,
+      message: `${user.name} requested a withdrawal of $${withdrawAmount.toLocaleString()} USD (Fee: $${fee}, Net: $${netAmount.toLocaleString()}) via ${gateway || "Crypto Wallet"}. Destination: ${userEnteredDest || "Standard Payout"}`,
       category: "FINANCIAL",
       type: "withdrawal_requested",
       priority: "HIGH",
@@ -209,6 +272,7 @@ exports.createWithdrawal = async (req, res) => {
         customId: newTrx.customId,
         referenceNo: newTrx.referenceNo,
         amount: withdrawAmount,
+        fee,
         netAmount,
         userId: user._id,
         userName: user.name,
@@ -220,7 +284,7 @@ exports.createWithdrawal = async (req, res) => {
     await notifyUser({
       userId: user._id,
       title: "Withdrawal Request Received",
-      message: `Your withdrawal request of $${withdrawAmount.toLocaleString()} USD has been submitted and is currently being processed by treasury desk.`,
+      message: `Your withdrawal request of $${withdrawAmount.toLocaleString()} USD (Net payout: $${netAmount.toLocaleString()} after $${fee} protocol fee) has been submitted and is currently being processed by treasury desk.`,
       category: "FINANCIAL",
       type: "withdrawal_pending",
       priority: "NORMAL",
@@ -229,7 +293,7 @@ exports.createWithdrawal = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `Withdrawal request for $${withdrawAmount.toLocaleString()} USD submitted successfully.`,
+      message: `Withdrawal request for $${withdrawAmount.toLocaleString()} USD submitted successfully. Net payout: $${netAmount.toLocaleString()}.`,
       transaction: newTrx,
       user: {
         earningWallet: user.earningWallet,

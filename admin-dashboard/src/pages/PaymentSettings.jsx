@@ -31,6 +31,7 @@ import {
   RiLoader4Line,
   RiEyeLine,
   RiFileCopyLine,
+  RiPercentLine,
 } from "react-icons/ri";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -47,6 +48,8 @@ import {
   deletePaymentMethod,
   getDepositVideo,
   updateDepositVideo,
+  getWithdrawalSettings,
+  updateWithdrawalSettings,
 } from "../api/paymentGatewaysApi";
 import { uploadFileToCloudinary, deleteFileFromCloudinary } from "../api/uploadApi";
 
@@ -89,6 +92,25 @@ export default function PaymentSettings() {
   const [videoForm, setVideoForm] = useState(defaultTutorialVideo);
   const [videoSavedNotification, setVideoSavedNotification] = useState(false);
   const videoFileInputRef = useRef(null);
+
+  // ──────── WITHDRAWAL CHARGES & POLICY STATE ────────
+  const defaultWithdrawalSettings = {
+    feeType: "percentage",
+    feePercentage: 5,
+    fixedFee: 0,
+    minWithdrawal: 5,
+    maxWithdrawal: 50000,
+    processingTime: "12 - 24 Hours",
+    feeEnabled: true,
+    termsNotice:
+      "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission.",
+  };
+
+  const [withdrawalSettings, setWithdrawalSettings] = useState(defaultWithdrawalSettings);
+  const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
+  const [withdrawalForm, setWithdrawalForm] = useState(defaultWithdrawalSettings);
+  const [savingWithdrawal, setSavingWithdrawal] = useState(false);
+  const [withdrawalSavedNotice, setWithdrawalSavedNotice] = useState(false);
 
   // Form State
   const [category, setCategory] = useState("Mobile E-Wallet");
@@ -153,9 +175,10 @@ export default function PaymentSettings() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [methodsRes, videoRes] = await Promise.all([
+        const [methodsRes, videoRes, withdrawalRes] = await Promise.all([
           getPaymentMethods().catch(() => null),
           getDepositVideo().catch(() => null),
+          getWithdrawalSettings().catch(() => null),
         ]);
 
         if (methodsRes) {
@@ -171,6 +194,10 @@ export default function PaymentSettings() {
           if (videoData && typeof videoData === "object") {
             setTutorialVideo((prev) => ({ ...prev, ...videoData }));
           }
+        }
+        if (withdrawalRes?.withdrawalSettings) {
+          setWithdrawalSettings(withdrawalRes.withdrawalSettings);
+          setWithdrawalForm(withdrawalRes.withdrawalSettings);
         }
       } catch (error) {
         console.error("Error loading payment data:", error);
@@ -350,6 +377,28 @@ export default function PaymentSettings() {
     } catch (error) {
       console.error("Failed to update video:", error);
       alert("Failed to update video tutorial.");
+    }
+  };
+
+  // ──────── SAVE / UPDATE WITHDRAWAL CHARGES & POLICY ────────
+  const handleSaveWithdrawalSettings = async (e) => {
+    if (e) e.preventDefault();
+    setSavingWithdrawal(true);
+    try {
+      const res = await updateWithdrawalSettings(withdrawalForm);
+      const wsData = res?.withdrawalSettings || res;
+      if (wsData && typeof wsData === "object") {
+        setWithdrawalSettings(wsData);
+        setWithdrawalForm(wsData);
+      }
+      setWithdrawalSavedNotice(true);
+      setWithdrawalModalOpen(false);
+      setTimeout(() => setWithdrawalSavedNotice(false), 3500);
+    } catch (err) {
+      console.error("Failed to update withdrawal settings:", err);
+      alert("Failed to save withdrawal settings.");
+    } finally {
+      setSavingWithdrawal(false);
     }
   };
 
@@ -743,6 +792,16 @@ export default function PaymentSettings() {
           <div className="flex items-center gap-2.5">
             <Button
               variant="secondary"
+              icon={<RiPercentLine className="text-emerald-600" />}
+              onClick={() => {
+                setWithdrawalForm(withdrawalSettings);
+                setWithdrawalModalOpen(true);
+              }}
+            >
+              Withdrawal Charges
+            </Button>
+            <Button
+              variant="secondary"
               icon={<RiVideoLine className="text-gold-600" />}
               onClick={handleOpenVideoStudio}
             >
@@ -767,51 +826,112 @@ export default function PaymentSettings() {
         </div>
       )}
 
-      {/* ──────────────── DEPOSIT TUTORIAL VIDEO STUDIO BANNER CARD ──────────────── */}
-      <div className="card p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-gold-500/5 to-white border-2 border-gold-300 shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div className="flex items-start gap-4 min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-400 via-gold-500 to-amber-600 text-slate-950 flex items-center justify-center flex-shrink-0 shadow-gold">
-            <RiVideoLine size={24} />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm sm:text-base font-bold text-slate-900 font-display">
-                User Deposit Video Tutorial & Interactive Guide
-              </h3>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider border border-emerald-300">
-                ● Live on User App
-              </span>
+      {withdrawalSavedNotice && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-fade-in shadow-xs">
+          <RiCheckLine size={18} className="text-emerald-600" />
+          Withdrawal charges & platform policy rules saved and updated live on user withdraw pages!
+        </div>
+      )}
+
+      {/* ──────────────── TWO STUDIO CARDS: DEPOSIT VIDEO & WITHDRAWAL CHARGES ──────────────── */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {/* Card 1: Deposit Tutorial Video */}
+        <div className="card p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-gold-500/5 to-white border-2 border-gold-300 shadow-sm flex flex-col justify-between gap-4">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-400 via-gold-500 to-amber-600 text-slate-950 flex items-center justify-center flex-shrink-0 shadow-gold">
+              <RiVideoLine size={24} />
             </div>
-            <p className="text-xs text-slate-600 font-poppins mt-1 line-clamp-1">
-              <strong>Title:</strong> {tutorialVideo?.title}
-            </p>
-            <p className="text-[11px] text-slate-400 font-poppins mt-0.5">
-              Users can click{" "}
-              <span className="text-gold-700 font-bold">
-                "▶ How to deposit? Watch guide"
-              </span>{" "}
-              on the User Deposit Page to watch this tutorial.
-            </p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 font-display">
+                  Deposit Video Tutorial Studio
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider border border-emerald-300">
+                  ● Live on User App
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 font-poppins mt-1 line-clamp-1">
+                <strong>Title:</strong> {tutorialVideo?.title}
+              </p>
+              <p className="text-[11px] text-slate-400 font-poppins mt-0.5">
+                Users can watch step-by-step deposit guides before transferring funds.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 flex-shrink-0">
+            <Button
+              variant="secondary"
+              icon={<RiPlayCircleLine className="text-gold-700" />}
+              size="sm"
+              onClick={() => setVideoPreviewOpen(true)}
+            >
+              Preview
+            </Button>
+            <Button
+              variant="primary"
+              icon={<RiUploadCloud2Line />}
+              size="sm"
+              onClick={handleOpenVideoStudio}
+            >
+              Edit Video
+            </Button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-shrink-0 self-end lg:self-auto">
-          <Button
-            variant="secondary"
-            icon={<RiPlayCircleLine className="text-gold-700" />}
-            size="sm"
-            onClick={() => setVideoPreviewOpen(true)}
-          >
-            Preview Video
-          </Button>
-          <Button
-            variant="primary"
-            icon={<RiUploadCloud2Line />}
-            size="sm"
-            onClick={handleOpenVideoStudio}
-          >
-            Edit / Upload Video
-          </Button>
+        {/* Card 2: Withdrawal Charges & Policy Studio */}
+        <div className="card p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-white border-2 border-emerald-300 shadow-sm flex flex-col justify-between gap-4">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+              <RiPercentLine size={24} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 font-display">
+                  Withdrawal Charges & Policy Studio
+                </h3>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                    withdrawalSettings.feeEnabled
+                      ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                      : "bg-slate-100 text-slate-600 border-slate-300"
+                  }`}
+                >
+                  ● {withdrawalSettings.feeEnabled ? "Fee Active" : "Fee Waived (0%)"}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 font-poppins mt-1">
+                <strong>Current Fee:</strong>{" "}
+                <span className="text-emerald-700 font-bold">
+                  {withdrawalSettings.feeEnabled
+                    ? withdrawalSettings.feeType === "percentage"
+                      ? `${withdrawalSettings.feePercentage}% Per Payout`
+                      : `$${withdrawalSettings.fixedFee} USD Flat Fee`
+                    : "0% (Free Payouts)"}
+                </span>
+                {" • "}
+                <strong>Min/Max:</strong> ${withdrawalSettings.minWithdrawal} - ${Number(withdrawalSettings.maxWithdrawal || 50000).toLocaleString()} USD
+              </p>
+              <p className="text-[11px] text-slate-400 font-poppins mt-0.5 line-clamp-1">
+                Turnaround: <span className="font-semibold text-slate-700">{withdrawalSettings.processingTime}</span>
+                {" • "}Live on User /withdraw page with instant net calculation.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 flex-shrink-0">
+            <Button
+              variant="primary"
+              icon={<RiPercentLine />}
+              size="sm"
+              onClick={() => {
+                setWithdrawalForm(withdrawalSettings);
+                setWithdrawalModalOpen(true);
+              }}
+            >
+              Configure Charges
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1919,6 +2039,337 @@ export default function PaymentSettings() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* ──────────────── MODAL: WITHDRAWAL CHARGES & POLICY STUDIO ──────────────── */}
+      <Modal
+        isOpen={withdrawalModalOpen}
+        onClose={() => setWithdrawalModalOpen(false)}
+        title="Withdrawal Charges & Policy Studio"
+        subtitle="Set standard platform withdrawal fees, turnaround time, minimum/maximum payout limits and investor policy"
+        size="lg"
+        footer={
+          <div className="flex items-center justify-between w-full font-poppins">
+            <Button
+              variant="secondary"
+              onClick={() => setWithdrawalModalOpen(false)}
+              disabled={savingWithdrawal}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSaveWithdrawalSettings}
+              disabled={savingWithdrawal}
+              icon={savingWithdrawal ? <RiLoader4Line className="animate-spin" /> : <RiCheckLine />}
+            >
+              {savingWithdrawal ? "Saving Changes..." : "Save Withdrawal Settings"}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-6 font-poppins text-xs text-slate-700">
+          {/* Fee Active Toggle */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-slate-900 font-display">
+                Enable Withdrawal Platform Fee
+              </p>
+              <p className="text-xs text-slate-500 font-normal mt-0.5">
+                When enabled, the configured fee will be automatically deducted from user withdrawal requests. When disabled, withdrawals are 100% free (0% fee).
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+              <input
+                type="checkbox"
+                checked={withdrawalForm.feeEnabled}
+                onChange={(e) =>
+                  setWithdrawalForm((prev) => ({
+                    ...prev,
+                    feeEnabled: e.target.checked,
+                  }))
+                }
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
+          </div>
+
+          {/* Fee Model Selector (Percentage vs Fixed) */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
+              Fee Structure Model
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setWithdrawalForm((prev) => ({
+                    ...prev,
+                    feeType: "percentage",
+                  }))
+                }
+                className={`p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                  withdrawalForm.feeType === "percentage"
+                    ? "card-gold border-gold-400 ring-2 ring-gold-200/80 shadow-gold"
+                    : "bg-white hover:bg-slate-50 border-slate-200"
+                }`}
+              >
+                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0 font-extrabold text-sm">
+                  %
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900">
+                    Percentage (%) Based
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Deduct a proportional percent of requested amount (e.g. 5%)
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setWithdrawalForm((prev) => ({
+                    ...prev,
+                    feeType: "fixed",
+                  }))
+                }
+                className={`p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                  withdrawalForm.feeType === "fixed"
+                    ? "card-gold border-gold-400 ring-2 ring-gold-200/80 shadow-gold"
+                    : "bg-white hover:bg-slate-50 border-slate-200"
+                }`}
+              >
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 font-extrabold text-sm">
+                  $
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900">
+                    Fixed ($ USD) Flat Fee
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Deduct a flat dollar amount per request (e.g. $2.00)
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Fee Value & Processing Time Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {withdrawalForm.feeType === "percentage" ? (
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                  Fee Percentage Rate (%)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={withdrawalForm.feePercentage}
+                    onChange={(e) =>
+                      setWithdrawalForm((prev) => ({
+                        ...prev,
+                        feePercentage: e.target.value,
+                      }))
+                    }
+                    className="input pr-8"
+                    placeholder="e.g. 5"
+                    required
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400">
+                    %
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Standard protocol fee is usually 3% - 7%.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                  Fixed Fee Amount ($ USD)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={withdrawalForm.fixedFee}
+                    onChange={(e) =>
+                      setWithdrawalForm((prev) => ({
+                        ...prev,
+                        fixedFee: e.target.value,
+                      }))
+                    }
+                    className="input pl-8"
+                    placeholder="e.g. 2.00"
+                    required
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Fixed flat dollar amount deducted from each request.
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                Clearance Turnaround Time
+              </label>
+              <input
+                type="text"
+                value={withdrawalForm.processingTime}
+                onChange={(e) =>
+                  setWithdrawalForm((prev) => ({
+                    ...prev,
+                    processingTime: e.target.value,
+                  }))
+                }
+                className="input"
+                placeholder="e.g. 12 - 24 Hours or Instant"
+                required
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                Shown to investors on the withdrawal page policy card.
+              </p>
+            </div>
+          </div>
+
+          {/* Min and Max Limits */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                Minimum Withdrawal ($ USD)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400">
+                  $
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  value={withdrawalForm.minWithdrawal}
+                  onChange={(e) =>
+                    setWithdrawalForm((prev) => ({
+                      ...prev,
+                      minWithdrawal: e.target.value,
+                    }))
+                  }
+                  className="input pl-8"
+                  placeholder="e.g. 5"
+                  required
+                />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Requests below this amount will be rejected automatically.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                Maximum Withdrawal Limit ($ USD)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400">
+                  $
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  value={withdrawalForm.maxWithdrawal}
+                  onChange={(e) =>
+                    setWithdrawalForm((prev) => ({
+                      ...prev,
+                      maxWithdrawal: e.target.value,
+                    }))
+                  }
+                  className="input pl-8"
+                  placeholder="e.g. 50000"
+                  required
+                />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Upper threshold per transaction (e.g. $50,000 USD).
+              </p>
+            </div>
+          </div>
+
+          {/* Custom User Policy Notice */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">
+              Investor Withdrawal Policy Notice
+            </label>
+            <textarea
+              rows={3}
+              value={withdrawalForm.termsNotice}
+              onChange={(e) =>
+                setWithdrawalForm((prev) => ({
+                  ...prev,
+                  termsNotice: e.target.value,
+                }))
+              }
+              className="input text-xs leading-relaxed"
+              placeholder="Custom notice shown to users before confirming payout request..."
+            />
+          </div>
+
+          {/* Live Simulator Calculation Box */}
+          <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 text-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 font-poppins">
+                Live Simulation on $100.00 Withdrawal Request
+              </span>
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">
+                Preview
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 pt-1 border-t border-amber-200/60 text-center font-poppins">
+              <div>
+                <p className="text-[10px] text-slate-500">Gross Request</p>
+                <p className="text-xs font-bold text-slate-900 font-display">$100.00</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500">
+                  Fee (
+                  {!withdrawalForm.feeEnabled
+                    ? "Waived"
+                    : withdrawalForm.feeType === "percentage"
+                      ? `${withdrawalForm.feePercentage}%`
+                      : "Fixed"}
+                  )
+                </p>
+                <p className="text-xs font-bold text-red-600 font-display">
+                  -
+                  $
+                  {!withdrawalForm.feeEnabled
+                    ? "0.00"
+                    : withdrawalForm.feeType === "percentage"
+                      ? ((100 * Number(withdrawalForm.feePercentage || 0)) / 100).toFixed(2)
+                      : Number(withdrawalForm.fixedFee || 0).toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500">Net Received</p>
+                <p className="text-xs font-bold text-emerald-700 font-display">
+                  $
+                  {!withdrawalForm.feeEnabled
+                    ? "100.00"
+                    : withdrawalForm.feeType === "percentage"
+                      ? Math.max(0, 100 - (100 * Number(withdrawalForm.feePercentage || 0)) / 100).toFixed(2)
+                      : Math.max(0, 100 - Number(withdrawalForm.fixedFee || 0)).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </Modal>
     </div>
   );

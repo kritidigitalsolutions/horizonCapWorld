@@ -40,6 +40,8 @@ const {
   deletePaymentMethod,
   getDepositVideo,
   updateDepositVideo,
+  getWithdrawalSettings,
+  updateWithdrawalSettings,
 } = require("../controllers/admin/adminPaymentSettingsController");
 
 const {
@@ -135,6 +137,8 @@ router.put("/payment-methods/:id", protectAdmin, updatePaymentMethod);
 router.delete("/payment-methods/:id", protectAdmin, deletePaymentMethod);
 router.get("/payment-methods/video/tutorial", protectAdmin, getDepositVideo);
 router.put("/payment-methods/video/tutorial", protectAdmin, updateDepositVideo);
+router.get("/payment-methods/withdrawal-settings", protectAdmin, getWithdrawalSettings);
+router.put("/payment-methods/withdrawal-settings", protectAdmin, updateWithdrawalSettings);
 
 // ──────── 5. TRANSACTIONS ────────
 router.get("/transactions", protectAdmin, getTransactions);

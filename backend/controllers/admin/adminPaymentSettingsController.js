@@ -1,5 +1,6 @@
 const PaymentMethod = require("../../models/PaymentMethod");
 const DepositVideo = require("../../models/DepositVideo");
+const AdminSettings = require("../../models/AdminSettings");
 const {
   uploadToCloudinary,
   deleteFromCloudinary,
@@ -266,3 +267,66 @@ exports.updateDepositVideo = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Get Platform Withdrawal Settings
+// @route   GET /api/admin/payment-methods/withdrawal-settings
+exports.getWithdrawalSettings = async (req, res) => {
+  try {
+    let settings = await AdminSettings.findOne();
+    if (!settings) {
+      settings = await AdminSettings.create({});
+    }
+    res.status(200).json({
+      success: true,
+      withdrawalSettings: settings.withdrawalSettings || {},
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update Platform Withdrawal Settings
+// @route   PUT /api/admin/payment-methods/withdrawal-settings
+exports.updateWithdrawalSettings = async (req, res) => {
+  try {
+    let settings = await AdminSettings.findOne();
+    if (!settings) {
+      settings = new AdminSettings();
+    }
+
+    const {
+      feeType,
+      feePercentage,
+      fixedFee,
+      minWithdrawal,
+      maxWithdrawal,
+      processingTime,
+      feeEnabled,
+      termsNotice,
+    } = req.body;
+
+    if (!settings.withdrawalSettings) {
+      settings.withdrawalSettings = {};
+    }
+
+    if (feeType !== undefined) settings.withdrawalSettings.feeType = feeType;
+    if (feePercentage !== undefined) settings.withdrawalSettings.feePercentage = Number(feePercentage);
+    if (fixedFee !== undefined) settings.withdrawalSettings.fixedFee = Number(fixedFee);
+    if (minWithdrawal !== undefined) settings.withdrawalSettings.minWithdrawal = Number(minWithdrawal);
+    if (maxWithdrawal !== undefined) settings.withdrawalSettings.maxWithdrawal = Number(maxWithdrawal);
+    if (processingTime !== undefined) settings.withdrawalSettings.processingTime = processingTime;
+    if (feeEnabled !== undefined) settings.withdrawalSettings.feeEnabled = !!feeEnabled;
+    if (termsNotice !== undefined) settings.withdrawalSettings.termsNotice = termsNotice;
+
+    await settings.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Withdrawal charges & policy updated successfully.",
+      withdrawalSettings: settings.withdrawalSettings,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

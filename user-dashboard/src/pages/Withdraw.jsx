@@ -1,41 +1,115 @@
-import React, { useState } from 'react';
-import { RiArrowUpLine, RiWalletLine } from 'react-icons/ri';
+import React, { useState, useEffect } from 'react';
+import {
+  RiArrowUpLine,
+  RiWalletLine,
+  RiPercentLine,
+  RiInformationLine,
+  RiTimeLine,
+  RiShieldCheckLine,
+  RiAlertLine,
+  RiCheckLine,
+  RiRefreshLine,
+} from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
-import { createWithdrawal } from '../api/withdrawalsApi';
+import { createWithdrawal, getWithdrawalSettings } from '../api/withdrawalsApi';
 import PageHeader from '../components/ui/PageHeader';
 
-const withdrawMethods = [
-  { id: 'usdt-trc20', name: 'USDT (TRC20)', minWithdraw: 5 },
-  { id: 'btc', name: 'Bitcoin (BTC)', minWithdraw: 5 },
-  { id: 'bank', name: 'Bank Wire Transfer', minWithdraw: 5 },
+const baseWithdrawMethods = [
+  { id: 'usdt-trc20', name: 'USDT (TRC20)', type: 'crypto' },
+  { id: 'btc', name: 'Bitcoin (BTC)', type: 'crypto' },
+  { id: 'bank', name: 'Bank Wire Transfer', type: 'bank' },
 ];
 
 export default function Withdraw() {
   const { user, refreshUser } = useAuth();
   const [amount, setAmount] = useState('');
   const [address, setAddress] = useState('');
-  const [method, setMethod] = useState(withdrawMethods[0]);
+  const [method, setMethod] = useState(baseWithdrawMethods[0]);
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // ──────── DYNAMIC WITHDRAWAL CHARGES & SETTINGS ────────
+  const [settings, setSettings] = useState({
+    feeType: 'percentage',
+    feePercentage: 5,
+    fixedFee: 0,
+    minWithdrawal: 5,
+    maxWithdrawal: 50000,
+    processingTime: '12 - 24 Hours',
+    feeEnabled: true,
+    termsNotice:
+      'Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission.',
+  });
+  const [loadingSettings, setLoadingSettings] = useState(true);
+
+  // Fetch dynamic withdrawal charges from admin backend
+  useEffect(() => {
+    let isMounted = true;
+    const loadSettings = async () => {
+      try {
+        setLoadingSettings(true);
+        const res = await getWithdrawalSettings();
+        if (isMounted && res?.withdrawalSettings) {
+          setSettings(res.withdrawalSettings);
+        }
+      } catch (err) {
+        console.warn('Failed to load withdrawal settings from backend, using defaults:', err.message);
+      } finally {
+        if (isMounted) setLoadingSettings(false);
+      }
+    };
+    loadSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // ──────── DYNAMIC LIVE FEE & NET PAYOUT CALCULATION ────────
+  const numAmount = parseFloat(amount) || 0;
+  let calculatedFee = 0;
+  if (numAmount > 0 && settings.feeEnabled) {
+    if (settings.feeType === 'fixed') {
+      calculatedFee = Number(settings.fixedFee) || 0;
+    } else {
+      calculatedFee = (numAmount * (Number(settings.feePercentage) || 0)) / 100;
+    }
+  }
+  const calculatedNet = Math.max(0, numAmount - calculatedFee);
+
+  const handlePercentageClick = (pct) => {
+    const available = user?.earningWallet || 0;
+    if (available <= 0) return;
+    const calc = ((available * pct) / 100).toFixed(2);
+    setAmount(calc);
+    setErrorMsg('');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
 
-    const numAmount = parseFloat(amount);
-    if (!amount || numAmount <= 0) {
+    const withdrawNum = parseFloat(amount);
+    if (!amount || withdrawNum <= 0) {
       setErrorMsg('Please enter a valid withdrawal amount.');
       return;
     }
 
-    if (numAmount < method.minWithdraw) {
-      setErrorMsg(`Minimum withdrawal for ${method.name} is $${method.minWithdraw}.`);
+    const minLimit = settings.minWithdrawal !== undefined ? Number(settings.minWithdrawal) : 5;
+    const maxLimit = settings.maxWithdrawal !== undefined ? Number(settings.maxWithdrawal) : 50000;
+
+    if (withdrawNum < minLimit) {
+      setErrorMsg(`Minimum withdrawal limit is $${minLimit.toLocaleString()} USD.`);
       return;
     }
 
-    if ((user?.earningWallet || 0) < numAmount) {
+    if (withdrawNum > maxLimit) {
+      setErrorMsg(`Maximum withdrawal limit is $${maxLimit.toLocaleString()} USD per request.`);
+      return;
+    }
+
+    if ((user?.earningWallet || 0) < withdrawNum) {
       setErrorMsg(`Insufficient available balance ($${(user?.earningWallet || 0).toFixed(2)} USD).`);
       return;
     }
@@ -48,13 +122,16 @@ export default function Withdraw() {
     setSubmitting(true);
     try {
       const res = await createWithdrawal({
-        amount: numAmount,
+        amount: withdrawNum,
         gateway: method.name,
         address: address.trim(),
       });
 
       if (res?.success) {
-        setSuccessMsg(res.message || 'Withdrawal request submitted successfully. Processing within 12-24 hours.');
+        setSuccessMsg(
+          res.message ||
+            `Withdrawal request for $${withdrawNum.toLocaleString()} USD submitted successfully. Net payout: $${calculatedNet.toFixed(2)}.`
+        );
         setAmount('');
         setAddress('');
         if (refreshUser) await refreshUser();
@@ -77,7 +154,7 @@ export default function Withdraw() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Balance card */}
+        {/* Balance & Method card */}
         <div className="lg:col-span-1 space-y-4">
           <div className="card-gold p-6 rounded-2xl">
             <div className="flex items-center gap-3.5 mb-4">
@@ -85,96 +162,229 @@ export default function Withdraw() {
                 <RiWalletLine size={24} className="text-emerald-700" />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400 font-poppins">Available Balance</p>
-                <p className="text-2xl font-bold font-display text-slate-900 tabular-nums">${(user?.earningWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400 font-poppins">
+                  Available Balance
+                </p>
+                <p className="text-2xl font-bold font-display text-slate-900 tabular-nums">
+                  ${(user?.earningWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </p>
               </div>
             </div>
             <div className="space-y-2.5 pt-3 border-t border-gold-200/60 text-sm font-poppins">
               <div className="flex justify-between">
                 <span className="text-slate-500">Total Earned</span>
-                <span className="text-emerald-600 font-bold tabular-nums">${(user?.totalEarned || 0).toLocaleString()}</span>
+                <span className="text-emerald-600 font-bold tabular-nums">
+                  ${(user?.totalEarned || 0).toLocaleString()}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Total Withdrawn</span>
-                <span className="text-orange-600 font-bold tabular-nums">${(user?.totalWithdrawn || 0).toLocaleString()}</span>
+                <span className="text-orange-600 font-bold tabular-nums">
+                  ${(user?.totalWithdrawn || 0).toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
 
           {/* Method selection */}
           <div className="card p-5 space-y-2.5">
-            <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400 font-poppins">Withdraw Gateway</p>
-            {withdrawMethods.map(m => (
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400 font-poppins">
+              Withdraw Gateway
+            </p>
+            {baseWithdrawMethods.map((m) => (
               <button
                 key={m.id}
                 onClick={() => setMethod(m)}
-                className={`w-full p-3.5 rounded-xl flex items-center justify-between transition-all text-left text-sm font-poppins border
-                  ${method.id === m.id ? 'card-gold border-gold-400 ring-2 ring-gold-200 text-slate-900 font-bold shadow-sm' : 'border-slate-100 hover:border-slate-300 text-slate-600'}
-                `}
+                className={`w-full p-3.5 rounded-xl flex items-center justify-between transition-all text-left text-sm font-poppins border cursor-pointer ${
+                  method.id === m.id
+                    ? 'card-gold border-gold-400 ring-2 ring-gold-200 text-slate-900 font-bold shadow-sm'
+                    : 'border-slate-100 hover:border-slate-300 text-slate-600 bg-white'
+                }`}
               >
                 <span className="font-semibold">{m.name}</span>
-                <span className="text-xs text-slate-400 font-normal">Min ${m.minWithdraw}</span>
+                <span className="text-xs text-slate-400 font-normal">
+                  Min ${settings.minWithdrawal || 5}
+                </span>
               </button>
             ))}
+          </div>
+
+          {/* Quick Info Badge */}
+          <div className="card p-4 rounded-2xl border border-slate-200/80 bg-slate-50 text-xs space-y-2 font-poppins">
+            <div className="flex items-center gap-2 text-slate-700 font-semibold">
+              <RiTimeLine className="text-gold-600 flex-shrink-0" size={16} />
+              <span>Turnaround: {settings.processingTime || '12 - 24 Hours'}</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-700 font-semibold">
+              <RiPercentLine className="text-emerald-600 flex-shrink-0" size={16} />
+              <span>
+                Withdrawal Fee:{' '}
+                <strong className="text-emerald-700">
+                  {!settings.feeEnabled
+                    ? '0% (Free)'
+                    : settings.feeType === 'percentage'
+                      ? `${settings.feePercentage}%`
+                      : `$${settings.fixedFee} Flat`}
+                </strong>
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Withdraw form */}
         <div className="lg:col-span-2">
-          <div className="card p-6 sm:p-8">
+          <div className="card p-6 sm:p-8 space-y-6">
             {successMsg && (
-              <div className="mb-5 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-poppins">
-                {successMsg}
+              <div className="px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-poppins flex items-center gap-2">
+                <RiCheckLine size={18} className="flex-shrink-0" />
+                <span>{successMsg}</span>
               </div>
             )}
 
             {errorMsg && (
-              <div className="mb-5 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-poppins">
-                {errorMsg}
+              <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-poppins flex items-center gap-2">
+                <RiAlertLine size={18} className="flex-shrink-0" />
+                <span>{errorMsg}</span>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Amount field & quick percentage buttons */}
               <div>
-                <label className="text-xs font-semibold text-slate-700 mb-1.5 block font-poppins">Amount (USD)</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-700 font-poppins">
+                    Amount (USD)
+                  </label>
+                  <div className="flex items-center gap-1">
+                    {[25, 50, 75, 100].map((pct) => (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => handlePercentageClick(pct)}
+                        className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-gold-100/80 hover:bg-gold-200 text-gold-900 border border-gold-300/80 transition-colors cursor-pointer"
+                      >
+                        {pct === 100 ? 'MAX' : `${pct}%`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <input
                   type="number"
+                  step="any"
                   value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                  placeholder={`Min amount $${method.minWithdraw}`}
-                  className="input"
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    setErrorMsg('');
+                  }}
+                  placeholder={`Min $${settings.minWithdrawal || 5} - Max $${(settings.maxWithdrawal || 50000).toLocaleString()}`}
+                  className="input text-base font-semibold"
                   required
                 />
+                <p className="text-[11px] text-slate-400 font-poppins mt-1">
+                  Available in Earning Wallet: ${(user?.earningWallet || 0).toFixed(2)} USD
+                </p>
               </div>
+
+              {/* ──────── DYNAMIC LIVE WITHDRAWAL FEE & NET BREAKDOWN CARD ──────── */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-gold-50/50 via-slate-50 to-slate-50 border border-gold-300/70 shadow-2xs space-y-3 font-poppins">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    Live Payout Calculation
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold border uppercase ${
+                      settings.feeEnabled
+                        ? 'bg-amber-100 text-amber-900 border-amber-300'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    }`}
+                  >
+                    {settings.feeEnabled
+                      ? settings.feeType === 'percentage'
+                        ? `${settings.feePercentage}% Fee`
+                        : `$${settings.fixedFee} Flat Fee`
+                      : '0% Free Payout'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-200 text-center">
+                  <div className="p-2 bg-white rounded-xl border border-slate-200/80">
+                    <p className="text-[10px] text-slate-400 font-medium">Gross Request</p>
+                    <p className="text-xs sm:text-sm font-bold text-slate-800 font-display mt-0.5">
+                      ${numAmount.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="p-2 bg-white rounded-xl border border-slate-200/80">
+                    <p className="text-[10px] text-slate-400 font-medium">Protocol Fee</p>
+                    <p className="text-xs sm:text-sm font-bold text-red-600 font-display mt-0.5">
+                      -${calculatedFee.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="p-2 bg-emerald-50/80 rounded-xl border border-emerald-200">
+                    <p className="text-[10px] text-emerald-800 font-medium">Net Received</p>
+                    <p className="text-xs sm:text-sm font-bold text-emerald-700 font-display mt-0.5">
+                      ${calculatedNet.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Destination address */}
               <div>
                 <label className="text-xs font-semibold text-slate-700 mb-1.5 block font-poppins">
                   {method.id === 'bank' ? 'Bank Account Coordinates' : 'Recipient Wallet Address'}
                 </label>
                 <input
                   value={address}
-                  onChange={e => setAddress(e.target.value)}
-                  placeholder={method.id === 'bank' ? 'Bank Name, Account number, IFSC / IBAN...' : 'Enter your recipient wallet address'}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder={
+                    method.id === 'bank'
+                      ? 'Bank Name, Account number, IFSC / IBAN / Title...'
+                      : `Enter your external ${method.name} wallet address`
+                  }
                   className="input"
                   required
                 />
               </div>
 
-              <div className="px-4 py-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 font-poppins space-y-1">
-                <p className="font-semibold text-slate-800">Withdrawal Policy:</p>
-                <p>• Automated clearance turnaround: 12-24 hours</p>
-                <p>• 0% platform surcharge on crypto settlement</p>
-                <p>• Minimum withdrawal: ${method.minWithdraw}</p>
+              {/* Dynamic Withdrawal Policy & Terms notice from Admin */}
+              <div className="px-4 py-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 font-poppins space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                  <RiShieldCheckLine className="text-gold-600" size={15} />
+                  <span>Platform Withdrawal Policy:</span>
+                </div>
+                <p>• Automated clearance turnaround: <strong>{settings.processingTime || '12-24 hours'}</strong></p>
+                <p>
+                  • Platform fee:{' '}
+                  <strong>
+                    {!settings.feeEnabled
+                      ? '0% (Platform fee waived)'
+                      : settings.feeType === 'percentage'
+                        ? `${settings.feePercentage}% standard protocol fee applied`
+                        : `$${settings.fixedFee} USD fixed fee per payout`}
+                  </strong>
+                </p>
+                <p>• Minimum withdrawal: <strong>${settings.minWithdrawal || 5} USD</strong></p>
+                <p>• Maximum limit per request: <strong>${(settings.maxWithdrawal || 50000).toLocaleString()} USD</strong></p>
+                {settings.termsNotice && (
+                  <p className="pt-1 text-[11px] text-slate-500 border-t border-slate-200/80 leading-relaxed italic">
+                    "{settings.termsNotice}"
+                  </p>
+                )}
               </div>
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full btn btn-primary py-3.5 text-sm font-bold cursor-pointer"
+                className="w-full btn btn-primary py-3.5 text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
               >
-                {submitting ? 'Submitting request...' : (
-                  <span className="flex items-center justify-center gap-1.5">
-                    <RiArrowUpLine size={16} /> Request Withdrawal
-                  </span>
+                {submitting ? (
+                  <>
+                    <RiRefreshLine size={18} className="animate-spin" /> Submitting request...
+                  </>
+                ) : (
+                  <>
+                    <RiArrowUpLine size={16} /> Request Withdrawal ({numAmount > 0 ? `$${calculatedNet.toFixed(2)} Net` : 'Instant Payout'})
+                  </>
                 )}
               </button>
             </form>

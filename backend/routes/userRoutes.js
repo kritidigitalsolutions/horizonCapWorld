@@ -36,6 +36,7 @@ const {
   getDepositGateways,
   createDeposit,
   createWithdrawal,
+  getWithdrawalSettings,
   getTransactions,
   getTransactionById,
 } = require("../controllers/user/userTransactionsController");
@@ -91,6 +92,7 @@ router.put("/investments/:id/toggle-auto-renewal", protectUser, toggleAutoRenewa
 router.get("/deposits/gateways", protectUser, getDepositGateways);
 router.get("/deposits/tutorial-video", getDepositVideo);
 router.post("/deposits", protectUser, createDeposit);
+router.get("/withdrawals/settings", getWithdrawalSettings);
 router.post("/withdrawals", protectUser, createWithdrawal);
 router.get("/transactions", protectUser, getTransactions);
 router.get("/transactions/:id", protectUser, getTransactionById);

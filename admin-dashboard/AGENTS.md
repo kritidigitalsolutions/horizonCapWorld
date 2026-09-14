@@ -58,8 +58,7 @@ horizon-of-cap/
 │   ├── main.jsx                        # React entry point
 │   ├── App.jsx                         # Root component with BrowserRouter + Routes
 │   ├── index.css                       # Tailwind directives + custom CSS classes
-│   ├── data/
-│   │   └── mockData.js                 # All mock data (minimal, realistic)
+│   ├── api/                            # Backend API clients (all data fetched dynamically from DB)
 │   ├── components/
 │   │   ├── layout/
 │   │   │   ├── Layout.jsx              # Main layout wrapper (sidebar + header + content)

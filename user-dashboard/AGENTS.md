@@ -65,11 +65,7 @@ user/
     ├── App.jsx                         # Root component with Protected/Public routing
     ├── index.css                       # White & Gold CSS, streaming counter & inputs
     ├── vite-env.d.ts                   # Vite types
-    ├── context/
-    │   └── AuthContext.jsx             # User auth state, wallet balances, streaming rate & login/register
-    ├── data/
-    │   └── userMockData.js             # Plans, ranks, transactions, investments & referrals
-    ├── components/
+    ├── api/                            # Backend API integration client files
     │   └── layout/
     │       ├── UserLayout.jsx          # Shell with white header + responsive sidebar
     │       └── UserSidebar.jsx         # White & Gold 4-section sidebar with mini profile

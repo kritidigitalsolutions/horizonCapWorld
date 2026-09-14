@@ -31,13 +31,6 @@ const connectDB = async () => {
 
     cached.promise = mongoose.connect(uri, opts).then(async (mongooseInstance) => {
       console.log("[MongoDB] Connected successfully to cluster.");
-      // Auto-run initial seeder check (for Admin, Settings, Plans, Ranks)
-      try {
-        const seedInitialData = require("../utils/seeder");
-        await seedInitialData();
-      } catch (seedErr) {
-        console.warn("[Seeder Notice]:", seedErr.message);
-      }
       return mongooseInstance;
     });
   }

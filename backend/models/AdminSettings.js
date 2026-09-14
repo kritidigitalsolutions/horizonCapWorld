@@ -38,6 +38,42 @@ const adminSettingsSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    withdrawalSettings: {
+      feeType: {
+        type: String,
+        enum: ["percentage", "fixed"],
+        default: "percentage",
+      },
+      feePercentage: {
+        type: Number,
+        default: 5, // 5%
+      },
+      fixedFee: {
+        type: Number,
+        default: 0, // $0
+      },
+      minWithdrawal: {
+        type: Number,
+        default: 5, // $5 USD
+      },
+      maxWithdrawal: {
+        type: Number,
+        default: 50000, // $50,000 USD
+      },
+      processingTime: {
+        type: String,
+        default: "12 - 24 Hours",
+      },
+      feeEnabled: {
+        type: Boolean,
+        default: true,
+      },
+      termsNotice: {
+        type: String,
+        default:
+          "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission.",
+      },
+    },
   },
   { timestamps: true }
 );
