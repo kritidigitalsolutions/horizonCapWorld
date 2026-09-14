@@ -145,7 +145,7 @@ exports.createPlan = async (req, res) => {
       dailyRoi: numDailyRoi,
       roiSlabs: processedSlabs.length > 0 ? processedSlabs : undefined,
       hasLockInOption: true,
-      lockInPeriodDays: 90,
+      lockInPeriodDays: Number(req.body.lockInPeriodDays) || 365,
       minDepositAmount: Number(req.body.minDepositAmount) || 10,
       minWithdrawalAmount: Number(req.body.minWithdrawalAmount) || 5,
       loyaltyBonusEnabled: loyaltyBonusEnabled !== undefined ? Boolean(loyaltyBonusEnabled) : true,

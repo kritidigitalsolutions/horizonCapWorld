@@ -113,7 +113,7 @@ const investmentPlanSchema = new mongoose.Schema(
     },
     lockInPeriodDays: {
       type: Number,
-      default: 90, // 3 Months standard lock-in
+      default: 365, // 365 Days standard lock-in
     },
     minDepositAmount: {
       type: Number,

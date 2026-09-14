@@ -701,7 +701,7 @@ export default function InvestmentPlans() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40">
-                    <span>3 Months Lock-In Boost</span>
+                    <span>365 Days Lock-In Boost</span>
                     <span className="font-bold text-amber-700 font-mono">
                       +0.10% / day ({((Number(minSlabDaily) + 0.1)).toFixed(2)}% – {((Number(maxSlabDaily) + 0.1)).toFixed(2)}%)
                     </span>
@@ -738,7 +738,7 @@ export default function InvestmentPlans() {
                           <span>∞</span> Lifetime
                         </span>
                       ) : (
-                        `${plan.duration || "12 Months"} (3 Mo Lock-In Option)`
+                        `${plan.duration || "12 Months"} (365 Days Lock-In Option)`
                       )}
                     </span>
                   </div>
@@ -765,7 +765,7 @@ export default function InvestmentPlans() {
                     >
                       <span className="flex items-center gap-1.5">
                         <RiStackLine size={14} className="text-gray-950" />
-                        <span>ROI Slabs Per Day (Without vs 3 Mo Lock-In)</span>
+                        <span>ROI Slabs Per Day (Without vs 365 Days Lock-In)</span>
                       </span>
                       {isExpanded ? (
                         <RiArrowUpSLine size={16} />
@@ -783,7 +783,7 @@ export default function InvestmentPlans() {
                         <div className="grid grid-cols-3 font-bold text-gray-700 bg-yellow-50/60 text-[10px] py-1.5 px-2.5 border-b border-yellow-200 text-center">
                           <span className="text-left">Amount</span>
                           <span>Without Lock In</span>
-                          <span className="text-right">3 Months Lock In</span>
+                          <span className="text-right">365 Days Lock In</span>
                         </div>
                         {slabsList.map((slab, idx) => {
                           const lockInRate = slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null
@@ -1061,10 +1061,10 @@ export default function InvestmentPlans() {
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                      ROI Slabs Per Day (Without vs 3 Months Lock In)
+                      ROI Slabs Per Day (Without vs 365 Days Lock In)
                     </h4>
                     <p className="text-[11px] text-gray-500">
-                      Standard Daily ROI vs 3 Months Lock In Boost (+0.1% daily)
+                      Standard Daily ROI vs 365 Days Lock In Boost (+0.1% daily)
                     </p>
                   </div>
                 </div>
@@ -1084,7 +1084,7 @@ export default function InvestmentPlans() {
                   <span className="col-span-3">Amount Range ($)</span>
                   <span className="col-span-3">Max Amount ($)</span>
                   <span className="col-span-2">Without Lock In</span>
-                  <span className="col-span-3">3 Mo Lock In</span>
+                  <span className="col-span-3">365 Days Lock In</span>
                   <span className="col-span-1 text-right">Del</span>
                 </div>
 
@@ -1169,7 +1169,7 @@ export default function InvestmentPlans() {
                       <span className="text-emerald-600 font-bold text-[10px]">%</span>
                     </div>
 
-                    {/* 3 Months Lock In Daily ROI (%) */}
+                    {/* 365 Days Lock In Daily ROI (%) */}
                     <div className="col-span-3 flex items-center rounded-lg border border-amber-300 bg-amber-50/60 px-2 py-1.5 focus-within:border-amber-500 focus-within:bg-white">
                       <input
                         type="text"

@@ -61,7 +61,7 @@ export default function Plans() {
   const [investDrawerOpen, setInvestDrawerOpen] = useState(false);
   const [calcDrawerOpen, setCalcDrawerOpen] = useState(false);
   const [investAmount, setInvestAmount] = useState(100);
-  const [lockInPeriod, setLockInPeriod] = useState('3 Months'); // '3 Months' | 'None'
+  const [lockInPeriod, setLockInPeriod] = useState('365 Days'); // '365 Days' | 'None'
   const [autoRenewal, setAutoRenewal] = useState(false);
   const [investSuccess, setInvestSuccess] = useState(false);
   const [investSubmitting, setInvestSubmitting] = useState(false);
@@ -161,7 +161,7 @@ export default function Plans() {
       if (targetPlan) {
         setSelectedPlan(targetPlan);
         setInvestAmount(location.state.amount || targetPlan.minAmountNumeric || 100);
-        setLockInPeriod(location.state.lockInPeriod || '3 Months');
+        setLockInPeriod(location.state.lockInPeriod || '365 Days');
         setAutoRenewal(Boolean(location.state.autoRenewal));
         setInvestDrawerOpen(true);
         // Clean up location state so modal does not re-pop on refresh
@@ -173,7 +173,7 @@ export default function Plans() {
   const handleOpenInvest = (plan) => {
     setSelectedPlan(plan);
     setInvestAmount(plan.minAmountNumeric || 100);
-    setLockInPeriod('3 Months');
+    setLockInPeriod('365 Days');
     setAutoRenewal(false);
     setInvestSuccess(false);
     setInvestError('');
@@ -364,7 +364,7 @@ export default function Plans() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40 font-poppins">
-                    <span>3 Months Lock-In Boost</span>
+                    <span>365 Days Lock-In Boost</span>
                     <span className="font-bold text-amber-700 font-mono">
                       +0.10% / day ({plan.minLockInDaily}% – {plan.maxLockInDaily}% / day)
                     </span>
@@ -398,7 +398,7 @@ export default function Plans() {
                           <span>∞</span> Lifetime
                         </span>
                       ) : (
-                        `${plan.duration} (3 Mo Lock-In Option)`
+                        `${plan.duration} (365 Days Lock-In Option)`
                       )}
                     </span>
                   </div>
@@ -420,7 +420,7 @@ export default function Plans() {
                   >
                     <span className="flex items-center gap-1.5">
                       <RiStackLine size={14} className="text-gray-950" />
-                      <span>ROI Slabs Per Day (Without vs 3 Mo Lock-In)</span>
+                      <span>ROI Slabs Per Day (Without vs 365 Days Lock-In)</span>
                     </span>
                     {isExpanded ? <RiArrowUpSLine size={16} /> : <RiArrowDownSLine size={16} />}
                   </button>
@@ -434,7 +434,7 @@ export default function Plans() {
                       <div className="grid grid-cols-3 font-bold text-gray-700 bg-yellow-50/60 text-[10px] py-1.5 px-2.5 border-b border-yellow-200 text-center">
                         <span className="text-left">Amount</span>
                         <span>Without Lock In</span>
-                        <span className="text-right">3 Months Lock In</span>
+                        <span className="text-right">365 Days Lock In</span>
                       </div>
                       {slabs.map((slab, idx) => {
                         const lockInRate = slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null
@@ -629,23 +629,23 @@ export default function Plans() {
 
               <button
                 type="button"
-                onClick={() => setLockInPeriod('3 Months')}
+                onClick={() => setLockInPeriod('365 Days')}
                 className={`p-3 rounded-xl text-xs font-bold transition-all border flex flex-col items-start gap-1 cursor-pointer ${
-                  lockInPeriod === '3 Months'
+                  lockInPeriod === '365 Days' || lockInPeriod === '3 Months'
                     ? 'bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-300 shadow-xs'
                     : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="font-extrabold flex items-center gap-1.5">
-                    🔒 3 Months Lock In
+                    🔒 365 Days Lock In
                   </span>
                   <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-black">
                     +0.10% / Day Boost
                   </span>
                 </div>
                 <span className="text-[11px] text-gray-500 font-normal">
-                  Boosted Daily ROI (0.4% – 1.1%/d). Principal locked for 90 days for higher earnings.
+                  Boosted Daily ROI (0.4% – 1.1%/d). Principal locked for 365 days for higher earnings.
                 </span>
               </button>
             </div>
@@ -659,7 +659,7 @@ export default function Plans() {
                 ROI Slabs & Applied Rate
               </span>
               <span className="badge badge-gold text-[10px] font-bold">
-                Active: {activeMatchedSlab?.noMaxLimit || !activeMatchedSlab?.maxAmount ? `${activeMatchedSlab?.minAmount}$ +` : `$${activeMatchedSlab?.minAmount} – $${activeMatchedSlab?.maxAmount}`} &bull; {lockInPeriod === '3 Months' ? `${activeMatchedSlab?.lockInDailyRoi || (Number(activeMatchedSlab?.dailyRoi) + 0.1).toFixed(2)}% (Locked)` : `${activeMatchedSlab?.dailyRoi}% / day`}
+                Active: {activeMatchedSlab?.noMaxLimit || !activeMatchedSlab?.maxAmount ? `${activeMatchedSlab?.minAmount}$ +` : `$${activeMatchedSlab?.minAmount} – $${activeMatchedSlab?.maxAmount}`} &bull; {(lockInPeriod === '365 Days' || lockInPeriod === '3 Months') ? `${activeMatchedSlab?.lockInDailyRoi || (Number(activeMatchedSlab?.dailyRoi) + 0.1).toFixed(2)}% (Locked)` : `${activeMatchedSlab?.dailyRoi}% / day`}
               </span>
             </div>
 
@@ -667,7 +667,7 @@ export default function Plans() {
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-1.5 text-xs">
               {(selectedPlan?.roiSlabs || DEFAULT_ROI_SLABS).map((slab, idx) => {
                 const isMatched = activeMatchedSlab?.minAmount === slab.minAmount;
-                const effectiveDaily = lockInPeriod === '3 Months'
+                const effectiveDaily = (lockInPeriod === '365 Days' || lockInPeriod === '3 Months')
                   ? (slab.lockInDailyRoi !== undefined ? slab.lockInDailyRoi : Number((slab.dailyRoi + 0.1).toFixed(2)))
                   : slab.dailyRoi;
 
@@ -691,7 +691,7 @@ export default function Plans() {
                       {withAutoRenewal}% / day
                     </p>
                     <p className={`text-[9.5px] mt-0.5 ${isMatched ? 'text-gray-900 font-semibold' : 'text-gray-500'}`}>
-                      {lockInPeriod === '3 Months' ? '3 Mo Lock-In' : 'Without Lock-In'}
+                      {(lockInPeriod === '365 Days' || lockInPeriod === '3 Months') ? '365 Days Lock-In' : 'Without Lock-In'}
                     </p>
                   </div>
                 );
@@ -816,7 +816,7 @@ export default function Plans() {
             const currentInvestCapital = Number(investAmount) || 0;
             const standardDailyRoi = Number(activeMatchedSlab?.dailyRoi) || 0.3;
             const lockInDailyRoi = Number(activeMatchedSlab?.lockInDailyRoi) || (standardDailyRoi + 0.1);
-            const baseDailyRoi = lockInPeriod === '3 Months' ? lockInDailyRoi : standardDailyRoi;
+            const baseDailyRoi = (lockInPeriod === '365 Days' || lockInPeriod === '3 Months') ? lockInDailyRoi : standardDailyRoi;
             const baseMonthlyRoi = baseDailyRoi * 30;
             const baseAnnualRoi = baseDailyRoi * 360;
 
@@ -856,7 +856,7 @@ export default function Plans() {
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                        ROI & Yield Return Breakdown ({lockInPeriod === '3 Months' ? '3 Months Lock-In Boost' : 'Without Lock-In'})
+                        ROI & Yield Return Breakdown ({(lockInPeriod === '365 Days' || lockInPeriod === '3 Months') ? '365 Days Lock-In Boost' : 'Without Lock-In'})
                       </h4>
                       <p className="text-[11px] text-gray-500">
                         Slab Rate: {activeDailyRoi}% Daily &bull; {activeMonthlyRoi}% Monthly &bull; {activeAnnualRoi}% Annual APY

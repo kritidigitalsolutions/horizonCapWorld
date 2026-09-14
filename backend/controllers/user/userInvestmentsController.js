@@ -50,7 +50,7 @@ exports.investInPlan = async (req, res) => {
     const { planId, amount, autoRenewal, lockInPeriod } = req.body;
     const investAmount = Number(amount);
     const isAutoRenewal = Boolean(autoRenewal);
-    const isLockIn = lockInPeriod === "3 Months" || Boolean(req.body.has3MonthsLockIn);
+    const isLockIn = lockInPeriod === "365 Days" || lockInPeriod === "3 Months" || Boolean(req.body.has3MonthsLockIn);
 
     if (!planId || !investAmount || investAmount <= 0) {
       return res.status(400).json({
@@ -165,8 +165,9 @@ exports.investInPlan = async (req, res) => {
       plan.durationDays === 0
     );
 
+    const lockInPeriodDays = isLockIn ? (Number(plan.lockInPeriodDays) || 365) : 0;
     const lockInUntilDate = isLockIn
-      ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+      ? new Date(Date.now() + lockInPeriodDays * 24 * 60 * 60 * 1000)
       : undefined;
 
     const newInvestment = await UserInvestment.create({
@@ -192,9 +193,9 @@ exports.investInPlan = async (req, res) => {
             isLockInApplied: isLockIn,
           }
         : undefined,
-      lockInPeriod: isLockIn ? "3 Months" : "None",
+      lockInPeriod: isLockIn ? (lockInPeriod || "365 Days") : "None",
       isLocked: isLockIn,
-      lockInDays: isLockIn ? 90 : 0,
+      lockInDays: lockInPeriodDays,
       lockInUntil: lockInUntilDate,
       autoRenewal: isAutoRenewal,
       autoRenewalIncentive: 0.25,

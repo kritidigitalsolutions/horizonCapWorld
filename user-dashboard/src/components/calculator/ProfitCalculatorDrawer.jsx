@@ -369,7 +369,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                 <tr className="bg-amber-100/70 border-b border-amber-200/80 text-[11px] font-black text-slate-800 uppercase tracking-wider">
                   <th className="py-2 px-3">Amount</th>
                   <th className="py-2 px-3 text-center">Without Lock In</th>
-                  <th className="py-2 px-3 text-center text-amber-900">3 Months Lock In</th>
+                  <th className="py-2 px-3 text-center text-amber-900">365 Days Lock In</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-amber-100/60 font-medium text-slate-700">
@@ -443,7 +443,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900">3 Months Lock In</span>
+                <span className="text-xs font-bold text-amber-900">365 Days Lock In</span>
                 {lockInPeriod === '3_months' && <RiCheckLine size={14} className="text-emerald-600 font-bold" />}
               </div>
               <p className="text-[10px] text-amber-700 font-semibold mt-0.5">Boost: +0.10% / day ({calculations.dailyRate}%)</p>
