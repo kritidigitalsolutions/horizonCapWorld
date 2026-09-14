@@ -138,7 +138,7 @@ export default function Referrals() {
       {/* ──────── PAGE HEADER ──────── */}
       <PageHeader
         title="My Referral Network"
-        subtitle="Grow your multi-tier downline team and earn direct deposit & daily ROI profit-sharing commissions"
+        subtitle={depositEnabled ? "Grow your multi-tier downline team and earn direct deposit & daily ROI profit-sharing commissions" : "Grow your multi-tier downline team and earn daily ROI profit-sharing commissions"}
         badge={`${commissions.length}-Tier Active Network`}
         actions={
           (depositEnabled || roiShareEnabled) ? (
@@ -154,17 +154,19 @@ export default function Referrals() {
         }
       />
 
-      {/* ──────────────── 4 ROLLING ODOMETER KPI CARDS ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
-        <KPICard
-          title="Total Referral Commissions Paid"
-          numericValue={Math.round(overviewData?.commissions?.totalEarned || 0)}
-          prefix="$"
-          decimals={0}
-          change={overviewData?.commissions?.totalEarned > 0 ? "Instant Payout" : "Ready"}
-          positive={true}
-          icon="money"
-        />
+      {/* ──────────────── ROLLING ODOMETER KPI CARDS ──────────────── */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${depositEnabled ? '2xl:grid-cols-4' : '2xl:grid-cols-3'} gap-3.5 sm:gap-4 xl:gap-5`}>
+        {depositEnabled && (
+          <KPICard
+            title="Total Referral Commissions Paid"
+            numericValue={Math.round(overviewData?.commissions?.totalEarned || 0)}
+            prefix="$"
+            decimals={0}
+            change={overviewData?.commissions?.totalEarned > 0 ? "Instant Payout" : "Ready"}
+            positive={overviewData?.commissions?.totalEarned > 0}
+            icon="money"
+          />
+        )}
         <KPICard
           title="Direct Active Promoters"
           numericValue={overviewData?.directReferralsCount || networkList.filter(u => u.level === 1).length || 0}
@@ -280,6 +282,7 @@ export default function Referrals() {
       {/* ──────────────── TAB 1: ACTIVE DOWNLINE PARTNERS DIRECTORY ──────────────── */}
       {activeTab === 'tree' && (
         <div className="space-y-5">
+
           {/* Dynamic Level Distribution Summary Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
             {distinctLevels.map(lvl => {
@@ -342,7 +345,7 @@ export default function Referrals() {
                     <th className="font-medium text-slate-500">Referred By (Sponsor)</th>
                     <th className="font-medium text-slate-500">Tier Level</th>
                     <th className="font-medium text-slate-500">Total Invested</th>
-                    <th className="font-medium text-slate-500">Commission Earned</th>
+                    {depositEnabled && <th className="font-medium text-slate-500">Commission Earned</th>}
                     <th className="font-medium text-slate-500">Status</th>
                     <th className="text-right pr-6 font-medium text-slate-500">Action</th>
                   </tr>
@@ -405,12 +408,21 @@ export default function Referrals() {
                       </td>
 
                       {/* Total Commissions Paid */}
-                      <td>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800 text-xs font-extrabold border border-emerald-300 whitespace-nowrap font-poppins shadow-2xs font-mono">
-                          <RiMoneyDollarCircleLine size={14} className="text-emerald-600" />
-                          +${Number(u.totalComm || u.directComm || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </span>
-                      </td>
+                      {depositEnabled && (
+                        <td>
+                          {Number(u.totalComm || u.directComm || 0) > 0 ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800 text-xs font-extrabold border border-emerald-300 whitespace-nowrap font-poppins shadow-2xs font-mono">
+                              <RiMoneyDollarCircleLine size={14} className="text-emerald-600" />
+                              +${Number(u.totalComm || u.directComm || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-400 text-xs font-bold border border-slate-200 whitespace-nowrap font-poppins shadow-2xs font-mono">
+                              <RiMoneyDollarCircleLine size={14} className="text-slate-400" />
+                              $0.00
+                            </span>
+                          )}
+                        </td>
+                      )}
 
                       {/* Status */}
                       <td>
@@ -794,34 +806,38 @@ export default function Referrals() {
               </div>
             </div>
 
-            {/* 3 Metric Cards */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Metric Cards */}
+            <div className={`grid ${depositEnabled ? 'grid-cols-3' : 'grid-cols-1'} gap-3`}>
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-center">
                 <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">
                   Team Turnover
                 </span>
                 <span className="text-base font-bold text-slate-900 font-mono mt-0.5 block">
-                  ${(selectedPartner.teamVolume || selectedPartner.invested * 20).toLocaleString()}.00
+                  ${Number(selectedPartner.teamVolume || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
 
-              <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
-                <span className="text-[10px] text-emerald-700 uppercase font-bold tracking-wider block">
-                  Direct Comm
-                </span>
-                <span className="text-base font-bold text-emerald-700 font-mono mt-0.5 block">
-                  +${(selectedPartner.directComm || selectedPartner.invested * 0.05).toLocaleString()}.00
-                </span>
-              </div>
+              {depositEnabled && (
+                <>
+                  <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+                    <span className="text-[10px] text-emerald-700 uppercase font-bold tracking-wider block">
+                      Direct Comm
+                    </span>
+                    <span className="text-base font-bold text-emerald-700 font-mono mt-0.5 block">
+                      +${Number(selectedPartner.directComm || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
 
-              <div className="p-3.5 bg-gold-50 rounded-xl border border-gold-300 text-center">
-                <span className="text-[10px] text-gold-900 uppercase font-bold tracking-wider block">
-                  Total Commissions
-                </span>
-                <span className="text-base font-extrabold text-gold-900 font-mono mt-0.5 block">
-                  +${(selectedPartner.totalComm || (selectedPartner.invested * 0.05 + 100)).toLocaleString()}.00
-                </span>
-              </div>
+                  <div className="p-3.5 bg-gold-50 rounded-xl border border-gold-300 text-center">
+                    <span className="text-[10px] text-gold-900 uppercase font-bold tracking-wider block">
+                      Total Commissions
+                    </span>
+                    <span className="text-base font-extrabold text-gold-900 font-mono mt-0.5 block">
+                      +${Number(selectedPartner.totalComm || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Downline Network Hierarchy */}
@@ -837,7 +853,7 @@ export default function Referrals() {
                     <span className="font-bold text-slate-800 block mt-0.5">
                       {idx === 0 ? (selectedPartner.directRefs || 12) : Math.round((selectedPartner.directRefs || 12) * Math.max(0.5, (1.8 - idx * 0.2)))} Users
                     </span>
-                    <span className="text-[10px] text-emerald-700 font-mono">{tier.investCommission}</span>
+                    {depositEnabled && <span className="text-[10px] text-emerald-700 font-mono">{tier.investCommission}</span>}
                   </div>
                 ))}
               </div>
@@ -855,12 +871,14 @@ export default function Referrals() {
                 <span className="text-slate-500 font-medium">Referred By (Sponsor):</span>
                 <span className="font-bold text-slate-800">{selectedPartner.sponsor || 'HORIZON-USR-07'}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-200/60">
-                <span className="text-slate-500 font-medium">Direct Deposit Commission Rate:</span>
-                <span className="font-bold text-slate-900 font-mono">
-                  {commissions.find(c => c.level === `L${selectedPartner.level}` || c.level === String(selectedPartner.level))?.investCommission || '5%'}
-                </span>
-              </div>
+              {depositEnabled && (
+                <div className="flex justify-between py-1 border-b border-slate-200/60">
+                  <span className="text-slate-500 font-medium">Direct Deposit Commission Rate:</span>
+                  <span className="font-bold text-slate-900 font-mono">
+                    {commissions.find(c => c.level === `L${selectedPartner.level}` || c.level === String(selectedPartner.level))?.investCommission || '5%'}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between py-1">
                 <span className="text-slate-500 font-medium">Auto-Credit Destination:</span>
                 <span className="font-bold text-slate-900">Earning Wallet (Instant Withdrawal Available)</span>

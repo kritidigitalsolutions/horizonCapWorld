@@ -112,21 +112,27 @@ export default function ReferralPlans() {
       {/* ──────── PAGE HEADER ──────── */}
       <PageHeader
         title="Referral Plans & Commissions"
-        subtitle={`Earn multi-tier passive commissions across ${commissions.length} levels from active downline deposits & daily streaming ROI profit`}
+        subtitle={
+          depositEnabled
+            ? `Earn multi-tier passive commissions across ${commissions.length} levels from active downline deposits & daily streaming ROI profit`
+            : `Earn multi-tier passive commissions across ${commissions.length} levels from daily streaming ROI profit`
+        }
         badge={`${commissions.length}-Tier Active System`}
       />
 
-      {/* ──────────────── 4 ROLLING ODOMETER KPI CARDS ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
-        <KPICard
-          title="Total Referral Commissions Paid"
-          numericValue={totalCommissions}
-          prefix="$"
-          decimals={0}
-          change={totalCommissions > 0 ? "Instant Payout" : "Ready"}
-          positive={true}
-          icon="money"
-        />
+      {/* ──────────────── ROLLING ODOMETER KPI CARDS ──────────────── */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${depositEnabled ? '2xl:grid-cols-4' : '2xl:grid-cols-3'} gap-3.5 sm:gap-4 xl:gap-5`}>
+        {depositEnabled && (
+          <KPICard
+            title="Total Referral Commissions Paid"
+            numericValue={totalCommissions}
+            prefix="$"
+            decimals={0}
+            change={totalCommissions > 0 ? "Instant Payout" : "Ready"}
+            positive={true}
+            icon="money"
+          />
+        )}
         <KPICard
           title="Active Network Promoters"
           numericValue={directPromoters}

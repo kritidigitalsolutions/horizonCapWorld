@@ -35,10 +35,12 @@ exports.getReferralOverview = async (req, res) => {
       status: "Approved",
     });
 
-    const totalCommission = bonusTxns.reduce((sum, t) => sum + (t.amount || 0), 0);
-    const directCommission = bonusTxns
+    const isDepositCommEnabled = adminSettings.referralDepositCommissionEnabled !== false && adminSettings.referralSystemEnabled !== false;
+
+    const totalCommission = isDepositCommEnabled ? bonusTxns.reduce((sum, t) => sum + (t.amount || 0), 0) : 0;
+    const directCommission = isDepositCommEnabled ? (bonusTxns
       .filter((t) => (t.customId || "").includes("L1") || (t.referenceNo || "").includes("L1") || (t.gateway || "").toLowerCase().includes("direct"))
-      .reduce((sum, t) => sum + (t.amount || 0), 0) || (totalCommission * 0.6);
+      .reduce((sum, t) => sum + (t.amount || 0), 0) || (totalCommission * 0.6)) : 0;
     const multiTierCommission = Math.max(0, totalCommission - directCommission);
 
     const origin = req.headers.origin || (req.headers.referer ? req.headers.referer.replace(/\/$/, "") : "https://horizoncapworlds.com");
@@ -175,6 +177,15 @@ exports.getReferralNetwork = async (req, res) => {
       ];
     }
 
+    const isDepositCommEnabled = adminSettings.referralDepositCommissionEnabled !== false && adminSettings.referralSystemEnabled !== false;
+
+    // Fetch actual referral bonus transactions credited to this sponsor
+    const bonusTxns = await Transaction.find({
+      user: user._id,
+      type: "Referral Bonus",
+      status: "Approved",
+    });
+
     const getRateForLevel = (lvl) => {
       const found = tiers.find((t) => t.levelNumber === lvl);
       return found?.investCommissionRate ?? Math.max(1, 6 - lvl);
@@ -202,7 +213,21 @@ exports.getReferralNetwork = async (req, res) => {
       downlines.forEach((u) => {
         const invested = u.totalInvested || 0;
         const eligibleBaseAmount = u.firstInvestmentAmount || (u.hasReceivedReferralBonus ? u.firstInvestmentAmount || invested : (invested > 0 ? invested : 0));
-        const comm = (eligibleBaseAmount * rate) / 100;
+
+        // When toggle is OFF or no referral bonus was distributed, commission is $0.00
+        let comm = 0;
+        if (isDepositCommEnabled) {
+          const matchedTxns = bonusTxns.filter((t) =>
+            (t.note && t.note.includes(u.customId)) ||
+            (t.referenceNo && t.referenceNo.includes(u.customId))
+          );
+          if (matchedTxns.length > 0) {
+            comm = matchedTxns.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+          } else if (u.hasReceivedReferralBonus) {
+            comm = (eligibleBaseAmount * rate) / 100;
+          }
+        }
+
         formattedNetwork.push({
           id: u.customId,
           name: u.name,
