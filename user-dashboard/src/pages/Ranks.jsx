@@ -678,7 +678,7 @@ export default function Ranks() {
 
                         {/* Mobile Number */}
                         <td className="text-xs font-normal text-slate-500 font-poppins font-mono">
-                          {u.phone || '+91 98765 43210'}
+                          {u.phone || '—'}
                         </td>
 
                         {/* Current Rank */}

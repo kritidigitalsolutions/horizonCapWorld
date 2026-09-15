@@ -40,7 +40,7 @@ exports.getReferralOverview = async (req, res) => {
     const totalCommission = isDepositCommEnabled ? bonusTxns.reduce((sum, t) => sum + (t.amount || 0), 0) : 0;
     const directCommission = isDepositCommEnabled ? (bonusTxns
       .filter((t) => (t.customId || "").includes("L1") || (t.referenceNo || "").includes("L1") || (t.gateway || "").toLowerCase().includes("direct"))
-      .reduce((sum, t) => sum + (t.amount || 0), 0) || (totalCommission * 0.6)) : 0;
+      .reduce((sum, t) => sum + (t.amount || 0), 0)) : 0;
     const multiTierCommission = Math.max(0, totalCommission - directCommission);
 
     const origin = req.headers.origin || (req.headers.referer ? req.headers.referer.replace(/\/$/, "") : "https://horizoncapworlds.com");
@@ -197,10 +197,70 @@ exports.getReferralNetwork = async (req, res) => {
       return found?.investCommissionRate ?? Math.max(1, 6 - lvl);
     };
 
+    // Load all users to dynamically construct multi-tier downline tree for every partner
+    const allUsers = await User.find().select(
+      "customId sponsorId name email phone country totalInvested firstInvestmentAmount hasReceivedReferralBonus createdAt status"
+    );
+
+    const childrenMap = new Map();
+    allUsers.forEach((u) => {
+      if (u.sponsorId) {
+        if (!childrenMap.has(u.sponsorId)) childrenMap.set(u.sponsorId, []);
+        childrenMap.get(u.sponsorId).push(u);
+      }
+    });
+
+    // Helper to dynamically calculate recursive multi-tier downline structure for any partner
+    const getPartnerDownlineBreakdown = (partnerCustomId) => {
+      const breakdown = [];
+      let currentUsers = childrenMap.get(partnerCustomId) || [];
+      let totalTeamVolume = 0;
+      let totalTeamCount = 0;
+
+      for (const tier of tiers) {
+        const lvl = tier.levelNumber;
+        const count = currentUsers.length;
+        const volume = currentUsers.reduce((sum, ch) => sum + (ch.totalInvested || 0), 0);
+        totalTeamCount += count;
+        totalTeamVolume += volume;
+
+        breakdown.push({
+          level: `L${lvl}`,
+          levelNumber: lvl,
+          count,
+          volume,
+          investCommission: tier.investCommission || `${tier.investCommissionRate || 0}%`,
+          members: currentUsers.map((m) => ({
+            id: m.customId,
+            name: m.name,
+            email: m.email,
+            phone: m.phone || "—",
+            invested: m.totalInvested || 0,
+            status: m.status || "Active",
+            joined: m.createdAt ? m.createdAt.toISOString().split("T")[0] : "",
+          })),
+        });
+
+        const nextUsers = [];
+        currentUsers.forEach((ch) => {
+          const nextKids = childrenMap.get(ch.customId);
+          if (nextKids) nextUsers.push(...nextKids);
+        });
+        currentUsers = nextUsers;
+      }
+
+      return {
+        directRefs: (childrenMap.get(partnerCustomId) || []).length,
+        totalTeamCount,
+        teamVolume: totalTeamVolume,
+        levelBreakdown: breakdown,
+      };
+    };
+
     const formattedNetwork = [];
     const levelCounts = {};
 
-    let currentParentIds = [user.customId];
+    let currentParentIds = [user.customId, String(user._id)].filter(Boolean);
 
     for (const tier of tiers) {
       const lvl = tier.levelNumber;
@@ -234,19 +294,25 @@ exports.getReferralNetwork = async (req, res) => {
           }
         }
 
+        const partnerStats = getPartnerDownlineBreakdown(u.customId);
+
         formattedNetwork.push({
           id: u.customId,
           name: u.name,
           email: u.email,
-          phone: u.phone,
+          phone: u.phone || "—",
           level: lvl,
           sponsor: u.sponsorId,
           invested,
+          teamVolume: partnerStats.teamVolume,
+          directRefs: partnerStats.directRefs,
+          totalTeamCount: partnerStats.totalTeamCount,
+          levelBreakdown: partnerStats.levelBreakdown,
           firstInvestmentAmount: eligibleBaseAmount,
           directComm: lvl === 1 ? comm : 0,
           multiTierComm: lvl > 1 ? comm : 0,
           totalComm: comm,
-          joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",
+          joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "",
           status: u.status || "Active",
         });
       });

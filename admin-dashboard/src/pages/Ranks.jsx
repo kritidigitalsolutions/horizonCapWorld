@@ -328,10 +328,9 @@ export default function Ranks() {
 
   // Enriched Leaders List with rank metrics
   const leaderData = leaderboardList.map((u) => {
-    const rawInvest = Number(u.totalInvested || 0);
-    const teamVolume = Number(u.teamTurnover || u.teamVolume || (rawInvest * (u.totalReferrals > 0 ? (u.totalReferrals * 1.8 + 1) : 0)));
+    const teamVolume = Number(u.teamTurnover || u.teamVolume || u.turnover || 0);
     const rankObj = ranks.find(r => (r.level === u.level) || r.name.toLowerCase() === (u.currentRank || u.rank || '').toLowerCase().replace(/level \d+ \(|\)/g, '')) || ranks[0];
-    const rankCashBonus = Number(u.rewardsEarned || u.reward || (u.totalReferrals > 0 ? (rankObj?.reward || 0) : 0));
+    const rankCashBonus = Number(u.rewardsEarned || u.reward || 0);
 
     return {
       ...u,
@@ -697,7 +696,7 @@ export default function Ranks() {
 
                         {/* Mobile Number */}
                         <td className="text-xs font-normal text-slate-500 font-poppins font-mono">
-                          {u.phone || '+91 98765 43210'}
+                          {u.phone || '—'}
                         </td>
 
                         {/* Current Rank Badge */}
