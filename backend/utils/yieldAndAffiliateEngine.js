@@ -162,7 +162,32 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
 
       if (!sponsor) break;
 
-      const rate = commissionType === "investment" ? (tier.investCommissionRate || 5) : (tier.earningsCommissionRate || 5);
+      // For Level ROI Earnings Profit Share, enforce eligibility conditions (Group Volume & Direct Clients)
+      if (commissionType === "earnings") {
+        if (tier.levelNumber === 1 || tier.roiPerDay === 0) {
+          // Level 1 has No ROI Per Day (NR)
+          currentSponsorId = sponsor.sponsorId;
+          continue;
+        }
+
+        if (tier.directClientsMin > 0) {
+          const directCount = await User.countDocuments({ sponsorId: sponsor.customId });
+          if (directCount < tier.directClientsMin) {
+            currentSponsorId = sponsor.sponsorId;
+            continue;
+          }
+        }
+
+        if (tier.groupVolumeMin > 0) {
+          const turnover = Number(sponsor.teamTurnover || 0);
+          if (turnover < tier.groupVolumeMin) {
+            currentSponsorId = sponsor.sponsorId;
+            continue;
+          }
+        }
+      }
+
+      const rate = commissionType === "investment" ? (tier.investCommissionRate || 5) : (tier.earningsCommissionRate || 0);
       const bonus = parseFloat(((amount * rate) / 100).toFixed(2));
 
       if (bonus > 0) {

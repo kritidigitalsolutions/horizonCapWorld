@@ -82,12 +82,12 @@ exports.createPlan = async (req, res) => {
     let processedSlabs = [];
     if (type === "slab" && Array.isArray(roiSlabs) && roiSlabs.length > 0) {
       processedSlabs = roiSlabs.map((s) => {
-        const d = Number(s.dailyRoi) || 0;
+        const d = Number(s.dailyRoi) || 0.3;
         const lockInDaily = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null && s.lockInDailyRoi !== ""
           ? Number(s.lockInDailyRoi)
-          : Number((d + 0.1).toFixed(4));
+          : 0.9;
         return {
-          minAmount: Number(s.minAmount) || 0,
+          minAmount: Number(s.minAmount) || 10,
           maxAmount: s.noMaxLimit ? null : (s.maxAmount ? Number(s.maxAmount) : null),
           noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
           dailyRoi: d,
@@ -145,9 +145,11 @@ exports.createPlan = async (req, res) => {
       dailyRoi: numDailyRoi,
       roiSlabs: processedSlabs.length > 0 ? processedSlabs : undefined,
       hasLockInOption: true,
-      lockInPeriodDays: Number(req.body.lockInPeriodDays) || 365,
+      lockInPeriodDays: Number(req.body.lockInPeriodDays) || 333,
       minDepositAmount: Number(req.body.minDepositAmount) || 10,
       minWithdrawalAmount: Number(req.body.minWithdrawalAmount) || 5,
+      singleIdMaxWithdrawal: req.body.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
+      singleIdMaxWithdrawalMultiplier: Number(req.body.singleIdMaxWithdrawalMultiplier) || 4,
       loyaltyBonusEnabled: loyaltyBonusEnabled !== undefined ? Boolean(loyaltyBonusEnabled) : true,
       loyaltyBonusTitle: loyaltyBonusTitle || "Reward ( Loyalty Bonus )",
       loyaltyBonusDescription: loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
@@ -200,6 +202,8 @@ exports.updatePlan = async (req, res) => {
       duration,
       durationDays,
       isInfinite,
+      singleIdMaxWithdrawal,
+      singleIdMaxWithdrawalMultiplier,
       minAmount,
       maxAmount,
       noMaxLimit,
@@ -214,12 +218,12 @@ exports.updatePlan = async (req, res) => {
 
     if (roiSlabs !== undefined && Array.isArray(roiSlabs)) {
       plan.roiSlabs = roiSlabs.map((s) => {
-        const d = Number(s.dailyRoi) || 0;
+        const d = Number(s.dailyRoi) || 0.3;
         const lockInDaily = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null && s.lockInDailyRoi !== ""
           ? Number(s.lockInDailyRoi)
-          : Number((d + 0.1).toFixed(4));
+          : 0.9;
         return {
-          minAmount: Number(s.minAmount) || 0,
+          minAmount: Number(s.minAmount) || 10,
           maxAmount: s.noMaxLimit ? null : (s.maxAmount ? Number(s.maxAmount) : null),
           noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
           dailyRoi: d,
@@ -248,6 +252,8 @@ exports.updatePlan = async (req, res) => {
 
     if (minDepositAmount !== undefined) plan.minDepositAmount = Number(minDepositAmount);
     if (minWithdrawalAmount !== undefined) plan.minWithdrawalAmount = Number(minWithdrawalAmount);
+    if (singleIdMaxWithdrawal !== undefined) plan.singleIdMaxWithdrawal = singleIdMaxWithdrawal;
+    if (singleIdMaxWithdrawalMultiplier !== undefined) plan.singleIdMaxWithdrawalMultiplier = Number(singleIdMaxWithdrawalMultiplier);
     if (hasLockInOption !== undefined) plan.hasLockInOption = Boolean(hasLockInOption);
     if (lockInPeriodDays !== undefined) plan.lockInPeriodDays = Number(lockInPeriodDays);
 

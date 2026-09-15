@@ -303,6 +303,8 @@ exports.updateWithdrawalSettings = async (req, res) => {
       processingTime,
       feeEnabled,
       termsNotice,
+      singleIdMaxWithdrawal,
+      singleIdMaxWithdrawalMultiplier,
     } = req.body;
 
     if (!settings.withdrawalSettings) {
@@ -317,6 +319,8 @@ exports.updateWithdrawalSettings = async (req, res) => {
     if (processingTime !== undefined) settings.withdrawalSettings.processingTime = processingTime;
     if (feeEnabled !== undefined) settings.withdrawalSettings.feeEnabled = !!feeEnabled;
     if (termsNotice !== undefined) settings.withdrawalSettings.termsNotice = termsNotice;
+    if (singleIdMaxWithdrawal !== undefined) settings.withdrawalSettings.singleIdMaxWithdrawal = singleIdMaxWithdrawal;
+    if (singleIdMaxWithdrawalMultiplier !== undefined) settings.withdrawalSettings.singleIdMaxWithdrawalMultiplier = Number(singleIdMaxWithdrawalMultiplier);
 
     await settings.save();
 

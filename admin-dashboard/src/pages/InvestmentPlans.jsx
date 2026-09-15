@@ -39,10 +39,7 @@ import {
 
 // Default standard Amount-Wise Daily ROI Percentage Slabs requested by client
 export const DEFAULT_ROI_SLABS = [
-  { minAmount: 10, maxAmount: 100, noMaxLimit: false, dailyRoi: 0.3, lockInDailyRoi: 0.4, monthlyRoi: 9.0, lockInMonthlyRoi: 12.0, annualRoi: 108.0, lockInAnnualRoi: 144.0 },
-  { minAmount: 101, maxAmount: 500, noMaxLimit: false, dailyRoi: 0.5, lockInDailyRoi: 0.6, monthlyRoi: 15.0, lockInMonthlyRoi: 18.0, annualRoi: 180.0, lockInAnnualRoi: 216.0 },
-  { minAmount: 501, maxAmount: 5000, noMaxLimit: false, dailyRoi: 0.8, lockInDailyRoi: 0.9, monthlyRoi: 24.0, lockInMonthlyRoi: 27.0, annualRoi: 288.0, lockInAnnualRoi: 324.0 },
-  { minAmount: 5001, maxAmount: "", noMaxLimit: true, dailyRoi: 1.0, lockInDailyRoi: 1.1, monthlyRoi: 30.0, lockInMonthlyRoi: 33.0, annualRoi: 360.0, lockInAnnualRoi: 396.0 },
+  { minAmount: 10, maxAmount: "", noMaxLimit: true, dailyRoi: 0.3, lockInDailyRoi: 0.9, monthlyRoi: 9.0, lockInMonthlyRoi: 27.0, annualRoi: 108.0, lockInAnnualRoi: 324.0 },
 ];
 
 // Default Reward (Loyalty Bonus) Slabs based on Capital not withdrawn
@@ -140,8 +137,9 @@ export default function InvestmentPlans() {
     roiSlabs: DEFAULT_ROI_SLABS,
     minDepositAmount: "10",
     minWithdrawalAmount: "5",
+    singleIdMaxWithdrawal: "3X + Capital Maximum Withdrawal Allowed",
     hasLockInOption: true,
-    lockInPeriodDays: 90,
+    lockInPeriodDays: 333,
     loyaltyBonusEnabled: true,
     loyaltyBonusTitle: "Reward ( Loyalty Bonus )",
     loyaltyBonusDescription: "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
@@ -200,8 +198,9 @@ export default function InvestmentPlans() {
       roiSlabs: DEFAULT_ROI_SLABS.map((s) => ({ ...s })),
       minDepositAmount: "10",
       minWithdrawalAmount: "5",
+      singleIdMaxWithdrawal: "3X + Capital Maximum Withdrawal Allowed",
       hasLockInOption: true,
-      lockInPeriodDays: 90,
+      lockInPeriodDays: 333,
       loyaltyBonusEnabled: true,
       loyaltyBonusTitle: "Reward ( Loyalty Bonus )",
       loyaltyBonusDescription: "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
@@ -240,7 +239,7 @@ export default function InvestmentPlans() {
             const d = Number(s.dailyRoi) || 0.3;
             const lockInD = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null
               ? Number(s.lockInDailyRoi)
-              : Number((d + 0.1).toFixed(3));
+              : 0.9;
             return {
               minAmount: s.minAmount,
               maxAmount: s.maxAmount || "",
@@ -279,8 +278,9 @@ export default function InvestmentPlans() {
       roiSlabs: slabs,
       minDepositAmount: plan.minDepositAmount ? plan.minDepositAmount.toString() : "10",
       minWithdrawalAmount: plan.minWithdrawalAmount ? plan.minWithdrawalAmount.toString() : "5",
+      singleIdMaxWithdrawal: plan.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
       hasLockInOption: plan.hasLockInOption !== false,
-      lockInPeriodDays: plan.lockInPeriodDays || 90,
+      lockInPeriodDays: plan.lockInPeriodDays || 333,
       loyaltyBonusEnabled: plan.loyaltyBonusEnabled !== false,
       loyaltyBonusTitle: plan.loyaltyBonusTitle || "Reward ( Loyalty Bonus )",
       loyaltyBonusDescription: plan.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
@@ -502,8 +502,10 @@ export default function InvestmentPlans() {
       roiSlabs: processedSlabs,
       minDepositAmount: parseFloat(formData.minDepositAmount) || 10,
       minWithdrawalAmount: parseFloat(formData.minWithdrawalAmount) || 5,
+      singleIdMaxWithdrawal: formData.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
+      singleIdMaxWithdrawalMultiplier: 4,
       hasLockInOption: formData.hasLockInOption !== false,
-      lockInPeriodDays: Number(formData.lockInPeriodDays) || 90,
+      lockInPeriodDays: Number(formData.lockInPeriodDays) || 333,
       loyaltyBonusEnabled: formData.loyaltyBonusEnabled,
       loyaltyBonusTitle: formData.loyaltyBonusTitle,
       loyaltyBonusDescription: formData.loyaltyBonusDescription,
@@ -684,7 +686,7 @@ export default function InvestmentPlans() {
 
                 {/* Amount-Wise Daily ROI Highlight Box */}
                 <div className="p-3.5 bg-gradient-to-r from-gold-50/90 to-amber-50/50 rounded-xl border border-gold-200/60 mb-4">
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center justify-between mb-1.5">
                     <span className="flex items-center gap-1 text-xs text-gold-700 font-bold">
                       <RiFlashlightLine
                         size={15}
@@ -700,16 +702,28 @@ export default function InvestmentPlans() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40">
-                    <span>365 Days Lock-In Boost</span>
-                    <span className="font-bold text-amber-700 font-mono">
-                      +0.10% / day ({((Number(minSlabDaily) + 0.1)).toFixed(2)}% – {((Number(maxSlabDaily) + 0.1)).toFixed(2)}%)
+                  <div className="flex items-center justify-between text-[11px] text-gray-600 pt-1.5 border-t border-gold-200/40">
+                    <span>Without Lock In Period</span>
+                    <span className="font-extrabold text-emerald-700 font-mono">
+                      {minSlabDaily}% / day
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
+                  <div className="flex items-center justify-between text-[11px] text-gray-600 pt-1">
+                    <span>Cap is 3X approx. 333 Days</span>
+                    <span className="font-extrabold text-amber-700 font-mono">
+                      {slabsList[0]?.lockInDailyRoi !== undefined ? slabsList[0].lockInDailyRoi : 0.9}% / day
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40">
                     <span>Deposit &bull; Withdrawal Min</span>
                     <span className="font-semibold text-gray-800 font-mono">
                       Min Dep: ${plan.minDepositAmount || 10} &bull; Min WD: ${plan.minWithdrawalAmount || 5}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10.5px] text-amber-900 bg-amber-100/80 px-2 py-1 rounded-md font-bold mt-2 border border-amber-300/70 shadow-2xs">
+                    <span>Single ID Limit</span>
+                    <span className="font-extrabold text-amber-950 font-mono text-[10px]">
+                      {plan.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}
                     </span>
                   </div>
                 </div>
@@ -723,7 +737,7 @@ export default function InvestmentPlans() {
                     <span className="font-bold text-gray-800 text-xs">
                       ${plan.minAmount?.toLocaleString() || "10"} —{" "}
                       {plan.noMaxLimit || !plan.maxAmount
-                        ? "Unlimited"
+                        ? "Any Amount"
                         : `$${plan.maxAmount.toLocaleString()}`}
                     </span>
                   </div>
@@ -738,7 +752,7 @@ export default function InvestmentPlans() {
                           <span>∞</span> Lifetime
                         </span>
                       ) : (
-                        `${plan.duration || "12 Months"} (365 Days Lock-In Option)`
+                        `approx. ${plan.lockInPeriodDays || 333} Days (Cap is 3X)`
                       )}
                     </span>
                   </div>
@@ -761,11 +775,11 @@ export default function InvestmentPlans() {
                       onClick={() =>
                         setExpandedSlabsPlanId(isExpanded ? null : plan._id)
                       }
-                      className="w-full py-1.5 px-2.5 rounded-lg bg-yellow-400/90 hover:bg-yellow-400 text-gray-950 border border-yellow-500 text-[11px] font-extrabold flex items-center justify-between transition-all shadow-2xs"
+                      className="w-full py-1.5 px-2.5 rounded-lg bg-yellow-400/90 hover:bg-yellow-400 text-gray-950 border border-yellow-500 text-[11px] font-extrabold flex items-center justify-between transition-all shadow-2xs cursor-pointer"
                     >
                       <span className="flex items-center gap-1.5">
                         <RiStackLine size={14} className="text-gray-950" />
-                        <span>ROI Slabs Per Day (Without vs 365 Days Lock-In)</span>
+                        <span>ROI Slabs Per Day (Without vs Cap is 3X ~333 Days)</span>
                       </span>
                       {isExpanded ? (
                         <RiArrowUpSLine size={16} />
@@ -780,23 +794,23 @@ export default function InvestmentPlans() {
                         <div className="bg-yellow-300 py-1.5 px-3 text-center text-xs font-black text-gray-950 uppercase tracking-wide border-b border-yellow-400">
                           ROI Slabs Per Day
                         </div>
-                        <div className="grid grid-cols-3 font-bold text-gray-700 bg-yellow-50/60 text-[10px] py-1.5 px-2.5 border-b border-yellow-200 text-center">
+                        <div className="grid grid-cols-3 font-bold text-gray-800 bg-yellow-50/80 text-[10px] py-1.5 px-2.5 border-b border-yellow-200 text-center">
                           <span className="text-left">Amount</span>
-                          <span>Without Lock In</span>
-                          <span className="text-right">365 Days Lock In</span>
+                          <span>Without Lock In Period</span>
+                          <span className="text-right">Cap is 3X approx. 333 Days</span>
                         </div>
                         {slabsList.map((slab, idx) => {
                           const lockInRate = slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null
                             ? slab.lockInDailyRoi
-                            : Number((Number(slab.dailyRoi || 0.3) + 0.1).toFixed(2));
+                            : 0.9;
                           return (
                             <div
                               key={idx}
-                              className="grid grid-cols-3 items-center py-1.5 px-2.5 border-b border-gray-100 last:border-none text-[11px] hover:bg-yellow-50/30 transition-colors"
+                              className="grid grid-cols-3 items-center py-2 px-2.5 border-b border-gray-100 last:border-none text-[11px] hover:bg-yellow-50/30 transition-colors"
                             >
                               <span className="font-bold text-gray-900 text-left">
                                 {slab.noMaxLimit || !slab.maxAmount
-                                  ? `${slab.minAmount}$ +`
+                                  ? `${slab.minAmount}$ + Any Amount`
                                   : `${slab.minAmount}$ to ${slab.maxAmount}$`}
                               </span>
                               <span className="text-center font-bold text-emerald-700 font-mono">
@@ -808,9 +822,15 @@ export default function InvestmentPlans() {
                             </div>
                           );
                         })}
-                        <div className="bg-slate-50 p-2 border-t border-gray-200 text-[10px] text-gray-600 flex justify-between font-medium">
-                          <span>Min. Deposit: <b>${plan.minDepositAmount || 10}</b></span>
-                          <span>Min Withdrawal: <b>${plan.minWithdrawalAmount || 5}</b></span>
+                        <div className="bg-slate-50 p-2.5 border-t border-gray-200 text-[10px] text-gray-600 flex flex-col gap-1 font-medium">
+                          <div className="flex justify-between">
+                            <span>Min. Deposit: <b>${plan.minDepositAmount || 10}</b></span>
+                            <span>Min Withdrawal: <b>${plan.minWithdrawalAmount || 5}</b></span>
+                          </div>
+                          <div className="text-amber-800 font-bold text-[9.5px] border-t border-gray-200/60 pt-1 flex items-center justify-between">
+                            <span>Single ID Limit:</span>
+                            <span className="text-amber-950 font-extrabold">{plan.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}</span>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -976,44 +996,66 @@ export default function InvestmentPlans() {
             )}
           </div>
 
-          {/* Min Deposit & Min Withdrawal Settings */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-gray-200">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                Min. Deposit Amount ($)
-              </label>
-              <div className="flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 focus-within:border-gold-400">
-                <span className="text-gray-400 font-bold text-xs mr-1">$</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={formData.minDepositAmount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, minDepositAmount: e.target.value.replace(/[^0-9]/g, "") })
-                  }
-                  className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
-                  placeholder="10"
-                />
+          {/* Min Deposit, Min Withdrawal & Single ID Capping Settings */}
+          <div className="p-3 bg-slate-50 rounded-xl border border-gray-200 space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Min. Deposit Amount ($)
+                </label>
+                <div className="flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 focus-within:border-gold-400">
+                  <span className="text-gray-400 font-bold text-xs mr-1">$</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.minDepositAmount}
+                    onChange={(e) =>
+                      setFormData({ ...formData, minDepositAmount: e.target.value.replace(/[^0-9]/g, "") })
+                    }
+                    className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
+                    placeholder="10"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Min. Withdrawal Amount ($)
+                </label>
+                <div className="flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 focus-within:border-gold-400">
+                  <span className="text-gray-400 font-bold text-xs mr-1">$</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.minWithdrawalAmount}
+                    onChange={(e) =>
+                      setFormData({ ...formData, minWithdrawalAmount: e.target.value.replace(/[^0-9]/g, "") })
+                    }
+                    className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
+                    placeholder="5"
+                  />
+                </div>
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                Min. Withdrawal Amount ($)
+                Single ID Maximum Withdrawal Rule
               </label>
-              <div className="flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 focus-within:border-gold-400">
-                <span className="text-gray-400 font-bold text-xs mr-1">$</span>
+              <div className="flex items-center rounded-lg border border-amber-300 bg-amber-50/70 px-2.5 py-1.5 focus-within:border-amber-500">
                 <input
                   type="text"
-                  inputMode="numeric"
-                  value={formData.minWithdrawalAmount}
+                  value={formData.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}
                   onChange={(e) =>
-                    setFormData({ ...formData, minWithdrawalAmount: e.target.value.replace(/[^0-9]/g, "") })
+                    setFormData({ ...formData, singleIdMaxWithdrawal: e.target.value })
                   }
-                  className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
-                  placeholder="5"
+                  className="w-full bg-transparent outline-none font-extrabold text-amber-950 text-xs"
+                  placeholder="3X + Capital Maximum Withdrawal Allowed"
                 />
               </div>
+              <p className="text-[10px] text-gray-500 mt-1">
+                Single ID: 3X + Capital Maximum Withdrawal Allowed (Account maximum withdrawal cap is 4X total invested).
+              </p>
             </div>
           </div>
 
@@ -1061,10 +1103,10 @@ export default function InvestmentPlans() {
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                      ROI Slabs Per Day (Without vs 365 Days Lock In)
+                      ROI Slabs Per Day (Without vs Cap is 3X approx. 333 Days)
                     </h4>
                     <p className="text-[11px] text-gray-500">
-                      Standard Daily ROI vs 365 Days Lock In Boost (+0.1% daily)
+                      Without Lock In Period: 0.3% &bull; Cap is 3X approx. 333 Days: 0.9%
                     </p>
                   </div>
                 </div>
@@ -1072,9 +1114,9 @@ export default function InvestmentPlans() {
                 <button
                   type="button"
                   onClick={handleResetSlabs}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-gold-300 text-gold-900 hover:bg-gold-50 text-[11px] font-bold flex items-center gap-1 shadow-2xs"
+                  className="px-2.5 py-1 rounded-lg bg-white border border-gold-300 text-gold-900 hover:bg-gold-50 text-[11px] font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
                 >
-                  <RiRefreshLine size={13} /> Reset Standard 4 Slabs
+                  <RiRefreshLine size={13} /> Reset Standard Slab
                 </button>
               </div>
 
@@ -1083,8 +1125,8 @@ export default function InvestmentPlans() {
                 <div className="grid grid-cols-12 gap-2 text-[10.5px] font-extrabold text-gray-600 uppercase px-1">
                   <span className="col-span-3">Amount Range ($)</span>
                   <span className="col-span-3">Max Amount ($)</span>
-                  <span className="col-span-2">Without Lock In</span>
-                  <span className="col-span-3">365 Days Lock In</span>
+                  <span className="col-span-3">Without Lock In</span>
+                  <span className="col-span-2 text-right">Cap 3X (~333d)</span>
                   <span className="col-span-1 text-right">Del</span>
                 </div>
 
@@ -1113,7 +1155,7 @@ export default function InvestmentPlans() {
                     <div className="col-span-3 flex items-center gap-1">
                       {slab.noMaxLimit ? (
                         <div className="w-full flex items-center justify-between py-1 px-2 rounded-lg bg-gold-100/80 border border-gold-300 text-gold-900 font-extrabold text-xs">
-                          <span className="truncate">{slab.minAmount || 0}$ + (No Limit)</span>
+                          <span className="truncate">{slab.minAmount || 0}$ + Any Amount</span>
                           <button
                             type="button"
                             title="Set fixed max limit"
@@ -1156,7 +1198,7 @@ export default function InvestmentPlans() {
                     </div>
 
                     {/* Without Lock In Daily ROI (%) */}
-                    <div className="col-span-2 flex items-center rounded-lg border border-emerald-300 bg-emerald-50/60 px-2 py-1.5 focus-within:border-emerald-500 focus-within:bg-white">
+                    <div className="col-span-3 flex items-center rounded-lg border border-emerald-300 bg-emerald-50/60 px-2 py-1.5 focus-within:border-emerald-500 focus-within:bg-white">
                       <input
                         type="text"
                         value={slab.dailyRoi}
@@ -1169,16 +1211,16 @@ export default function InvestmentPlans() {
                       <span className="text-emerald-600 font-bold text-[10px]">%</span>
                     </div>
 
-                    {/* 365 Days Lock In Daily ROI (%) */}
-                    <div className="col-span-3 flex items-center rounded-lg border border-amber-300 bg-amber-50/60 px-2 py-1.5 focus-within:border-amber-500 focus-within:bg-white">
+                    {/* Cap is 3X approx. 333 Days Daily ROI (%) */}
+                    <div className="col-span-2 flex items-center rounded-lg border border-amber-300 bg-amber-50/60 px-2 py-1.5 focus-within:border-amber-500 focus-within:bg-white">
                       <input
                         type="text"
-                        value={slab.lockInDailyRoi !== undefined ? slab.lockInDailyRoi : (Number(slab.dailyRoi || 0.3) + 0.1).toFixed(2)}
+                        value={slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null ? slab.lockInDailyRoi : 0.9}
                         onChange={(e) =>
                           handleSlabChange(idx, "lockInDailyRoi", e.target.value)
                         }
                         className="w-full bg-transparent outline-none font-extrabold text-amber-800 text-xs text-center"
-                        placeholder="0.4"
+                        placeholder="0.9"
                       />
                       <span className="text-amber-600 font-bold text-[10px]">%</span>
                     </div>

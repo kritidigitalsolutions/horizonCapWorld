@@ -161,9 +161,11 @@ exports.getWithdrawalSettings = async (req, res) => {
         maxWithdrawal: ws.maxWithdrawal !== undefined ? ws.maxWithdrawal : 50000,
         processingTime: ws.processingTime || "12 - 24 Hours",
         feeEnabled: ws.feeEnabled !== undefined ? ws.feeEnabled : true,
+        singleIdMaxWithdrawal: ws.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
+        singleIdMaxWithdrawalMultiplier: ws.singleIdMaxWithdrawalMultiplier || 4,
         termsNotice:
           ws.termsNotice ||
-          "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission.",
+          "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission. Single ID maximum withdrawal allowed is 3X + Capital.",
       },
     });
   } catch (error) {
@@ -190,6 +192,7 @@ exports.createWithdrawal = async (req, res) => {
     const feeType = ws.feeType || "percentage";
     const feePercentage = ws.feePercentage !== undefined ? Number(ws.feePercentage) : 5;
     const fixedFee = ws.fixedFee !== undefined ? Number(ws.fixedFee) : 0;
+    const singleIdMultiplier = ws.singleIdMaxWithdrawalMultiplier || 4;
 
     if (!withdrawAmount || withdrawAmount < minWithdrawal) {
       return res.status(400).json({
@@ -208,6 +211,19 @@ exports.createWithdrawal = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ success: false, message: "Investor account not found." });
+    }
+
+    // Check Single ID Maximum Withdrawal Allowed (3X + Capital = 4X total invested)
+    if (user.totalInvested && user.totalInvested > 0) {
+      const maxAllowedTotalWithdrawal = user.totalInvested * singleIdMultiplier;
+      const currentTotalWithdrawn = user.totalWithdrawn || 0;
+      if (currentTotalWithdrawn + withdrawAmount > maxAllowedTotalWithdrawal) {
+        const remainingLimit = Math.max(0, maxAllowedTotalWithdrawal - currentTotalWithdrawn);
+        return res.status(400).json({
+          success: false,
+          message: `Withdrawal exceeds Single ID maximum limit: 3X + Capital ($${maxAllowedTotalWithdrawal.toLocaleString()} USD max allowed for $${user.totalInvested.toLocaleString()} USD invested). You have already withdrawn $${currentTotalWithdrawn.toLocaleString()} USD (Remaining allowed: $${remainingLimit.toLocaleString()} USD).`,
+        });
+      }
     }
 
     if ((user.earningWallet || 0) < withdrawAmount) {

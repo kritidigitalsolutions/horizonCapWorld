@@ -38,6 +38,8 @@ export default function Withdraw() {
     maxWithdrawal: 50000,
     processingTime: '12 - 24 Hours',
     feeEnabled: true,
+    singleIdMaxWithdrawal: '3X + Capital Maximum Withdrawal Allowed',
+    singleIdMaxWithdrawalMultiplier: 4,
     termsNotice:
       'Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission.',
   });
@@ -77,6 +79,13 @@ export default function Withdraw() {
   }
   const calculatedNet = Math.max(0, numAmount - calculatedFee);
 
+  // ──────── SINGLE ID CAPPING (3X + CAPITAL) QUOTA ────────
+  const singleIdMultiplier = Number(settings.singleIdMaxWithdrawalMultiplier) || 4;
+  const totalInvested = Number(user?.totalInvested) || 0;
+  const lifetimeWithdrawalCap = totalInvested * singleIdMultiplier;
+  const totalWithdrawn = Number(user?.totalWithdrawn) || 0;
+  const remainingWithdrawalQuota = Math.max(0, lifetimeWithdrawalCap - totalWithdrawn);
+
   const handlePercentageClick = (pct) => {
     const available = user?.earningWallet || 0;
     if (available <= 0) return;
@@ -111,6 +120,13 @@ export default function Withdraw() {
 
     if ((user?.earningWallet || 0) < withdrawNum) {
       setErrorMsg(`Insufficient available balance ($${(user?.earningWallet || 0).toFixed(2)} USD).`);
+      return;
+    }
+
+    if (totalInvested > 0 && (totalWithdrawn + withdrawNum) > lifetimeWithdrawalCap) {
+      setErrorMsg(
+        `Single ID Limit Exceeded: Maximum allowed withdrawal is 3X + Capital ($${lifetimeWithdrawalCap.toLocaleString()} USD). You have already withdrawn $${totalWithdrawn.toLocaleString()} USD (Remaining quota: $${remainingWithdrawalQuota.toLocaleString()} USD).`
+      );
       return;
     }
 
@@ -227,6 +243,39 @@ export default function Withdraw() {
                       : `$${settings.fixedFee} Flat`}
                 </strong>
               </span>
+            </div>
+          </div>
+
+          {/* Single ID Capping Quota Card */}
+          <div className="card p-4 space-y-2.5 border-amber-300/80 bg-gradient-to-br from-amber-50/50 via-white to-gold-50/30 rounded-2xl shadow-2xs font-poppins">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-900">
+                Single ID Capping
+              </span>
+              <span className="badge badge-gold text-[9px] font-black uppercase">
+                3X + Capital
+              </span>
+            </div>
+            <p className="text-[11px] font-semibold text-slate-800">
+              {settings.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}
+            </p>
+            <div className="space-y-1.5 pt-2 border-t border-amber-200/60 text-xs">
+              <div className="flex justify-between text-slate-600">
+                <span>Invested Capital:</span>
+                <span className="font-bold text-slate-900">${totalInvested.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Max Withdrawal (4X):</span>
+                <span className="font-bold text-amber-900">${lifetimeWithdrawalCap.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Withdrawn So Far:</span>
+                <span className="font-bold text-orange-600">${totalWithdrawn.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-amber-200/40 text-xs">
+                <span className="font-bold text-emerald-800">Remaining Quota:</span>
+                <span className="font-extrabold text-emerald-700 font-mono">${remainingWithdrawalQuota.toLocaleString()}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -365,6 +414,12 @@ export default function Withdraw() {
                 </p>
                 <p>• Minimum withdrawal: <strong>${settings.minWithdrawal || 5} USD</strong></p>
                 <p>• Maximum limit per request: <strong>${(settings.maxWithdrawal || 50000).toLocaleString()} USD</strong></p>
+                <p>
+                  • Single ID Capping:{' '}
+                  <strong className="text-amber-800">
+                    {settings.singleIdMaxWithdrawal || '3X + Capital Maximum Withdrawal Allowed'}
+                  </strong>
+                </p>
                 {settings.termsNotice && (
                   <p className="pt-1 text-[11px] text-slate-500 border-t border-slate-200/80 leading-relaxed italic">
                     "{settings.termsNotice}"

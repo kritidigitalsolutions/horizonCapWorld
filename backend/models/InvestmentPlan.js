@@ -45,10 +45,17 @@ const roiSlabSchema = new mongoose.Schema(
 );
 
 const defaultRoiSlabs = [
-  { minAmount: 10, maxAmount: 100, noMaxLimit: false, dailyRoi: 0.3, lockInDailyRoi: 0.4, monthlyRoi: 9.0, lockInMonthlyRoi: 12.0, annualRoi: 108.0, lockInAnnualRoi: 144.0 },
-  { minAmount: 101, maxAmount: 500, noMaxLimit: false, dailyRoi: 0.5, lockInDailyRoi: 0.6, monthlyRoi: 15.0, lockInMonthlyRoi: 18.0, annualRoi: 180.0, lockInAnnualRoi: 216.0 },
-  { minAmount: 501, maxAmount: 5000, noMaxLimit: false, dailyRoi: 0.8, lockInDailyRoi: 0.9, monthlyRoi: 24.0, lockInMonthlyRoi: 27.0, annualRoi: 288.0, lockInAnnualRoi: 324.0 },
-  { minAmount: 5001, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, lockInDailyRoi: 1.1, monthlyRoi: 30.0, lockInMonthlyRoi: 33.0, annualRoi: 360.0, lockInAnnualRoi: 396.0 },
+  {
+    minAmount: 10,
+    maxAmount: null,
+    noMaxLimit: true,
+    dailyRoi: 0.3,
+    lockInDailyRoi: 0.9,
+    monthlyRoi: 9.0,
+    lockInMonthlyRoi: 27.0,
+    annualRoi: 108.0,
+    lockInAnnualRoi: 324.0,
+  },
 ];
 
 const loyaltyBonusSlabSchema = new mongoose.Schema(
@@ -113,7 +120,7 @@ const investmentPlanSchema = new mongoose.Schema(
     },
     lockInPeriodDays: {
       type: Number,
-      default: 365, // 365 Days standard lock-in
+      default: 333, // approx. 333 Days (0.9% * 333 = ~300% = 3X Cap)
     },
     minDepositAmount: {
       type: Number,
@@ -122,6 +129,14 @@ const investmentPlanSchema = new mongoose.Schema(
     minWithdrawalAmount: {
       type: Number,
       default: 5,
+    },
+    singleIdMaxWithdrawal: {
+      type: String,
+      default: "3X + Capital Maximum Withdrawal Allowed",
+    },
+    singleIdMaxWithdrawalMultiplier: {
+      type: Number,
+      default: 4, // 3X + 1X Capital = 4X
     },
     loyaltyBonusEnabled: {
       type: Boolean,
@@ -195,10 +210,10 @@ investmentPlanSchema.pre("save", function () {
   // Ensure each slab has computed monthly and annual ROI for both Standard and Lock-In
   if (this.roiSlabs && this.roiSlabs.length > 0) {
     this.roiSlabs = this.roiSlabs.map((slab) => {
-      const daily = Number(slab.dailyRoi) || 0;
+      const daily = Number(slab.dailyRoi) || 0.3;
       const lockInDaily = slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null
         ? Number(slab.lockInDailyRoi)
-        : Number((daily + 0.1).toFixed(4));
+        : 0.9;
       return {
         minAmount: Number(slab.minAmount) || 0,
         maxAmount: slab.noMaxLimit ? null : Number(slab.maxAmount) || null,

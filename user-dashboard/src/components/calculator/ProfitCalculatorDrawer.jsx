@@ -10,10 +10,7 @@ import { UilBolt } from '@iconscout/react-unicons';
 import { getPlans } from '../../api/plansApi';
 
 export const DEFAULT_ROI_SLABS = [
-  { minAmount: 10, maxAmount: 100, noMaxLimit: false, dailyRoi: 0.3, lockInDailyRoi: 0.4, monthlyRoi: 9.0, annualRoi: 108 },
-  { minAmount: 101, maxAmount: 500, noMaxLimit: false, dailyRoi: 0.5, lockInDailyRoi: 0.6, monthlyRoi: 15.0, annualRoi: 180 },
-  { minAmount: 501, maxAmount: 5000, noMaxLimit: false, dailyRoi: 0.8, lockInDailyRoi: 0.9, monthlyRoi: 24.0, annualRoi: 288 },
-  { minAmount: 5001, maxAmount: null, noMaxLimit: true, dailyRoi: 1.0, lockInDailyRoi: 1.1, monthlyRoi: 30.0, annualRoi: 360 },
+  { minAmount: 10, maxAmount: null, noMaxLimit: true, dailyRoi: 0.3, lockInDailyRoi: 0.9, monthlyRoi: 9.0, lockInMonthlyRoi: 27.0, annualRoi: 108.0, lockInAnnualRoi: 324.0 },
 ];
 
 export const DEFAULT_LOYALTY_SLABS = [
@@ -66,7 +63,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                   ? p.loyaltyBonusSlabs
                   : DEFAULT_LOYALTY_SLABS;
               const minDaily = roiSlabs[0]?.dailyRoi || p.dailyRoi || 0.3;
-              const maxDaily = roiSlabs[roiSlabs.length - 1]?.lockInDailyRoi || roiSlabs[roiSlabs.length - 1]?.dailyRoi || 1.1;
+              const maxDaily = roiSlabs[roiSlabs.length - 1]?.lockInDailyRoi || roiSlabs[roiSlabs.length - 1]?.dailyRoi || 0.9;
 
               return {
                 _id: p._id,
@@ -94,7 +91,8 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                 minDepositAmount: p.minDepositAmount ?? 10,
                 minWithdrawalAmount: p.minWithdrawalAmount ?? 5,
                 hasLockInOption: p.hasLockInOption !== false,
-                lockInPeriodDays: p.lockInPeriodDays || 90,
+                lockInPeriodDays: p.lockInPeriodDays || 333,
+                singleIdMaxWithdrawal: p.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
               };
             });
             setLoadedPlans(formatted);
@@ -196,9 +194,9 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
       };
     }
 
-    const isLockIn = lockInPeriod === '3_months';
+    const isLockIn = lockInPeriod === '3_months' || lockInPeriod === '333_days' || lockInPeriod === 'lock_in';
     const baseDailyRoi = isLockIn
-      ? (Number(activeMatchedSlab?.lockInDailyRoi) || (Number(activeMatchedSlab?.dailyRoi || 0.3) + 0.1))
+      ? (Number(activeMatchedSlab?.lockInDailyRoi) || 0.9)
       : (Number(activeMatchedSlab?.dailyRoi) || 0.3);
     const baseMonthlyRoi = isLockIn
       ? (Number(activeMatchedSlab?.lockInMonthlyRoi) || baseDailyRoi * 30)
@@ -218,11 +216,15 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
       : baseAnnualRoi;
 
     const isInfinite =
-      !!currentPlan.isInfinite ||
-      currentPlan.duration?.toLowerCase().includes('infinite') ||
-      currentPlan.duration?.toLowerCase().includes('lifetime');
+      !isLockIn && (
+        !!currentPlan.isInfinite ||
+        currentPlan.duration?.toLowerCase().includes('infinite') ||
+        currentPlan.duration?.toLowerCase().includes('lifetime')
+      );
 
-    const durationDays = isInfinite ? 365 : (currentPlan.durationDays || 365);
+    const durationDays = isLockIn
+      ? (currentPlan.lockInPeriodDays || 333)
+      : (isInfinite ? 365 : (currentPlan.durationDays || 365));
 
     const dailyYield = numAmount * (dailyRoi / 100);
     const weeklyYield = dailyYield * 7;
@@ -368,18 +370,18 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
               <thead>
                 <tr className="bg-amber-100/70 border-b border-amber-200/80 text-[11px] font-black text-slate-800 uppercase tracking-wider">
                   <th className="py-2 px-3">Amount</th>
-                  <th className="py-2 px-3 text-center">Without Lock In</th>
-                  <th className="py-2 px-3 text-center text-amber-900">365 Days Lock In</th>
+                  <th className="py-2 px-3 text-center">Without Lock In Period</th>
+                  <th className="py-2 px-3 text-center text-amber-900">Cap is 3X approx. 333 Days</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-amber-100/60 font-medium text-slate-700">
                 {slabs.map((slab, idx) => {
                   const isMatched = activeMatchedSlab?.minAmount === slab.minAmount;
                   const rangeLabel = slab.noMaxLimit || !slab.maxAmount
-                    ? `$${slab.minAmount} +`
+                    ? `${slab.minAmount}$ + Any Amount`
                     : `$${slab.minAmount} to $${slab.maxAmount}`;
                   const standardDaily = Number(slab.dailyRoi || 0.3);
-                  const lockInDaily = Number(slab.lockInDailyRoi || (standardDaily + 0.1));
+                  const lockInDaily = Number(slab.lockInDailyRoi || 0.9);
 
                   return (
                     <tr
@@ -414,7 +416,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
         <div className="p-3 bg-slate-50/90 rounded-2xl border border-slate-200 space-y-2">
           <label className="text-xs font-bold uppercase tracking-[0.1em] text-slate-600 flex items-center justify-between">
             <span>Simulation Lock-In Option</span>
-            <span className="text-[10px] font-bold text-amber-700">+0.10% / Day Extra Yield</span>
+            <span className="text-[10px] font-bold text-amber-700">0.90% / Day (3X Profit in ~333 Days)</span>
           </label>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -427,26 +429,26 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold">Without Lock In</span>
+                <span className="text-xs font-bold">Without Lock In Period</span>
                 {lockInPeriod === 'none' && <RiCheckLine size={14} className="text-emerald-600 font-bold" />}
               </div>
-              <p className="text-[10px] text-slate-400 mt-0.5">Flexible Principal Liquidity</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">0.3% / day • Flexible Principal Liquidity</p>
             </button>
 
             <button
               type="button"
-              onClick={() => setLockInPeriod('3_months')}
+              onClick={() => setLockInPeriod('333_days')}
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                lockInPeriod === '3_months'
+                lockInPeriod === '333_days' || lockInPeriod === '3_months'
                   ? 'bg-gradient-to-r from-amber-50 to-gold-50 border-amber-400 ring-2 ring-amber-200 font-bold text-slate-900 shadow-xs'
                   : 'bg-white/60 border-slate-200 text-slate-600 hover:border-slate-300'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900">365 Days Lock In</span>
-                {lockInPeriod === '3_months' && <RiCheckLine size={14} className="text-emerald-600 font-bold" />}
+                <span className="text-xs font-bold text-amber-900">Cap is 3X approx. 333 Days</span>
+                {(lockInPeriod === '333_days' || lockInPeriod === '3_months') && <RiCheckLine size={14} className="text-emerald-600 font-bold" />}
               </div>
-              <p className="text-[10px] text-amber-700 font-semibold mt-0.5">Boost: +0.10% / day ({calculations.dailyRate}%)</p>
+              <p className="text-[10px] text-amber-700 font-semibold mt-0.5">0.9% / day • 333 Days Lock-In (3X Cap)</p>
             </button>
           </div>
         </div>

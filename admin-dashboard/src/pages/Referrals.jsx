@@ -530,11 +530,11 @@ export default function Referrals() {
               <table className="w-full text-left border-collapse font-poppins">
                 <thead>
                   <tr className="bg-gradient-to-r from-amber-50/90 via-gold-50/70 to-amber-50/50 border-b-2 border-gold-300 text-slate-900 text-[11px] font-extrabold uppercase tracking-wider">
-                    <th className="py-3 px-3 text-center border-r border-slate-200/90 w-16">Level</th>
+                    <th className="py-3 px-3 text-center border-r border-slate-200/90 w-16">Levels</th>
                     <th className="py-3 px-3.5 text-center border-r border-slate-200/90 min-w-[130px]">Deposit in $</th>
                     <th className="py-3 px-3.5 text-center border-r border-slate-200/90 min-w-[130px]">Profit in $</th>
                     <th className="py-3 px-3.5 text-center border-r border-slate-200/90 min-w-[150px]">ROI per Day in $</th>
-                    <th className="py-3 px-3.5 text-left border-r border-slate-200/90 min-w-[240px]">Eligible Conditions</th>
+                    <th className="py-3 px-3.5 text-left border-r border-slate-200/90 min-w-[240px]">Eligibility</th>
                     <th className="py-3 px-3 text-center min-w-[110px]">Action</th>
                   </tr>
                 </thead>
@@ -543,8 +543,9 @@ export default function Referrals() {
                     const levelNum = tier.levelNumber || parseInt(String(tier.level).replace('L', ''), 10) || 1;
                     const depAmt = Number(tier.depositAmount || 0);
                     const profitAmt = Number(tier.profitAmount || 0);
-                    const roiDay = Number(tier.roiPerDay || 0.08);
-                    const conditions = tier.eligibleConditions || (tier.directClientsMin || tier.groupVolumeMin ? `Group Volume Min.${Number(tier.groupVolumeMin).toLocaleString()}$, ${tier.directClientsMin} Direct Clients` : 'No Condition');
+                    const roiDay = tier.roiPerDay !== undefined && tier.roiPerDay !== null ? Number(tier.roiPerDay) : 0;
+                    const conditions = tier.eligibleConditions || (tier.directClientsMin || tier.groupVolumeMin ? `Group Volume Min. ${Number(tier.groupVolumeMin).toLocaleString()}$, ${tier.directClientsMin} Direct Clients` : (levelNum === 1 ? 'NR' : 'No Condition'));
+                    const isNR = conditions.trim().toUpperCase() === 'NR';
 
                     return (
                       <tr
@@ -556,33 +557,41 @@ export default function Referrals() {
                         {/* Level Index */}
                         <td className="py-3 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-200 bg-gold-50/30">
                           <span className="w-7 h-7 rounded-lg bg-gold-100/90 text-gold-950 font-bold border border-gold-300 inline-flex items-center justify-center shadow-2xs">
-                            L{levelNum}
+                            {levelNum}
                           </span>
                         </td>
 
                         {/* Deposit in $ */}
                         <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-800 text-xs border-r border-slate-200">
-                          {depAmt > 0 ? `$${depAmt.toLocaleString()}` : (depAmt === 0 ? '$0' : '-')}
+                          {depAmt > 0 ? `$${depAmt.toLocaleString()}` : '—'}
                         </td>
 
                         {/* Profit in $ */}
                         <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-800 text-xs border-r border-slate-200">
-                          {profitAmt > 0 ? `$${profitAmt.toLocaleString()}` : '$0'}
+                          ${profitAmt.toLocaleString()}
                         </td>
 
                         {/* ROI per Day in $ */}
                         <td className="py-3 px-3.5 text-center border-r border-slate-200 bg-emerald-50/20">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs">
-                            +${roiDay}
-                          </span>
+                          {roiDay > 0 ? (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs">
+                              +${roiDay}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-mono font-bold text-xs">
+                              0
+                            </span>
+                          )}
                         </td>
 
-                        {/* Eligible Conditions */}
+                        {/* Eligibility */}
                         <td className="py-3 px-3.5 text-left border-r border-slate-200">
-                          <span className={`inline-block px-2.5 py-1 rounded-md text-[11px] leading-snug ${
-                            conditions.toLowerCase().includes('no condition')
-                              ? 'bg-slate-100 text-slate-600 border border-slate-200 font-mono'
-                              : 'bg-amber-50 text-amber-950 border border-amber-200 font-medium'
+                          <span className={`inline-block px-2.5 py-1 rounded-md text-[11px] leading-snug font-semibold ${
+                            isNR
+                              ? 'bg-slate-100 text-slate-700 border border-slate-200 font-mono'
+                              : conditions.toLowerCase().includes('no condition')
+                                ? 'bg-slate-100 text-slate-600 border border-slate-200 font-mono'
+                                : 'bg-amber-50 text-amber-950 border border-amber-200'
                           }`}>
                             {conditions}
                           </span>

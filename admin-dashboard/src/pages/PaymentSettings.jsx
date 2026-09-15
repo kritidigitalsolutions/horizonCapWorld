@@ -100,10 +100,12 @@ export default function PaymentSettings() {
     fixedFee: 0,
     minWithdrawal: 5,
     maxWithdrawal: 50000,
+    singleIdMaxWithdrawal: "3X + Capital Maximum Withdrawal Allowed",
+    singleIdMaxWithdrawalMultiplier: 4,
     processingTime: "12 - 24 Hours",
     feeEnabled: true,
     termsNotice:
-      "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission.",
+      "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission. Single ID maximum withdrawal allowed is 3X + Capital.",
   };
 
   const [withdrawalSettings, setWithdrawalSettings] = useState(defaultWithdrawalSettings);
@@ -2300,6 +2302,28 @@ export default function PaymentSettings() {
                 Upper threshold per transaction (e.g. $50,000 USD).
               </p>
             </div>
+          </div>
+
+          {/* Single ID Maximum Withdrawal Allowed Rule */}
+          <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-300">
+            <label className="text-xs font-bold text-amber-950 block mb-1">
+              Single ID Maximum Withdrawal Allowed Rule
+            </label>
+            <input
+              type="text"
+              value={withdrawalForm.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}
+              onChange={(e) =>
+                setWithdrawalForm((prev) => ({
+                  ...prev,
+                  singleIdMaxWithdrawal: e.target.value,
+                }))
+              }
+              className="input text-xs font-bold text-amber-950 bg-white"
+              placeholder="3X + Capital Maximum Withdrawal Allowed"
+            />
+            <p className="text-[10px] text-amber-800 mt-1">
+              Limits the maximum lifetime withdrawal on a single account ID to 3X returns + principal capital.
+            </p>
           </div>
 
           {/* Custom User Policy Notice */}

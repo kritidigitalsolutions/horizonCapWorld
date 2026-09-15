@@ -68,10 +68,18 @@ const adminSettingsSchema = new mongoose.Schema(
         type: Boolean,
         default: true,
       },
+      singleIdMaxWithdrawal: {
+        type: String,
+        default: "3X + Capital Maximum Withdrawal Allowed",
+      },
+      singleIdMaxWithdrawalMultiplier: {
+        type: Number,
+        default: 4, // 3X return + 1X capital = 4X
+      },
       termsNotice: {
         type: String,
         default:
-          "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission.",
+          "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission. Single ID maximum withdrawal allowed is 3X + Capital.",
       },
     },
   },
