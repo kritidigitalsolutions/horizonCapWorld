@@ -52,8 +52,10 @@ import {
   updateWithdrawalSettings,
 } from "../api/paymentGatewaysApi";
 import { uploadFileToCloudinary, deleteFileFromCloudinary } from "../api/uploadApi";
+import { useToast } from "../context/ToastContext";
 
 export default function PaymentSettings() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [methods, setMethods] = useState([]);
 
@@ -375,10 +377,11 @@ export default function PaymentSettings() {
       }
       setVideoSavedNotification(true);
       setVideoModalOpen(false);
+      toast.success("Deposit video tutorial and verified instructions saved successfully!", "Video Tutorial Updated");
       setTimeout(() => setVideoSavedNotification(false), 3000);
     } catch (error) {
       console.error("Failed to update video:", error);
-      alert("Failed to update video tutorial.");
+      toast.error("Failed to update deposit video tutorial.", "Update Failed");
     }
   };
 
@@ -395,10 +398,11 @@ export default function PaymentSettings() {
       }
       setWithdrawalSavedNotice(true);
       setWithdrawalModalOpen(false);
+      toast.success("Withdrawal charges, protocols and limits saved successfully!", "Withdrawal Rules Updated");
       setTimeout(() => setWithdrawalSavedNotice(false), 3500);
     } catch (err) {
       console.error("Failed to update withdrawal settings:", err);
-      alert("Failed to save withdrawal settings.");
+      toast.error("Failed to save withdrawal settings.", "Update Failed");
     } finally {
       setSavingWithdrawal(false);
     }
@@ -680,9 +684,15 @@ export default function PaymentSettings() {
       }
 
       setDrawerOpen(false);
+      toast.success(
+        editingWallet
+          ? `Payment gateway "${editingWallet.name}" updated successfully!`
+          : "New payment gateway created and activated successfully!",
+        "Gateway Saved"
+      );
     } catch (error) {
       console.error("Error saving payment method:", error);
-      alert("Failed to save payment method.");
+      toast.error("Failed to save payment method. Please check all required fields.", "Save Failed");
     }
   };
 
@@ -697,8 +707,10 @@ export default function PaymentSettings() {
           ? res.methods
           : [];
       setMethods(updatedList);
+      toast.success("Default payment gateway updated successfully.", "Default Set");
     } catch (error) {
       console.error("Error setting default method:", error);
+      toast.error("Failed to set default payment gateway.", "Error");
     }
   };
 
@@ -712,10 +724,11 @@ export default function PaymentSettings() {
           ? prev.filter((m) => m._id !== walletToDelete._id)
           : []
       );
+      toast.info(`Payment gateway "${walletToDelete.name}" deleted successfully.`, "Gateway Deleted");
       setWalletToDelete(null);
     } catch (error) {
       console.error("Error deleting payment method:", error);
-      alert("Failed to delete payment method.");
+      toast.error("Failed to delete payment method.", "Delete Failed");
     }
   };
 

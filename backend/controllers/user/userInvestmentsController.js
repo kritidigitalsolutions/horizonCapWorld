@@ -193,8 +193,9 @@ exports.investInPlan = async (req, res) => {
             isLockInApplied: isLockIn,
           }
         : undefined,
-      lockInPeriod: isLockIn ? (lockInPeriod || "365 Days") : "None",
+      lockInPeriod: isLockIn ? (lockInPeriod || "333 Days") : "None",
       isLocked: isLockIn,
+      loyaltyBonusEligible: !isLockIn,
       lockInDays: lockInPeriodDays,
       lockInUntil: lockInUntilDate,
       autoRenewal: isAutoRenewal,

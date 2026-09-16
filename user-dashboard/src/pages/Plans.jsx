@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getPlans, investInPlan } from '../api/plansApi';
 import {
   RiPercentLine, RiTimeLine, RiShieldFlashLine, RiLeafLine, RiCoinsLine,
   RiFlashlightLine, RiCalculatorLine, RiArrowRightLine, RiWalletLine,
-  RiCheckLine, RiSearchLine, RiAlertLine, RiInformationLine, RiStackLine,
-  RiArrowDownSLine, RiArrowUpSLine, RiSparklingLine, RiGiftLine, RiAwardLine,
+  RiCheckLine, RiAlertLine, RiInformationLine, RiStackLine,
+  RiArrowDownSLine, RiArrowUpSLine, RiSparklingLine, RiGiftLine,
   RiRefreshLine,
 } from 'react-icons/ri';
 import { UilMoneyBill } from '@iconscout/react-unicons';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import Modal from '../components/ui/Modal';
 import ProfitCalculatorDrawer from '../components/calculator/ProfitCalculatorDrawer';
 import SearchBar from '../components/ui/SearchBar';
@@ -51,6 +52,7 @@ export default function Plans() {
   const [loading, setLoading] = useState(true);
   const [plansList, setPlansList] = useState([]);
   const { user, refreshUser, updateUser } = useAuth();
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -184,20 +186,43 @@ export default function Plans() {
   };
 
   const handleConfirmInvestment = async () => {
-    if (!selectedPlan || !investAmount || investAmount <= 0) return;
+    if (!selectedPlan) return;
+
+    const numAmount = Number(investAmount);
+    if (!investAmount || isNaN(numAmount) || numAmount <= 0) {
+      toast.warning('Please enter a valid investment amount greater than $0.', 'Invalid Amount');
+      return;
+    }
+
+    const minRequired = selectedPlan.minAmountNumeric || selectedPlan.minDepositAmount || 10;
+    if (numAmount < minRequired) {
+      const msg = `Minimum investment for ${selectedPlan.name} is $${minRequired.toLocaleString()}.`;
+      setInvestError(msg);
+      toast.warning(msg, 'Minimum Amount Required');
+      return;
+    }
+
     setInvestError('');
     
     // Check wallet balance
-    if ((user?.depositWallet || 0) < Number(investAmount)) {
-      setInvestError(`Insufficient Deposit Wallet balance ($${(user?.depositWallet || 0).toLocaleString()} USD). Please deposit funds first.`);
+    if ((user?.depositWallet || 0) < numAmount) {
+      const msg = `Insufficient Deposit Wallet balance ($${(user?.depositWallet || 0).toLocaleString()} USD). Please deposit funds first.`;
+      setInvestError(msg);
+      toast.error(msg, 'Insufficient Balance');
       return;
     }
 
     setInvestSubmitting(true);
     try {
-      const res = await investInPlan(selectedPlan._id || selectedPlan.id, Number(investAmount), autoRenewal, lockInPeriod);
+      const res = await investInPlan(selectedPlan._id || selectedPlan.id, numAmount, autoRenewal, lockInPeriod);
       if (res?.success) {
         setInvestSuccess(true);
+        toast.success(
+          `Investment of $${numAmount.toLocaleString()} in ${selectedPlan.name} confirmed successfully! Contract activated.`,
+          'Investment Confirmed',
+          { duration: 6000 }
+        );
+
         if (res.user && updateUser) {
           updateUser(res.user);
         }
@@ -218,11 +243,15 @@ export default function Plans() {
           setInvestSubmitting(false);
         }, 900);
       } else {
-        setInvestError(res?.message || 'Failed to execute investment.');
+        const errText = res?.message || 'Failed to execute investment.';
+        setInvestError(errText);
+        toast.error(errText, 'Investment Failed');
         setInvestSubmitting(false);
       }
     } catch (err) {
-      setInvestError(err.response?.data?.message || err.message || 'Investment failed.');
+      const errText = err.response?.data?.message || err.message || 'Investment failed.';
+      setInvestError(errText);
+      toast.error(errText, 'Investment Error');
       setInvestSubmitting(false);
     }
   };
@@ -252,7 +281,7 @@ export default function Plans() {
   }
 
   return (
-    <div className="page-enter space-y-6">
+    <div className="page-enter space-y-6 pb-20">
       {/* ──────── PAGE HEADER & TOP ACTION ──────── */}
       <PageHeader
         title="Investment Plans"
@@ -388,28 +417,14 @@ export default function Plans() {
                 </div>
 
                 {/* Key Specs */}
+                {/* Key Specs */}
                 <div className="space-y-2.5 mb-4 text-sm font-poppins">
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
                       <UilMoneyBill size={16} /> Investment Range
                     </span>
                     <span className="font-bold text-gray-800 text-xs">
-                      {plan.minAmount} — {plan.maxAmount || 'Any Amount'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
-                      <RiTimeLine size={16} /> Duration & Lock-In
-                    </span>
-                    <span className="font-bold text-gray-800 text-xs flex items-center gap-1">
-                      {plan.isInfinite ? (
-                        <span className="inline-flex items-center gap-1 text-gold-700 bg-gold-50 px-2 py-0.5 rounded border border-gold-200 font-extrabold text-[11px]">
-                          <span>∞</span> Lifetime
-                        </span>
-                      ) : (
-                        `approx. ${plan.durationDays || 333} Days (Cap is 3X)`
-                      )}
+                      {plan.minAmount} to any amount
                     </span>
                   </div>
 
@@ -457,7 +472,7 @@ export default function Plans() {
                           >
                             <span className="font-bold text-gray-900 text-left">
                               {slab.noMaxLimit || !slab.maxAmount
-                                ? `${slab.minAmount}$ + Any Amount`
+                                ? `${slab.minAmount}$ to any amount`
                                 : `${slab.minAmount}$ to ${slab.maxAmount}$`}
                             </span>
                             <span className="text-center font-bold text-emerald-700 font-mono">
@@ -495,14 +510,23 @@ export default function Plans() {
                           {plan.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
                         </span>
                       </div>
-                      <span className="text-[10px] font-extrabold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-300">
-                        Up to {(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS)[(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).length - 1]?.bonusPercentage || 10}% Extra
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300">
+                          Without Lock-In Only
+                        </span>
+                        <span className="text-[10px] font-extrabold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-300">
+                          Up to {(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS)[(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).length - 1]?.bonusPercentage || 10}% Extra
+                        </span>
+                      </div>
                     </div>
 
-                    <p className="text-[10.5px] text-gray-600 leading-snug mb-2">
+                    <p className="text-[10.5px] text-gray-600 leading-snug mb-1.5">
                       {plan.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet"}
                     </p>
+
+                    <div className="text-[9.5px] text-amber-900 font-semibold mb-2 bg-white/80 px-2 py-1 rounded border border-amber-200">
+                      ⭐ Note: Rewards are only applicable on <strong>Without Lock In Period</strong> mode (3X Cap plans excluded).
+                    </div>
 
                     {/* Slabs Grid */}
                     <div className="grid grid-cols-5 gap-1 text-center">
@@ -557,7 +581,7 @@ export default function Plans() {
         isOpen={investDrawerOpen}
         onClose={() => setInvestDrawerOpen(false)}
         title={`Invest in ${selectedPlan?.name || 'Plan'}`}
-        subtitle={`Amount-Wise Daily ROI Slabs &bull; Contract: ${selectedPlan?.duration}`}
+        subtitle="Amount-Wise Daily ROI Slabs"
         size="lg"
         footer={
           <div className="flex items-center justify-between w-full">
@@ -634,12 +658,17 @@ export default function Plans() {
                   <span className="font-extrabold flex items-center gap-1.5">
                     🔓 Without Lock In Period
                   </span>
-                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
-                    0.3% / Day
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9.5px] bg-emerald-200/90 text-emerald-900 px-1.5 py-0.5 rounded font-bold">
+                      🎁 Rewards Eligible
+                    </span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
+                      0.3% / Day
+                    </span>
+                  </div>
                 </div>
                 <span className="text-[11px] text-gray-500 font-normal">
-                  Standard Daily ROI (0.3% / day). Capital flexible as per platform protocol.
+                  Standard Daily ROI (0.3% / day). Capital flexible as per platform protocol. <strong>Eligible for Reward (Loyalty Bonus up to 10%)</strong>.
                 </span>
               </button>
 
@@ -656,12 +685,17 @@ export default function Plans() {
                   <span className="font-extrabold flex items-center gap-1.5">
                     🔒 Cap is 3X approx. 333 Days
                   </span>
-                  <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-black">
-                    0.9% / Day (3X Cap)
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9.5px] bg-amber-200 text-amber-950 px-1.5 py-0.5 rounded font-bold">
+                      No Rewards
+                    </span>
+                    <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-black">
+                      0.9% / Day (3X Cap)
+                    </span>
+                  </div>
                 </div>
                 <span className="text-[11px] text-gray-500 font-normal">
-                  Boosted Daily ROI (0.9% / day). 333 days contract delivers approx. 300% (3X) profit.
+                  Boosted Daily ROI (0.9% / day). 333 days contract delivers approx. 300% (3X) profit. <em>(Loyalty Rewards not applicable on 3X plan)</em>.
                 </span>
               </button>
             </div>
@@ -675,7 +709,7 @@ export default function Plans() {
                 ROI Slabs & Applied Rate
               </span>
               <span className="badge badge-gold text-[10px] font-bold">
-                Active: {activeMatchedSlab?.noMaxLimit || !activeMatchedSlab?.maxAmount ? `${activeMatchedSlab?.minAmount}$ + Any Amount` : `$${activeMatchedSlab?.minAmount} – $${activeMatchedSlab?.maxAmount}`} &bull; {(lockInPeriod === '333 Days' || lockInPeriod === '365 Days' || lockInPeriod === '3 Months') ? `${activeMatchedSlab?.lockInDailyRoi || 0.9}% (Cap 3X)` : `${activeMatchedSlab?.dailyRoi || 0.3}% / day`}
+                Active: {activeMatchedSlab?.noMaxLimit || !activeMatchedSlab?.maxAmount ? `${activeMatchedSlab?.minAmount}$ to any amount` : `$${activeMatchedSlab?.minAmount} – $${activeMatchedSlab?.maxAmount}`} &bull; {(lockInPeriod === '333 Days' || lockInPeriod === '365 Days' || lockInPeriod === '3 Months') ? `${activeMatchedSlab?.lockInDailyRoi || 0.9}% (Cap 3X)` : `${activeMatchedSlab?.dailyRoi || 0.3}% / day`}
               </span>
             </div>
 
@@ -702,7 +736,7 @@ export default function Plans() {
                     }`}
                   >
                     <p className={`text-[11px] font-extrabold ${isMatched ? 'text-gray-950' : 'text-gray-600'}`}>
-                      {slab.noMaxLimit || !slab.maxAmount ? `${slab.minAmount}$ + Any Amount` : `$${slab.minAmount} – $${slab.maxAmount}`}
+                      {slab.noMaxLimit || !slab.maxAmount ? `${slab.minAmount}$ to any amount` : `$${slab.minAmount} – $${slab.maxAmount}`}
                     </p>
                     <p className={`text-sm font-black font-mono mt-0.5 ${isMatched ? 'text-gray-950' : 'text-emerald-700'}`}>
                       {withAutoRenewal}% / day
@@ -960,23 +994,19 @@ export default function Plans() {
                   <div>
                     <p className="font-bold text-gray-800 flex items-center gap-1.5">
                       <RiInformationLine className="text-gold-500" size={15} />
-                      {isPlanInfinite
-                        ? "Continuous Lifetime Yield Stream:"
-                        : `Total Return on Maturity (${selectedPlan?.duration}):`}
+                      Continuous Real-time Yield Stream:
                     </p>
                     <p className="text-[11px] text-gray-500">
                       Principal (${currentInvestCapital.toLocaleString()}) +{" "}
-                      {isPlanInfinite
-                        ? `1-Year Projected Return (+$${calcAnnualYield.toFixed(2)})`
-                        : `Contract Profit (+$${calcTotalProfit.toFixed(2)})`}
+                      1-Year Projected Return (+$${calcAnnualYield.toFixed(2)})
                     </p>
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="text-[10px] text-gray-400 uppercase font-semibold">
-                      {isPlanInfinite ? "1-Year Maturity Value" : "Total Net Return"}
+                      1-Year Projected Maturity Value
                     </p>
                     <span className="text-base font-extrabold text-emerald-700 font-mono">
-                      ${(isPlanInfinite ? currentInvestCapital + calcAnnualYield : calcTotalMaturity).toFixed(2)}
+                      ${(currentInvestCapital + calcAnnualYield).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -990,7 +1020,7 @@ export default function Plans() {
                     ) : (
                       <>Live yields stream directly into your wallet every second (<strong>${(calcDailyYield / 86400).toFixed(6)} / sec</strong>).</>
                     )}{' '}
-                    {isPlanInfinite ? "Plan operates on an ongoing lifetime duration." : "100% principal unlocks upon contract maturity."}
+                    Live returns stream automatically into your wallet every second.
                   </span>
                 </div>
               </div>
@@ -999,51 +1029,86 @@ export default function Plans() {
 
           {/* ──────── REWARD ( LOYALTY BONUS ) MILESTONE BENEFITS ──────── */}
           {selectedPlan?.loyaltyBonusEnabled !== false && (
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 via-gold-50/50 to-orange-50/40 border border-amber-300/80 space-y-2.5 shadow-xs font-poppins">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
-                    <RiGiftLine size={16} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wide">
-                      {selectedPlan?.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
-                    </h4>
-                    <p className="text-[10.5px] text-gray-500">
-                      {selectedPlan?.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet"}
-                    </p>
-                  </div>
-                </div>
-                <span className="badge badge-gold text-[10px] font-bold">
-                  Wallet Bonus
-                </span>
-              </div>
-
-              {/* Slabs Milestone Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
-                {(selectedPlan?.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).map((slab, sIdx) => {
-                  const bonusVal = (Number(investAmount) || 0) * (Number(slab.bonusPercentage) / 100);
-                  return (
-                    <div key={sIdx} className="p-2.5 bg-white rounded-xl text-center border border-amber-200/80 shadow-2xs">
-                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                        {slab.label || `${slab.days} Days`}
-                      </p>
-                      <p className="text-xs font-extrabold text-amber-700 font-mono mt-0.5 truncate">
-                        +{slab.bonusPercentage}%
-                      </p>
-                      <p className="text-[10.5px] text-emerald-700 font-extrabold font-mono mt-0.5">
-                        +${bonusVal.toFixed(2)}
+            lockInPeriod === 'None' ? (
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 via-gold-50/50 to-orange-50/40 border border-amber-300/80 space-y-2.5 shadow-xs font-poppins animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                      <RiGiftLine size={16} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wide">
+                        {selectedPlan?.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
+                      </h4>
+                      <p className="text-[10.5px] text-gray-500">
+                        {selectedPlan?.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet"}
                       </p>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                  <span className="badge badge-success text-[10px] font-bold">
+                    Active: No Lock-In
+                  </span>
+                </div>
 
-              <div className="text-[10.5px] text-amber-900 bg-amber-100/60 p-2 rounded-lg border border-amber-200/70 flex items-center gap-1.5">
-                <RiInformationLine size={14} className="text-amber-600 shrink-0" />
-                <span>One-time loyalty bonus credited directly to your wallet for keeping capital invested without premature withdrawal.</span>
+                {/* Slabs Milestone Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                  {(selectedPlan?.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).map((slab, sIdx) => {
+                    const bonusVal = (Number(investAmount) || 0) * (Number(slab.bonusPercentage) / 100);
+                    return (
+                      <div key={sIdx} className="p-2.5 bg-white rounded-xl text-center border border-amber-200/80 shadow-2xs">
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                          {slab.label || `${slab.days} Days`}
+                        </p>
+                        <p className="text-xs font-extrabold text-amber-700 font-mono mt-0.5 truncate">
+                          +{slab.bonusPercentage}%
+                        </p>
+                        <p className="text-[10.5px] text-emerald-700 font-extrabold font-mono mt-0.5">
+                          +${bonusVal.toFixed(2)}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="text-[10.5px] text-amber-900 bg-amber-100/60 p-2 rounded-lg border border-amber-200/70 flex items-center gap-1.5">
+                  <RiInformationLine size={14} className="text-amber-600 shrink-0" />
+                  <span>One-time loyalty bonus credited directly to your wallet for keeping capital invested without premature withdrawal.</span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-300/80 text-amber-950 font-poppins space-y-2 animate-fade-in shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-amber-200 text-amber-900 flex items-center justify-center font-bold shadow-3xs">
+                      <RiGiftLine size={16} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-extrabold text-amber-950 uppercase tracking-wide">
+                        Reward (Loyalty Bonus) Not Applicable on 3X Plan
+                      </h4>
+                      <p className="text-[11px] text-amber-800 mt-0.5">
+                        3X Cap contracts already offer boosted <strong>0.9% / day</strong> yield up to 300% profit.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 shrink-0">
+                    3X Plan Excluded
+                  </span>
+                </div>
+                <div className="p-2.5 bg-white/90 rounded-xl border border-amber-200 text-[11px] text-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <span className="text-gray-600">
+                    Loyalty bonus rewards are exclusive to <strong>Without Lock In Period</strong> plans.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setLockInPeriod('None')}
+                    className="text-[11px] text-emerald-700 font-extrabold hover:underline cursor-pointer inline-flex items-center gap-1 shrink-0"
+                  >
+                    Switch to No Lock-In Period &rarr;
+                  </button>
+                </div>
+              </div>
+            )
           )}
         </div>
       </Modal>

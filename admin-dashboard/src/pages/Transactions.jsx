@@ -16,6 +16,7 @@ import Modal from '../components/ui/Modal';
 import Pagination from '../components/ui/Pagination';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
+import { useToast } from '../context/ToastContext';
 import {
   getTransactions,
   approveTransaction,
@@ -26,6 +27,7 @@ import {
 } from '../api/transactionsApi';
 
 export default function Transactions() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [txnList, setTxnList] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
@@ -190,7 +192,9 @@ export default function Transactions() {
     window.dispatchEvent(new CustomEvent('admin-counters-update'));
     window.dispatchEvent(new CustomEvent('horizon-transactions-change'));
 
-    setActionSuccessMsg(`Deposit request ${txn.id} approved! $${amountNum.toLocaleString()} credited to ${txn.user || 'Investor'}'s wallet.`);
+    const successMessage = `Deposit request ${txn.id} approved! $${amountNum.toLocaleString()} credited to ${txn.user || 'Investor'}'s wallet.`;
+    setActionSuccessMsg(successMessage);
+    toast.success(successMessage, 'Deposit Approved');
     setTimeout(() => setActionSuccessMsg(''), 4000);
   };
 
@@ -221,7 +225,9 @@ export default function Transactions() {
     window.dispatchEvent(new CustomEvent('admin-counters-update'));
     window.dispatchEvent(new CustomEvent('horizon-transactions-change'));
 
-    setActionSuccessMsg(`Deposit request ${txn.id} marked as Rejected.`);
+    const rejectMessage = `Deposit request ${txn.id} marked as Rejected. Reason: ${finalReason}`;
+    setActionSuccessMsg(rejectMessage);
+    toast.warning(rejectMessage, 'Deposit Rejected');
     setTimeout(() => setActionSuccessMsg(''), 4000);
   };
 
@@ -240,6 +246,7 @@ export default function Transactions() {
     setTxnList(updatedList);
     localStorage.setItem('horizon_transactions', JSON.stringify(updatedList));
     window.dispatchEvent(new CustomEvent('horizon-transactions-change', { detail: updatedList }));
+    toast.info(`Transaction ${txnToDelete.id} removed from records.`, 'Transaction Deleted');
     if (selectedTxn?.id === txnToDelete.id) {
       setSelectedTxn(null);
     }
@@ -257,6 +264,7 @@ export default function Transactions() {
     setTxnList([]);
     localStorage.setItem('horizon_transactions', JSON.stringify([]));
     window.dispatchEvent(new CustomEvent('horizon-transactions-change', { detail: [] }));
+    toast.info('All transactions cleared from records.', 'Ledger Cleared');
     setSelectedTxn(null);
     setClearAllModalOpen(false);
   };

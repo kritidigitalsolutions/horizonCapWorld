@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getTransactions } from '../api/transactionsApi';
 import {
   RiDownloadLine, RiEyeLine, RiArrowUpCircleLine,
   RiArrowDownCircleLine, RiFlashlightLine, RiGiftLine,
-  RiPrinterLine, RiCalendarLine, RiWalletLine, RiCheckDoubleLine,
-  RiCopperCoinLine, RiTrophyLine, RiExchangeDollarLine, RiGlobalLine,
-  RiFileCopyLine, RiCheckLine, RiFilePdfLine, RiImageLine, RiCloseLine,
-  RiInformationLine, RiShieldCheckLine, RiAlertLine
+  RiPrinterLine, RiTrophyLine, RiExchangeDollarLine,
+  RiFileCopyLine, RiCheckLine, RiFilePdfLine, RiImageLine,
+  RiInformationLine, RiAlertLine
 } from 'react-icons/ri';
 import KPICard from '../components/ui/KPICard';
 import SearchBar from '../components/ui/SearchBar';
@@ -276,11 +275,10 @@ export default function Transactions() {
                 key={type}
                 type="button"
                 onClick={() => setFilterType(type)}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold capitalize whitespace-nowrap transition-all cursor-pointer ${
-                  filterType === type
+                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold capitalize whitespace-nowrap transition-all cursor-pointer ${filterType === type
                     ? 'bg-gold-400 text-gray-900 shadow-gold font-bold'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 {type === 'all' ? 'All Types' : type}
               </button>
@@ -394,8 +392,8 @@ export default function Transactions() {
                         {search
                           ? `No records found matching "${search}". Try searching with a different ID or keyword.`
                           : filterType !== "all"
-                          ? `You do not have any ${filterType} transactions recorded on your account yet.`
-                          : "All your deposit requests, investment contracts, real-time ROI yields, and referral bonuses will be logged here in real time."}
+                            ? `You do not have any ${filterType} transactions recorded on your account yet.`
+                            : "All your deposit requests, investment contracts, real-time ROI yields, and referral bonuses will be logged here in real time."}
                       </p>
                       {!search && (
                         <div className="flex items-center gap-2.5 pt-2">

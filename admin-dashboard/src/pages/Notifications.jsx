@@ -29,6 +29,7 @@ import {
   sendPushNotification,
 } from '../api/notificationApi';
 import { getAllUsers } from '../api/usersApi';
+import { useToast } from '../context/ToastContext';
 
 const CATEGORY_TABS = [
   { id: 'ALL', label: 'All Alerts', icon: RiNotification3Line },
@@ -53,6 +54,7 @@ const categoryStyles = {
 };
 
 export default function Notifications() {
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -173,6 +175,7 @@ export default function Notifications() {
       await markAllAdminNotificationsRead();
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
+      toast.info('All notification alerts marked as read.', 'Marked as Read');
     } catch (err) {
       console.error('Error marking all as read:', err);
     }
@@ -183,6 +186,7 @@ export default function Notifications() {
       await deleteAdminNotification(id);
       setNotifications(prev => prev.filter(n => n._id !== id));
       setTotalCount(c => Math.max(0, c - 1));
+      toast.info('Notification alert deleted from history.', 'Notification Deleted');
     } catch (err) {
       console.error('Error deleting notification:', err);
     }
@@ -195,6 +199,7 @@ export default function Notifications() {
       setNotifications([]);
       setTotalCount(0);
       setUnreadCount(0);
+      toast.info('All notification alerts cleared from records.', 'History Cleared');
     } catch (err) {
       console.error('Error clearing notifications:', err);
     }
@@ -230,6 +235,12 @@ export default function Notifications() {
       const res = await sendPushNotification(pushForm);
       if (res?.success) {
         setPushSuccess(res.message || 'Push notification dispatched successfully!');
+        toast.success(
+          pushForm.targetType === 'ALL'
+            ? 'Broadcast announcement dispatched to all platform investors!'
+            : `Custom push notification dispatched to investor!`,
+          'Broadcast Sent'
+        );
         setTimeout(() => {
           setIsPushModalOpen(false);
           setPushSuccess('');
@@ -246,10 +257,14 @@ export default function Notifications() {
           fetchNotifications();
         }, 1200);
       } else {
-        setPushError(res?.message || 'Failed to dispatch push notification.');
+        const errorMsg = res?.message || 'Failed to dispatch push notification.';
+        setPushError(errorMsg);
+        toast.error(errorMsg, 'Broadcast Failed');
       }
     } catch (err) {
-      setPushError(err.response?.data?.message || err.message || 'Error sending push notification.');
+      const errorMsg = err.response?.data?.message || err.message || 'Error sending push notification.';
+      setPushError(errorMsg);
+      toast.error(errorMsg, 'Broadcast Failed');
     } finally {
       setPushSubmitting(false);
     }

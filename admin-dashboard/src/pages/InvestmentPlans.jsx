@@ -29,6 +29,7 @@ import Modal from "../components/ui/Modal";
 import SearchBar from "../components/ui/SearchBar";
 import SkeletonLoader from "../components/ui/SkeletonLoader";
 import PageHeader from "../components/ui/PageHeader";
+import { useToast } from "../context/ToastContext";
 
 import {
   getAllPlans,
@@ -118,6 +119,7 @@ export function getMatchingSlab(amount, slabs = []) {
 }
 
 export default function InvestmentPlans() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState([]);
   const [search, setSearch] = useState("");
@@ -527,14 +529,16 @@ export default function InvestmentPlans() {
     try {
       if (editingPlan) {
         await updatePlans(editingPlan._id, payload);
+        toast.success(`Investment plan "${payload.name}" updated successfully!`, "Plan Updated");
       } else {
         await createPlan(payload);
+        toast.success(`New investment plan "${payload.name}" launched successfully!`, "Plan Created");
       }
       setModalOpen(false);
       fetchPlans(); // Refresh lists from backend
     } catch (error) {
       console.error("Error saving plan:", error);
-      alert("Failed to save plan. Please try again.");
+      toast.error("Failed to save plan. Please check required fields.", "Save Failed");
     }
   };
 
@@ -544,8 +548,10 @@ export default function InvestmentPlans() {
       try {
         await deletePlan(id);
         fetchPlans();
+        toast.info("Investment plan removed from platform catalog.", "Plan Deleted");
       } catch (error) {
         console.error("Error deleting plan:", error);
+        toast.error("Failed to delete plan.", "Delete Failed");
       }
     }
   };
@@ -735,25 +741,9 @@ export default function InvestmentPlans() {
                       <UilMoneyBill size={16} /> Investment Range
                     </span>
                     <span className="font-bold text-gray-800 text-xs">
-                      ${plan.minAmount?.toLocaleString() || "10"} —{" "}
                       {plan.noMaxLimit || !plan.maxAmount
-                        ? "Any Amount"
-                        : `$${plan.maxAmount.toLocaleString()}`}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-gray-400 text-xs font-medium">
-                      <RiTimeLine size={16} /> Duration & Lock-In
-                    </span>
-                    <span className="font-bold text-gray-800 text-xs flex items-center gap-1">
-                      {isPlanInfinite ? (
-                        <span className="inline-flex items-center gap-1 text-gold-700 bg-gold-50 px-2 py-0.5 rounded border border-gold-200 font-extrabold">
-                          <span>∞</span> Lifetime
-                        </span>
-                      ) : (
-                        `approx. ${plan.lockInPeriodDays || 333} Days (Cap is 3X)`
-                      )}
+                        ? `${plan.minAmount || 10}$ to any amount`
+                        : `$${plan.minAmount || 10} to $${plan.maxAmount}`}
                     </span>
                   </div>
 
@@ -810,7 +800,7 @@ export default function InvestmentPlans() {
                             >
                               <span className="font-bold text-gray-900 text-left">
                                 {slab.noMaxLimit || !slab.maxAmount
-                                  ? `${slab.minAmount}$ + Any Amount`
+                                  ? `${slab.minAmount}$ to any amount`
                                   : `${slab.minAmount}$ to ${slab.maxAmount}$`}
                               </span>
                               <span className="text-center font-bold text-emerald-700 font-mono">
@@ -845,10 +835,10 @@ export default function InvestmentPlans() {
                         <RiSparklingLine size={13} className="text-amber-600" />
                         Reward (Loyalty Bonus)
                       </span>
-                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded">Capital Benefit</span>
+                      <span className="text-[10px] font-bold text-amber-900 bg-amber-200/80 px-1.5 py-0.5 rounded">Without Lock-In Only</span>
                     </div>
                     <p className="text-[10px] text-slate-500 leading-tight">
-                      One time benefit directly given to the wallet (if not withdrawn):
+                      One time benefit for <strong>Without Lock In Period</strong> (Excluded from 3X plan):
                     </p>
                     <div className="grid grid-cols-5 gap-1 text-center">
                       {(plan.loyaltyBonusSlabs && plan.loyaltyBonusSlabs.length > 0 ? plan.loyaltyBonusSlabs : DEFAULT_LOYALTY_SLABS).map((s, idx) => (
@@ -1155,7 +1145,7 @@ export default function InvestmentPlans() {
                     <div className="col-span-3 flex items-center gap-1">
                       {slab.noMaxLimit ? (
                         <div className="w-full flex items-center justify-between py-1 px-2 rounded-lg bg-gold-100/80 border border-gold-300 text-gold-900 font-extrabold text-xs">
-                          <span className="truncate">{slab.minAmount || 0}$ + Any Amount</span>
+                          <span className="truncate">{slab.minAmount || 0}$ to any amount</span>
                           <button
                             type="button"
                             title="Set fixed max limit"

@@ -20,6 +20,7 @@ import {
   deleteArticle
 } from '../api/newsApi';
 import { uploadFileToCloudinary, deleteFileFromCloudinary } from '../api/uploadApi';
+import { useToast } from '../context/ToastContext';
 
 const initialCategories = [
   'Company',
@@ -31,6 +32,7 @@ const initialCategories = [
 ];
 
 export default function NewsMedia() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [articles, setArticles] = useState([]);
   const [categories, setCategories] = useState(initialCategories);
@@ -170,6 +172,7 @@ export default function NewsMedia() {
     if (!trimmed) return;
     if (!categories.includes(trimmed)) {
       setCategories([...categories, trimmed]);
+      toast.success(`News category "${trimmed}" created successfully!`, 'Category Created');
     }
     setCategory(trimmed);
     setNewCategoryName('');
@@ -235,6 +238,12 @@ export default function NewsMedia() {
     localStorage.setItem('horizon_news_broadcasts', JSON.stringify(updatedArticles));
     window.dispatchEvent(new CustomEvent('horizon-news-change', { detail: updatedArticles }));
     setEditorModalOpen(false);
+    toast.success(
+      editingArticle
+        ? `Article "${articlePayload.title}" updated successfully!`
+        : `Article "${articlePayload.title}" published to live investor newsroom!`,
+      'News Broadcasted'
+    );
   };
 
   // Delete Article
@@ -255,6 +264,7 @@ export default function NewsMedia() {
     setArticles(updatedArticles);
     localStorage.setItem('horizon_news_broadcasts', JSON.stringify(updatedArticles));
     window.dispatchEvent(new CustomEvent('horizon-news-change', { detail: updatedArticles }));
+    toast.info(`Article "${articleToDelete.title}" removed from newsroom.`, 'Article Deleted');
     if (readingArticle?.id === articleToDelete.id) {
       setReadingArticle(null);
     }

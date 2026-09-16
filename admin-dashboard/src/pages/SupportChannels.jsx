@@ -13,6 +13,7 @@ import Modal from '../components/ui/Modal';
 import SearchBar from '../components/ui/SearchBar';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
+import { useToast } from '../context/ToastContext';
 import {
   getChannels,
   createChannel,
@@ -21,6 +22,7 @@ import {
 } from '../api/supportApi';
 
 export default function SupportChannels() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [channels, setChannels] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -116,6 +118,12 @@ export default function SupportChannels() {
     localStorage.setItem('horizon_support_channels', JSON.stringify(updated));
     window.dispatchEvent(new CustomEvent('horizon-support-channels-change', { detail: updated }));
     setIsModalOpen(false);
+    toast.success(
+      editingChannel
+        ? `Support channel "${formData.title}" updated successfully!`
+        : `Support channel "${formData.title}" added successfully!`,
+      'Channel Saved'
+    );
   };
 
   const handleDelete = async () => {
@@ -133,6 +141,7 @@ export default function SupportChannels() {
     setChannels(updated);
     localStorage.setItem('horizon_support_channels', JSON.stringify(updated));
     window.dispatchEvent(new CustomEvent('horizon-support-channels-change', { detail: updated }));
+    toast.info(`Support channel "${deletingChannel.title}" deleted.`, 'Channel Deleted');
     setDeletingChannel(null);
   };
 

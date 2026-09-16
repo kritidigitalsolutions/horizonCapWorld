@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   RiTrophyLine, RiMedalLine, RiAwardLine, RiVipCrownLine, RiGroupLine,
-  RiMoneyDollarCircleLine, RiCheckLine, RiPercentLine,
-  RiArrowUpCircleLine, RiSparklingLine, RiShieldStarLine, RiTeamLine,
-  RiFlashlightLine, RiGlobalLine, RiTimeLine, RiCalculatorLine,
-  RiSearchLine, RiInformationLine, RiArrowRightLine, RiCoinsLine, RiWallet3Line,
-  RiUserLine, RiStarLine, RiProgress3Line, RiLockLine, RiExternalLinkLine,
-  RiShieldCheckLine, RiEyeLine
+  RiMoneyDollarCircleLine, RiCheckLine,
+  RiSparklingLine, RiShieldStarLine,
+  RiCalculatorLine,
+  RiCoinsLine, RiStarLine, RiProgress3Line, RiLockLine,
+  RiShieldCheckLine
 } from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
 import { getRankLadder, getMyRankStatus, getLeaderboard } from '../api/ranksApi';
@@ -210,7 +209,7 @@ export default function Ranks() {
         if (saved) {
           try {
             setRanks(JSON.parse(saved));
-          } catch (err) {}
+          } catch (err) { }
         }
       }
     };
@@ -416,11 +415,10 @@ export default function Ranks() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
-                activeTab === tab.id
+              className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${activeTab === tab.id
                   ? 'bg-gold-400 text-slate-900 font-bold shadow-gold'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+                }`}
             >
               <span className="text-sm">{tab.icon}</span>
               <span>{tab.label}</span>
@@ -489,21 +487,19 @@ export default function Ranks() {
                     return (
                       <tr
                         key={r._id || r.level}
-                        className={`hover:bg-amber-50/40 transition-colors ${
-                          isCurrent
+                        className={`hover:bg-amber-50/40 transition-colors ${isCurrent
                             ? 'bg-amber-50/80 font-medium'
                             : i % 2 === 0
-                            ? 'bg-white'
-                            : 'bg-slate-50/50'
-                        }`}
+                              ? 'bg-white'
+                              : 'bg-slate-50/50'
+                          }`}
                       >
                         {/* Level Index */}
                         <td className="py-3 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-200 bg-gold-50/30">
-                          <span className={`w-6 h-6 rounded-md font-bold border inline-flex items-center justify-center shadow-2xs ${
-                            isCurrent
+                          <span className={`w-6 h-6 rounded-md font-bold border inline-flex items-center justify-center shadow-2xs ${isCurrent
                               ? 'bg-gold-400 text-slate-950 border-gold-500 font-black'
                               : 'bg-gold-100/90 text-gold-950 border-gold-300'
-                          }`}>
+                            }`}>
                             {r.level}
                           </span>
                         </td>
@@ -511,11 +507,10 @@ export default function Ranks() {
                         {/* Rank Name */}
                         <td className="py-3 px-3.5 border-r border-slate-200">
                           <div className="flex items-center gap-2.5">
-                            <div className={`w-8 h-8 rounded-lg border shadow-2xs flex items-center justify-center flex-shrink-0 ${
-                              isCurrent
+                            <div className={`w-8 h-8 rounded-lg border shadow-2xs flex items-center justify-center flex-shrink-0 ${isCurrent
                                 ? 'bg-gold-400/30 border-gold-400'
                                 : 'bg-gold-50/90 border-gold-300'
-                            }`}>
+                              }`}>
                               {getRankIcon(r.level)}
                             </div>
                             <div>

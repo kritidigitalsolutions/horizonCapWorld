@@ -15,6 +15,7 @@ import SearchBar from '../components/ui/SearchBar';
 import Pagination from '../components/ui/Pagination';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
+import { useToast } from '../context/ToastContext';
 import {
   getAllRanks,
   createRank,
@@ -154,6 +155,7 @@ const defaultRanksList = [
 ];
 
 export default function Ranks() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('ladder'); // 'ladder', 'achievers'
   const [ranks, setRanks] = useState(defaultRanksList);
@@ -279,6 +281,7 @@ export default function Ranks() {
     localStorage.setItem('horizon_rank_ladder', JSON.stringify(updated));
     window.dispatchEvent(new CustomEvent('horizon-ranks-change', { detail: updated }));
     setEditingRank(null);
+    toast.success(`Rank tier "${payload.name}" updated successfully!`, 'Rank Updated');
   };
 
   const handleCreateRank = async () => {
@@ -309,6 +312,7 @@ export default function Ranks() {
     setRanks(updated);
     localStorage.setItem('horizon_rank_ladder', JSON.stringify(updated));
     window.dispatchEvent(new CustomEvent('horizon-ranks-change', { detail: updated }));
+    toast.success(`New rank "${newRankItem.name}" (Level ${newRankItem.level}) added successfully!`, 'Rank Created');
     setIsAddRankOpen(false);
     setNewRankName('');
     setNewRankLevel('');

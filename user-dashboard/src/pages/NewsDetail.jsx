@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getNewsArticle, getNews } from '../api/newsApi';
 import {
   RiArrowLeftLine, RiCalendarLine, RiTimeLine, RiEyeLine, RiShareLine,
-  RiFileCopyLine, RiCheckLine, RiPriceTag3Line, RiShieldCheckLine,
-  RiLightbulbLine, RiNewspaperLine, RiTwitterXLine, RiTelegramLine,
-  RiWhatsappLine, RiBookmarkLine, RiUser3Line, RiArrowRightLine
+  RiFileCopyLine, RiPriceTag3Line,
+  RiLightbulbLine, RiNewspaperLine, RiTelegramLine,
+  RiWhatsappLine, RiArrowRightLine
 } from 'react-icons/ri';
-import Badge from '../components/ui/Badge';
 
 export default function NewsDetail() {
   const { id } = useParams();

@@ -378,7 +378,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                 {slabs.map((slab, idx) => {
                   const isMatched = activeMatchedSlab?.minAmount === slab.minAmount;
                   const rangeLabel = slab.noMaxLimit || !slab.maxAmount
-                    ? `${slab.minAmount}$ + Any Amount`
+                    ? `${slab.minAmount}$ to any amount`
                     : `$${slab.minAmount} to $${slab.maxAmount}`;
                   const standardDaily = Number(slab.dailyRoi || 0.3);
                   const lockInDaily = Number(slab.lockInDailyRoi || 0.9);
@@ -432,7 +432,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                 <span className="text-xs font-bold">Without Lock In Period</span>
                 {lockInPeriod === 'none' && <RiCheckLine size={14} className="text-emerald-600 font-bold" />}
               </div>
-              <p className="text-[10px] text-slate-400 mt-0.5">0.3% / day • Flexible Principal Liquidity</p>
+              <p className="text-[10px] text-emerald-700 font-medium mt-0.5">0.3% / day • Flexible Capital • <strong>Rewards Eligible</strong></p>
             </button>
 
             <button
@@ -448,7 +448,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                 <span className="text-xs font-bold text-amber-900">Cap is 3X approx. 333 Days</span>
                 {(lockInPeriod === '333_days' || lockInPeriod === '3_months') && <RiCheckLine size={14} className="text-emerald-600 font-bold" />}
               </div>
-              <p className="text-[10px] text-amber-700 font-semibold mt-0.5">0.9% / day • 333 Days Lock-In (3X Cap)</p>
+              <p className="text-[10px] text-amber-800 font-semibold mt-0.5">0.9% / day • 333d Lock-In (3X Cap) • <em>No Rewards</em></p>
             </button>
           </div>
         </div>
@@ -614,20 +614,16 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
             <div>
               <p className="font-bold text-gray-800 flex items-center gap-1.5">
                 <RiInformationLine className="text-gold-500" size={15} />
-                {calculations.isInfinite
-                  ? "Continuous Lifetime Yield Stream:"
-                  : `Total Return on Maturity (${currentPlan?.duration}):`}
+                Continuous Real-time Yield Stream:
               </p>
               <p className="text-[11px] text-gray-500">
                 Principal (${(Number(amount) || 0).toLocaleString()}) +{" "}
-                {calculations.isInfinite
-                  ? `1-Year Projected Return (+$${calculations.annually})`
-                  : `Total Profit (+$${calculations.totalProfit})`}
+                1-Year Projected Return (+$${calculations.annually})
               </p>
             </div>
             <div className="text-left sm:text-right">
               <p className="text-[10px] text-gray-400 uppercase font-semibold">
-                {calculations.isInfinite ? "1-Year Maturity Value" : "Total Net Return"}
+                1-Year Projected Maturity Value
               </p>
               <span className="text-base font-extrabold text-emerald-700 font-mono">
                 ${(calculations.isInfinite ? (Number(amount) || 0) + Number(calculations.annually) : Number(calculations.finalReturns)).toFixed(2)}
@@ -638,61 +634,96 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
 
         {/* ──────── REWARD ( LOYALTY BONUS ) MILESTONES ──────── */}
         {currentPlan?.loyaltyBonusEnabled !== false && (
-          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/90 via-gold-50/50 to-orange-50/40 border border-amber-300/80 space-y-2.5 shadow-xs font-poppins">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
-                  <RiGiftLine size={16} />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wide">
-                    {currentPlan?.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
-                  </h4>
-                  <p className="text-[10.5px] text-gray-500">
-                    {currentPlan?.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet"}
-                  </p>
-                </div>
-              </div>
-              <span className="badge badge-gold text-[10px] font-bold">
-                Wallet Bonus
-              </span>
-            </div>
-
-            {/* Slabs Milestone Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
-              {((currentPlan?.loyaltyBonusSlabs && currentPlan.loyaltyBonusSlabs.length > 0)
-                ? currentPlan.loyaltyBonusSlabs
-                : DEFAULT_LOYALTY_SLABS
-              ).map((slab, sIdx) => {
-                const bonusVal = (Number(amount) || 0) * (Number(slab.bonusPercentage) / 100);
-                return (
-                  <div key={sIdx} className="p-2 bg-white rounded-xl text-center border border-amber-200/80 shadow-2xs">
-                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                      {slab.label || `${slab.days} Days`}
-                    </p>
-                    <p className="text-xs font-extrabold text-amber-700 font-mono mt-0.5 truncate">
-                      +{slab.bonusPercentage}%
-                    </p>
-                    <p className="text-[10.5px] text-emerald-700 font-extrabold font-mono mt-0.5">
-                      +${bonusVal.toFixed(2)}
+          lockInPeriod === 'none' ? (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/90 via-gold-50/50 to-orange-50/40 border border-amber-300/80 space-y-2.5 shadow-xs font-poppins animate-fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                    <RiGiftLine size={16} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wide">
+                      {currentPlan?.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
+                    </h4>
+                    <p className="text-[10.5px] text-gray-500">
+                      {currentPlan?.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet"}
                     </p>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+                <span className="badge badge-success text-[10px] font-bold">
+                  Active: No Lock-In
+                </span>
+              </div>
 
-            <div className="text-[10.5px] text-amber-900 bg-amber-100/60 p-2 rounded-lg border border-amber-200/70 flex items-center gap-1.5">
-              <RiInformationLine size={14} className="text-amber-600 shrink-0" />
-              <span>One-time loyalty bonus credited directly to your wallet for maintaining capital without premature withdrawal.</span>
+              {/* Slabs Milestone Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                {((currentPlan?.loyaltyBonusSlabs && currentPlan.loyaltyBonusSlabs.length > 0)
+                  ? currentPlan.loyaltyBonusSlabs
+                  : DEFAULT_LOYALTY_SLABS
+                ).map((slab, sIdx) => {
+                  const bonusVal = (Number(amount) || 0) * (Number(slab.bonusPercentage) / 100);
+                  return (
+                    <div key={sIdx} className="p-2 bg-white rounded-xl text-center border border-amber-200/80 shadow-2xs">
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                        {slab.label || `${slab.days} Days`}
+                      </p>
+                      <p className="text-xs font-extrabold text-amber-700 font-mono mt-0.5 truncate">
+                        +{slab.bonusPercentage}%
+                      </p>
+                      <p className="text-[10.5px] text-emerald-700 font-extrabold font-mono mt-0.5">
+                        +${bonusVal.toFixed(2)}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="text-[10.5px] text-amber-900 bg-amber-100/60 p-2 rounded-lg border border-amber-200/70 flex items-center gap-1.5">
+                <RiInformationLine size={14} className="text-amber-600 shrink-0" />
+                <span>One-time loyalty bonus credited directly to your wallet for maintaining capital without premature withdrawal.</span>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-300/80 text-amber-950 font-poppins space-y-2 animate-fade-in shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-200 text-amber-900 flex items-center justify-center font-bold shadow-3xs">
+                    <RiGiftLine size={16} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-extrabold text-amber-950 uppercase tracking-wide">
+                      Reward (Loyalty Bonus) Not Applicable on 3X Plan
+                    </h4>
+                    <p className="text-[11px] text-amber-800 mt-0.5">
+                      3X Cap contracts already offer boosted <strong>0.9% / day</strong> yield up to 300% profit.
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 shrink-0">
+                  3X Plan Excluded
+                </span>
+              </div>
+              <div className="p-2.5 bg-white/90 rounded-xl border border-amber-200 text-[11px] text-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                <span className="text-gray-600">
+                  Loyalty rewards are exclusive to <strong>Without Lock In Period</strong> plans.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLockInPeriod('none')}
+                  className="text-[11px] text-emerald-700 font-extrabold hover:underline cursor-pointer inline-flex items-center gap-1 shrink-0"
+                >
+                  Switch to No Lock-In &rarr;
+                </button>
+              </div>
+            </div>
+          )
         )}
 
         {/* Live Streaming Info Note */}
         <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
           <RiFlashlightLine size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
           <p>
-            Real-time returns stream directly to your Earning Wallet every second ({calculations.daily ? `$${(Number(calculations.daily) / 86400).toFixed(6)} / sec` : '$0.00 / sec'}). {calculations.isInfinite ? "Contract operates on a continuous lifetime duration." : "100% principal unlocks upon contract maturity."}
+            Real-time returns stream directly to your Earning Wallet every second ({calculations.daily ? `$${(Number(calculations.daily) / 86400).toFixed(6)} / sec` : '$0.00 / sec'}). Live returns stream automatically into your wallet every second.
           </p>
         </div>
       </div>

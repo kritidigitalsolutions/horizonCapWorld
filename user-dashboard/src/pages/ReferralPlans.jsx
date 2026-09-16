@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  RiTeamLine, RiNodeTree, RiPercentLine,
-  RiCoinsLine, RiShieldCheckLine, RiCalculatorLine, RiArrowRightLine,
-  RiMoneyDollarCircleLine, RiWallet3Line, RiAlertLine, RiPauseCircleLine,
+  RiTeamLine,
+  RiCoinsLine,
   RiCheckLine
 } from 'react-icons/ri';
 import { getReferralCommissions, getReferralOverview, getReferralNetwork } from '../api/referralsApi';
@@ -29,8 +28,6 @@ export default function ReferralPlans() {
   const [commissions, setCommissions] = useState(defaultTiers);
   const [overviewData, setOverviewData] = useState(null);
   const [networkList, setNetworkList] = useState([]);
-  const [calcDeposit, setCalcDeposit] = useState('10000');
-  const [calcDailyYield, setCalcDailyYield] = useState('100');
   const [toggles, setToggles] = useState({
     referralDepositCommissionEnabled: true,
     referralRoiShareEnabled: true,
@@ -358,95 +355,7 @@ export default function ReferralPlans() {
         </div>
       )}
 
-      {/* ──────────────── LIVE DUAL-STREAM COMMISSION SIMULATOR ──────────────── */}
-      {/* {(depositEnabled || roiShareEnabled) && (
-        <div className="card p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gold-400 text-slate-900 flex items-center justify-center font-bold shadow-xs">
-              <RiCalculatorLine size={20} />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-900 font-display">
-                {depositEnabled && roiShareEnabled
-                  ? "Live Downline Commission Simulator (Both Streams)"
-                  : depositEnabled
-                  ? "Live Downline Deposit Commission Simulator"
-                  : "Live Downline Daily ROI Profit Share Simulator"}
-              </h3>
-              <p className="text-xs text-slate-500">
-                {depositEnabled && roiShareEnabled
-                  ? `Simulate upfront deposit bonuses and recurring daily ROI earnings across all ${commissions.length} tiers.`
-                  : depositEnabled
-                  ? `Simulate upfront deposit bonuses across all ${commissions.length} tiers.`
-                  : `Simulate recurring daily streaming ROI earnings across all ${commissions.length} tiers.`}
-              </p>
-            </div>
-          </div>
-
-          <div className={`grid grid-cols-1 ${depositEnabled && roiShareEnabled ? 'sm:grid-cols-2' : ''} gap-4 pt-2`}>
-            {depositEnabled && (
-              <div>
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">
-                  Downline Deposit Investment ($)
-                </label>
-                <input
-                  type="number"
-                  value={calcDeposit}
-                  onChange={e => setCalcDeposit(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 font-mono font-bold text-base text-slate-900 outline-none focus:border-gold-400"
-                />
-              </div>
-            )}
-
-            {roiShareEnabled && (
-              <div>
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">
-                  Downline Daily Profit Yield ($/day)
-                </label>
-                <input
-                  type="number"
-                  value={calcDailyYield}
-                  onChange={e => setCalcDailyYield(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 font-mono font-bold text-base text-slate-900 outline-none focus:border-gold-400"
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 pt-2">
-            {commissions.map((t) => {
-              const depRate = parseFloat(t.investCommission) / 100;
-              const yieldRate = parseFloat(t.earningsCommission) / 100;
-              const depBonus = (Number(calcDeposit) || 0) * depRate;
-              const yieldBonus = (Number(calcDailyYield) || 0) * yieldRate;
-
-              return (
-                <div key={t._id || t.level} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-center space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block font-mono">
-                    {t.level} ({depositEnabled && roiShareEnabled ? `${t.investCommission} / ${t.earningsCommission}` : depositEnabled ? t.investCommission : t.earningsCommission})
-                  </span>
-                  {depositEnabled && (
-                    <div>
-                      <span className="text-[10px] text-slate-400 block">Deposit Bonus:</span>
-                      <span className="text-sm font-extrabold font-mono text-emerald-600">
-                        +${depBonus.toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-                  {roiShareEnabled && (
-                    <div className={depositEnabled ? "pt-1 border-t border-slate-200/60" : ""}>
-                      <span className="text-[10px] text-slate-400 block">Daily ROI Share:</span>
-                      <span className="text-xs font-extrabold font-mono text-amber-600">
-                        +${yieldBonus.toFixed(2)}/day
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )} */}
+      
     </div>
   );
 }

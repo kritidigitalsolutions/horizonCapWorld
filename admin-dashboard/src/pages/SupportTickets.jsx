@@ -26,8 +26,10 @@ import {
 } from '../api/supportApi';
 import { getAllUsers } from '../api/usersApi';
 import { uploadFileToCloudinary, deleteFileFromCloudinary } from '../api/uploadApi';
+import { useToast } from '../context/ToastContext';
 
 export default function SupportTickets() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
   const [usersList, setUsersList] = useState([]);
@@ -169,6 +171,12 @@ export default function SupportTickets() {
     setAttachedFile(null);
     setAttachedFileUrl(null);
     setIsInternalNote(false);
+    toast.success(
+      isInternalNote
+        ? 'Internal admin officer note saved to ticket.'
+        : `Reply dispatched to ${activeTicket.userName || 'investor'} successfully!`,
+      'Reply Sent'
+    );
   };
 
   // Change Ticket Status
@@ -186,6 +194,7 @@ export default function SupportTickets() {
     const updated = { ...activeTicket, status: newStatus };
     setTickets(tickets.map(t => t.id === activeTicket.id ? updated : t));
     setActiveTicket(updated);
+    toast.info(`Ticket ${activeTicket.id} status updated to ${newStatus}.`, 'Status Updated');
   };
 
   // Delete Ticket Action
@@ -201,6 +210,7 @@ export default function SupportTickets() {
     }
 
     setTickets(tickets.filter(t => t.id !== deletingTicket.id && t._id !== deletingTicket._id));
+    toast.info(`Support ticket ${deletingTicket.id} deleted.`, 'Ticket Deleted');
     if (activeTicket && (activeTicket.id === deletingTicket.id || activeTicket._id === deletingTicket._id)) {
       setActiveTicket(null);
     }
@@ -269,6 +279,7 @@ export default function SupportTickets() {
     };
 
     setTickets([newTicketObj, ...tickets]);
+    toast.success(`Support ticket ${newTicketObj.id} created successfully!`, 'Ticket Created');
     setIsNewTicketOpen(false);
     setNewTicketSubject('');
     setNewTicketMessage('');

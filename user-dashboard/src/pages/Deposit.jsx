@@ -1,16 +1,16 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-  RiFileCopyLine, RiCheckLine, RiQrCodeLine, RiVideoLine,
+  RiFileCopyLine, RiCheckLine, RiQrCodeLine,
   RiPlayCircleLine, RiBookOpenLine, RiUploadCloud2Line,
   RiInformationLine, RiAlertLine, RiArrowRightLine,
   RiShieldCheckLine, RiDeleteBinLine, RiRefreshLine,
-  RiExternalLinkLine, RiSmartphoneLine, RiBankLine,
-  RiCloseLine, RiCoinsLine, RiGlobalLine, RiWallet3Line,
-  RiCheckboxCircleFill, RiTimeLine, RiLockLine, RiFlashlightLine,
+  RiSmartphoneLine, RiBankLine,
+  RiCoinsLine, RiWallet3Line, RiFlashlightLine,
   RiLoader4Line
 } from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { getDepositGateways, getDepositVideo, createDeposit } from '../api/depositsApi';
 import { uploadFileToCloudinary, deleteFileFromCloudinary } from '../api/uploadApi';
 import PageHeader from '../components/ui/PageHeader';
@@ -20,6 +20,7 @@ import { Link } from 'react-router-dom';
 
 export default function Deposit() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [gatewaysList, setGatewaysList] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [loadingGateways, setLoadingGateways] = useState(true);
@@ -218,17 +219,23 @@ export default function Deposit() {
     setErrorMsg('');
 
     if (!selectedMethod) {
-      setErrorMsg('Please select a payment channel before submitting.');
+      const msg = 'Please select a payment channel before submitting.';
+      setErrorMsg(msg);
+      toast.warning(msg, 'Payment Method Required');
       return;
     }
 
     if (!amount || parseFloat(amount) <= 0) {
-      setErrorMsg('Please enter a valid deposit amount.');
+      const msg = 'Please enter a valid deposit amount.';
+      setErrorMsg(msg);
+      toast.warning(msg, 'Invalid Amount');
       return;
     }
 
     if (!paymentSlip) {
-      setErrorMsg('Please upload your proof of payment / deposit slip document.');
+      const msg = 'Please upload your proof of payment / deposit slip document.';
+      setErrorMsg(msg);
+      toast.warning(msg, 'Proof Required');
       return;
     }
 
@@ -284,14 +291,26 @@ export default function Deposit() {
       window.dispatchEvent(new CustomEvent('horizon-transactions-change', { detail: { action: 'refresh' } }));
       window.dispatchEvent(new CustomEvent('horizon-deposit-submitted', { detail: depositData }));
 
-      setSubmittedDepositInfo(depositData);
-      setIsSuccessModalOpen(true);
+      // Store flash toast for top-right toaster notification after reload
+      toast.flash('Deposit submitted successfully! Your funds are queued for verification.', 'success', {
+        title: 'Deposit Successful',
+        duration: 6000,
+      });
+
+      // Clear local input fields
       setAmount('');
       setTransactionHash('');
       setPaymentSlip(null);
       setPaymentSlipPreview(null);
+
+      // Page refresh as requested: submit deposite karte hai page refresh ho jana chahiye
+      setTimeout(() => {
+        window.location.reload();
+      }, 150);
     } catch (err) {
-      setErrorMsg(err.response?.data?.message || err.message || 'Deposit submission failed. Please try again.');
+      const msg = err.response?.data?.message || err.message || 'Deposit submission failed. Please try again.';
+      setErrorMsg(msg);
+      toast.error(msg, 'Deposit Failed');
     } finally {
       setSubmitting(false);
     }

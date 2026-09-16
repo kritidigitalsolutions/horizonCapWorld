@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   RiTeamLine, RiCoinsLine, RiCalculatorLine,
-  RiCheckLine, RiEditLine, RiNodeTree, RiUserLine, RiShieldCheckLine,
-  RiGroupLine, RiMoneyDollarCircleLine, RiPercentLine, RiSearchLine,
-  RiArrowRightLine, RiInformationLine, RiEyeLine, RiFileCopyLine,
-  RiShareLine, RiQrCodeLine, RiUserAddLine, RiTimeLine, RiAlertLine,
-  RiPauseCircleLine
+  RiCheckLine, RiNodeTree, RiShieldCheckLine,
+  RiGroupLine, RiMoneyDollarCircleLine, RiPercentLine,
+RiFileCopyLine,
+  RiQrCodeLine, RiUserAddLine,
 } from 'react-icons/ri';
 import { useAuth, getReferralLink } from '../context/AuthContext';
 import { getReferralOverview, getReferralCommissions, getReferralNetwork } from '../api/referralsApi';

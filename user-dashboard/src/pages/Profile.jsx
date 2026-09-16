@@ -1,20 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   updateProfile as apiUpdateProfile,
   changePassword as apiChangePassword,
   sendOtp as apiSendOtp,
-  verifyOtp as apiVerifyOtp,
-  toggle2FA as apiToggle2FA,
-  getProfile as apiGetProfile
+  toggle2FA as apiToggle2FA
 } from '../api/authApi';
 import { uploadFileToCloudinary, deleteFileFromCloudinary } from '../api/uploadApi';
 import {
-  RiUser3Line, RiMailLine, RiPhoneLine, RiGlobalLine, RiCalendarLine,
-  RiShieldCheckLine, RiEditLine, RiUpload2Line, RiDeleteBin7Line, RiCameraLine,
+  RiUser3Line, RiMailLine,
+  RiUpload2Line, RiDeleteBin7Line, RiCameraLine,
   RiCheckLine, RiLockPasswordLine, RiEyeLine, RiEyeOffLine, RiAlertLine,
   RiCheckboxCircleFill, RiAwardLine, RiMailSendLine, RiMailCheckLine,
-  RiRefreshLine, RiSaveLine, RiKey2Line, RiShieldKeyholeLine
+  RiRefreshLine, RiSaveLine, 
 } from 'react-icons/ri';
 import PageHeader from '../components/ui/PageHeader';
 

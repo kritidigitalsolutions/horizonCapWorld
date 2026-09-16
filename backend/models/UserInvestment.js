@@ -61,12 +61,16 @@ const userInvestmentSchema = new mongoose.Schema(
     },
     lockInPeriod: {
       type: String,
-      enum: ["None", "3 Months", "365 Days"],
+      enum: ["None", "3 Months", "365 Days", "333 Days"],
       default: "None",
     },
     isLocked: {
       type: Boolean,
       default: false,
+    },
+    loyaltyBonusEligible: {
+      type: Boolean,
+      default: true,
     },
     lockInDays: {
       type: Number,

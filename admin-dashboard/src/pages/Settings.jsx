@@ -22,8 +22,10 @@ import {
   updateAdminSettings
 } from '../api/authApi';
 import { uploadFileToCloudinary, deleteFileFromCloudinary } from '../api/uploadApi';
+import { useToast } from '../context/ToastContext';
 
 export default function Settings() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('profile');
 
@@ -138,6 +140,7 @@ export default function Settings() {
           localStorage.setItem('horizon_admin_avatar', finalUrl);
           window.dispatchEvent(new CustomEvent('admin-avatar-change', { detail: finalUrl }));
           await updateAdminProfile({ avatar: finalUrl });
+          toast.success('Admin avatar photo updated successfully!', 'Avatar Updated');
         }
       } catch (err) {
         console.warn('Direct avatar upload to Cloudinary fallback:', err.message);
@@ -159,6 +162,7 @@ export default function Settings() {
 
     try {
       await updateAdminProfile({ avatar: '' });
+      toast.info('Admin avatar image removed.', 'Avatar Cleared');
     } catch (err) {
       console.warn('Avatar removal sync failed:', err.message);
     }
@@ -174,8 +178,10 @@ export default function Settings() {
         avatar: adminAvatar,
         is2FAEnabled: twoFactorEnabled
       });
+      toast.success('Admin profile credentials updated successfully!', 'Profile Saved');
     } catch (err) {
       console.warn('API update admin profile offline:', err.message);
+      toast.error('Failed to update admin profile credentials.', 'Update Failed');
     }
     setProfileSaved(true);
     setTimeout(() => setProfileSaved(false), 3000);
@@ -190,11 +196,15 @@ export default function Settings() {
       const res = await sendAdminOtp({ purpose: 'CHANGE_EMAIL', newEmail: newEmailAddress.trim() });
       if (res?.success) {
         setEmailOtpSent(true);
+        toast.info(`6-Digit Verification OTP sent to ${newEmailAddress.trim()}`, 'OTP Dispatched');
       } else {
         setEmailOtpError(res?.message || 'Failed to dispatch email OTP.');
+        toast.error(res?.message || 'Failed to dispatch email OTP.', 'Error');
       }
     } catch (err) {
-      setEmailOtpError(err.response?.data?.message || err.message || 'Failed to send OTP.');
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to send OTP.';
+      setEmailOtpError(errorMsg);
+      toast.error(errorMsg, 'Error');
     } finally {
       setEmailOtpLoading(false);
     }
@@ -208,11 +218,15 @@ export default function Settings() {
       const res = await verifyAdminOtp({ otp: code });
       if (res?.success) {
         setEmailOtpVerified(true);
+        toast.success('Email OTP verified successfully!', 'Verified');
       } else {
         setEmailOtpError(res?.message || 'Invalid OTP code.');
+        toast.error(res?.message || 'Invalid OTP code.', 'Verification Failed');
       }
     } catch (err) {
-      setEmailOtpError(err.response?.data?.message || err.message || 'Invalid OTP code.');
+      const errorMsg = err.response?.data?.message || err.message || 'Invalid OTP code.';
+      setEmailOtpError(errorMsg);
+      toast.error(errorMsg, 'Verification Failed');
     } finally {
       setEmailOtpLoading(false);
     }
@@ -230,6 +244,7 @@ export default function Settings() {
       if (res?.success) {
         setProfileEmail(newEmailAddress.trim());
         setEmailUpdated(true);
+        toast.success(`Admin official email updated to ${newEmailAddress.trim()}!`, 'Email Updated');
         setTimeout(() => {
           setEmailUpdated(false);
           setEmailOtpSent(false);
@@ -239,9 +254,12 @@ export default function Settings() {
         }, 3000);
       } else {
         setEmailOtpError(res?.message || 'Failed to update email.');
+        toast.error(res?.message || 'Failed to update email.', 'Update Failed');
       }
     } catch (err) {
-      setEmailOtpError(err.response?.data?.message || err.message || 'Failed to update email.');
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to update email.';
+      setEmailOtpError(errorMsg);
+      toast.error(errorMsg, 'Update Failed');
     } finally {
       setEmailOtpLoading(false);
     }
@@ -256,11 +274,16 @@ export default function Settings() {
       const res = await sendAdminOtp({ purpose: 'CHANGE_PASSWORD' });
       if (res?.success) {
         setPasswordOtpSent(true);
+        toast.info('Security verification OTP dispatched to official admin email.', 'OTP Sent');
       } else {
-        setPasswordOtpError(res?.message || 'Failed to dispatch password OTP.');
+        const errorMsg = res?.message || 'Failed to dispatch password OTP.';
+        setPasswordOtpError(errorMsg);
+        toast.error(errorMsg, 'Error');
       }
     } catch (err) {
-      setPasswordOtpError(err.response?.data?.message || err.message || 'Failed to send OTP.');
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to send OTP.';
+      setPasswordOtpError(errorMsg);
+      toast.error(errorMsg, 'Error');
     } finally {
       setPasswordOtpLoading(false);
     }
@@ -274,11 +297,16 @@ export default function Settings() {
       const res = await verifyAdminOtp({ otp: code });
       if (res?.success) {
         setPasswordOtpVerified(true);
+        toast.success('Password change OTP verified successfully!', 'Verified');
       } else {
-        setPasswordOtpError(res?.message || 'Invalid OTP code.');
+        const errorMsg = res?.message || 'Invalid OTP code.';
+        setPasswordOtpError(errorMsg);
+        toast.error(errorMsg, 'Verification Failed');
       }
     } catch (err) {
-      setPasswordOtpError(err.response?.data?.message || err.message || 'Invalid OTP code.');
+      const errorMsg = err.response?.data?.message || err.message || 'Invalid OTP code.';
+      setPasswordOtpError(errorMsg);
+      toast.error(errorMsg, 'Verification Failed');
     } finally {
       setPasswordOtpLoading(false);
     }
@@ -296,6 +324,7 @@ export default function Settings() {
       });
       if (res?.success) {
         setPasswordUpdated(true);
+        toast.success('Admin security password updated successfully! Keep credentials confidential.', 'Password Changed');
         setTimeout(() => {
           setPasswordUpdated(false);
           setPasswordOtpSent(false);
@@ -306,10 +335,14 @@ export default function Settings() {
           setConfirmPassword('');
         }, 3000);
       } else {
-        setPasswordOtpError(res?.message || 'Failed to update password.');
+        const errorMsg = res?.message || 'Failed to update password.';
+        setPasswordOtpError(errorMsg);
+        toast.error(errorMsg, 'Update Failed');
       }
     } catch (err) {
-      setPasswordOtpError(err.response?.data?.message || err.message || 'Failed to update password.');
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to update password.';
+      setPasswordOtpError(errorMsg);
+      toast.error(errorMsg, 'Update Failed');
     } finally {
       setPasswordOtpLoading(false);
     }
@@ -321,8 +354,10 @@ export default function Settings() {
       await updateAdminSettings({
         automatedAlerts
       });
+      toast.success('Automated platform notification and alert preferences saved!', 'Alerts Updated');
     } catch (err) {
       console.warn('API update admin settings offline:', err.message);
+      toast.error('Failed to update automated alert preferences.', 'Update Failed');
     }
     setAlertsSaved(true);
     setTimeout(() => setAlertsSaved(false), 3000);

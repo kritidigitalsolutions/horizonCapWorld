@@ -14,6 +14,7 @@ import SearchBar from '../components/ui/SearchBar';
 import Pagination from '../components/ui/Pagination';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
+import { useToast } from '../context/ToastContext';
 import {
   getAllUsers,
   updateUserStatus,
@@ -23,6 +24,7 @@ import {
 } from '../api/usersApi';
 
 export default function Users() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [userList, setUserList] = useState([]);
   const [search, setSearch] = useState('');
@@ -108,6 +110,7 @@ export default function Users() {
       console.warn('API delete user offline:', err.message);
     }
     setUserList(prev => prev.filter(u => u.id !== userToDelete.id && u._id !== userToDelete._id));
+    toast.info(`User ${userToDelete.name || userToDelete.id} removed from platform records.`, 'User Deleted');
     if (selectedUser?.id === userToDelete.id || selectedUser?._id === userToDelete._id) {
       setSelectedUser(null);
     }
@@ -124,6 +127,7 @@ export default function Users() {
       console.warn('API update user status offline:', err.message);
     }
     setUserList(prev => prev.map(u => u.id === user.id ? { ...u, status: nextStatus } : u));
+    toast.success(`User ${user.name} status updated to ${nextStatus}.`, 'Status Updated');
     if (selectedUser?.id === user.id) {
       setSelectedUser(prev => ({ ...prev, status: nextStatus }));
     }

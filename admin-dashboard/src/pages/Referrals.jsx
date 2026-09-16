@@ -14,6 +14,7 @@ import SearchBar from '../components/ui/SearchBar';
 import Pagination from '../components/ui/Pagination';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
 import PageHeader from '../components/ui/PageHeader';
+import { useToast } from '../context/ToastContext';
 import {
   getReferralSettings,
   updateReferralToggles,
@@ -24,6 +25,7 @@ import {
 } from '../api/referralsApi';
 
 export default function Referrals() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('plans'); // 'plans', 'promoters'
   const [commissions, setCommissions] = useState([]);
@@ -56,7 +58,7 @@ export default function Referrals() {
   const [addStatus, setAddStatus] = useState('Active');
   const [isSubmittingAdd, setIsSubmittingAdd] = useState(false);
 
-  // Edit Commission Modal State
+  // Edit Tier Modal State
   const [editingCommission, setEditingCommission] = useState(null);
   const [editName, setEditName] = useState('');
   const [editDepositAmount, setEditDepositAmount] = useState('0');
@@ -68,10 +70,12 @@ export default function Referrals() {
   const [editInvestComm, setEditInvestComm] = useState('');
   const [editEarnComm, setEditEarnComm] = useState('');
   const [editStatus, setEditStatus] = useState('Active');
+
+  // Calculator State inside Drawer
   const [testDepositAmount, setTestDepositAmount] = useState('10000');
   const [testMonthlyYield, setTestMonthlyYield] = useState('1500');
 
-  // Delete Confirmation State
+  // Delete State
   const [deletingTier, setDeletingTier] = useState(null);
 
   // Promoter Downline Tree Audit Drawer State
@@ -115,8 +119,15 @@ export default function Referrals() {
     setCurrentPage(1);
   }, [search, activeTab]);
 
-  const showNotification = (msg) => {
+  const showNotification = (msg, type = 'success') => {
     setFeedbackMsg(msg);
+    if (type === 'error') {
+      toast.error(msg, 'Referrals Error');
+    } else if (type === 'info') {
+      toast.info(msg, 'Referrals Notice');
+    } else {
+      toast.success(msg, 'Referrals Updated');
+    }
     setTimeout(() => setFeedbackMsg(''), 4000);
   };
 
@@ -186,7 +197,7 @@ export default function Referrals() {
         fetchReferralData();
       }
     } catch (err) {
-      alert(err.response?.data?.message || err.message || 'Failed to create new level.');
+      showNotification(err.response?.data?.message || err.message || 'Failed to create new level.', 'error');
     } finally {
       setIsSubmittingAdd(false);
     }
@@ -262,7 +273,7 @@ export default function Referrals() {
         showNotification(`Tier ${tier.level} (${tier.name}) removed successfully.`);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete tier.');
+      showNotification(err.response?.data?.message || 'Failed to delete tier.', 'error');
     } finally {
       setDeletingTier(null);
     }

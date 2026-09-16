@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getMyInvestments, toggleAutoRenewal } from '../api/plansApi';
 import {
-  RiFundsLine, RiTimeLine, RiCheckLine, RiLeafLine, RiCoinsLine,
-  RiFlashlightLine, RiArrowRightLine, RiExchangeDollarLine, RiCalendarLine,
+  RiFundsLine, RiLeafLine, RiCoinsLine,
+  RiFlashlightLine, RiArrowRightLine, RiCalendarLine,
   RiRefreshLine,
 } from 'react-icons/ri';
-import { UilBolt, UilClock, UilMoneyBill } from '@iconscout/react-unicons';
+import { UilClock} from '@iconscout/react-unicons';
 import KPICard from '../components/ui/KPICard';
 import SearchBar from '../components/ui/SearchBar';
 import PageHeader from '../components/ui/PageHeader';
 import { Link } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
 
 export default function MyInvestments() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [investmentsList, setInvestmentsList] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -88,10 +90,17 @@ export default function MyInvestments() {
       setTogglingId(id);
       const res = await toggleAutoRenewal(id);
       if (res?.success) {
+        toast.success(
+          res.message || 'Auto-renewal settings updated successfully.',
+          'Settings Updated'
+        );
         await fetchInvestments();
+      } else {
+        toast.error(res?.message || 'Failed to update auto renewal setting.', 'Update Failed');
       }
     } catch (err) {
       console.warn('Failed to toggle auto renewal:', err.message);
+      toast.error(err.response?.data?.message || err.message || 'Failed to toggle auto renewal.', 'Error');
     } finally {
       setTogglingId(null);
     }

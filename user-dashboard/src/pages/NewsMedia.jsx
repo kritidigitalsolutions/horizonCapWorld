@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getNews } from '../api/newsApi';
 import {
-  RiNewspaperLine, RiCalendarLine, RiTimeLine, RiEyeLine, RiArrowRightLine,
-  RiSearchLine, RiShareLine, RiBookmarkLine, RiCompass3Line, RiGlobalLine,
-  RiSparklingLine, RiPriceTag3Line, RiUser3Line, RiShieldCheckLine
+  RiNewspaperLine, RiCalendarLine, RiTimeLine, RiArrowRightLine,
+  RiSearchLine, RiUser3Line
 } from 'react-icons/ri';
 import PageHeader from '../components/ui/PageHeader';
-import Badge from '../components/ui/Badge';
 
 export default function NewsMedia() {
   const [articles, setArticles] = useState([]);
