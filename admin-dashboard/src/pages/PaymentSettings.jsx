@@ -67,6 +67,7 @@ export default function PaymentSettings() {
   const [editingWallet, setEditingWallet] = useState(null);
   const [qrModalWallet, setQrModalWallet] = useState(null);
   const [walletToDelete, setWalletToDelete] = useState(null);
+  const [copiedWalletId, setCopiedWalletId] = useState(null);
 
   // ──────── DEPOSIT VIDEO TUTORIAL STUDIO STATE ────────
   const defaultTutorialVideo = {
@@ -1110,7 +1111,7 @@ export default function PaymentSettings() {
                   </Badge>
                 </div>
 
-                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center gap-3.5">
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
                   {wallet.qrCodeUrl ? (
                     <div
                       onClick={() => setQrModalWallet(wallet)}
@@ -1138,7 +1139,7 @@ export default function PaymentSettings() {
                     </div>
                   )}
 
-                  <div className="min-w-0 flex-1 space-y-1">
+                  <div className="min-w-0 flex-1 space-y-1.5">
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                       {isMobile
                         ? "Mobile Number & Account Title"
@@ -1148,11 +1149,30 @@ export default function PaymentSettings() {
                             ? "Indian Account & IFSC"
                             : "Global IBAN / Wire Account"}
                     </p>
-                    <p className="text-xs font-mono font-medium text-slate-800 break-all leading-tight bg-white p-2 rounded-lg border border-slate-200/80 select-all">
-                      {wallet.address || wallet.accountNumber}
-                    </p>
+                    <div className="flex items-center justify-between gap-2 bg-white p-2.5 rounded-lg border border-slate-200/80 shadow-2xs">
+                      <span className="text-xs font-mono font-bold text-slate-800 break-all leading-relaxed select-all">
+                        {wallet.address || wallet.accountNumber}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(wallet.address || wallet.accountNumber);
+                          setCopiedWalletId(wallet._id);
+                          setTimeout(() => setCopiedWalletId(null), 2000);
+                        }}
+                        className="p-1.5 hover:bg-slate-100 rounded-md text-slate-400 hover:text-slate-700 cursor-pointer flex-shrink-0 transition-colors"
+                        title="Copy Address"
+                      >
+                        {copiedWalletId === wallet._id ? (
+                          <RiCheckLine size={15} className="text-emerald-600" />
+                        ) : (
+                          <RiFileCopyLine size={15} />
+                        )}
+                      </button>
+                    </div>
                     {wallet.memo && (
-                      <p className="text-[11px] font-mono text-gold-700">
+                      <p className="text-[11px] font-mono text-gold-700 break-all">
                         {wallet.memo}
                       </p>
                     )}
@@ -2052,6 +2072,16 @@ export default function PaymentSettings() {
                 Scan using any supported banking or cryptocurrency mobile wallet
               </p>
             </div>
+            {(qrModalWallet.address || qrModalWallet.accountNumber) && (
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-left space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Address / Account
+                </span>
+                <p className="font-mono text-xs font-bold text-slate-800 break-all select-all">
+                  {qrModalWallet.address || qrModalWallet.accountNumber}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </Modal>

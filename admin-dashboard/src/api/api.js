@@ -1,12 +1,12 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5002/api'
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5002/api'
 });
 
 API.interceptors.request.use((config) => {
     const token = localStorage.getItem("adminToken");
-    if(token) {
+    if (token) {
         config.headers.Authorization = `Bearer ${token}`
     }
     return config;
@@ -18,7 +18,7 @@ API.interceptors.response.use(
         if (error.response?.status === 401) {
             localStorage.removeItem("adminToken");
             localStorage.removeItem("adminUser");
-            window.location.href = "/login";      
+            window.location.href = "/login";
         }
         return Promise.reject(error);
     }

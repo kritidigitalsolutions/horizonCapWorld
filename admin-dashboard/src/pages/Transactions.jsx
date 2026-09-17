@@ -895,24 +895,34 @@ export default function Transactions() {
                   <span className="font-bold text-slate-800">{selectedTxn.gateway || 'Bank Wire'}</span>
                 </div>
                 {selectedTxn.gatewayAccount && (
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
-                    <span className="text-slate-500">Destination Account / Wallet</span>
-                    <span className="font-mono font-bold text-slate-800 text-[11px] truncate max-w-[220px]">
-                      {selectedTxn.gatewayAccount}
-                    </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2 border-b border-slate-200/60">
+                    <span className="text-slate-500 flex-shrink-0">Destination Account / Wallet</span>
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <span className="font-mono font-bold text-slate-800 text-xs break-all select-all bg-white px-2 py-1 rounded border border-slate-200">
+                        {selectedTxn.gatewayAccount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyText(selectedTxn.gatewayAccount)}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-600 cursor-pointer flex-shrink-0"
+                        title="Copy Wallet Address"
+                      >
+                        {copiedHash ? <RiCheckLine size={13} className="text-emerald-600" /> : <RiFileCopyLine size={13} />}
+                      </button>
+                    </div>
                   </div>
                 )}
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
-                  <span className="text-slate-500">Transaction Hash / UTR</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-bold text-slate-900 text-[11px] truncate max-w-[220px]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2 border-b border-slate-200/60">
+                  <span className="text-slate-500 flex-shrink-0">Transaction Hash / UTR</span>
+                  <div className="flex items-center gap-1.5 justify-end">
+                    <span className="font-mono font-bold text-slate-900 text-xs break-all select-all bg-white px-2 py-1 rounded border border-slate-200">
                       {selectedTxn.referenceNo || 'REF-8891024512'}
                     </span>
                     {selectedTxn.referenceNo && (
                       <button
                         type="button"
                         onClick={() => handleCopyText(selectedTxn.referenceNo)}
-                        className="p-1 hover:bg-slate-200 rounded text-slate-600 cursor-pointer"
+                        className="p-1 hover:bg-slate-200 rounded text-slate-600 cursor-pointer flex-shrink-0"
                         title="Copy Hash"
                       >
                         {copiedHash ? <RiCheckLine size={13} className="text-emerald-600" /> : <RiFileCopyLine size={13} />}

@@ -501,17 +501,17 @@ export default function Transactions() {
                 <span className="text-slate-500">Gateway / Channel</span>
                 <span className="font-semibold text-slate-800">{selectedTxn.gateway || 'System Direct'}</span>
               </div>
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
-                <span className="text-slate-500">Reference Hash / UTR</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono font-bold text-slate-900 truncate max-w-[200px]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2 border-b border-slate-200/60">
+                <span className="text-slate-500 flex-shrink-0">Reference Hash / UTR</span>
+                <div className="flex items-center gap-1.5 justify-end">
+                  <span className="font-mono font-bold text-slate-900 text-xs break-all select-all bg-white px-2 py-1 rounded border border-slate-200">
                     {selectedTxn.referenceNo || 'N/A'}
                   </span>
                   {selectedTxn.referenceNo && (
                     <button
                       type="button"
                       onClick={() => copyReference(selectedTxn.referenceNo)}
-                      className="p-1 hover:bg-slate-200 rounded text-slate-600 cursor-pointer"
+                      className="p-1 hover:bg-slate-200 rounded text-slate-600 cursor-pointer flex-shrink-0"
                       title="Copy Reference"
                     >
                       {copiedHash ? <RiCheckLine size={13} className="text-emerald-600" /> : <RiFileCopyLine size={13} />}

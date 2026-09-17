@@ -347,56 +347,50 @@ export default function Login() {
             {/* Step Indicator with High-Contrast Number Badges */}
             <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200 select-none">
               {/* Step 1 */}
-              <div className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl transition-all ${
-                forgotStep === 1
+              <div className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl transition-all ${forgotStep === 1
                   ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
                   : forgotStep > 1
-                  ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200'
-                  : 'text-slate-500 font-medium'
-              }`}>
-                <span className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center flex-shrink-0 ${
-                  forgotStep === 1
+                    ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200'
+                    : 'text-slate-500 font-medium'
+                }`}>
+                <span className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center flex-shrink-0 ${forgotStep === 1
                     ? 'bg-gold-400 text-slate-950 shadow-2xs'
                     : forgotStep > 1
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-slate-300 text-slate-700 font-bold'
-                }`}>
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-300 text-slate-700 font-bold'
+                  }`}>
                   {forgotStep > 1 ? '✓' : '1'}
                 </span>
                 <span className="truncate text-[11px]">Email</span>
               </div>
 
               {/* Step 2 */}
-              <div className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl transition-all ${
-                forgotStep === 2
+              <div className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl transition-all ${forgotStep === 2
                   ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
                   : forgotStep > 2
-                  ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200'
-                  : 'text-slate-500 font-medium'
-              }`}>
-                <span className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center flex-shrink-0 ${
-                  forgotStep === 2
+                    ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200'
+                    : 'text-slate-500 font-medium'
+                }`}>
+                <span className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center flex-shrink-0 ${forgotStep === 2
                     ? 'bg-gold-400 text-slate-950 shadow-2xs'
                     : forgotStep > 2
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-slate-300 text-slate-700 font-bold'
-                }`}>
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-300 text-slate-700 font-bold'
+                  }`}>
                   {forgotStep > 2 ? '✓' : '2'}
                 </span>
                 <span className="truncate text-[11px]">OTP Code</span>
               </div>
 
               {/* Step 3 */}
-              <div className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl transition-all ${
-                forgotStep === 3
+              <div className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl transition-all ${forgotStep === 3
                   ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
                   : 'text-slate-500 font-medium'
-              }`}>
-                <span className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center flex-shrink-0 ${
-                  forgotStep === 3
+                }`}>
+                <span className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center flex-shrink-0 ${forgotStep === 3
                     ? 'bg-gold-400 text-slate-950 shadow-2xs'
                     : 'bg-slate-300 text-slate-700 font-bold'
-                }`}>
+                  }`}>
                   3
                 </span>
                 <span className="truncate text-[11px]">Password</span>
@@ -465,13 +459,12 @@ export default function Login() {
                         return (
                           <div
                             key={idx}
-                            className={`w-11 h-13 sm:w-12 sm:h-14 rounded-xl border-2 flex items-center justify-center font-mono text-xl sm:text-2xl font-black transition-all ${
-                              val
+                            className={`w-11 h-13 sm:w-12 sm:h-14 rounded-xl border-2 flex items-center justify-center font-mono text-xl sm:text-2xl font-black transition-all ${val
                                 ? 'border-gold-400 bg-gold-50/70 text-slate-950 shadow-2xs'
                                 : isCurrent
-                                ? 'border-gold-500 bg-white ring-2 ring-gold-400/20 shadow-sm text-gold-600'
-                                : 'border-slate-200 bg-slate-50/70 text-slate-300'
-                            }`}
+                                  ? 'border-gold-500 bg-white ring-2 ring-gold-400/20 shadow-sm text-gold-600'
+                                  : 'border-slate-200 bg-slate-50/70 text-slate-300'
+                              }`}
                           >
                             {val || (isCurrent ? <span className="w-2.5 h-0.5 bg-gold-600 animate-pulse" /> : '•')}
                           </div>

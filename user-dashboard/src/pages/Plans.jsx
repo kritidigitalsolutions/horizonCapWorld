@@ -402,13 +402,13 @@ export default function Plans() {
                       {plan.minLockInDaily || 0.9}% / day
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40 font-poppins">
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-gray-500 pt-1 border-t border-gold-200/40 font-poppins">
                     <span>Deposit &bull; Withdrawal Min</span>
                     <span className="font-semibold text-gray-800 font-mono">
                       Min Dep: ${plan.minDepositAmount || 10} &bull; Min WD: ${plan.minWithdrawalAmount || 5}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-[10.5px] text-amber-900 bg-amber-100/80 px-2 py-1 rounded-md font-bold mt-2 border border-amber-300/70 shadow-2xs">
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-[10.5px] text-amber-900 bg-amber-100/80 px-2 py-1 rounded-md font-bold mt-2 border border-amber-300/70 shadow-2xs">
                     <span>Single ID Limit</span>
                     <span className="font-extrabold text-amber-950 font-mono text-[10px]">
                       {plan.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}
@@ -501,7 +501,7 @@ export default function Plans() {
                 {/* ──────── REWARD (LOYALTY BONUS) SECTION ──────── */}
                 {plan.loyaltyBonusEnabled !== false && (
                   <div className="mb-4 p-3 rounded-xl bg-gradient-to-br from-amber-500/10 via-gold-500/5 to-orange-500/10 border border-amber-300/70 shadow-2xs font-poppins">
-                    <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
                       <div className="flex items-center gap-1.5">
                         <span className="w-5 h-5 rounded-md bg-amber-500 text-white flex items-center justify-center text-[10px] shadow-xs">
                           <RiGiftLine size={13} />
@@ -510,11 +510,11 @@ export default function Plans() {
                           {plan.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-300 shadow-2xs">
                           Without Lock-In Only
                         </span>
-                        <span className="text-[10px] font-extrabold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-300">
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-300 shadow-2xs">
                           Up to {(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS)[(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).length - 1]?.bonusPercentage || 10}% Extra
                         </span>
                       </div>
@@ -768,7 +768,7 @@ export default function Plans() {
                     <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
                       Auto Renewal Mode
                     </span>
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider shadow-2xs ${
                       autoRenewal
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                         : 'bg-gold-100 text-gold-800 border border-gold-300'

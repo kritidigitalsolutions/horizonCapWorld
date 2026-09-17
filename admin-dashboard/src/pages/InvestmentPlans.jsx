@@ -830,12 +830,12 @@ export default function InvestmentPlans() {
                 {/* Reward (Loyalty Bonus) Information Box */}
                 {plan.loyaltyBonusEnabled !== false && (
                   <div className="p-2.5 bg-gradient-to-r from-amber-50/90 via-gold-50/50 to-white rounded-xl border border-amber-200/80 mb-3 space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px]">
+                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px]">
                       <span className="font-bold text-amber-900 flex items-center gap-1">
                         <RiSparklingLine size={13} className="text-amber-600" />
                         Reward (Loyalty Bonus)
                       </span>
-                      <span className="text-[10px] font-bold text-amber-900 bg-amber-200/80 px-1.5 py-0.5 rounded">Without Lock-In Only</span>
+                      <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">Without Lock-In Only</span>
                     </div>
                     <p className="text-[10px] text-slate-500 leading-tight">
                       One time benefit for <strong>Without Lock In Period</strong> (Excluded from 3X plan):

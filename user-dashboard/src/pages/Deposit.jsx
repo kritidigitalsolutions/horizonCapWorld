@@ -486,8 +486,8 @@ export default function Deposit() {
           <div className="lg:col-span-7">
             <div className="card p-6 sm:p-7 space-y-6 shadow-sm border border-slate-200">
               {/* Top Method Header */}
-              <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100">
-                <div className="flex items-center gap-3.5 min-w-0">
+              <div className="flex flex-wrap sm:flex-nowrap items-start justify-between gap-3 sm:gap-4 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
                   <div className={`w-13 h-13 rounded-2xl flex items-center justify-center border shadow-2xs flex-shrink-0 ${selectedMethod.iconBg}`}>
                     {selectedMethod.type === 'crypto' ? (
                       <RiCoinsLine size={26} />
@@ -498,9 +498,9 @@ export default function Deposit() {
                     )}
                   </div>
 
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-lg sm:text-xl font-bold text-slate-900 font-display truncate">
+                      <h3 className="text-lg sm:text-xl font-bold text-slate-900 font-display break-words">
                         {selectedMethod.name}
                       </h3>
                     </div>
@@ -509,14 +509,14 @@ export default function Deposit() {
                       <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold tracking-wider border shadow-2xs uppercase ${selectedMethod.tagBg || 'bg-gold-100 text-gold-800 border-gold-300'}`}>
                         {selectedMethod.networkCode || 'GATEWAY'}
                       </span>
-                      <span className="text-xs text-slate-500 font-poppins truncate">
+                      <span className="text-xs text-slate-500 font-poppins">
                         {selectedMethod.network || selectedMethod.subtitle}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <Badge variant="success" size="sm">
+                <Badge variant="success" size="sm" className="flex-shrink-0">
                   Active Gateway
                 </Badge>
               </div>
@@ -525,27 +525,39 @@ export default function Deposit() {
               {selectedMethod.type === 'crypto' && (
                 <div className="space-y-4 font-poppins">
                   {/* Uploaded QR Code & Receiving Address Box */}
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center gap-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                     {/* QR Code Thumbnail */}
-                    <div
-                      onClick={() => setIsQrModalOpen(true)}
-                      className="w-20 h-20 rounded-2xl bg-white border-2 border-gold-300/80 p-1 flex-shrink-0 shadow-2xs cursor-pointer hover:border-gold-500 transition-all group relative overflow-hidden"
-                      title="Click to open Full QR Code Drawer"
-                    >
-                      <img
-                        src={getActiveQrCodeUrl(selectedMethod)}
-                        alt={`${selectedMethod.name} QR Code`}
-                        className="w-full h-full object-cover rounded-xl"
-                      />
-                      <div className="absolute inset-0 bg-slate-950/60 rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white text-[9px] font-bold">
-                        <RiQrCodeLine size={20} className="mb-0.5" />
-                        <span>OPEN QR</span>
+                    <div className="flex items-center gap-3 sm:block">
+                      <div
+                        onClick={() => setIsQrModalOpen(true)}
+                        className="w-20 h-20 rounded-2xl bg-white border-2 border-gold-300/80 p-1 flex-shrink-0 shadow-2xs cursor-pointer hover:border-gold-500 transition-all group relative overflow-hidden"
+                        title="Click to open Full QR Code Drawer"
+                      >
+                        <img
+                          src={getActiveQrCodeUrl(selectedMethod)}
+                          alt={`${selectedMethod.name} QR Code`}
+                          className="w-full h-full object-cover rounded-xl"
+                        />
+                        <div className="absolute inset-0 bg-slate-950/60 rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white text-[9px] font-bold">
+                          <RiQrCodeLine size={20} className="mb-0.5" />
+                          <span>OPEN QR</span>
+                        </div>
+                      </div>
+                      <div className="sm:hidden min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => setIsQrModalOpen(true)}
+                          className="text-xs font-bold text-gold-800 flex items-center gap-1 hover:underline"
+                        >
+                          <RiQrCodeLine size={14} /> Scan / Expand QR
+                        </button>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Tap thumbnail to open full size</p>
                       </div>
                     </div>
 
                     {/* Receiving Identifier */}
-                    <div className="min-w-0 flex-1 space-y-1.5">
-                      <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-poppins">
                           RECEIVING WALLET ADDRESS
                         </p>
@@ -556,14 +568,14 @@ export default function Deposit() {
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200">
-                        <span className="text-xs sm:text-sm font-mono font-bold text-slate-900 tracking-wide truncate select-all pr-2">
+                      <div className="p-3 bg-white rounded-xl border border-slate-200 flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-2 shadow-2xs">
+                        <span className="text-xs sm:text-sm font-mono font-bold text-slate-900 tracking-wide break-all select-all leading-relaxed pr-1">
                           {selectedMethod.address || selectedMethod.accountNumber}
                         </span>
                         <button
                           type="button"
                           onClick={() => copyToClipboard(selectedMethod.address || selectedMethod.accountNumber, 'cryptoAddr')}
-                          className={`btn text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold cursor-pointer transition-all flex-shrink-0 ${
+                          className={`btn text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all flex-shrink-0 self-end xs:self-auto w-full xs:w-auto ${
                             copiedField === 'cryptoAddr'
                               ? 'bg-emerald-500 text-white border-emerald-500 shadow-2xs'
                               : 'btn-secondary'
@@ -571,11 +583,11 @@ export default function Deposit() {
                         >
                           {copiedField === 'cryptoAddr' ? (
                             <>
-                              <RiCheckLine size={13} /> Copied!
+                              <RiCheckLine size={14} /> Copied!
                             </>
                           ) : (
                             <>
-                              <RiFileCopyLine size={13} /> Copy
+                              <RiFileCopyLine size={14} /> Copy
                             </>
                           )}
                         </button>
@@ -657,21 +669,32 @@ export default function Deposit() {
               {selectedMethod.type === 'fiat' && (
                 <div className="space-y-4 font-poppins">
                   {/* Account / Mobile Number Box */}
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center gap-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                     {selectedMethod.qrCodeUrl ? (
-                      <div
-                        onClick={() => setIsQrModalOpen(true)}
-                        className="w-20 h-20 rounded-2xl bg-white border-2 border-gold-300/80 p-1 flex-shrink-0 shadow-2xs cursor-pointer hover:border-gold-500 transition-all group relative overflow-hidden"
-                        title="Click to open Full QR Code"
-                      >
-                        <img
-                          src={getActiveQrCodeUrl(selectedMethod)}
-                          alt={`${selectedMethod.name} QR Code`}
-                          className="w-full h-full object-cover rounded-xl"
-                        />
-                        <div className="absolute inset-0 bg-slate-950/60 rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white text-[9px] font-bold">
-                          <RiQrCodeLine size={20} className="mb-0.5" />
-                          <span>OPEN QR</span>
+                      <div className="flex items-center gap-3 sm:block">
+                        <div
+                          onClick={() => setIsQrModalOpen(true)}
+                          className="w-20 h-20 rounded-2xl bg-white border-2 border-gold-300/80 p-1 flex-shrink-0 shadow-2xs cursor-pointer hover:border-gold-500 transition-all group relative overflow-hidden"
+                          title="Click to open Full QR Code"
+                        >
+                          <img
+                            src={getActiveQrCodeUrl(selectedMethod)}
+                            alt={`${selectedMethod.name} QR Code`}
+                            className="w-full h-full object-cover rounded-xl"
+                          />
+                          <div className="absolute inset-0 bg-slate-950/60 rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white text-[9px] font-bold">
+                            <RiQrCodeLine size={20} className="mb-0.5" />
+                            <span>OPEN QR</span>
+                          </div>
+                        </div>
+                        <div className="sm:hidden min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => setIsQrModalOpen(true)}
+                            className="text-xs font-bold text-gold-800 flex items-center gap-1 hover:underline"
+                          >
+                            <RiQrCodeLine size={14} /> Scan / Expand QR
+                          </button>
                         </div>
                       </div>
                     ) : (
@@ -680,8 +703,8 @@ export default function Deposit() {
                       </div>
                     )}
 
-                    <div className="min-w-0 flex-1 space-y-1.5">
-                      <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                           REGISTERED MOBILE / ACCOUNT TITLE
                         </p>
@@ -692,14 +715,14 @@ export default function Deposit() {
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200">
-                        <span className="text-sm font-mono font-bold text-slate-900 tracking-wider truncate select-all pr-2">
+                      <div className="p-3 bg-white rounded-xl border border-slate-200 flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-2 shadow-2xs">
+                        <span className="text-sm font-mono font-bold text-slate-900 tracking-wider break-all select-all leading-relaxed pr-1">
                           {selectedMethod.accountNumber || selectedMethod.address}
                         </span>
                         <button
                           type="button"
                           onClick={() => copyToClipboard(selectedMethod.accountNumber || selectedMethod.address, 'accNo')}
-                          className={`btn text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold cursor-pointer transition-all flex-shrink-0 ${
+                          className={`btn text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all flex-shrink-0 self-end xs:self-auto w-full xs:w-auto ${
                             copiedField === 'accNo'
                               ? 'bg-emerald-500 text-white border-emerald-500 shadow-2xs'
                               : 'btn-secondary'
@@ -707,11 +730,11 @@ export default function Deposit() {
                         >
                           {copiedField === 'accNo' ? (
                             <>
-                              <RiCheckLine size={13} /> Copied!
+                              <RiCheckLine size={14} /> Copied!
                             </>
                           ) : (
                             <>
-                              <RiFileCopyLine size={13} /> Copy
+                              <RiFileCopyLine size={14} /> Copy
                             </>
                           )}
                         </button>
@@ -825,17 +848,29 @@ export default function Deposit() {
                     <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                       ACCOUNT NUMBER / IBAN
                     </label>
-                    <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
-                      <span className="text-sm sm:text-base font-mono font-bold text-slate-900 tracking-wider break-all">
+                    <div className="flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-2 p-3 sm:p-3.5 bg-slate-50 rounded-2xl border border-slate-200 shadow-2xs">
+                      <span className="text-sm sm:text-base font-mono font-bold text-slate-900 tracking-wider break-all select-all leading-relaxed">
                         {selectedMethod.accountNumber || selectedMethod.iban}
                       </span>
                       <button
                         type="button"
                         onClick={() => copyToClipboard(selectedMethod.accountNumber || selectedMethod.iban, 'accIban')}
-                        className="p-2 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer"
+                        className={`btn text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all flex-shrink-0 self-end xs:self-auto w-full xs:w-auto ${
+                          copiedField === 'accIban'
+                            ? 'bg-emerald-500 text-white border-emerald-500 shadow-2xs'
+                            : 'btn-secondary'
+                        }`}
                         title="Copy Account Number"
                       >
-                        {copiedField === 'accIban' ? <RiCheckLine size={18} className="text-emerald-600" /> : <RiFileCopyLine size={18} />}
+                        {copiedField === 'accIban' ? (
+                          <>
+                            <RiCheckLine size={14} /> Copied!
+                          </>
+                        ) : (
+                          <>
+                            <RiFileCopyLine size={14} /> Copy
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1273,14 +1308,14 @@ export default function Deposit() {
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block font-poppins">
                 RECEIVING IDENTIFIER / WALLET ADDRESS
               </label>
-              <div className="flex items-center justify-between p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
-                <span className="text-xs sm:text-sm font-mono font-bold text-slate-900 break-all select-all pr-2">
+              <div className="flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-2 p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                <span className="text-xs sm:text-sm font-mono font-bold text-slate-900 break-all select-all leading-relaxed pr-1">
                   {selectedMethod?.address || selectedMethod?.accountNumber}
                 </span>
                 <button
                   type="button"
                   onClick={() => copyToClipboard(selectedMethod?.address || selectedMethod?.accountNumber, 'modalAddr')}
-                  className={`btn text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 font-bold cursor-pointer transition-all flex-shrink-0 ${
+                  className={`btn text-xs px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all flex-shrink-0 self-end xs:self-auto w-full xs:w-auto ${
                     copiedField === 'modalAddr'
                       ? 'bg-emerald-500 text-white border-emerald-500 shadow-2xs'
                       : 'btn-secondary'
