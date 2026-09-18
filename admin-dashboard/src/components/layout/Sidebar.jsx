@@ -102,6 +102,13 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
     };
   }, []);
 
+  // Automatically close sidebar overlay on route change on mobile
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      onToggle();
+    }
+  }, [location.pathname, isMobile]);
+
   const getItemCount = (itemPath) => {
     if (itemPath === '/admin/users') return counters.users || 0;
     if (itemPath === '/admin/transactions') return counters.transactions || 0;

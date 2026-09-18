@@ -290,7 +290,7 @@ export default function Plans() {
         actions={
           <button
             onClick={() => { setCalcPlan(null); setCalcDrawerOpen(true); }}
-            className="btn btn-outline-gold text-xs px-4 py-2.5 rounded-xl font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
+            className="btn btn-outline-gold text-xs px-4 py-2 rounded-full font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
             <RiCalculatorLine size={16} /> Open Yield Calculator
           </button>
@@ -312,7 +312,7 @@ export default function Plans() {
                 key={cat}
                 type="button"
                 onClick={() => setFilterCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold capitalize whitespace-nowrap transition-all cursor-pointer ${
+                className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold capitalize whitespace-nowrap transition-all cursor-pointer ${
                   filterCategory === cat
                     ? 'bg-gold-400 text-gray-900 shadow-gold font-bold'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -336,22 +336,22 @@ export default function Plans() {
           return (
             <div
               key={plan.id}
-              className="card card-gold p-6 animate-slide-up flex flex-col justify-between hover:shadow-card-hover transition-all duration-300 relative group overflow-hidden"
+              className="card card-gold p-4 sm:p-6 animate-slide-up flex flex-col justify-between hover:shadow-card-hover transition-all duration-300 relative group overflow-hidden"
               style={{ animationDelay: `${i * 60}ms` }}
             >
               <div>
                 {/* Top: Category Icon & Badge */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-2.5">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-xs ${
-                      isRenewable ? 'bg-emerald-50 text-emerald-600' :
-                      isMetal ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
+                    <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-xs border ${
+                      isRenewable ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                      isMetal ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-blue-50 text-blue-600 border-blue-100'
                     }`}>
                       {isRenewable ? <RiLeafLine size={22} /> :
                        isMetal ? <RiCoinsLine size={22} /> : <RiShieldFlashLine size={22} />}
                     </div>
                     <div>
-                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                         isRenewable ? 'bg-emerald-100/70 text-emerald-800' :
                         isMetal ? 'bg-amber-100/70 text-amber-800' : 'bg-blue-100/70 text-blue-800'
                       }`}>
@@ -408,7 +408,7 @@ export default function Plans() {
                       Min Dep: ${plan.minDepositAmount || 10} &bull; Min WD: ${plan.minWithdrawalAmount || 5}
                     </span>
                   </div>
-                  <div className="flex flex-wrap items-center justify-between gap-1 text-[10.5px] text-amber-900 bg-amber-100/80 px-2 py-1 rounded-md font-bold mt-2 border border-amber-300/70 shadow-2xs">
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-[10.5px] text-amber-900 bg-amber-100/80 px-2.5 py-1 rounded-full font-bold mt-2 border border-amber-300/70 shadow-2xs">
                     <span>Single ID Limit</span>
                     <span className="font-extrabold text-amber-950 font-mono text-[10px]">
                       {plan.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}
@@ -416,7 +416,6 @@ export default function Plans() {
                   </div>
                 </div>
 
-                {/* Key Specs */}
                 {/* Key Specs */}
                 <div className="space-y-2.5 mb-4 text-sm font-poppins">
                   <div className="flex items-center justify-between">
@@ -441,13 +440,13 @@ export default function Plans() {
                   <button
                     type="button"
                     onClick={() => setExpandedSlabsPlanId(isExpanded ? null : plan.id)}
-                    className="w-full py-1.5 px-2.5 rounded-lg bg-yellow-400/90 hover:bg-yellow-400 text-gray-950 border border-yellow-500 text-[11px] font-extrabold flex items-center justify-between transition-all cursor-pointer shadow-2xs"
+                    className="w-full py-1.5 px-3 rounded-full bg-yellow-400/90 hover:bg-yellow-400 text-gray-950 border border-yellow-500 text-[11px] font-extrabold flex items-center justify-between transition-all cursor-pointer shadow-2xs"
                   >
-                    <span className="flex items-center gap-1.5">
-                      <RiStackLine size={14} className="text-gray-950" />
-                      <span>ROI Slabs Per Day (Without vs Cap is 3X ~333 Days)</span>
+                    <span className="flex items-center gap-1.5 truncate">
+                      <RiStackLine size={14} className="text-gray-950 shrink-0" />
+                      <span className="truncate">ROI Slabs Per Day (Without vs Cap is 3X ~333 Days)</span>
                     </span>
-                    {isExpanded ? <RiArrowUpSLine size={16} /> : <RiArrowDownSLine size={16} />}
+                    {isExpanded ? <RiArrowUpSLine size={16} className="shrink-0" /> : <RiArrowDownSLine size={16} className="shrink-0" />}
                   </button>
 
                   {isExpanded && (
@@ -503,7 +502,7 @@ export default function Plans() {
                   <div className="mb-4 p-3 rounded-xl bg-gradient-to-br from-amber-500/10 via-gold-500/5 to-orange-500/10 border border-amber-300/70 shadow-2xs font-poppins">
                     <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
                       <div className="flex items-center gap-1.5">
-                        <span className="w-5 h-5 rounded-md bg-amber-500 text-white flex items-center justify-center text-[10px] shadow-xs">
+                        <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] shadow-xs">
                           <RiGiftLine size={13} />
                         </span>
                         <span className="text-xs font-bold text-amber-950">
@@ -511,10 +510,10 @@ export default function Plans() {
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-300 shadow-2xs">
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-300 shadow-2xs">
                           Without Lock-In Only
                         </span>
-                        <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-300 shadow-2xs">
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-300 shadow-2xs">
                           Up to {(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS)[(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).length - 1]?.bonusPercentage || 10}% Extra
                         </span>
                       </div>
@@ -553,14 +552,14 @@ export default function Plans() {
                 <button
                   type="button"
                   onClick={() => handleOpenCalculator(plan)}
-                  className="btn btn-secondary text-xs py-2.5 flex-1 font-bold rounded-xl shadow-xs cursor-pointer"
+                  className="btn btn-secondary text-xs py-2 px-3 flex-1 font-bold rounded-full shadow-xs cursor-pointer"
                 >
                   <RiCalculatorLine size={14} /> Calculate
                 </button>
                 <button
                   type="button"
                   onClick={() => handleOpenInvest(plan)}
-                  className="btn btn-primary text-xs py-2.5 flex-1 font-bold rounded-xl shadow-xs cursor-pointer"
+                  className="btn btn-primary text-xs py-2 px-3 flex-1 font-bold rounded-full shadow-xs cursor-pointer"
                 >
                   Invest Now <RiArrowRightLine size={14} />
                 </button>
@@ -585,13 +584,13 @@ export default function Plans() {
         size="lg"
         footer={
           <div className="flex items-center justify-between w-full">
-            <button onClick={() => setInvestDrawerOpen(false)} className="btn btn-secondary text-xs px-4 py-2.5 cursor-pointer">
+            <button onClick={() => setInvestDrawerOpen(false)} className="btn btn-secondary text-xs px-4 py-2 rounded-full cursor-pointer">
               Cancel
             </button>
             <button
               onClick={handleConfirmInvestment}
               disabled={investSuccess || investSubmitting}
-              className="btn btn-primary text-xs px-6 py-2.5 font-bold cursor-pointer disabled:opacity-50"
+              className="btn btn-primary text-xs px-6 py-2 rounded-full font-bold cursor-pointer disabled:opacity-50"
             >
               {investSubmitting ? 'Activating Contract...' : investSuccess ? 'Investment Activated!' : `Confirm $${Number(investAmount || 0).toLocaleString()} Investment`}
             </button>
@@ -626,7 +625,7 @@ export default function Plans() {
           {/* Wallet Balance Info */}
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shadow-2xs shrink-0">
                 <RiWalletLine size={20} className="text-blue-600" />
               </div>
               <div>
@@ -644,30 +643,31 @@ export default function Plans() {
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
               ROI & Contract Mode *
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={() => setLockInPeriod('None')}
-                className={`p-3 rounded-xl text-xs font-bold transition-all border flex flex-col items-start gap-1 cursor-pointer ${
+                className={`p-3 rounded-xl text-xs font-bold transition-all border flex flex-col items-start gap-2 cursor-pointer ${
                   lockInPeriod === 'None'
-                    ? 'bg-emerald-50 border-emerald-500 text-emerald-950 ring-2 ring-emerald-300 shadow-xs'
+                    ? 'bg-emerald-50/80 border-emerald-500 text-emerald-950 ring-2 ring-emerald-300 shadow-xs'
                     : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <div className="flex items-center justify-between w-full">
-                  <span className="font-extrabold flex items-center gap-1.5">
-                    🔓 Without Lock In Period
+                <div className="flex flex-wrap items-center justify-between gap-1.5 w-full">
+                  <span className="font-extrabold flex items-center gap-1.5 text-xs sm:text-sm">
+                    <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs shadow-2xs">🔓</span>
+                    <span>Without Lock In Period</span>
                   </span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[9.5px] bg-emerald-200/90 text-emerald-900 px-1.5 py-0.5 rounded font-bold">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-bold shadow-2xs">
                       🎁 Rewards Eligible
                     </span>
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
+                    <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-extrabold shadow-2xs">
                       0.3% / Day
                     </span>
                   </div>
                 </div>
-                <span className="text-[11px] text-gray-500 font-normal">
+                <span className="text-[11px] text-gray-500 font-normal leading-relaxed text-left">
                   Standard Daily ROI (0.3% / day). Capital flexible as per platform protocol. <strong>Eligible for Reward (Loyalty Bonus up to 10%)</strong>.
                 </span>
               </button>
@@ -675,26 +675,27 @@ export default function Plans() {
               <button
                 type="button"
                 onClick={() => setLockInPeriod('333 Days')}
-                className={`p-3 rounded-xl text-xs font-bold transition-all border flex flex-col items-start gap-1 cursor-pointer ${
+                className={`p-3 rounded-xl text-xs font-bold transition-all border flex flex-col items-start gap-2 cursor-pointer ${
                   lockInPeriod === '333 Days' || lockInPeriod === '365 Days' || lockInPeriod === '3 Months'
-                    ? 'bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-300 shadow-xs'
+                    ? 'bg-amber-50/80 border-amber-500 text-amber-950 ring-2 ring-amber-300 shadow-xs'
                     : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <div className="flex items-center justify-between w-full">
-                  <span className="font-extrabold flex items-center gap-1.5">
-                    🔒 Cap is 3X approx. 333 Days
+                <div className="flex flex-wrap items-center justify-between gap-1.5 w-full">
+                  <span className="font-extrabold flex items-center gap-1.5 text-xs sm:text-sm">
+                    <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-900 flex items-center justify-center text-xs shadow-2xs">🔒</span>
+                    <span>Cap is 3X approx. 333 Days</span>
                   </span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[9.5px] bg-amber-200 text-amber-950 px-1.5 py-0.5 rounded font-bold">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold shadow-2xs">
                       No Rewards
                     </span>
-                    <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-black">
+                    <span className="text-[10px] bg-amber-600 text-white px-2 py-0.5 rounded-full font-extrabold shadow-2xs">
                       0.9% / Day (3X Cap)
                     </span>
                   </div>
                 </div>
-                <span className="text-[11px] text-gray-500 font-normal">
+                <span className="text-[11px] text-gray-500 font-normal leading-relaxed text-left">
                   Boosted Daily ROI (0.9% / day). 333 days contract delivers approx. 300% (3X) profit. <em>(Loyalty Rewards not applicable on 3X plan)</em>.
                 </span>
               </button>
@@ -703,12 +704,12 @@ export default function Plans() {
 
           {/* ──────── AMOUNT-WISE DAILY ROI PERCENTAGE SLABS TABLE ──────── */}
           <div className="p-3.5 bg-gradient-to-br from-amber-50/70 via-gold-50/40 to-white rounded-2xl border border-gold-300 space-y-2.5">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
               <span className="text-xs font-bold uppercase tracking-wide text-gold-950 flex items-center gap-1.5">
                 <RiSparklingLine size={16} className="text-gold-600" />
                 ROI Slabs & Applied Rate
               </span>
-              <span className="badge badge-gold text-[10px] font-bold">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs">
                 Active: {activeMatchedSlab?.noMaxLimit || !activeMatchedSlab?.maxAmount ? `${activeMatchedSlab?.minAmount}$ to any amount` : `$${activeMatchedSlab?.minAmount} – $${activeMatchedSlab?.maxAmount}`} &bull; {(lockInPeriod === '333 Days' || lockInPeriod === '365 Days' || lockInPeriod === '3 Months') ? `${activeMatchedSlab?.lockInDailyRoi || 0.9}% (Cap 3X)` : `${activeMatchedSlab?.dailyRoi || 0.3}% / day`}
               </span>
             </div>
@@ -756,10 +757,10 @@ export default function Plans() {
               ? 'bg-gradient-to-r from-amber-500/15 via-gold-500/10 to-emerald-500/15 border-gold-400 ring-2 ring-gold-300/60 shadow-sm'
               : 'bg-slate-50/80 border-slate-200 hover:border-slate-300'
           }`}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs transition-colors ${
-                  autoRenewal ? 'bg-gold-500 text-slate-950 font-bold' : 'bg-slate-200 text-slate-600'
+            <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 shadow-xs transition-colors border ${
+                  autoRenewal ? 'bg-gold-500 text-slate-950 font-bold border-gold-400' : 'bg-slate-200 text-slate-600 border-slate-300'
                 }`}>
                   <RiRefreshLine size={20} className={autoRenewal ? 'animate-spin' : ''} />
                 </div>
@@ -768,7 +769,7 @@ export default function Plans() {
                     <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
                       Auto Renewal Mode
                     </span>
-                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider shadow-2xs ${
+                    <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs ${
                       autoRenewal
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                         : 'bg-gold-100 text-gold-800 border border-gold-300'
@@ -901,10 +902,10 @@ export default function Plans() {
             return (
               <div className="p-4 rounded-2xl bg-gradient-to-br from-gold-50/90 via-amber-50/50 to-emerald-50/40 border border-gold-300/80 space-y-3.5 shadow-xs animate-fade-in font-poppins">
                 {/* Header */}
-                <div className="flex items-center justify-between pb-2 border-b border-gold-200/60">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-gold-400 text-gray-950 flex items-center justify-center shadow-2xs font-bold">
-                      <RiCalculatorLine size={18} />
+                <div className="flex flex-wrap items-start justify-between gap-2 pb-2 border-b border-gold-200/60">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-gold-400 text-gray-950 flex items-center justify-center shadow-2xs font-bold shrink-0">
+                      <RiCalculatorLine size={16} />
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
@@ -916,7 +917,7 @@ export default function Plans() {
                     </div>
                   </div>
 
-                  <span className="badge badge-gold text-[10px] font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs shrink-0">
                     {selectedPlan?.payoutInterval || "Per Second (Live)"}
                   </span>
                 </div>
@@ -1032,8 +1033,8 @@ export default function Plans() {
             lockInPeriod === 'None' ? (
               <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 via-gold-50/50 to-orange-50/40 border border-amber-300/80 space-y-2.5 shadow-xs font-poppins animate-fade-in">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
                       <RiGiftLine size={16} />
                     </div>
                     <div>
@@ -1045,7 +1046,7 @@ export default function Plans() {
                       </p>
                     </div>
                   </div>
-                  <span className="badge badge-success text-[10px] font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs">
                     Active: No Lock-In
                   </span>
                 </div>
@@ -1077,9 +1078,9 @@ export default function Plans() {
               </div>
             ) : (
               <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-300/80 text-amber-950 font-poppins space-y-2 animate-fade-in shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-amber-200 text-amber-900 flex items-center justify-center font-bold shadow-3xs">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center font-bold shadow-3xs shrink-0">
                       <RiGiftLine size={16} />
                     </div>
                     <div>
@@ -1091,7 +1092,7 @@ export default function Plans() {
                       </p>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 shrink-0">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shrink-0 shadow-2xs">
                     3X Plan Excluded
                   </span>
                 </div>

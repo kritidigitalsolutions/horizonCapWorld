@@ -406,7 +406,7 @@ export default function Settings() {
 
       {/* ──────────────── SECTION TABS BAR (3 CLEAN TABS) ──────────────── */}
       <div className="card p-2">
-        <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
           {sections.map(section => {
             const Icon = section.icon;
             const isActive = activeSection === section.key;
@@ -414,9 +414,9 @@ export default function Settings() {
               <button
                 key={section.key}
                 onClick={() => setActiveSection(section.key)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
+                className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
                   isActive
-                    ? 'bg-gold-400 text-slate-900 font-semibold shadow-gold'
+                    ? 'bg-gold-400 text-slate-900 shadow-gold'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
@@ -430,9 +430,9 @@ export default function Settings() {
 
       {/* ──────────────── TAB 1: ADMIN PROFILE & MASTER DETAILS (WITH 2FA TOGGLE INSIDE) ──────────────── */}
       {activeSection === 'profile' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 animate-fade-in">
           {/* Profile Card Left Column (Interactive Avatar with Upload & Remove) */}
-          <div className="card p-6 flex flex-col items-center text-center space-y-4 border border-gold-200/80 justify-between">
+          <div className="card p-4 sm:p-6 flex flex-col items-center text-center space-y-4 border border-gold-200/80 justify-between">
             <div className="space-y-3.5 flex flex-col items-center">
               {/* Round Circle Avatar (Photo or Fallback SA) */}
               <div className="relative group">
@@ -486,10 +486,10 @@ export default function Settings() {
               </div>
 
               <div className="flex flex-col gap-1.5 pt-0.5">
-                <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-gold-50 text-gold-900 border border-gold-300 rounded-xl text-xs font-semibold shadow-2xs">
+                <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-gold-50 text-gold-900 border border-gold-300 rounded-full text-xs font-semibold shadow-2xs">
                   <RiShieldCheckLine size={14} className="text-gold-600" /> Super Administrator
                 </span>
-                <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
+                <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-3 py-0.5 rounded-full border border-emerald-200 uppercase tracking-wider">
                   Full Authority Level
                 </span>
               </div>
@@ -512,14 +512,14 @@ export default function Settings() {
           </div>
 
           {/* Profile Form Right Column (With 2FA Switch directly inside) */}
-          <div className="lg:col-span-2 card p-6 space-y-5 border border-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="lg:col-span-2 card p-4 sm:p-6 space-y-4 sm:space-y-5 border border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
               <div>
                 <h3 className="text-sm font-bold text-slate-800 font-poppins">Master Account Details</h3>
                 <p className="text-xs text-slate-400">Update system administrator information, recovery channels and 2FA login enforcement</p>
               </div>
               {profileSaved && (
-                <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl animate-fade-in">
+                <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full animate-fade-in">
                   <RiCheckLine size={14} /> Profile Saved Successfully
                 </span>
               )}
@@ -577,7 +577,7 @@ export default function Settings() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <h4 className="text-xs font-bold text-slate-800">Two-Factor Authentication (2FA)</h4>
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                           twoFactorEnabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
                         }`}>
                           {twoFactorEnabled ? 'Enabled' : 'Disabled'}
@@ -620,9 +620,9 @@ export default function Settings() {
       {activeSection === 'credentials' && (
         <div className="space-y-6 animate-fade-in font-poppins">
           {/* SECTION A: CHANGE MASTER EMAIL (WITH OTP) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Email Form Left Column */}
-            <div className="card p-6 space-y-4 border border-slate-200">
+            <div className="card p-4 sm:p-6 space-y-4 border border-slate-200">
               <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
                   <RiMailLine size={20} />
@@ -667,7 +667,7 @@ export default function Settings() {
             </div>
 
             {/* Email OTP Verification Flow Right Column */}
-            <div className="card p-6 space-y-4 border border-blue-200 bg-blue-50/20 flex flex-col justify-between">
+            <div className="card p-4 sm:p-6 space-y-4 border border-blue-200 bg-blue-50/20 flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0 shadow-2xs">
@@ -760,9 +760,9 @@ export default function Settings() {
           </div>
 
           {/* SECTION B: CHANGE MASTER PASSWORD (WITH OTP) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Password Form Left Column */}
-            <div className="card p-6 space-y-4 border border-slate-200">
+            <div className="card p-4 sm:p-6 space-y-4 border border-slate-200">
               <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
                 <div className="w-10 h-10 rounded-xl bg-gold-100 text-gold-700 flex items-center justify-center flex-shrink-0 shadow-2xs">
                   <RiLockPasswordLine size={20} />
@@ -874,7 +874,7 @@ export default function Settings() {
             </div>
 
             {/* Password OTP Verification Flow Right Column */}
-            <div className="card p-6 space-y-4 border border-gold-300 bg-gold-50/30 flex flex-col justify-between">
+            <div className="card p-4 sm:p-6 space-y-4 border border-gold-300 bg-gold-50/30 flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gold-100 text-gold-700 flex items-center justify-center flex-shrink-0 shadow-2xs">
@@ -970,14 +970,14 @@ export default function Settings() {
 
       {/* ──────────────── TAB 3: AUTOMATED USER DASHBOARD ALERTS & NOTIFICATIONS ──────────────── */}
       {activeSection === 'preferences' && (
-        <div className="card p-6 border border-slate-200 space-y-6 animate-fade-in font-poppins">
+        <div className="card p-4 sm:p-6 border border-slate-200 space-y-5 sm:space-y-6 animate-fade-in font-poppins">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
               <h3 className="text-sm font-bold text-slate-800 font-poppins">Automated User Dashboard Notification Engine</h3>
               <p className="text-xs text-slate-400">Configure comprehensive automated notifications and instant dispatch triggers for the investor dashboard</p>
             </div>
             {alertsSaved && (
-              <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl animate-fade-in">
+              <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full animate-fade-in shrink-0">
                 <RiCheckLine size={14} /> Automation Settings Saved
               </span>
             )}
@@ -996,11 +996,11 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2.5">
-                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3">
+                <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <p className="font-bold text-slate-800">Automated Deposit Approvals & Confirmation</p>
-                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold rounded">Instant Push & Email</span>
+                      <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold rounded-full uppercase tracking-wider">Instant Push & Email</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">Automatically trigger confirmation receipt and credit user vault upon blockchain / bank match</p>
                   </div>
@@ -1008,15 +1008,15 @@ export default function Settings() {
                     type="checkbox"
                     checked={automatedAlerts.autoDepositApproval}
                     onChange={e => setAutomatedAlerts({ ...automatedAlerts, autoDepositApproval: e.target.checked })}
-                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer"
+                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer self-end sm:self-center shrink-0"
                   />
                 </div>
 
-                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3">
+                <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <p className="font-bold text-slate-800">Automated Real-Time Per-Second ROI Streaming</p>
-                      <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold rounded">Live Dynamic Stream</span>
+                      <span className="px-2.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold rounded-full uppercase tracking-wider">Live Dynamic Stream</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">Trigger live streaming counter notifications and instant daily yield settlement summaries</p>
                   </div>
@@ -1024,15 +1024,15 @@ export default function Settings() {
                     type="checkbox"
                     checked={automatedAlerts.autoRoiStreaming}
                     onChange={e => setAutomatedAlerts({ ...automatedAlerts, autoRoiStreaming: e.target.checked })}
-                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer"
+                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer self-end sm:self-center shrink-0"
                   />
                 </div>
 
-                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3">
+                <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <p className="font-bold text-slate-800">Automated Withdrawal Broadcast & TXID Hash Notification</p>
-                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold rounded">Instant Webhook</span>
+                      <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold rounded-full uppercase tracking-wider">Instant Webhook</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">Instantly dispatch blockchain TXID explorer link and PDF receipt to client upon broadcast</p>
                   </div>
@@ -1040,15 +1040,15 @@ export default function Settings() {
                     type="checkbox"
                     checked={automatedAlerts.autoWithdrawalBroadcast}
                     onChange={e => setAutomatedAlerts({ ...automatedAlerts, autoWithdrawalBroadcast: e.target.checked })}
-                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer"
+                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer self-end sm:self-center shrink-0"
                   />
                 </div>
 
-                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3">
+                <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <p className="font-bold text-slate-800">Automated Investment Contract Maturity & Rollover Alert</p>
-                      <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold rounded">Maturity Bell</span>
+                      <span className="px-2.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold rounded-full uppercase tracking-wider">Maturity Bell</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">Alert investor 48 hours before contract completion with capital rollover & renewal options</p>
                   </div>
@@ -1056,7 +1056,7 @@ export default function Settings() {
                     type="checkbox"
                     checked={automatedAlerts.autoPlanMaturity}
                     onChange={e => setAutomatedAlerts({ ...automatedAlerts, autoPlanMaturity: e.target.checked })}
-                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer"
+                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer self-end sm:self-center shrink-0"
                   />
                 </div>
               </div>
@@ -1074,11 +1074,11 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2.5">
-                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3">
+                <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <p className="font-bold text-slate-800">Automated Rank Ladder Milestone Unlock & Instant Cash Bonus</p>
-                      <span className="px-2 py-0.5 bg-gold-100 text-gold-900 border border-gold-300 text-[10px] font-bold rounded">Celebration Modal</span>
+                      <span className="px-2.5 py-0.5 bg-gold-100 text-gold-900 border border-gold-300 text-[10px] font-bold rounded-full uppercase tracking-wider">Celebration Modal</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">Automatically elevate user rank and disburse cash reward bonus into wallet upon turnover achievement</p>
                   </div>
@@ -1086,15 +1086,15 @@ export default function Settings() {
                     type="checkbox"
                     checked={automatedAlerts.autoRankMilestones}
                     onChange={e => setAutomatedAlerts({ ...automatedAlerts, autoRankMilestones: e.target.checked })}
-                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer"
+                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer self-end sm:self-center shrink-0"
                   />
                 </div>
 
-                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3">
+                <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <p className="font-bold text-slate-800">Automated 5-Tier Referral Commission Payout Notifications</p>
-                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold rounded">Real-Time Credit</span>
+                      <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold rounded-full uppercase tracking-wider">Real-Time Credit</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">Real-time notification ping to promoters whenever Level 1 (5%) or Levels 2-5 downline teams deposit</p>
                   </div>
@@ -1102,15 +1102,15 @@ export default function Settings() {
                     type="checkbox"
                     checked={automatedAlerts.autoReferralCommissions}
                     onChange={e => setAutomatedAlerts({ ...automatedAlerts, autoReferralCommissions: e.target.checked })}
-                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer"
+                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer self-end sm:self-center shrink-0"
                   />
                 </div>
 
-                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3">
+                <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <p className="font-bold text-slate-800">Automated Downline Investor Sign-Up Alerts</p>
-                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold rounded">Network Tree Ping</span>
+                      <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold rounded-full uppercase tracking-wider">Network Tree Ping</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">Alert sponsor whenever a new member registers using their unique affiliate invite code</p>
                   </div>
@@ -1118,7 +1118,7 @@ export default function Settings() {
                     type="checkbox"
                     checked={automatedAlerts.autoDownlineJoins}
                     onChange={e => setAutomatedAlerts({ ...automatedAlerts, autoDownlineJoins: e.target.checked })}
-                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer"
+                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer self-end sm:self-center shrink-0"
                   />
                 </div>
               </div>
@@ -1136,11 +1136,11 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2.5">
-                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3">
+                <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <p className="font-bold text-slate-800">Automated Ticket Response & Resolution Alerts</p>
-                      <span className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold rounded">Instant Push & Email</span>
+                      <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold rounded-full uppercase tracking-wider">Instant Push & Email</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">Notify users instantly with message preview when support officers reply to their open inquiry</p>
                   </div>
@@ -1148,15 +1148,15 @@ export default function Settings() {
                     type="checkbox"
                     checked={automatedAlerts.autoTicketReplies}
                     onChange={e => setAutomatedAlerts({ ...automatedAlerts, autoTicketReplies: e.target.checked })}
-                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer"
+                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer self-end sm:self-center shrink-0"
                   />
                 </div>
 
-                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3">
+                <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <p className="font-bold text-slate-800">Automated News & Media Editorial Broadcasts</p>
-                      <span className="px-2 py-0.5 bg-gold-50 text-gold-800 border border-gold-200 text-[10px] font-bold rounded">Dashboard Banner</span>
+                      <span className="px-2.5 py-0.5 bg-gold-50 text-gold-800 border border-gold-200 text-[10px] font-bold rounded-full uppercase tracking-wider">Dashboard Banner</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">Automatically broadcast new blog articles and platform market announcements to all user feed bells</p>
                   </div>
@@ -1164,15 +1164,15 @@ export default function Settings() {
                     type="checkbox"
                     checked={automatedAlerts.autoNewsBroadcasts}
                     onChange={e => setAutomatedAlerts({ ...automatedAlerts, autoNewsBroadcasts: e.target.checked })}
-                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer"
+                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer self-end sm:self-center shrink-0"
                   />
                 </div>
 
-                <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3">
+                <div className="p-3 sm:p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <p className="font-bold text-slate-800">Automated New Device & Geographic IP Security Alerts</p>
-                      <span className="px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold rounded">High-Priority Security</span>
+                      <span className="px-2.5 py-0.5 bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold rounded-full uppercase tracking-wider">High-Priority Security</span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">Trigger immediate 2FA security alert email when user account is logged in from an unrecognized browser/IP</p>
                   </div>
@@ -1180,7 +1180,7 @@ export default function Settings() {
                     type="checkbox"
                     checked={automatedAlerts.autoNewDeviceLogin}
                     onChange={e => setAutomatedAlerts({ ...automatedAlerts, autoNewDeviceLogin: e.target.checked })}
-                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer"
+                    className="w-4 h-4 rounded text-gold-500 focus:ring-gold-400 cursor-pointer self-end sm:self-center shrink-0"
                   />
                 </div>
               </div>

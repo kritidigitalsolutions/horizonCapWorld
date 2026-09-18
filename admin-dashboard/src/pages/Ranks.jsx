@@ -402,7 +402,7 @@ export default function Ranks() {
       />
 
       {/* ──────────────── ROLLING ODOMETER SUMMARY KPI CARDS ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-2 2xl:grid-cols-4 gap-2.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Rank Rewards Distributed"
           numericValue={leaderboardList.reduce((sum, l) => sum + Number(l.rewardsEarned || l.reward || 0), 0)}
@@ -442,7 +442,7 @@ export default function Ranks() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="card p-2">
+      <div className="card p-1.5 sm:p-2">
         <div className="flex items-center gap-2 overflow-x-auto">
           {[
             { id: 'ladder', label: 'Rank Ladder', count: `${ranks.length} Tiers`, icon: <RiTrophyLine /> },
@@ -451,7 +451,7 @@ export default function Ranks() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
+              className={`px-3.5 sm:px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
                 activeTab === tab.id
                   ? 'bg-gold-400 text-slate-900 font-bold shadow-gold'
                   : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200'
@@ -459,7 +459,7 @@ export default function Ranks() {
             >
               <span className="text-sm">{tab.icon}</span>
               <span>{tab.label}</span>
-              <span className="px-2 py-0.5 rounded-md text-[10px] bg-white/80 text-slate-800 font-bold border border-slate-200/80 shadow-2xs">
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/80 text-slate-800 font-bold border border-slate-200/80 shadow-2xs">
                 {tab.count}
               </span>
             </button>
@@ -474,7 +474,7 @@ export default function Ranks() {
             {/* Elegant Top Toolbar with proper margin & padding */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 font-poppins">
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-2xl bg-gold-400/20 text-gold-700 flex items-center justify-center border border-gold-300 shadow-2xs flex-shrink-0">
+                <div className="w-11 h-11 rounded-full bg-gold-400/20 text-gold-700 flex items-center justify-center border border-gold-300 shadow-2xs flex-shrink-0">
                   <RiTrophyLine size={22} />
                 </div>
                 <div>
@@ -503,11 +503,19 @@ export default function Ranks() {
                     setNewRankDesc('');
                     setIsAddRankOpen(true);
                   }}
-                  className="px-4 py-2 bg-gradient-to-r from-gold-400 to-gold-500 hover:from-gold-500 hover:to-gold-600 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  className="px-4 py-2 bg-gradient-to-r from-gold-400 to-gold-500 hover:from-gold-500 hover:to-gold-600 text-slate-950 font-bold text-xs rounded-full shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
                 >
                   <RiAddLine size={16} /> Add Rank
                 </button>
               </div>
+            </div>
+
+            {/* Mobile Horizontal Scroll Helper Banner */}
+            <div className="md:hidden flex items-center justify-between text-xs text-amber-900 bg-amber-50/90 px-3.5 py-2 rounded-xl border border-amber-200/80 font-medium">
+              <span className="flex items-center gap-1.5 font-bold">
+                <RiTrophyLine size={14} className="text-amber-600" />
+                <span>Swipe table left to view all 9 tier criteria & rewards &rarr;</span>
+              </span>
             </div>
 
             {/* Grid Table with proper spacing from top */}
@@ -544,7 +552,7 @@ export default function Ranks() {
                       >
                         {/* Level Index */}
                         <td className="py-3 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-200 bg-gold-50/30">
-                          <span className="w-6 h-6 rounded-md bg-gold-100/90 text-gold-950 font-bold border border-gold-300 inline-flex items-center justify-center shadow-2xs">
+                          <span className="w-7 h-7 rounded-full bg-gold-100/90 text-gold-950 font-bold border border-gold-300 inline-flex items-center justify-center shadow-2xs">
                             {r.level}
                           </span>
                         </td>
@@ -552,14 +560,14 @@ export default function Ranks() {
                         {/* Rank Name with Icon */}
                         <td className="py-3 px-3.5 border-r border-slate-200">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-gold-50/90 border border-gold-300 shadow-2xs flex items-center justify-center flex-shrink-0">
+                            <div className="w-9 h-9 rounded-full bg-gold-50/90 border border-gold-300 shadow-2xs flex items-center justify-center flex-shrink-0">
                               {getRankIcon(r.level)}
                             </div>
                             <div>
                               <span className="font-bold text-slate-900 text-xs block font-poppins leading-tight">
                                 {r.name}
                               </span>
-                              <span className="text-[10px] font-bold text-gold-900 bg-gold-100/90 border border-gold-300 px-1.5 py-0.2 rounded uppercase tracking-wider inline-block">
+                              <span className="text-[10px] font-bold text-gold-900 bg-gold-100/90 border border-gold-300 px-2 py-0.5 rounded-full uppercase tracking-wider inline-block mt-0.5">
                                 Tier {r.level}
                               </span>
                             </div>
@@ -578,14 +586,14 @@ export default function Ranks() {
 
                         {/* Condition */}
                         <td className="py-3 px-3.5 border-r border-slate-200">
-                          <span className="inline-block px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[11px] leading-snug">
+                          <span className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[11px] leading-snug">
                             {condText}
                           </span>
                         </td>
 
                         {/* One Time Cash Reward */}
                         <td className="py-3 px-3 text-center border-r border-slate-200 bg-emerald-50/20">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs">
                             +${rewardAmt.toLocaleString()}
                           </span>
                         </td>
@@ -593,11 +601,11 @@ export default function Ranks() {
                         {/* Company Profit %ge */}
                         <td className="py-3 px-3 text-center border-r border-slate-200">
                           {profitShare === '0' || profitShare === 0 || !profitShare ? (
-                            <span className="inline-block px-2.5 py-1 rounded bg-slate-100 text-slate-500 font-mono font-bold text-xs border border-slate-200">
+                            <span className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-500 font-mono font-bold text-xs border border-slate-200">
                               0
                             </span>
                           ) : (
-                            <span className="inline-block px-2.5 py-1 rounded-md bg-purple-50 text-purple-900 font-medium border border-purple-200 text-[11px] leading-tight text-left">
+                            <span className="inline-block px-3 py-1 rounded-full bg-purple-50 text-purple-900 font-medium border border-purple-200 text-[11px] leading-tight text-left">
                               {profitShare}
                             </span>
                           )}
@@ -605,7 +613,7 @@ export default function Ranks() {
 
                         {/* Downline Structure required */}
                         <td className="py-3 px-3.5 border-r border-slate-200">
-                          <span className="inline-block px-2.5 py-1 rounded-md bg-amber-50 text-amber-950 font-medium border border-amber-200 text-[11px] leading-tight">
+                          <span className="inline-block px-3 py-1 rounded-full bg-amber-50 text-amber-950 font-medium border border-amber-200 text-[11px] leading-tight">
                             {downlineReq}
                           </span>
                         </td>
@@ -615,7 +623,7 @@ export default function Ranks() {
                           <button
                             type="button"
                             onClick={() => openEditRank(r)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold transition-all shadow-2xs border border-gold-500 active:scale-95 cursor-pointer"
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold transition-all shadow-2xs border border-gold-500 active:scale-95 cursor-pointer"
                           >
                             <RiEditLine size={13} /> Edit
                           </button>
@@ -705,7 +713,7 @@ export default function Ranks() {
 
                         {/* Current Rank Badge */}
                         <td>
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gold-50 border border-gold-300/80 text-slate-900 font-medium text-xs shadow-2xs font-poppins">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-gold-50 border border-gold-300/80 text-slate-900 font-medium text-xs shadow-2xs font-poppins">
                             <RiTrophyLine size={13} className="text-gold-600" />
                             {u.currentRank}
                           </span>
@@ -742,7 +750,7 @@ export default function Ranks() {
                         <td className="text-right pr-6">
                           <button
                             onClick={() => setSelectedLeader(u)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins cursor-pointer"
                             title="Audit rank milestone progress"
                           >
                             <RiCalculatorLine size={14} className="text-slate-900" />
@@ -1107,7 +1115,7 @@ export default function Ranks() {
                   <p className="text-xs text-slate-400">{selectedLeader.email}</p>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-gold-400 text-slate-900 text-xs font-bold shadow-2xs">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gold-400 text-slate-900 text-xs font-bold shadow-2xs">
                 <RiTrophyLine size={13} />
                 {selectedLeader.currentRank || 'Associate'}
               </span>

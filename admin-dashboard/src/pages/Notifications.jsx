@@ -283,7 +283,7 @@ export default function Notifications() {
   return (
     <div className="space-y-6 animate-fade-in font-poppins pb-12">
       {/* Top Banner & Push Notification CTA */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 rounded-3xl text-white shadow-xl shadow-slate-900/10 relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl text-white shadow-xl shadow-slate-900/10 relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-96 bg-gold-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="relative z-10 space-y-1.5">
@@ -293,7 +293,7 @@ export default function Notifications() {
             </span>
             <span className="text-xs text-slate-400">• Real-Time Automated & Custom Alerts</span>
           </div>
-          <h1 className="text-2xl font-black font-display tracking-tight text-white">
+          <h1 className="text-xl sm:text-2xl font-black font-display tracking-tight text-white">
             Platform Notifications & Alerts
           </h1>
           <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
@@ -302,20 +302,20 @@ export default function Notifications() {
         </div>
 
         {/* Action Controls */}
-        <div className="relative z-10 flex flex-wrap items-center gap-3">
+        <div className="relative z-10 flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
           <button
             onClick={() => {
               setIsPushModalOpen(true);
               setPushError('');
               setPushSuccess('');
             }}
-            className="btn btn-primary px-5 py-3 rounded-2xl font-bold text-xs shadow-gold flex items-center gap-2 cursor-pointer transition-transform active:scale-95"
+            className="btn btn-primary px-5 py-2.5 sm:py-3 rounded-full font-bold text-xs shadow-gold flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-95 flex-1 sm:flex-initial"
           >
             <RiSendPlaneFill size={16} /> Broadcast Push Notification
           </button>
           <button
             onClick={fetchNotifications}
-            className="p-3 bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-2xl border border-slate-700 transition-colors cursor-pointer"
+            className="w-10 h-10 bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-full border border-slate-700 transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center"
             title="Refresh list"
           >
             <RiRefreshLine size={18} className={loading ? 'animate-spin' : ''} />
@@ -324,9 +324,9 @@ export default function Notifications() {
       </div>
 
       {/* Metric Counters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
-        <div className="card p-4 border border-slate-100 flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-gold-50 text-gold-700 border border-gold-200 flex items-center justify-center flex-shrink-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4 xl:gap-5">
+        <div className="card p-3.5 sm:p-4 border border-slate-100 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-full bg-gold-50 text-gold-700 border border-gold-200 flex items-center justify-center flex-shrink-0">
             <RiNotification3Line size={20} />
           </div>
           <div>
@@ -335,8 +335,8 @@ export default function Notifications() {
           </div>
         </div>
 
-        <div className="card p-4 border border-slate-100 flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center flex-shrink-0">
+        <div className="card p-3.5 sm:p-4 border border-slate-100 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center flex-shrink-0">
             <RiAlarmWarningLine size={20} />
           </div>
           <div>
@@ -345,8 +345,8 @@ export default function Notifications() {
           </div>
         </div>
 
-        <div className="card p-4 border border-slate-100 flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center flex-shrink-0">
+        <div className="card p-3.5 sm:p-4 border border-slate-100 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center flex-shrink-0">
             <RiMoneyDollarCircleLine size={20} />
           </div>
           <div>
@@ -355,8 +355,8 @@ export default function Notifications() {
           </div>
         </div>
 
-        <div className="card p-4 border border-slate-100 flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center flex-shrink-0">
+        <div className="card p-3.5 sm:p-4 border border-slate-100 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-full bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center flex-shrink-0">
             <RiBroadcastLine size={20} />
           </div>
           <div>
@@ -367,11 +367,11 @@ export default function Notifications() {
       </div>
 
       {/* Main Notification Card Container */}
-      <div className="card p-6 border border-slate-200/80 space-y-5">
+      <div className="card p-3.5 sm:p-6 border border-slate-200/80 space-y-4 sm:space-y-5">
         {/* Controls Bar: Category Tabs, Search, Filter & Bulk Actions */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 pb-4 border-b border-slate-100">
           {/* Category Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full flex-1 min-w-0 scrollbar-none">
             {CATEGORY_TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeCategory === tab.id;
@@ -382,7 +382,7 @@ export default function Notifications() {
                     setActiveCategory(tab.id);
                     setPage(1);
                   }}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0 ${
                     isActive
                       ? 'bg-slate-900 text-white shadow-sm'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
@@ -396,9 +396,9 @@ export default function Notifications() {
           </div>
 
           {/* Right Action Tools */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2 flex-shrink-0 w-full xl:w-auto">
             {/* Search */}
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-initial">
               <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
               <input
                 type="text"
@@ -408,7 +408,7 @@ export default function Notifications() {
                   setPage(1);
                 }}
                 placeholder="Search alerts..."
-                className="pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-gold-400 focus:ring-1 focus:ring-gold-200 w-44"
+                className="pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-gold-400 focus:ring-1 focus:ring-gold-200 w-full sm:w-44"
               />
             </div>
 
@@ -419,7 +419,7 @@ export default function Notifications() {
                 setReadFilter(e.target.value);
                 setPage(1);
               }}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-gold-400"
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-gold-400 whitespace-nowrap flex-shrink-0"
             >
               <option value="ALL">All Status</option>
               <option value="false">Unread Only</option>
@@ -430,18 +430,18 @@ export default function Notifications() {
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}
-                className="px-3 py-2 rounded-xl bg-gold-50 border border-gold-200 hover:bg-gold-100 text-gold-800 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                className="px-3.5 py-2 rounded-full bg-gold-50 border border-gold-300 hover:bg-gold-100 text-gold-900 text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-all whitespace-nowrap shrink-0 shadow-2xs active:scale-95"
               >
-                <RiCheckDoubleLine size={14} /> Mark All Read
+                <RiCheckDoubleLine size={15} /> <span>Mark All Read</span>
               </button>
             )}
 
             {notifications.length > 0 && (
               <button
                 onClick={handleClearAll}
-                className="px-3 py-2 rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                className="px-3.5 py-2 rounded-full bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-all whitespace-nowrap shrink-0 shadow-2xs active:scale-95"
               >
-                <RiDeleteBinLine size={14} /> Clear All
+                <RiDeleteBinLine size={15} /> <span>Clear All</span>
               </button>
             )}
           </div>
@@ -454,7 +454,7 @@ export default function Notifications() {
           </div>
         ) : notifications.length === 0 ? (
           <div className="py-16 text-center space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+            <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
               <RiNotification3Line size={24} />
             </div>
             <h4 className="text-sm font-bold text-slate-700">No Notifications Found</h4>
@@ -472,34 +472,34 @@ export default function Notifications() {
                 <div
                   key={n._id}
                   onClick={() => handleItemClick(n)}
-                  className={`py-4 px-3 sm:px-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors cursor-pointer ${
+                  className={`py-3.5 px-3 sm:px-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors cursor-pointer ${
                     !n.read ? 'bg-gold-50/20 border-l-4 border-gold-400 hover:bg-gold-50/40' : 'hover:bg-slate-50/80'
                   }`}
                 >
                   {/* Left: Icon & Content */}
-                  <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border shadow-2xs ${catConfig.bg}`}>
+                  <div className="flex items-start gap-3 sm:gap-3.5 flex-1 min-w-0">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 border shadow-2xs ${catConfig.bg}`}>
                       <Icon size={18} />
                     </div>
 
                     <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                         <span className="text-xs font-bold text-slate-900 font-poppins">{n.title}</span>
                         {!n.read && (
                           <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-100 text-amber-800 tracking-wider">
                             New
                           </span>
                         )}
-                        <span className="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
                           {n.category}
                         </span>
                         {n.recipientType && n.recipientType !== 'ADMIN' && (
-                          <span className="px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase bg-purple-100 text-purple-700 border border-purple-200">
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-purple-100 text-purple-700 border border-purple-200">
                             {n.recipientType === 'ALL_USERS' ? 'Broadcast' : n.recipientType}
                           </span>
                         )}
                         {n.priority === 'URGENT' && (
-                          <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-red-100 text-red-700 border border-red-200">
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-red-100 text-red-700 border border-red-200">
                             Urgent
                           </span>
                         )}
@@ -527,7 +527,7 @@ export default function Notifications() {
                         e.stopPropagation();
                         handleDelete(n._id);
                       }}
-                      className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                       title="Delete alert"
                     >
                       <RiDeleteBinLine size={15} />
@@ -549,14 +549,14 @@ export default function Notifications() {
               <button
                 disabled={page <= 1}
                 onClick={() => setPage(p => Math.max(1, p - 1))}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 disabled:opacity-40 font-bold hover:bg-slate-50 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-full border border-slate-200 disabled:opacity-40 font-bold hover:bg-slate-50 cursor-pointer"
               >
                 Previous
               </button>
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 disabled:opacity-40 font-bold hover:bg-slate-50 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-full border border-slate-200 disabled:opacity-40 font-bold hover:bg-slate-50 cursor-pointer"
               >
                 Next
               </button>

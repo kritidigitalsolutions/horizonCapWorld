@@ -12,13 +12,13 @@ import {
   RiUpload2Line, RiDeleteBin7Line, RiCameraLine,
   RiCheckLine, RiLockPasswordLine, RiEyeLine, RiEyeOffLine, RiAlertLine,
   RiCheckboxCircleFill, RiAwardLine, RiMailSendLine, RiMailCheckLine,
-  RiRefreshLine, RiSaveLine, 
+  RiRefreshLine, RiSaveLine, RiShieldCheckLine, RiShieldFlashLine, RiKey2Line,
 } from 'react-icons/ri';
 import PageHeader from '../components/ui/PageHeader';
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
-  const [activeSection, setActiveSection] = useState('profile'); // 'profile' | 'password'
+  const [activeSection, setActiveSection] = useState('profile'); // 'profile' | 'security' | 'password'
   const [avatar, setAvatar] = useState(() => user?.avatar || localStorage.getItem('horizon_user_avatar') || '');
   const [toastMsg, setToastMsg] = useState({ show: false, text: '', type: 'success' });
   const fileInputRef = useRef(null);
@@ -304,7 +304,8 @@ export default function Profile() {
   const passStrength = getPasswordStrength(newPassword);
 
   const sections = [
-    { key: 'profile', label: 'My Profile & 2FA', icon: RiUser3Line },
+    { key: 'profile', label: 'Personal Profile', icon: RiUser3Line },
+    { key: 'security', label: 'Security & 2-Factor Auth (2FA)', icon: RiShieldCheckLine },
     { key: 'password', label: 'Change Password (Email OTP)', icon: RiLockPasswordLine },
   ];
 
@@ -333,9 +334,9 @@ export default function Profile() {
         </div>
       )}
 
-      {/* ──────── NAVIGATION TABS (MATCHING SUPER ADMIN SETTINGS DESIGN.MD) ──────── */}
+      {/* ──────── NAVIGATION TABS (3 CLEAN TABS) ──────── */}
       <div className="card p-2">
-        <div className="flex gap-2 overflow-x-auto font-poppins">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 font-poppins">
           {sections.map(tab => {
             const Icon = tab.icon;
             const isActive = activeSection === tab.key;
@@ -345,13 +346,13 @@ export default function Profile() {
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveSection(tab.key)}
-                className={`flex items-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex items-center gap-2 py-1.5 sm:py-2 px-3.5 sm:px-4 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
                   isActive
                     ? 'bg-gold-400 text-slate-950 font-bold shadow-gold'
-                    : 'bg-transparent text-slate-600 hover:bg-slate-100'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                <Icon size={18} className={isActive ? 'text-slate-950' : 'text-slate-400'} />
+                <Icon size={16} className={isActive ? 'text-slate-950' : 'text-slate-500'} />
                 <span>{tab.label}</span>
               </button>
             );
@@ -359,99 +360,101 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* ──────────────── TAB 1: PROFILE & 2FA SECURITY (2-COLUMN SUPER ADMIN LAYOUT) ──────────────── */}
+      {/* ──────────────── TAB 1: PERSONAL PROFILE ──────────────── */}
       {activeSection === 'profile' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-poppins">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 font-poppins animate-fade-in">
           {/* Left Column: Investor Profile Summary Card */}
-          <div className="card p-6 flex flex-col items-center text-center space-y-4 border border-slate-200 shadow-sm">
-            {/* Avatar Circle with Upload Trigger */}
-            <div className="relative group">
-              <div className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center ring-4 ring-gold-200/90 shadow-gold bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 text-slate-950 font-extrabold text-3xl font-poppins">
-                {avatar ? (
-                  <img src={avatar} alt={form.fullName} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{(form.fullName || 'User').charAt(0)}</span>
+          <div className="card p-4 sm:p-6 flex flex-col items-center text-center space-y-4 border border-slate-200 shadow-sm justify-between">
+            <div className="space-y-3.5 flex flex-col items-center w-full">
+              {/* Avatar Circle with Upload Trigger */}
+              <div className="relative group">
+                <div className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center ring-4 ring-gold-200/90 shadow-gold bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 text-slate-950 font-extrabold text-3xl font-poppins">
+                  {avatar ? (
+                    <img src={avatar} alt={form.fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{(form.fullName || 'User').charAt(0)}</span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 bg-slate-950/60 rounded-full flex flex-col items-center justify-center text-gold-300 opacity-0 group-hover:opacity-100 transition-all cursor-pointer text-xs font-bold gap-1"
+                  title="Change Profile Photo"
+                >
+                  <RiCameraLine size={20} />
+                  <span>Change</span>
+                </button>
+              </div>
+
+              {/* Photo Action Buttons */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-gold-900 text-xs font-semibold rounded-full border border-slate-200 transition-colors cursor-pointer shadow-2xs"
+                >
+                  <RiUpload2Line size={14} className="text-gold-600" />
+                  <span>Upload</span>
+                </button>
+                {avatar && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold rounded-full border border-rose-200 transition-colors cursor-pointer"
+                    title="Remove profile photo"
+                  >
+                    <RiDeleteBin7Line size={14} />
+                    <span>Remove</span>
+                  </button>
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute inset-0 bg-slate-950/60 rounded-full flex flex-col items-center justify-center text-gold-300 opacity-0 group-hover:opacity-100 transition-all cursor-pointer text-xs font-bold gap-1"
-                title="Change Profile Photo"
-              >
-                <RiCameraLine size={20} />
-                <span>Change</span>
-              </button>
-            </div>
-
-            {/* Photo Action Buttons */}
-            <div className="flex items-center gap-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleAvatarUpload}
-                accept="image/*"
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-gold-900 text-xs font-semibold rounded-xl border border-slate-200 transition-colors cursor-pointer shadow-2xs"
-              >
-                <RiUpload2Line size={14} className="text-gold-600" />
-                <span>Upload</span>
-              </button>
-              {avatar && (
-                <button
-                  type="button"
-                  onClick={handleRemoveAvatar}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold rounded-xl border border-rose-200 transition-colors cursor-pointer"
-                  title="Remove profile photo"
-                >
-                  <RiDeleteBin7Line size={14} />
-                  <span>Remove</span>
-                </button>
-              )}
-            </div>
-
-            <div>
-              <h3 className="text-base font-bold text-slate-800">{form.fullName}</h3>
-              <p className="text-xs text-gold-700 font-mono font-bold mt-0.5">{user?.id || 'HORIZON-USR-07'}</p>
-            </div>
-
-            <div className="flex flex-col gap-1.5 w-full pt-1">
-              <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-gold-50 text-gold-900 border border-gold-300 rounded-xl text-xs font-semibold shadow-2xs">
-                <RiAwardLine size={14} className="text-gold-600" /> Level 3 Gold Sovereign
-              </span>
-            </div>
-
-            {/* Quick Metadata */}
-            <div className="w-full pt-4 border-t border-slate-100 space-y-2 text-xs text-slate-600">
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-400">Registered Email:</span>
-                <span className="font-semibold text-slate-700 truncate max-w-[140px]">{form.email}</span>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">{form.fullName}</h3>
+                <p className="text-xs text-gold-700 font-mono font-bold mt-0.5">{user?.id || 'HORIZON-USR-07'}</p>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-400">Direct Sponsor:</span>
-                <strong className="text-slate-800">{user?.sponsorId || 'HORIZON-USR-01'}</strong>
+
+              <div className="flex flex-col gap-1.5 w-full pt-1">
+                <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-gold-50 text-gold-900 border border-gold-300 rounded-full text-xs font-semibold shadow-2xs">
+                  <RiAwardLine size={14} className="text-gold-600" /> Level 3 Gold Sovereign
+                </span>
               </div>
-              <div className="flex justify-between py-1">
-                <span className="text-slate-400">Country:</span>
-                <span className="text-slate-800 font-medium">{form.country}</span>
+
+              {/* Quick Metadata */}
+              <div className="w-full pt-4 border-t border-slate-100 space-y-2 text-xs text-slate-600">
+                <div className="flex justify-between py-1 border-b border-slate-50">
+                  <span className="text-slate-400">Registered Email:</span>
+                  <span className="font-semibold text-slate-700 truncate max-w-[140px]">{form.email}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-slate-50">
+                  <span className="text-slate-400">Direct Sponsor:</span>
+                  <strong className="text-slate-800">{user?.sponsorId || 'HORIZON-USR-01'}</strong>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-slate-400">Country:</span>
+                  <span className="text-slate-800 font-medium">{form.country}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Right Column: Profile Form & Clean 2FA Sliding Toggle */}
-          <div className="lg:col-span-2 card p-6 space-y-5 border border-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          {/* Right Column: Profile Form Details */}
+          <div className="lg:col-span-2 card p-4 sm:p-6 space-y-4 sm:space-y-5 border border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
               <div>
-                <h3 className="text-sm font-bold text-slate-800 font-poppins">Personal Account & Security Details</h3>
-                <p className="text-xs text-slate-400">Update personal identity credentials and manage Email 2FA protection</p>
+                <h3 className="text-sm font-bold text-slate-800 font-poppins">Personal Account Details</h3>
+                <p className="text-xs text-slate-400">Update personal identity credentials and contact information</p>
               </div>
               {profileSaved && (
-                <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl animate-fade-in">
+                <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full animate-fade-in shrink-0">
                   <RiCheckLine size={14} /> Profile Saved Successfully
                 </span>
               )}
@@ -473,53 +476,29 @@ export default function Profile() {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                    <span>Registered Email Address *</span>
-                    <span className="text-[10px] text-emerald-600 font-bold lowercase">✓ verified</span>
+                  <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Registered Email Address *
                   </label>
                   <input
                     type="email"
                     value={form.email}
                     readOnly
-                    className="w-full px-3.5 py-2.5 bg-slate-100 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 outline-none cursor-not-allowed shadow-2xs font-mono"
+                    className="w-full px-3.5 py-2.5 bg-slate-100 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 outline-none cursor-not-allowed shadow-2xs"
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Mobile / WhatsApp Number *
+                    Mobile Phone Number *
                   </label>
                   <input
-                    type="text"
+                    type="tel"
                     value={form.phone}
                     onChange={e => setForm({ ...form, phone: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
                     required
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Country of Residence *
-                  </label>
-                  <input
-                    type="text"
-                    value={form.country}
-                    onChange={e => setForm({ ...form, country: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    City / Province
-                  </label>
-                  <input
-                    type="text"
-                    value={form.city}
-                    onChange={e => setForm({ ...form, city: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
                   />
                 </div>
 
@@ -531,7 +510,45 @@ export default function Profile() {
                     type="date"
                     value={form.dob}
                     onChange={e => setForm({ ...form, dob: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs font-mono"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    value={form.country}
+                    onChange={e => setForm({ ...form, country: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    City / State
+                  </label>
+                  <input
+                    type="text"
+                    value={form.city}
+                    onChange={e => setForm({ ...form, city: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Timezone
+                  </label>
+                  <input
+                    type="text"
+                    value={form.timezone}
+                    onChange={e => setForm({ ...form, timezone: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
                   />
                 </div>
               </div>
@@ -548,55 +565,10 @@ export default function Profile() {
                 />
               </div>
 
-              {/* ──────────────── EMAIL 2FA SLIDING SWITCH (DIRECT INLINE TOGGLE, NO MODAL) ──────────────── */}
-              <div className="p-4 bg-gold-50/50 rounded-2xl border border-gold-300/80 shadow-2xs">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-gold-100 text-gold-700 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                      <RiMailCheckLine size={22} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-bold text-slate-800">Email 2-Factor Authentication (2FA)</h4>
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
-                          is2FAEnabled
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-slate-100 text-slate-500 border-slate-200'
-                        }`}>
-                          {is2FAEnabled ? 'Enabled (Login Protected)' : 'Disabled'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        {is2FAEnabled
-                          ? `Active: A 6-digit OTP will be sent to ${form.email} whenever you sign in.`
-                          : `Enable to require a 6-digit OTP sent to ${form.email} upon sign in.`}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Clean Sliding Toggle Switch */}
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={is2FAEnabled}
-                    onClick={handleToggle2FA}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      is2FAEnabled ? 'bg-gold-500' : 'bg-slate-300'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        is2FAEnabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
               <div className="flex justify-end pt-3 border-t border-slate-100">
                 <button
                   type="submit"
-                  className="btn btn-primary px-6 py-2.5 text-xs font-bold shadow-gold cursor-pointer flex items-center gap-1.5"
+                  className="btn btn-primary px-6 py-2.5 rounded-full text-xs font-bold shadow-gold cursor-pointer flex items-center justify-center gap-1.5 w-full sm:w-auto"
                 >
                   <RiSaveLine size={16} /> Save Profile Details
                 </button>
@@ -606,10 +578,116 @@ export default function Profile() {
         </div>
       )}
 
-      {/* ──────────────── TAB 2: CHANGE PASSWORD (WITH EMAIL OTP VERIFICATION) ──────────────── */}
+      {/* ──────────────── TAB 2: SECURITY & 2-FACTOR AUTH (2FA) ──────────────── */}
+      {activeSection === 'security' && (
+        <div className="space-y-6 max-w-4xl font-poppins animate-fade-in">
+          {/* Main 2FA Card */}
+          <div className="card p-4 sm:p-6 md:p-8 space-y-6 border border-slate-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-gold-50 text-gold-700 flex items-center justify-center flex-shrink-0 shadow-2xs border border-gold-200">
+                  <RiShieldCheckLine size={24} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Security & 2-Factor Authentication</h3>
+                  <p className="text-xs text-slate-400">Configure secondary login challenge and cryptographic account protections</p>
+                </div>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold self-start sm:self-center border shadow-2xs ${
+                is2FAEnabled
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                  : 'bg-slate-100 text-slate-600 border-slate-200'
+              }`}>
+                {is2FAEnabled ? '● 2FA Protected' : '○ 2FA Disabled'}
+              </span>
+            </div>
+
+            {/* Email 2FA Interactive Toggle Row */}
+            <div className="p-4 sm:p-5 bg-gradient-to-br from-gold-50/70 via-amber-50/30 to-white rounded-2xl border border-gold-300 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-gold-100 text-gold-700 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                  <RiMailCheckLine size={22} />
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-sm font-bold text-slate-800">Email 2-Factor Authentication (2FA)</h4>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                      is2FAEnabled
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-slate-100 text-slate-500 border-slate-200'
+                    }`}>
+                      {is2FAEnabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {is2FAEnabled
+                      ? `Active Protection: A 6-digit security OTP is dispatched to ${form.email} each time you sign in.`
+                      : `Require a secure 6-digit OTP dispatched to ${form.email} upon each sign in attempt.`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Sliding Toggle Switch */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={is2FAEnabled}
+                onClick={handleToggle2FA}
+                className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none self-end sm:self-center shadow-xs ${
+                  is2FAEnabled ? 'bg-gold-500' : 'bg-slate-300'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    is2FAEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* 3 Security Pillars Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <div className="flex items-center gap-2 text-gold-700 font-bold text-xs">
+                  <RiShieldFlashLine size={16} />
+                  <span>256-Bit SSL Encryption</span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Bank-grade TLS 1.3 socket encryption for all transactions and ledger records.
+                </p>
+                <span className="text-[10px] font-extrabold text-emerald-600 block pt-0.5">Verified Active</span>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
+                  <RiMailLine size={16} />
+                  <span>Email Verification OTP</span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  All withdrawals, password rotations, and profile edits require cryptographic codes.
+                </p>
+                <span className="text-[10px] font-extrabold text-emerald-600 block pt-0.5">Enforced</span>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <div className="flex items-center gap-2 text-purple-600 font-bold text-xs">
+                  <RiKey2Line size={16} />
+                  <span>Session Monitoring</span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Automated logout and token invalidation on unrecognized devices or IP switches.
+                </p>
+                <span className="text-[10px] font-extrabold text-emerald-600 block pt-0.5">Protected</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────── TAB 3: CHANGE PASSWORD (WITH EMAIL OTP VERIFICATION) ──────────────── */}
       {activeSection === 'password' && (
-        <div className="card p-6 sm:p-8 space-y-6 max-w-2xl border border-slate-200 font-poppins shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="card p-4 sm:p-6 md:p-8 space-y-5 sm:space-y-6 max-w-2xl border border-slate-200 font-poppins shadow-sm animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gold-50 text-gold-700 flex items-center justify-center flex-shrink-0 shadow-2xs">
                 <RiLockPasswordLine size={22} />
@@ -621,7 +699,7 @@ export default function Profile() {
             </div>
 
             {passwordSaved && (
-              <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl animate-fade-in">
+              <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full animate-fade-in shrink-0">
                 <RiCheckLine size={14} /> Password Updated Successfully
               </span>
             )}
@@ -734,7 +812,7 @@ export default function Profile() {
               <div className="pt-3">
                 <button
                   type="submit"
-                  className="btn btn-primary px-6 py-2.5 text-xs font-bold shadow-gold cursor-pointer flex items-center gap-1.5"
+                  className="btn btn-primary px-6 py-2.5 rounded-full text-xs font-bold shadow-gold cursor-pointer flex items-center gap-1.5"
                 >
                   <RiMailSendLine size={16} /> Send Verification OTP to {form.email}
                 </button>
@@ -802,13 +880,13 @@ export default function Profile() {
                   <button
                     type="button"
                     onClick={() => setPasswordOtpSent(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                    className="px-4 py-2 rounded-full text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
                   >
                     Back to Edit
                   </button>
                   <button
                     type="submit"
-                    className="btn btn-primary px-6 py-2.5 text-xs font-bold shadow-gold cursor-pointer flex items-center gap-1.5"
+                    className="btn btn-primary px-6 py-2.5 rounded-full text-xs font-bold shadow-gold cursor-pointer flex items-center gap-1.5"
                   >
                     <RiCheckLine size={16} /> Verify & Update Password
                   </button>

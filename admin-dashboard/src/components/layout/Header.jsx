@@ -76,24 +76,24 @@ export default function Header({ onMenuToggle, isSidebarOpen = true }) {
   };
 
   return (
-    <header className="h-[72px] bg-white/80 backdrop-blur-xl border-b border-gray-100 flex items-center justify-between px-3 sm:px-6 sticky top-0 z-30">
-      {/* Left */}
-      <div className="flex items-center gap-2.5 sm:gap-3">
+    <header className="h-[68px] sm:h-[72px] bg-white/85 backdrop-blur-xl border-b border-gray-100 flex items-center justify-between px-3.5 sm:px-6 sticky top-0 z-30 transition-all">
+      {/* Left: Hamburger & Title */}
+      <div className="flex items-center gap-2 sm:gap-3.5 min-w-0 flex-1 sm:flex-initial mr-2 sm:mr-0">
         <button
           onClick={onMenuToggle}
-          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl hover:bg-gold-50 transition-all text-gray-600 hover:text-gold-600 border border-gray-200/80 shadow-2xs cursor-pointer active:scale-95"
+          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl hover:bg-gold-50 transition-all text-gray-600 hover:text-gold-600 border border-gray-200/80 shadow-2xs cursor-pointer active:scale-95 shrink-0"
           title={isSidebarOpen ? "Collapse Sidebar (More Workspace)" : "Expand Sidebar"}
         >
-          {isSidebarOpen ? <RiMenuFoldLine size={20} /> : <RiMenuUnfoldLine size={20} />}
+          {isSidebarOpen ? <RiMenuFoldLine size={19} /> : <RiMenuUnfoldLine size={19} />}
         </button>
-        <div>
-          <h2 className="text-base sm:text-xl font-bold text-gray-800 font-display leading-tight">{pageTitle}</h2>
-          <p className="text-[11px] sm:text-xs text-gray-400 hidden sm:block">Welcome back, {adminName}</p>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm sm:text-base md:text-xl font-bold text-gray-800 font-display leading-tight truncate">{pageTitle}</h2>
+          <p className="text-[11px] sm:text-xs text-gray-400 hidden sm:block truncate">Welcome back, {adminName}</p>
         </div>
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Search Toggle (Mobile) */}
         <button
           onClick={() => setSearchOpen(!searchOpen)}

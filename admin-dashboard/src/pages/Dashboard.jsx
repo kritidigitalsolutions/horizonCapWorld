@@ -225,7 +225,7 @@ export default function Dashboard() {
               <h3 className="text-base font-semibold text-gray-800">Recent Activity</h3>
               <p className="text-xs text-gray-400 mt-0.5">Latest platform events</p>
             </div>
-            <button className="text-xs font-medium text-gold-500 hover:text-gold-600 transition-colors">Live Sync</button>
+            <span className="px-2.5 py-0.5 rounded-full bg-gold-50 border border-gold-200 text-xs font-semibold text-gold-800">Live Sync</span>
           </div>
           <div className="space-y-4">
             {activities.map(activity => {
@@ -233,7 +233,7 @@ export default function Dashboard() {
               const Icon = config.icon;
               return (
                 <div key={activity.id} className="flex items-start gap-3 group">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${config.bg}`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${config.bg}`}>
                     <Icon size={18} className={config.color} />
                   </div>
                   <div className="flex-1 min-w-0">

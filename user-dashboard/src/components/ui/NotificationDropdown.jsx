@@ -96,7 +96,7 @@ export default function NotificationDropdown() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gold-50 transition-colors text-gray-500 hover:text-gold-600 relative border border-gray-100 cursor-pointer"
+        className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-gold-50 transition-colors text-gray-600 hover:text-gold-600 relative border border-gray-200/80 shadow-2xs cursor-pointer active:scale-95"
         aria-label="Notifications"
       >
         <RiNotification3Line size={19} />
@@ -108,13 +108,13 @@ export default function NotificationDropdown() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-gray-100 py-3 z-50 animate-slide-up font-poppins">
+        <div className="absolute -right-12 sm:right-0 mt-2 w-[calc(100vw-32px)] max-w-sm sm:w-96 bg-white rounded-2xl shadow-xl border border-gray-100 py-3 z-50 animate-slide-up font-poppins">
           {/* Header */}
           <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-100">
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-bold text-gray-800 font-display">Notifications</h4>
               {unreadCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gold-100 text-gold-700">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gold-100 text-gold-700">
                   {unreadCount} new
                 </span>
               )}
@@ -142,7 +142,7 @@ export default function NotificationDropdown() {
                     !n.read ? 'bg-gold-50/20' : ''
                   }`}
                 >
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${IconData.bg}`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${IconData.bg}`}>
                     <Icon size={17} />
                   </div>
                   <div className="flex-1 min-w-0">

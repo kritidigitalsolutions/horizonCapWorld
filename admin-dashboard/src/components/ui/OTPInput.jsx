@@ -40,7 +40,7 @@ export default function OTPInput({ length = 6, onComplete }) {
   };
 
   return (
-    <div className="flex gap-3 justify-center">
+    <div className="flex gap-1.5 sm:gap-3 justify-center">
       {otp.map((digit, i) => (
         <input
           key={i}
@@ -52,7 +52,7 @@ export default function OTPInput({ length = 6, onComplete }) {
           onChange={e => handleChange(e.target.value, i)}
           onKeyDown={e => handleKeyDown(e, i)}
           onPaste={handlePaste}
-          className="w-12 h-14 text-center text-xl font-semibold border-2 border-gray-200 rounded-xl focus:border-gold-400 focus:ring-2 focus:ring-gold-100 outline-none transition-all"
+          className="w-9 h-11 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-gold-400 focus:ring-2 focus:ring-gold-100 outline-none transition-all shadow-2xs"
           style={{ fontFamily: 'Inter, sans-serif' }}
         />
       ))}

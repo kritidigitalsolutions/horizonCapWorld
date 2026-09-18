@@ -13,7 +13,10 @@ export default function UserLayout({ children }) {
     // On small laptops (< 1366px), default to compact icon mode for spacious workspace
     return window.innerWidth >= 1366;
   });
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < 1024;
+  });
   const [calculatorOpen, setCalculatorOpen] = useState(false);
 
   useEffect(() => {
@@ -48,16 +51,15 @@ export default function UserLayout({ children }) {
     });
   };
 
-  const sidebarWidth = isMobile ? 0 : (sidebarOpen ? 272 : 80);
-
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FAFAFA] overflow-x-hidden">
       <UserSidebar isOpen={sidebarOpen} onToggle={toggleSidebar} isMobile={isMobile} />
 
       {/* Main content */}
       <div
-        className="transition-all duration-300 min-h-screen flex flex-col"
-        style={{ marginLeft: sidebarWidth }}
+        className={`transition-all duration-300 min-h-screen flex flex-col ml-0 ${
+          sidebarOpen ? 'lg:ml-[272px]' : 'lg:ml-[80px]'
+        }`}
       >
         <Header
           onMenuToggle={toggleSidebar}

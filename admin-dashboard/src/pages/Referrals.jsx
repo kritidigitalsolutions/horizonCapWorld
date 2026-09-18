@@ -360,7 +360,7 @@ export default function Referrals() {
               Instantly enable or disable commission distributions across all investors on the platform in real time.
             </p>
           </div>
-          <span className="text-[11px] font-bold px-2.5 py-1 bg-gold-50 border border-gold-300 text-gold-900 rounded-lg shadow-2xs">
+          <span className="text-[11px] font-bold px-3 py-1 bg-gold-50 border border-gold-300 text-gold-900 rounded-full shadow-2xs">
             Admin Controlled
           </span>
         </div>
@@ -409,7 +409,7 @@ export default function Referrals() {
 
             <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs">
               <span className="text-slate-500 font-medium">Distribution Status:</span>
-              <span className={`font-bold px-2.5 py-0.5 rounded-md text-[11px] ${
+              <span className={`font-bold px-3 py-0.5 rounded-full text-[11px] ${
                 depositEnabled
                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                   : 'bg-rose-100 text-rose-800 border border-rose-200'
@@ -464,8 +464,8 @@ export default function Referrals() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="card p-2 flex items-center justify-between gap-2 overflow-x-auto">
-        <div className="flex items-center gap-2">
+      <div className="card p-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 overflow-x-auto">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5">
           {[
             { id: 'plans', label: 'Multi-Tier Referral Plans', count: `${commissions.length} Active Levels`, icon: <RiTeamLine /> },
             { id: 'promoters', label: 'Affiliate Promoters Directory', count: `${filteredPromoters.length} Leaders`, icon: <RiGroupLine /> },
@@ -473,15 +473,15 @@ export default function Referrals() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
+              className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
                 activeTab === tab.id
-                  ? 'bg-gold-400 text-slate-900 font-semibold shadow-gold'
+                  ? 'bg-gold-400 text-slate-900 shadow-gold'
                   : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200'
               }`}
             >
               <span className="text-sm">{tab.icon}</span>
               <span>{tab.label}</span>
-              <span className="px-2 py-0.5 rounded-md text-[10px] bg-white/80 text-slate-800 font-bold border border-slate-200/80 shadow-2xs">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-white/90 text-slate-800 font-bold border border-slate-200/80 shadow-2xs">
                 {tab.count}
               </span>
             </button>
@@ -492,7 +492,7 @@ export default function Referrals() {
           <button
             type="button"
             onClick={openAddTierModal}
-            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            className="px-4 py-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
           >
             <RiAddLine size={16} />
             <span>+ Add New Level (Level {commissions.length + 1}+)</span>
@@ -504,7 +504,7 @@ export default function Referrals() {
       {activeTab === 'plans' && (
         <div className="space-y-6">
           {/* ──────── 1. LEVEL ROI PER DAY INCOME TABLE (LUXURY WHITE & GOLD THEME) ──────── */}
-          <div className="card p-5 sm:p-6 space-y-5 shadow-card border border-slate-200/80">
+          <div className="card p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-card border border-slate-200/80">
             {/* Elegant Top Toolbar with proper margin & padding */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 font-poppins">
               <div className="flex items-center gap-3.5">
@@ -512,11 +512,11 @@ export default function Referrals() {
                   <RiSparklingLine size={22} />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 flex-wrap">
                     <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
                       Level ROI Per Day Income
                     </h3>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs">
+                    <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs">
                       {commissions.length} Active Levels
                     </span>
                   </div>
@@ -529,7 +529,7 @@ export default function Referrals() {
                 <button
                   type="button"
                   onClick={openAddTierModal}
-                  className="px-4 py-2 bg-gradient-to-r from-gold-400 to-gold-500 hover:from-gold-500 hover:to-gold-600 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  className="px-4 py-2 bg-gradient-to-r from-gold-400 to-gold-500 hover:from-gold-500 hover:to-gold-600 text-slate-950 font-bold text-xs rounded-full shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
                 >
                   <RiAddLine size={16} /> Add Level
                 </button>
@@ -567,7 +567,7 @@ export default function Referrals() {
                       >
                         {/* Level Index */}
                         <td className="py-3 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-200 bg-gold-50/30">
-                          <span className="w-7 h-7 rounded-lg bg-gold-100/90 text-gold-950 font-bold border border-gold-300 inline-flex items-center justify-center shadow-2xs">
+                          <span className="w-7 h-7 rounded-full bg-gold-100/90 text-gold-950 font-bold border border-gold-300 inline-flex items-center justify-center shadow-2xs">
                             {levelNum}
                           </span>
                         </td>
@@ -597,7 +597,7 @@ export default function Referrals() {
 
                         {/* Eligibility */}
                         <td className="py-3 px-3.5 text-left border-r border-slate-200">
-                          <span className={`inline-block px-2.5 py-1 rounded-md text-[11px] leading-snug font-semibold ${
+                          <span className={`inline-block px-3 py-1 rounded-full text-[11px] leading-snug font-semibold ${
                             isNR
                               ? 'bg-slate-100 text-slate-700 border border-slate-200 font-mono'
                               : conditions.toLowerCase().includes('no condition')
@@ -614,7 +614,7 @@ export default function Referrals() {
                             <button
                               type="button"
                               onClick={() => openEditCommission(tier)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold transition-all shadow-2xs border border-gold-500 active:scale-95 cursor-pointer"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold transition-all shadow-2xs border border-gold-500 active:scale-95 cursor-pointer"
                               title="Edit Level Conditions & ROI"
                             >
                               <RiEditLine size={13} />
@@ -624,7 +624,7 @@ export default function Referrals() {
                               <button
                                 type="button"
                                 onClick={() => setDeletingTier(tier)}
-                                className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                                 title="Delete Level"
                               >
                                 <RiDeleteBinLine size={15} />

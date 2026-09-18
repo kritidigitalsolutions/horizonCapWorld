@@ -345,7 +345,7 @@ export default function NewsMedia() {
           <div className="flex gap-2 overflow-x-auto font-poppins">
             <button
               onClick={() => setCategoryFilter('all')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
                 categoryFilter === 'all'
                   ? 'bg-gold-400 text-slate-900 font-semibold shadow-gold'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -359,7 +359,7 @@ export default function NewsMedia() {
                 <button
                   key={cat}
                   onClick={() => setCategoryFilter(cat)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
                     categoryFilter === cat
                       ? 'bg-gold-400 text-slate-900 font-semibold shadow-gold'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -414,7 +414,7 @@ export default function NewsMedia() {
                   </Badge>
                 </div>
 
-                <div className="absolute top-3 right-3 text-[11px] font-medium text-slate-700 bg-white/90 backdrop-blur-xs px-2.5 py-0.5 rounded-md border border-slate-200/80 shadow-2xs">
+                <div className="absolute top-3 right-3 text-[11px] font-medium text-slate-700 bg-white/90 backdrop-blur-xs px-2.5 py-0.5 rounded-full border border-slate-200/80 shadow-2xs">
                   {article.readTime || '3 min read'}
                 </div>
               </div>
@@ -436,7 +436,7 @@ export default function NewsMedia() {
                 {article.tags && article.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {article.tags.slice(0, 3).map((tag, tIdx) => (
-                      <span key={tIdx} className="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                      <span key={tIdx} className="text-[10px] font-medium text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">
                         #{tag}
                       </span>
                     ))}
@@ -461,7 +461,7 @@ export default function NewsMedia() {
                 {/* Read Full Article Button */}
                 <button
                   onClick={() => setReadingArticle(article)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-gold-50 text-slate-600 hover:text-gold-800 text-xs font-medium border border-slate-200 shadow-2xs transition-colors"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-white hover:bg-gold-50 text-slate-600 hover:text-gold-800 text-xs font-medium border border-slate-200 shadow-2xs transition-colors"
                   title="Read Article"
                 >
                   <RiEyeLine size={14} />
@@ -471,7 +471,7 @@ export default function NewsMedia() {
                 {/* Edit in Studio Button */}
                 <button
                   onClick={() => openEditArticle(article)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-gold-50 text-slate-600 hover:text-gold-800 text-xs font-medium border border-slate-200 shadow-2xs transition-colors"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-white hover:bg-gold-50 text-slate-600 hover:text-gold-800 text-xs font-medium border border-slate-200 shadow-2xs transition-colors"
                   title="Edit in Studio Drawer"
                 >
                   <RiEditLine size={14} />
@@ -481,7 +481,7 @@ export default function NewsMedia() {
                 {/* Delete Button */}
                 <button
                   onClick={() => setArticleToDelete(article)}
-                  className="p-1.5 rounded-xl bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 shadow-2xs transition-colors"
+                  className="w-8 h-8 rounded-full inline-flex items-center justify-center bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 shadow-2xs transition-colors"
                   title="Delete Article"
                 >
                   <RiDeleteBinLine size={14} />
@@ -983,7 +983,7 @@ export default function NewsMedia() {
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-[11px] font-semibold text-slate-400">Tagged with:</span>
                 {readingArticle.tags.map((tg, i) => (
-                  <span key={i} className="text-xs font-medium text-gold-700 bg-gold-50 border border-gold-200/80 px-2.5 py-0.5 rounded-lg">
+                  <span key={i} className="text-xs font-medium text-gold-700 bg-gold-50 border border-gold-200/80 px-2.5 py-0.5 rounded-full">
                     #{tg}
                   </span>
                 ))}

@@ -805,9 +805,10 @@ export default function PaymentSettings() {
         subtitle="Manage Mobile E-Wallets (EasyPaisa, JazzCash), Indian domestic banks, International wire & crypto addresses"
         badge="Gateway Engine"
         actions={
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <Button
               variant="secondary"
+              size="sm"
               icon={<RiPercentLine className="text-emerald-600" />}
               onClick={() => {
                 setWithdrawalForm(withdrawalSettings);
@@ -818,6 +819,7 @@ export default function PaymentSettings() {
             </Button>
             <Button
               variant="secondary"
+              size="sm"
               icon={<RiVideoLine className="text-gold-600" />}
               onClick={handleOpenVideoStudio}
             >
@@ -825,6 +827,7 @@ export default function PaymentSettings() {
             </Button>
             <Button
               variant="primary"
+              size="sm"
               icon={<RiAddLine />}
               onClick={() => openCreateDrawer("Mobile E-Wallet")}
             >
@@ -1026,7 +1029,7 @@ export default function PaymentSettings() {
             onChange={setSearch}
             className="flex-1"
           />
-          <div className="flex gap-2 overflow-x-auto font-poppins">
+          <div className="flex gap-2 overflow-x-auto font-poppins scrollbar-none pb-0.5">
             {[
               { id: "all", label: `All Channels (${safeMethods.length})` },
               { id: "E-Wallet", label: "Mobile E-Wallets" },
@@ -1037,9 +1040,9 @@ export default function PaymentSettings() {
               <button
                 key={cat.id}
                 onClick={() => setCategoryFilter(cat.id)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${
+                className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                   categoryFilter === cat.id
-                    ? "bg-gold-400 text-slate-900 font-semibold shadow-gold"
+                    ? "bg-gold-400 text-slate-900 font-bold shadow-gold"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
@@ -1084,7 +1087,7 @@ export default function PaymentSettings() {
                           {wallet.name}
                         </h3>
                         {wallet.isDefault && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gold-400 text-slate-900 text-[10px] font-bold shadow-2xs">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gold-400 text-slate-900 text-[10px] font-bold shadow-2xs">
                             <RiStarLine size={11} /> Default
                           </span>
                         )}
@@ -1092,7 +1095,7 @@ export default function PaymentSettings() {
 
                       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                         <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide border shadow-2xs ${visual.tagBg}`}
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide border shadow-2xs ${visual.tagBg}`}
                         >
                           {wallet.networkCode || "CHANNEL"}
                         </span>
@@ -1215,7 +1218,7 @@ export default function PaymentSettings() {
                   {!wallet.isDefault && (
                     <button
                       onClick={() => handleSetDefault(wallet._id)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-gold-50 text-slate-600 hover:text-gold-800 text-xs font-medium border border-slate-200 transition-colors shadow-2xs"
+                      className="px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-gold-50 text-slate-600 hover:text-gold-800 text-xs font-semibold border border-slate-200 transition-colors shadow-2xs cursor-pointer"
                     >
                       Set Default
                     </button>
@@ -1225,14 +1228,14 @@ export default function PaymentSettings() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openEditDrawer(wallet)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-gold-800 text-xs font-medium border border-slate-200 transition-colors shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-gold-800 text-xs font-semibold border border-slate-200 transition-colors shadow-2xs cursor-pointer"
                   >
                     <RiEditLine size={14} />
                     <span>Edit</span>
                   </button>
                   <button
                     onClick={() => setWalletToDelete(wallet)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-medium border border-red-200 transition-colors shadow-2xs"
+                    className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-semibold border border-red-200 transition-colors shadow-2xs cursor-pointer"
                   >
                     <RiDeleteBinLine size={14} />
                     <span>Delete</span>

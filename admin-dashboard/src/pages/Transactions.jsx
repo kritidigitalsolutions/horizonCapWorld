@@ -529,7 +529,7 @@ export default function Transactions() {
           {datePreset !== 'all' && (
             <button
               onClick={() => { setDatePreset('all'); setCustomStartDate(''); setCustomEndDate(''); }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gold-50 text-gold-800 border border-gold-300 text-xs font-semibold whitespace-nowrap shadow-2xs hover:bg-gold-100 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gold-50 text-gold-800 border border-gold-300 text-xs font-semibold whitespace-nowrap shadow-2xs hover:bg-gold-100 transition-colors"
             >
               <span>Date Filter Active</span>
               <RiCloseLine size={15} />
@@ -575,7 +575,7 @@ export default function Transactions() {
                         <div className="flex flex-col">
                           <div className="flex items-center gap-1">
                             <span
-                              className="font-mono text-xs font-bold text-slate-900 bg-gold-50/90 px-2 py-1 rounded-lg border border-gold-300/80 shadow-2xs max-w-[180px] truncate"
+                              className="font-mono text-xs font-bold text-slate-900 bg-gold-50/90 px-2.5 py-1 rounded-full border border-gold-300/80 shadow-2xs max-w-[180px] truncate"
                               title={txn.referenceNo || txn.id}
                             >
                               {txn.referenceNo || txn.id}
@@ -583,7 +583,7 @@ export default function Transactions() {
                             <button
                               type="button"
                               onClick={() => handleCopyText(txn.referenceNo || txn.id)}
-                              className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-gold-700 cursor-pointer transition-colors"
+                              className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-gold-700 cursor-pointer transition-colors"
                               title="Copy TID / Hash"
                             >
                               <RiFileCopyLine size={13} />
@@ -653,7 +653,7 @@ export default function Transactions() {
                           <button
                             type="button"
                             onClick={() => setSelectedTxn(txn)}
-                            className="px-3 py-1.5 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold flex items-center gap-1 shadow-gold cursor-pointer"
+                            className="px-3.5 py-1.5 rounded-full bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold flex items-center gap-1 shadow-gold cursor-pointer"
                           >
                             <RiEyeLine size={14} /> Review Request
                           </button>
@@ -662,7 +662,7 @@ export default function Transactions() {
                             <button
                               type="button"
                               onClick={() => setSelectedTxn(txn)}
-                              className="p-1.5 text-slate-500 hover:text-gold-700 hover:bg-gold-50 rounded-lg transition-colors cursor-pointer"
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-gold-700 hover:bg-gold-50 transition-colors cursor-pointer"
                               title="Audit Details"
                             >
                               <RiEyeLine size={16} />
@@ -670,7 +670,7 @@ export default function Transactions() {
                             <button
                               type="button"
                               onClick={() => handlePrintSingleReceipt(txn)}
-                              className="p-1.5 text-slate-500 hover:text-gold-700 hover:bg-gold-50 rounded-lg transition-colors cursor-pointer"
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-gold-700 hover:bg-gold-50 transition-colors cursor-pointer"
                               title="Print Receipt"
                             >
                               <RiPrinterLine size={16} />
@@ -678,7 +678,7 @@ export default function Transactions() {
                             <button
                               type="button"
                               onClick={() => setTxnToDelete(txn)}
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                               title="Delete Record"
                             >
                               <RiDeleteBinLine size={16} />

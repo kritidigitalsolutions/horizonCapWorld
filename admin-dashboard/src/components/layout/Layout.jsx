@@ -13,7 +13,10 @@ export default function Layout({ children }) {
     // On small laptops (< 1366px), default to compact icon mode so screen isn't crowded
     return window.innerWidth >= 1366;
   });
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < 1024;
+  });
 
   useEffect(() => {
     const checkMobile = () => {
@@ -41,14 +44,13 @@ export default function Layout({ children }) {
   };
 
   return (
-    <div className="min-h-screen bg-surface-secondary">
+    <div className="min-h-screen bg-surface-secondary overflow-x-hidden">
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} isMobile={isMobile} />
 
       <div
-        className="transition-all duration-300 ease-in-out min-h-screen flex flex-col"
-        style={{
-          marginLeft: isMobile ? 0 : sidebarOpen ? '268px' : '74px',
-        }}
+        className={`transition-all duration-300 ease-in-out min-h-screen flex flex-col ml-0 ${
+          sidebarOpen ? 'lg:ml-[268px]' : 'lg:ml-[74px]'
+        }`}
       >
         <Header onMenuToggle={toggleSidebar} isSidebarOpen={sidebarOpen} />
 

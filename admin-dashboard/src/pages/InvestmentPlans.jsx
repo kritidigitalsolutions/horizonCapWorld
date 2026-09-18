@@ -593,12 +593,12 @@ export default function InvestmentPlans() {
             onChange={setSearch}
             className="flex-1"
           />
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setFilterCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold capitalize whitespace-nowrap transition-all ${
+                className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold capitalize whitespace-nowrap transition-all ${
                   filterCategory === cat
                     ? "bg-gold-400 text-gray-900 shadow-gold"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -639,7 +639,7 @@ export default function InvestmentPlans() {
           return (
             <div
               key={plan._id}
-              className="card card-gold p-6 animate-slide-up flex flex-col justify-between hover:shadow-card-hover transition-all duration-300 relative group overflow-hidden"
+              className="card card-gold p-4 sm:p-6 animate-slide-up flex flex-col justify-between hover:shadow-card-hover transition-all duration-300 relative group overflow-hidden"
               style={{ animationDelay: `${i * 60}ms` }}
             >
               <div>
@@ -647,7 +647,7 @@ export default function InvestmentPlans() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-2.5">
                     <div
-                      className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-xs ${
+                      className={`w-11 h-11 rounded-full flex items-center justify-center shadow-xs ${
                         isRenewable
                           ? "bg-emerald-50 text-emerald-600"
                           : isMetal
@@ -665,7 +665,7 @@ export default function InvestmentPlans() {
                     </div>
                     <div>
                       <span
-                        className={`text-[11px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                        className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                           isRenewable
                             ? "bg-emerald-100/70 text-emerald-800"
                             : isMetal
@@ -726,7 +726,7 @@ export default function InvestmentPlans() {
                       Min Dep: ${plan.minDepositAmount || 10} &bull; Min WD: ${plan.minWithdrawalAmount || 5}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-[10.5px] text-amber-900 bg-amber-100/80 px-2 py-1 rounded-md font-bold mt-2 border border-amber-300/70 shadow-2xs">
+                  <div className="flex items-center justify-between text-[10.5px] text-amber-900 bg-amber-100/80 px-2.5 py-1 rounded-full font-bold mt-2 border border-amber-300/70 shadow-2xs">
                     <span>Single ID Limit</span>
                     <span className="font-extrabold text-amber-950 font-mono text-[10px]">
                       {plan.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}
@@ -765,16 +765,16 @@ export default function InvestmentPlans() {
                       onClick={() =>
                         setExpandedSlabsPlanId(isExpanded ? null : plan._id)
                       }
-                      className="w-full py-1.5 px-2.5 rounded-lg bg-yellow-400/90 hover:bg-yellow-400 text-gray-950 border border-yellow-500 text-[11px] font-extrabold flex items-center justify-between transition-all shadow-2xs cursor-pointer"
+                      className="w-full py-2 px-3.5 rounded-full bg-yellow-400/90 hover:bg-yellow-400 text-gray-950 border border-yellow-500 text-[11px] font-extrabold flex items-center justify-between transition-all shadow-2xs cursor-pointer"
                     >
-                      <span className="flex items-center gap-1.5">
-                        <RiStackLine size={14} className="text-gray-950" />
-                        <span>ROI Slabs Per Day (Without vs Cap is 3X ~333 Days)</span>
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <RiStackLine size={14} className="text-gray-950 shrink-0" />
+                        <span className="truncate">ROI Slabs (Without vs Cap 3X ~333d)</span>
                       </span>
                       {isExpanded ? (
-                        <RiArrowUpSLine size={16} />
+                        <RiArrowUpSLine size={16} className="shrink-0 ml-1" />
                       ) : (
-                        <RiArrowDownSLine size={16} />
+                        <RiArrowDownSLine size={16} className="shrink-0 ml-1" />
                       )}
                     </button>
 
@@ -835,7 +835,7 @@ export default function InvestmentPlans() {
                         <RiSparklingLine size={13} className="text-amber-600" />
                         Reward (Loyalty Bonus)
                       </span>
-                      <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">Without Lock-In Only</span>
+                      <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">Without Lock-In Only</span>
                     </div>
                     <p className="text-[10px] text-slate-500 leading-tight">
                       One time benefit for <strong>Without Lock In Period</strong> (Excluded from 3X plan):
@@ -1054,24 +1054,24 @@ export default function InvestmentPlans() {
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
               ROI Calculation Model *
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, roiType: "slab" })}
-                className={`p-3 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
+                className={`py-2.5 px-3 rounded-full text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
                   formData.roiType === "slab"
                     ? "bg-gold-500 border-gold-500 text-gray-950 font-extrabold shadow-xs"
                     : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 <RiFundsLine size={16} />
-                <span>Amount-Wise Daily ROI Slabs (Active)</span>
+                <span>Amount-Wise Daily ROI Slabs</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, roiType: "fixed" })}
-                className={`p-3 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
+                className={`py-2.5 px-3 rounded-full text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
                   formData.roiType === "fixed"
                     ? "bg-gold-500 border-gold-500 text-gray-950 font-extrabold shadow-xs"
                     : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
@@ -1086,17 +1086,17 @@ export default function InvestmentPlans() {
           {/* ──────── AMOUNT-WISE DAILY ROI SLABS CONFIGURATOR ──────── */}
           {formData.roiType === "slab" ? (
             <div className="p-4 bg-gradient-to-br from-amber-50/70 via-gold-50/50 to-white rounded-2xl border border-gold-300/80 space-y-3.5 shadow-xs">
-              <div className="flex items-center justify-between pb-2 border-b border-gold-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-gold-200">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-yellow-400 text-gray-950 flex items-center justify-center font-bold shadow-2xs">
+                  <div className="w-7 h-7 rounded-full bg-yellow-400 text-gray-950 flex items-center justify-center font-bold shadow-2xs shrink-0">
                     <RiSparklingLine size={16} />
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                      ROI Slabs Per Day (Without vs Cap is 3X approx. 333 Days)
+                      ROI Slabs Per Day
                     </h4>
                     <p className="text-[11px] text-gray-500">
-                      Without Lock In Period: 0.3% &bull; Cap is 3X approx. 333 Days: 0.9%
+                      Without Lock In: 0.3% &bull; Cap 3X (~333d): 0.9%
                     </p>
                   </div>
                 </div>
@@ -1104,15 +1104,16 @@ export default function InvestmentPlans() {
                 <button
                   type="button"
                   onClick={handleResetSlabs}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-gold-300 text-gold-900 hover:bg-gold-50 text-[11px] font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
+                  className="self-start sm:self-auto px-3 py-1 rounded-full bg-white border border-gold-300 text-gold-900 hover:bg-gold-50 text-[11px] font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
                 >
                   <RiRefreshLine size={13} /> Reset Standard Slab
                 </button>
               </div>
 
               {/* Slabs Table Header */}
-              <div className="space-y-2">
-                <div className="grid grid-cols-12 gap-2 text-[10.5px] font-extrabold text-gray-600 uppercase px-1">
+              <div className="space-y-2.5">
+                {/* Desktop Header */}
+                <div className="hidden sm:grid sm:grid-cols-12 gap-2 text-[10.5px] font-extrabold text-gray-600 uppercase px-1">
                   <span className="col-span-3">Amount Range ($)</span>
                   <span className="col-span-3">Max Amount ($)</span>
                   <span className="col-span-3">Without Lock In</span>
@@ -1122,111 +1123,236 @@ export default function InvestmentPlans() {
 
                 {/* Slabs List */}
                 {formData.roiSlabs.map((slab, idx) => (
-                  <div
-                    key={idx}
-                    className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded-xl border border-gold-200/80 shadow-2xs hover:border-gold-400 transition-all text-xs"
-                  >
-                    {/* Min Amount */}
-                    <div className="col-span-3 flex items-center rounded-lg border border-gray-200 bg-gray-50/50 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
-                      <span className="text-gray-400 font-bold text-xs mr-1">$</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={slab.minAmount}
-                        onChange={(e) =>
-                          handleSlabChange(idx, "minAmount", e.target.value)
-                        }
-                        className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
-                        placeholder="10"
-                      />
-                    </div>
+                  <React.Fragment key={idx}>
+                    {/* Mobile Stacked Card (< 640px) */}
+                    <div className="sm:hidden bg-white p-3 rounded-xl border border-gold-300/90 shadow-2xs space-y-2.5">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                        <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider">
+                          Slab #{idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSlab(idx)}
+                          disabled={formData.roiSlabs.length <= 1}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
+                          title="Delete Slab"
+                        >
+                          <RiDeleteBinLine size={16} />
+                        </button>
+                      </div>
 
-                    {/* Max Amount + Unlimited checkbox */}
-                    <div className="col-span-3 flex items-center gap-1">
-                      {slab.noMaxLimit ? (
-                        <div className="w-full flex items-center justify-between py-1 px-2 rounded-lg bg-gold-100/80 border border-gold-300 text-gold-900 font-extrabold text-xs">
-                          <span className="truncate">{slab.minAmount || 0}$ to any amount</span>
-                          <button
-                            type="button"
-                            title="Set fixed max limit"
-                            onClick={() => {
-                              handleSlabChange(idx, "noMaxLimit", false);
-                              handleSlabChange(idx, "maxAmount", String((Number(slab.minAmount) || 0) + 499));
-                            }}
-                            className="text-[10px] text-gold-800 hover:text-gold-950 underline ml-1 cursor-pointer font-bold shrink-0"
-                          >
-                            Set Limit
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="w-full flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50/50 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
-                          <div className="flex items-center flex-1 min-w-0">
+                      {/* Row 1: Min & Max Amount */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                            Min Amount ($)
+                          </label>
+                          <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50/50 px-2.5 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
                             <span className="text-gray-400 font-bold text-xs mr-1">$</span>
                             <input
                               type="text"
                               inputMode="numeric"
-                              value={slab.maxAmount}
+                              value={slab.minAmount}
                               onChange={(e) =>
-                                handleSlabChange(idx, "maxAmount", e.target.value)
+                                handleSlabChange(idx, "minAmount", e.target.value)
                               }
                               className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
-                              placeholder="100"
+                              placeholder="10"
                             />
                           </div>
-                          {idx === formData.roiSlabs.length - 1 && (
-                            <button
-                              type="button"
-                              title="Make this slab unlimited"
-                              onClick={() => handleSlabChange(idx, "noMaxLimit", true)}
-                              className="text-[10px] text-gold-700 hover:text-gold-950 font-bold ml-1 cursor-pointer whitespace-nowrap shrink-0"
-                            >
-                              ∞ No Limit
-                            </button>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                            Max Amount ($)
+                          </label>
+                          {slab.noMaxLimit ? (
+                            <div className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-gold-100/80 border border-gold-300 text-gold-900 font-bold text-xs">
+                              <span className="truncate text-[10.5px]">No Limit</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleSlabChange(idx, "noMaxLimit", false);
+                                  handleSlabChange(idx, "maxAmount", String((Number(slab.minAmount) || 0) + 499));
+                                }}
+                                className="text-[10px] text-gold-800 underline font-bold shrink-0 ml-1"
+                              >
+                                Set Limit
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50/50 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
+                              <div className="flex items-center flex-1 min-w-0">
+                                <span className="text-gray-400 font-bold text-xs mr-1">$</span>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={slab.maxAmount}
+                                  onChange={(e) =>
+                                    handleSlabChange(idx, "maxAmount", e.target.value)
+                                  }
+                                  className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
+                                  placeholder="100"
+                                />
+                              </div>
+                              {idx === formData.roiSlabs.length - 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSlabChange(idx, "noMaxLimit", true)}
+                                  className="text-[10px] text-gold-700 font-bold ml-1 whitespace-nowrap shrink-0"
+                                >
+                                  ∞
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
+                      </div>
+
+                      {/* Row 2: Without Lock In & Cap 3X */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-emerald-700 uppercase mb-1">
+                            Without Lock In
+                          </label>
+                          <div className="flex items-center rounded-lg border border-emerald-300 bg-emerald-50/60 px-2.5 py-1.5 focus-within:border-emerald-500 focus-within:bg-white">
+                            <input
+                              type="text"
+                              value={slab.dailyRoi}
+                              onChange={(e) =>
+                                handleSlabChange(idx, "dailyRoi", e.target.value)
+                              }
+                              className="w-full bg-transparent outline-none font-extrabold text-emerald-700 text-xs text-center"
+                              placeholder="0.3"
+                            />
+                            <span className="text-emerald-600 font-bold text-xs">%</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-amber-800 uppercase mb-1">
+                            Cap 3X (~333d)
+                          </label>
+                          <div className="flex items-center rounded-lg border border-amber-300 bg-amber-50/60 px-2.5 py-1.5 focus-within:border-amber-500 focus-within:bg-white">
+                            <input
+                              type="text"
+                              value={slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null ? slab.lockInDailyRoi : 0.9}
+                              onChange={(e) =>
+                                handleSlabChange(idx, "lockInDailyRoi", e.target.value)
+                              }
+                              className="w-full bg-transparent outline-none font-extrabold text-amber-800 text-xs text-center"
+                              placeholder="0.9"
+                            />
+                            <span className="text-amber-600 font-bold text-xs">%</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Without Lock In Daily ROI (%) */}
-                    <div className="col-span-3 flex items-center rounded-lg border border-emerald-300 bg-emerald-50/60 px-2 py-1.5 focus-within:border-emerald-500 focus-within:bg-white">
-                      <input
-                        type="text"
-                        value={slab.dailyRoi}
-                        onChange={(e) =>
-                          handleSlabChange(idx, "dailyRoi", e.target.value)
-                        }
-                        className="w-full bg-transparent outline-none font-extrabold text-emerald-700 text-xs text-center"
-                        placeholder="0.3"
-                      />
-                      <span className="text-emerald-600 font-bold text-[10px]">%</span>
-                    </div>
+                    {/* Desktop 12-Column Row (>= 640px) */}
+                    <div className="hidden sm:grid sm:grid-cols-12 gap-2 items-center bg-white p-2 rounded-xl border border-gold-200/80 shadow-2xs hover:border-gold-400 transition-all text-xs">
+                      {/* Min Amount */}
+                      <div className="col-span-3 flex items-center rounded-lg border border-gray-200 bg-gray-50/50 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
+                        <span className="text-gray-400 font-bold text-xs mr-1">$</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={slab.minAmount}
+                          onChange={(e) =>
+                            handleSlabChange(idx, "minAmount", e.target.value)
+                          }
+                          className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
+                          placeholder="10"
+                        />
+                      </div>
 
-                    {/* Cap is 3X approx. 333 Days Daily ROI (%) */}
-                    <div className="col-span-2 flex items-center rounded-lg border border-amber-300 bg-amber-50/60 px-2 py-1.5 focus-within:border-amber-500 focus-within:bg-white">
-                      <input
-                        type="text"
-                        value={slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null ? slab.lockInDailyRoi : 0.9}
-                        onChange={(e) =>
-                          handleSlabChange(idx, "lockInDailyRoi", e.target.value)
-                        }
-                        className="w-full bg-transparent outline-none font-extrabold text-amber-800 text-xs text-center"
-                        placeholder="0.9"
-                      />
-                      <span className="text-amber-600 font-bold text-[10px]">%</span>
-                    </div>
+                      {/* Max Amount + Unlimited checkbox */}
+                      <div className="col-span-3 flex items-center gap-1">
+                        {slab.noMaxLimit ? (
+                          <div className="w-full flex items-center justify-between py-1 px-2 rounded-lg bg-gold-100/80 border border-gold-300 text-gold-900 font-extrabold text-xs">
+                            <span className="truncate">{slab.minAmount || 0}$ to any amount</span>
+                            <button
+                              type="button"
+                              title="Set fixed max limit"
+                              onClick={() => {
+                                handleSlabChange(idx, "noMaxLimit", false);
+                                handleSlabChange(idx, "maxAmount", String((Number(slab.minAmount) || 0) + 499));
+                              }}
+                              className="text-[10px] text-gold-800 hover:text-gold-950 underline ml-1 cursor-pointer font-bold shrink-0"
+                            >
+                              Set Limit
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-full flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50/50 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
+                            <div className="flex items-center flex-1 min-w-0">
+                              <span className="text-gray-400 font-bold text-xs mr-1">$</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={slab.maxAmount}
+                                onChange={(e) =>
+                                  handleSlabChange(idx, "maxAmount", e.target.value)
+                                }
+                                className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
+                                placeholder="100"
+                              />
+                            </div>
+                            {idx === formData.roiSlabs.length - 1 && (
+                              <button
+                                type="button"
+                                title="Make this slab unlimited"
+                                onClick={() => handleSlabChange(idx, "noMaxLimit", true)}
+                                className="text-[10px] text-gold-700 hover:text-gold-950 font-bold ml-1 cursor-pointer whitespace-nowrap shrink-0"
+                              >
+                                ∞ No Limit
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Delete button */}
-                    <div className="col-span-1 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSlab(idx)}
-                        disabled={formData.roiSlabs.length <= 1}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
-                      >
-                        <RiDeleteBinLine size={15} />
-                      </button>
+                      {/* Without Lock In Daily ROI (%) */}
+                      <div className="col-span-3 flex items-center rounded-lg border border-emerald-300 bg-emerald-50/60 px-2 py-1.5 focus-within:border-emerald-500 focus-within:bg-white">
+                        <input
+                          type="text"
+                          value={slab.dailyRoi}
+                          onChange={(e) =>
+                            handleSlabChange(idx, "dailyRoi", e.target.value)
+                          }
+                          className="w-full bg-transparent outline-none font-extrabold text-emerald-700 text-xs text-center"
+                          placeholder="0.3"
+                        />
+                        <span className="text-emerald-600 font-bold text-[10px]">%</span>
+                      </div>
+
+                      {/* Cap is 3X approx. 333 Days Daily ROI (%) */}
+                      <div className="col-span-2 flex items-center rounded-lg border border-amber-300 bg-amber-50/60 px-2 py-1.5 focus-within:border-amber-500 focus-within:bg-white">
+                        <input
+                          type="text"
+                          value={slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null ? slab.lockInDailyRoi : 0.9}
+                          onChange={(e) =>
+                            handleSlabChange(idx, "lockInDailyRoi", e.target.value)
+                          }
+                          className="w-full bg-transparent outline-none font-extrabold text-amber-800 text-xs text-center"
+                          placeholder="0.9"
+                        />
+                        <span className="text-amber-600 font-bold text-[10px]">%</span>
+                      </div>
+
+                      {/* Delete button */}
+                      <div className="col-span-1 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSlab(idx)}
+                          disabled={formData.roiSlabs.length <= 1}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
+                        >
+                          <RiDeleteBinLine size={15} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  </React.Fragment>
                 ))}
               </div>
 
@@ -1375,7 +1501,7 @@ export default function InvestmentPlans() {
 
             {formData.loyaltyBonusEnabled && (
               <div className="space-y-2.5 animate-fade-in">
-                <div className="grid grid-cols-5 gap-2 text-center text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-center text-xs">
                   {formData.loyaltyBonusSlabs.map((slab, idx) => (
                     <div key={idx} className="p-2.5 bg-white rounded-xl border border-gold-200 shadow-2xs space-y-1">
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-mono">
@@ -1429,11 +1555,11 @@ export default function InvestmentPlans() {
             </div>
 
             {/* Selector Buttons */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, isInfinite: false })}
-                className={`p-2.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-3 rounded-full text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
                   !formData.isInfinite
                     ? "bg-white border-gold-400 text-gold-900 shadow-xs ring-1 ring-gold-300 font-extrabold"
                     : "bg-white/60 border-gray-200 text-gray-600 hover:bg-white"
@@ -1449,7 +1575,7 @@ export default function InvestmentPlans() {
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, isInfinite: true })}
-                className={`p-2.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-3 rounded-full text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
                   formData.isInfinite
                     ? "bg-gold-500 border-gold-500 text-gray-950 shadow-xs font-extrabold"
                     : "bg-white/60 border-gray-200 text-gray-600 hover:bg-white"
@@ -1548,9 +1674,9 @@ export default function InvestmentPlans() {
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
               Yield Payout Mode *
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <label
-                className={`p-3 rounded-xl border cursor-pointer flex items-center gap-2.5 transition-all ${
+                className={`p-3 rounded-2xl border cursor-pointer flex items-center gap-2.5 transition-all ${
                   formData.payoutInterval === "per_second"
                     ? "border-gold-400 bg-gold-50/80 shadow-xs ring-1 ring-gold-400"
                     : "border-gray-200 bg-white hover:bg-gray-50"
@@ -1578,7 +1704,7 @@ export default function InvestmentPlans() {
               </label>
 
               <label
-                className={`p-3 rounded-xl border cursor-pointer flex items-center gap-2.5 transition-all ${
+                className={`p-3 rounded-2xl border cursor-pointer flex items-center gap-2.5 transition-all ${
                   formData.payoutInterval === "daily"
                     ? "border-gold-400 bg-gold-50/80 shadow-xs ring-1 ring-gold-400"
                     : "border-gray-200 bg-white hover:bg-gray-50"

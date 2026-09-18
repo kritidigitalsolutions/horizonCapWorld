@@ -414,11 +414,11 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
 
         {/* ──────── LOCK-IN DURATION SELECTOR (Interactive) ──────── */}
         <div className="p-3 bg-slate-50/90 rounded-2xl border border-slate-200 space-y-2">
-          <label className="text-xs font-bold uppercase tracking-[0.1em] text-slate-600 flex items-center justify-between">
+          <label className="text-xs font-bold uppercase tracking-[0.1em] text-slate-600 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <span>Simulation Lock-In Option</span>
-            <span className="text-[10px] font-bold text-amber-700">0.90% / Day (3X Profit in ~333 Days)</span>
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-200/80 w-fit">0.90% / Day (3X Profit in ~333 Days)</span>
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => setLockInPeriod('none')}
@@ -461,10 +461,10 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
         }`}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-2.5">
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-xs transition-colors ${
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-xs transition-colors ${
                 autoRenewal ? 'bg-gold-500 text-slate-950 font-bold' : 'bg-slate-200 text-slate-600'
               }`}>
-                <RiRefreshLine size={18} className={autoRenewal ? 'animate-spin' : ''} />
+                <RiRefreshLine size={16} className={autoRenewal ? 'animate-spin' : ''} />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -497,7 +497,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
             <button
               type="button"
               onClick={() => setAutoRenewal(!autoRenewal)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-xs border shrink-0 ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer shadow-xs border shrink-0 ${
                 autoRenewal
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-emerald-500/20 ring-2 ring-emerald-200'
                   : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
@@ -636,9 +636,9 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
         {currentPlan?.loyaltyBonusEnabled !== false && (
           lockInPeriod === 'none' ? (
             <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/90 via-gold-50/50 to-orange-50/40 border border-amber-300/80 space-y-2.5 shadow-xs font-poppins animate-fade-in">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                  <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
                     <RiGiftLine size={16} />
                   </div>
                   <div>
@@ -650,7 +650,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                     </p>
                   </div>
                 </div>
-                <span className="badge badge-success text-[10px] font-bold">
+                <span className="badge badge-success text-[10px] font-bold rounded-full px-2.5 py-0.5 w-fit">
                   Active: No Lock-In
                 </span>
               </div>
@@ -685,9 +685,9 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
             </div>
           ) : (
             <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-300/80 text-amber-950 font-poppins space-y-2 animate-fade-in shadow-2xs">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-amber-200 text-amber-900 flex items-center justify-center font-bold shadow-3xs">
+                  <div className="w-8 h-8 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center font-bold shadow-3xs shrink-0">
                     <RiGiftLine size={16} />
                   </div>
                   <div>
@@ -699,7 +699,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                     </p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 shrink-0">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 shrink-0 w-fit">
                   3X Plan Excluded
                 </span>
               </div>
@@ -721,7 +721,9 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
 
         {/* Live Streaming Info Note */}
         <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-          <RiFlashlightLine size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+            <RiFlashlightLine size={14} className="text-amber-600" />
+          </div>
           <p>
             Real-time returns stream directly to your Earning Wallet every second ({calculations.daily ? `$${(Number(calculations.daily) / 86400).toFixed(6)} / sec` : '$0.00 / sec'}). Live returns stream automatically into your wallet every second.
           </p>

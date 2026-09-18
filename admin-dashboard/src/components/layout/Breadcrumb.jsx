@@ -9,6 +9,7 @@ const routeLabels = {
   'ranks': 'Rank Ladder',
   'referrals': 'Referral Plans',
   'transactions': 'Transactions',
+  'notifications': 'Notifications & Alerts',
   'support-tickets': 'Support Tickets',
   'support-channels': 'Support Channels',
   'news-media': 'News & Media',
@@ -24,7 +25,7 @@ export default function Breadcrumb() {
     .filter(segment => segment !== 'admin');
 
   return (
-    <nav className="flex items-center gap-1.5 text-sm mb-6">
+    <nav className="flex items-center gap-1.5 text-xs sm:text-sm mb-4 sm:mb-6 overflow-x-auto whitespace-nowrap pb-1 font-poppins">
       <Link to="/admin" className="flex items-center gap-1 text-gray-400 hover:text-gold-500 transition-colors">
         <RiHome4Line size={16} />
         <span>Home</span>

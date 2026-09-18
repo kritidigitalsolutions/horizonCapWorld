@@ -290,14 +290,14 @@ export default function SupportChannels() {
             <button
               key={tab.id}
               onClick={() => setCategoryFilter(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
                 categoryFilter === tab.id
                   ? 'bg-gold-400 text-slate-900 font-semibold shadow-gold'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               <span>{tab.label}</span>
-              <span className="px-2 py-0.5 rounded-md text-[10px] bg-white text-slate-800 font-bold border border-slate-200 shadow-2xs">
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-white text-slate-800 font-bold border border-slate-200 shadow-2xs">
                 {tab.count}
               </span>
             </button>
@@ -356,7 +356,7 @@ export default function SupportChannels() {
                     <RiTimeLine size={13} className="text-gold-600" />
                     {c.hours}
                   </span>
-                  <span className="font-semibold text-slate-700 bg-gold-50/80 border border-gold-200 px-2 py-0.5 rounded-md">
+                  <span className="font-semibold text-slate-700 bg-gold-50/80 border border-gold-200 px-2.5 py-0.5 rounded-full text-[10px]">
                     {c.stats}
                   </span>
                 </div>
@@ -368,16 +368,16 @@ export default function SupportChannels() {
                   href={c.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold shadow-gold transition-all active:scale-95"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3.5 rounded-full bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold shadow-gold transition-all active:scale-95"
                 >
                   <RiExternalLinkLine size={14} />
                   <span>Open / Test Channel</span>
                 </a>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => copyToClipboard(c.url, chanKey)}
-                    className="p-2 rounded-xl bg-slate-100 hover:bg-gold-50 text-slate-500 hover:text-gold-800 transition-colors border border-slate-200 shadow-2xs"
+                    className="w-8 h-8 rounded-full inline-flex items-center justify-center bg-slate-100 hover:bg-gold-50 text-slate-500 hover:text-gold-800 transition-colors border border-slate-200 shadow-2xs"
                     title="Copy direct link"
                   >
                     {copiedId === chanKey ? <RiCheckLine size={14} className="text-emerald-600" /> : <RiFileCopyLine size={14} />}
@@ -385,7 +385,7 @@ export default function SupportChannels() {
 
                   <button
                     onClick={() => handleOpenEdit(c)}
-                    className="p-2 rounded-xl bg-slate-100 hover:bg-gold-50 text-slate-500 hover:text-gold-800 transition-colors border border-slate-200 shadow-2xs"
+                    className="w-8 h-8 rounded-full inline-flex items-center justify-center bg-slate-100 hover:bg-gold-50 text-slate-500 hover:text-gold-800 transition-colors border border-slate-200 shadow-2xs"
                     title="Edit Channel"
                   >
                     <RiEditLine size={14} />
@@ -393,7 +393,7 @@ export default function SupportChannels() {
 
                   <button
                     onClick={() => setDeletingChannel(c)}
-                    className="p-2 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors border border-slate-200 shadow-2xs"
+                    className="w-8 h-8 rounded-full inline-flex items-center justify-center bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors border border-slate-200 shadow-2xs"
                     title="Delete Channel"
                   >
                     <RiDeleteBinLine size={14} />

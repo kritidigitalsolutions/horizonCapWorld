@@ -73,6 +73,13 @@ export default function UserSidebar({ isOpen, onToggle, isMobile }) {
     };
   }, []);
 
+  // Automatically close sidebar overlay on route change on mobile
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      onToggle();
+    }
+  }, [location.pathname, isMobile]);
+
   return (
     <>
       {/* Clean Dim Mobile Overlay (NO BLUR) */}

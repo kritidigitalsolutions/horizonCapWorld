@@ -177,10 +177,10 @@ export default function Users() {
         badge="User Directory"
         actions={
           <div className="flex items-center gap-2 text-sm font-poppins">
-            <span className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-xl font-medium text-xs shadow-2xs">
+            <span className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-full font-semibold text-xs shadow-2xs">
               {userList.filter(u => u.status === 'Active').length} Active Investors
             </span>
-            <span className="px-3.5 py-1.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-xl font-medium text-xs shadow-2xs">
+            <span className="px-3.5 py-1.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-full font-semibold text-xs shadow-2xs">
               {userList.length} Total Users
             </span>
           </div>
@@ -196,14 +196,14 @@ export default function Users() {
             onChange={setSearch}
             className="flex-1 font-poppins text-xs"
           />
-          <div className="flex gap-2 overflow-x-auto font-poppins">
+          <div className="flex gap-2 overflow-x-auto font-poppins scrollbar-none pb-0.5">
             {['all', 'Active', 'Inactive'].map(st => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-4 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${
+                className={`px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                   statusFilter === st
-                    ? 'bg-gold-400 text-slate-900 shadow-gold font-semibold'
+                    ? 'bg-gold-400 text-slate-900 shadow-gold font-bold'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
@@ -280,7 +280,7 @@ export default function Users() {
 
                     {/* Referred By / Sponsor */}
                     <td>
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gold-50/80 text-slate-700 text-xs font-medium border border-gold-200/80 whitespace-nowrap font-poppins">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold-50/80 text-slate-700 text-xs font-semibold border border-gold-200/80 whitespace-nowrap font-poppins">
                         <RiGroupLine size={13} className="text-gold-600" />
                         {user.referredBy || 'Direct Platform'}
                       </span>
@@ -298,7 +298,7 @@ export default function Users() {
 
                     {/* Active Payout Mode */}
                     <td>
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 text-slate-700 text-xs font-medium border border-slate-200/80 whitespace-nowrap font-poppins">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100/90 text-slate-700 text-xs font-semibold border border-slate-200/80 whitespace-nowrap font-poppins">
                         {user.payoutType || 'None'}
                       </span>
                     </td>
@@ -316,7 +316,7 @@ export default function Users() {
                         {/* View Button */}
                         <button
                           onClick={() => setSelectedUser(user)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-gold-50 text-slate-600 hover:text-gold-800 text-xs font-medium transition-all border border-slate-200/80 hover:border-gold-300 active:scale-95 shadow-2xs"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-gold-800 text-xs font-semibold transition-all border border-slate-200/80 hover:border-gold-300 active:scale-95 shadow-2xs"
                           title="View user details & investment portfolio"
                         >
                           <RiEyeLine size={14} />
@@ -326,7 +326,7 @@ export default function Users() {
                         {/* Delete Button */}
                         <button
                           onClick={() => setUserToDelete(user)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-medium transition-all border border-red-200/70 hover:border-red-300 active:scale-95 shadow-2xs"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-semibold transition-all border border-red-200/70 hover:border-red-300 active:scale-95 shadow-2xs"
                           title="Delete user"
                         >
                           <RiDeleteBinLine size={14} />
@@ -397,12 +397,12 @@ export default function Users() {
                     {selectedUser.customId || `HORIZON-USR-0${selectedUser.id}`}
                   </p>
                   <p className="text-xs text-slate-500 font-poppins font-normal">{selectedUser.email}</p>
-                  <div className="flex items-center gap-2 mt-2 font-poppins">
+                  <div className="flex flex-wrap items-center gap-2 mt-2 font-poppins">
                     <Badge variant={statusVariant(selectedUser.status)}>{selectedUser.status}</Badge>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-white text-slate-600 border border-slate-200 shadow-2xs">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold bg-white text-slate-600 border border-slate-200 shadow-2xs">
                       <RiGlobalLine size={13} className="text-gold-600" /> {selectedUser.country}
                     </span>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-normal bg-white text-slate-500 border border-slate-200 shadow-2xs">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-medium bg-white text-slate-500 border border-slate-200 shadow-2xs">
                       <RiCalendarEventLine size={13} className="text-slate-400" /> Joined {selectedUser.joined}
                     </span>
                   </div>
@@ -492,8 +492,8 @@ export default function Users() {
                             </div>
                             <div>
                               <h5 className="text-sm font-medium text-slate-800 font-poppins">{plan.name}</h5>
-                              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                                isRenewable ? 'bg-emerald-100/70 text-emerald-800' : 'bg-amber-100/70 text-amber-800'
+                              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                                isRenewable ? 'bg-emerald-100/70 text-emerald-800 border border-emerald-300/80' : 'bg-amber-100/70 text-amber-800 border border-amber-300/80'
                               }`}>
                                 {plan.category}
                               </span>

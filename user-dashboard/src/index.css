@@ -238,19 +238,28 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 12px;
 }
 
-/* ===== BADGE STYLES ===== */
+/* ===== BADGE & PILL STYLES ===== */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 6px;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
   font-size: 11px;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: 0.025em;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.03em;
   white-space: nowrap;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .badge {
+    padding: 2.5px 8px;
+    font-size: 10px;
+    gap: 4px;
+  }
 }
 
 .badge-success {
@@ -446,21 +455,42 @@ h1, h2, h3, h4, h5, h6 {
   z-index: 20;
 }
 
-/* ===== TAB STYLES ===== */
+@media (max-width: 640px) {
+  .drawer-header {
+    padding: 12px 14px;
+  }
+  .drawer-body {
+    padding: 14px 12px;
+  }
+  .drawer-footer {
+    padding: 12px 14px;
+  }
+}
+
+/* ===== TAB & PILL STYLES ===== */
 .tabs-bar {
   display: flex;
-  gap: 4px;
-  padding: 4px;
+  gap: 6px;
+  padding: 5px;
   background: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: 9999px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tabs-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .tab-item {
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -468,18 +498,30 @@ h1, h2, h3, h4, h5, h6 {
   background: transparent;
   white-space: nowrap;
   font-family: 'Inter', sans-serif;
+  user-select: none;
+}
+
+@media (max-width: 640px) {
+  .tabs-bar {
+    padding: 4px;
+    gap: 4px;
+  }
+  .tab-item {
+    padding: 6px 12px;
+    font-size: 11.5px;
+  }
 }
 
 .tab-item:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .tab-item.active {
   background: var(--white);
   color: var(--text-primary);
-  font-weight: 600;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 /* ===== ANIMATIONS ===== */

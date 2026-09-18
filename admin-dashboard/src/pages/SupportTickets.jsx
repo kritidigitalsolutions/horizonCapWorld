@@ -288,26 +288,26 @@ export default function SupportTickets() {
   const getPriorityBadge = (p) => {
     switch (p.toLowerCase()) {
       case 'urgent':
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-red-50 text-red-700 text-[11px] font-bold border border-red-200 whitespace-nowrap">Urgent</span>;
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 text-[10px] font-bold border border-red-200 uppercase tracking-wider whitespace-nowrap">Urgent</span>;
       case 'high':
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-orange-50 text-orange-700 text-[11px] font-semibold border border-orange-200 whitespace-nowrap">High</span>;
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 text-[10px] font-bold border border-orange-200 uppercase tracking-wider whitespace-nowrap">High</span>;
       case 'medium':
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-medium border border-blue-200 whitespace-nowrap">Medium</span>;
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-200 uppercase tracking-wider whitespace-nowrap">Medium</span>;
       default:
-        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 text-[11px] font-medium border border-slate-200 whitespace-nowrap">Low</span>;
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200 uppercase tracking-wider whitespace-nowrap">Low</span>;
     }
   };
 
   const getStatusBadge = (s) => {
     switch (s.toLowerCase()) {
       case 'open':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-300 shadow-2xs whitespace-nowrap">Open</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-300 shadow-2xs uppercase tracking-wider whitespace-nowrap">Open</span>;
       case 'in progress':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-50 text-blue-800 text-xs font-semibold border border-blue-300 shadow-2xs whitespace-nowrap">In Progress</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 text-[10px] font-bold border border-blue-300 shadow-2xs uppercase tracking-wider whitespace-nowrap">In Progress</span>;
       case 'resolved':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-300 shadow-2xs whitespace-nowrap">Resolved</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-300 shadow-2xs uppercase tracking-wider whitespace-nowrap">Resolved</span>;
       default:
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200 shadow-2xs whitespace-nowrap">Closed</span>;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200 shadow-2xs uppercase tracking-wider whitespace-nowrap">Closed</span>;
     }
   };
 
@@ -436,14 +436,14 @@ export default function SupportTickets() {
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
                 statusFilter === tab.id
                   ? 'bg-gold-400 text-slate-900 font-semibold shadow-gold'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               <span>{tab.label}</span>
-              <span className="px-2 py-0.5 rounded-md text-[10px] bg-white text-slate-800 font-bold border border-slate-200 shadow-2xs">
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-white text-slate-800 font-bold border border-slate-200 shadow-2xs">
                 {tab.count}
               </span>
             </button>
@@ -483,7 +483,7 @@ export default function SupportTickets() {
                   >
                     {/* Ticket ID */}
                     <td className="whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gold-50/80 text-gold-900 text-xs font-bold border border-gold-300/80 font-mono whitespace-nowrap shadow-2xs">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gold-50/80 text-gold-900 text-xs font-bold border border-gold-300/80 font-mono whitespace-nowrap shadow-2xs">
                         <RiTicketLine size={13} className="text-gold-600" />
                         {t.id}
                       </span>
@@ -518,7 +518,7 @@ export default function SupportTickets() {
 
                     {/* Category / Dept */}
                     <td className="whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 text-slate-700 text-xs font-medium border border-slate-200/80 whitespace-nowrap font-poppins">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100/90 text-slate-700 text-xs font-medium border border-slate-200/80 whitespace-nowrap font-poppins">
                         {t.category}
                       </span>
                     </td>
@@ -540,7 +540,7 @@ export default function SupportTickets() {
 
                     {/* Messages Count Badge */}
                     <td className="whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-200 whitespace-nowrap font-poppins">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-200 whitespace-nowrap font-poppins">
                         <RiChat1Line size={13} className="text-blue-500" />
                         {t.messages.length} Msgs
                       </span>
@@ -572,7 +572,7 @@ export default function SupportTickets() {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => setActiveTicket(t)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins whitespace-nowrap"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins whitespace-nowrap"
                           title="Open full conversation thread"
                         >
                           <RiChat1Line size={14} className="text-slate-900" />
@@ -581,7 +581,7 @@ export default function SupportTickets() {
 
                         <button
                           onClick={() => setDeletingTicket(t)}
-                          className="p-1.5 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-600 transition-all border border-slate-200 shadow-2xs"
+                          className="w-8 h-8 rounded-full inline-flex items-center justify-center bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-600 transition-all border border-slate-200 shadow-2xs"
                           title="Delete Support Ticket"
                         >
                           <RiDeleteBinLine size={14} />
@@ -643,7 +643,7 @@ export default function SupportTickets() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="text-sm font-bold text-slate-800 leading-tight">{activeTicket.userName}</h4>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-white rounded-lg border border-gold-300 text-[11px] font-semibold text-gold-900 shadow-2xs whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-white rounded-full border border-gold-300 text-[11px] font-semibold text-gold-900 shadow-2xs whitespace-nowrap">
                       <RiTrophyLine size={12} className="text-gold-600" />
                       {activeTicket.userRank}
                     </span>
@@ -1001,7 +1001,7 @@ export default function SupportTickets() {
                   </button>
 
                   {attachedFile && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gold-50 text-gold-900 border border-gold-300 rounded-xl text-xs font-medium shadow-2xs">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-gold-50 text-gold-900 border border-gold-300 rounded-full text-xs font-medium shadow-2xs">
                       {getMediaType(attachedFile) === 'image' && <RiImageLine size={15} className="text-gold-600" />}
                       {getMediaType(attachedFile) === 'pdf' && <RiFilePdfLine size={15} className="text-red-500" />}
                       {getMediaType(attachedFile) === 'video' && <RiVideoLine size={15} className="text-blue-500" />}

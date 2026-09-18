@@ -34,7 +34,7 @@ export default function PageHeader({
 
       {/* Right Side Action Buttons */}
       {actions && (
-        <div className="flex items-center gap-2.5 flex-shrink-0 self-start sm:self-auto">
+        <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
           {actions}
         </div>
       )}

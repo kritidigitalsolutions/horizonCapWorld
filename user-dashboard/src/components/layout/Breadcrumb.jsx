@@ -12,8 +12,10 @@ const routeLabels = {
   'referrals': 'Referral Network',
   'referral-plans': 'Referral Commission Plans',
   'ranks': 'Rank Progression Ladder',
+  'notifications': 'Notification Center',
   'profile': 'My Profile',
   'support': 'Support Desk',
+  'news': 'News & Media',
 };
 
 export default function Breadcrumb() {
@@ -23,7 +25,7 @@ export default function Breadcrumb() {
   if (pathSegments.length === 0) return null;
 
   return (
-    <nav className="flex items-center gap-1.5 text-sm mb-6">
+    <nav className="flex items-center gap-1.5 text-xs sm:text-sm mb-4 sm:mb-6 overflow-x-auto whitespace-nowrap pb-1 font-poppins">
       <Link to="/" className="flex items-center gap-1 text-gray-400 hover:text-gold-500 transition-colors">
         <RiHome4Line size={16} />
         <span>Home</span>

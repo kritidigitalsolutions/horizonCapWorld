@@ -147,7 +147,7 @@ export default function MyInvestments() {
         actions={
           <Link
             to="/plans"
-            className="btn btn-primary text-xs px-4 py-2.5 rounded-xl font-bold shadow-xs flex items-center gap-1.5"
+            className="btn btn-primary text-xs px-4 py-2 rounded-full font-bold shadow-xs flex items-center gap-1.5"
           >
             <RiFundsLine size={16} /> Explore New Plans <RiArrowRightLine size={14} />
           </Link>
@@ -212,7 +212,7 @@ export default function MyInvestments() {
                 key={tab.id}
                 type="button"
                 onClick={() => setStatusFilter(tab.id)}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold capitalize whitespace-nowrap transition-all cursor-pointer ${
+                className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold capitalize whitespace-nowrap transition-all cursor-pointer ${
                   statusFilter === tab.id
                     ? 'bg-gold-400 text-gray-900 shadow-gold font-bold'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -289,7 +289,7 @@ export default function MyInvestments() {
                       type="button"
                       disabled={togglingId === inv._id}
                       onClick={() => handleToggleAutoRenewal(inv._id)}
-                      className={`text-[11px] font-bold px-3 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 self-start sm:self-center ${
+                      className={`text-[11px] font-bold px-3.5 py-1.5 rounded-full border transition-all cursor-pointer flex items-center gap-1.5 self-start sm:self-center ${
                         inv.autoRenewal
                           ? 'bg-amber-100/90 text-amber-950 border-amber-300 hover:bg-amber-200 shadow-2xs'
                           : 'bg-white text-slate-600 border-slate-200 hover:border-gold-400 hover:text-gold-700 shadow-2xs'

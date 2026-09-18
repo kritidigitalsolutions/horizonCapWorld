@@ -66,24 +66,24 @@ export default function NotificationDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gold-50 transition-colors text-gray-500 hover:text-gold-500 cursor-pointer"
+        className="relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-gold-50 transition-colors text-gray-600 hover:text-gold-600 border border-gray-200/80 shadow-2xs cursor-pointer active:scale-95"
         aria-label="Notifications"
       >
-        <RiNotification3Line size={22} />
+        <RiNotification3Line size={20} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-pulse">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 animate-slide-up overflow-hidden font-poppins">
+        <div className="absolute -right-12 sm:right-0 top-full mt-2 w-[calc(100vw-32px)] max-w-sm sm:w-96 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 animate-slide-up overflow-hidden font-poppins">
           <div className="p-4 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h4 className="font-semibold text-gray-800 text-sm">Notifications</h4>
               {unreadCount > 0 && (
-                <span className="badge-gold badge text-[10px] px-2 py-0.5">{unreadCount} new</span>
+                <span className="badge-gold badge text-[10px] px-2.5 py-0.5 rounded-full font-bold">{unreadCount} new</span>
               )}
             </div>
             {unreadCount > 0 && (

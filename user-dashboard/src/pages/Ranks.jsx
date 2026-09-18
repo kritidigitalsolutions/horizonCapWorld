@@ -289,7 +289,7 @@ export default function Ranks() {
       />
 
       {/* ──────────────── 4 ROLLING ODOMETER KPI CARDS ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-2 2xl:grid-cols-4 gap-2.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Rank Rewards Distributed"
           numericValue={leaderboardList.reduce((sum, l) => sum + Number(l.rewardsEarned || l.reward || 0), 0)}
@@ -329,24 +329,24 @@ export default function Ranks() {
       </div>
 
       {/* ──────────────── CURRENT USER RANK PROGRESSION BANNER CARD ──────────────── */}
-      <div className="card-gold p-6 rounded-2xl shadow-gold border border-gold-300 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 flex items-center justify-center text-slate-950 shadow-gold ring-2 ring-gold-200/80 flex-shrink-0">
+      <div className="card-gold p-5 sm:p-6 rounded-2xl shadow-gold border border-gold-300 relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
+          <div className="flex items-center gap-3.5 sm:gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 flex items-center justify-center text-slate-950 shadow-gold ring-2 ring-gold-200/80 flex-shrink-0">
               {getRankIcon(currentLevel)}
             </div>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-gold-900/70 font-poppins">
                 YOUR CURRENT LEADERSHIP RANK
               </p>
-              <h3 className="text-2xl sm:text-3xl font-black font-display text-slate-950 leading-tight">
+              <h3 className="text-xl sm:text-2xl md:text-3xl font-black font-display text-slate-950 leading-tight">
                 {currentRankObj?.name || 'Associate'}
               </h3>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="px-2.5 py-0.5 rounded-full bg-slate-950 text-gold-400 font-extrabold text-xs shadow-xs">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-full bg-slate-950 text-gold-400 font-extrabold text-[11px] shadow-xs">
                   Level {currentLevel} of {ranks.length}
                 </span>
-                <span className="text-xs font-bold text-emerald-800">
+                <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                   +${currentRankReward.toLocaleString()}.00 Cash Bonus Claimed
                 </span>
               </div>
@@ -354,21 +354,21 @@ export default function Ranks() {
           </div>
 
           {/* Quick Metrics */}
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="p-3.5 bg-white/80 backdrop-blur-sm rounded-2xl border border-gold-200 shadow-2xs text-center min-w-[130px]">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 w-full md:w-auto">
+            <div className="p-3 sm:p-3.5 bg-white/80 backdrop-blur-sm rounded-2xl border border-gold-200 shadow-2xs text-center min-w-[120px]">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                 Your Team Turnover
               </span>
-              <span className="text-base font-extrabold text-slate-900 font-mono mt-0.5 block">
+              <span className="text-sm sm:text-base font-extrabold text-slate-900 font-mono mt-0.5 block">
                 ${userTurnover.toLocaleString()}.00
               </span>
             </div>
 
-            <div className="p-3.5 bg-white/80 backdrop-blur-sm rounded-2xl border border-gold-200 shadow-2xs text-center min-w-[130px]">
+            <div className="p-3 sm:p-3.5 bg-white/80 backdrop-blur-sm rounded-2xl border border-gold-200 shadow-2xs text-center min-w-[120px]">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                 Next Rank Bonus
               </span>
-              <span className="text-base font-extrabold text-emerald-600 font-mono mt-0.5 block">
+              <span className="text-sm sm:text-base font-extrabold text-emerald-600 font-mono mt-0.5 block">
                 +${nextRankReward.toLocaleString()}.00
               </span>
             </div>
@@ -377,13 +377,13 @@ export default function Ranks() {
 
         {/* Progress Bar to Next Level */}
         {currentLevel < ranks.length && (
-          <div className="mt-6 pt-5 border-t border-gold-300/60 relative z-10 space-y-2">
-            <div className="flex items-center justify-between text-xs font-poppins">
-              <span className="font-bold text-slate-900 flex items-center gap-1.5">
+          <div className="mt-5 pt-4 border-t border-gold-300/60 relative z-10 space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs font-poppins">
+              <span className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
                 <RiProgress3Line size={16} className="text-gold-800" />
-                Progress towards <strong>{nextRankObj?.name || 'Next Rank'} (Level {nextRankObj?.level || currentLevel + 1})</strong>:
+                <span>Progress towards <strong>{nextRankObj?.name || 'Next Rank'} (Level {nextRankObj?.level || currentLevel + 1})</strong>:</span>
               </span>
-              <span className="font-extrabold font-mono text-gold-950">
+              <span className="font-extrabold font-mono text-gold-950 bg-gold-100/90 px-2.5 py-0.5 rounded-full border border-gold-300 shadow-2xs w-fit">
                 ${userTurnover.toLocaleString()} / ${nextRankMinInvest.toLocaleString()} ({progressPercent}%)
               </span>
             </div>
@@ -395,10 +395,10 @@ export default function Ranks() {
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-[11px] text-slate-800 pt-0.5 font-medium gap-1">
-              <span>Required Downline: {nextRankObj?.downlineStructureRequired || 'Direct active clients'}</span>
-              <span>
-                ${Math.max(0, nextRankMinInvest - userTurnover).toLocaleString()} more client turnover needed to unlock +${nextRankReward.toLocaleString()}.00
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-[11px] text-slate-800 pt-1 font-medium gap-1.5">
+              <span className="font-semibold text-slate-700">Required Downline: <strong className="text-slate-900">{nextRankObj?.downlineStructureRequired || 'Direct active clients'}</strong></span>
+              <span className="text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/80 w-fit">
+                ${Math.max(0, nextRankMinInvest - userTurnover).toLocaleString()} turnover needed to unlock +${nextRankReward.toLocaleString()}.00
               </span>
             </div>
           </div>
@@ -406,7 +406,7 @@ export default function Ranks() {
       </div>
 
       {/* ──────────────── TABS SWITCHER ──────────────── */}
-      <div className="card p-2">
+      <div className="card p-1.5 sm:p-2">
         <div className="flex items-center gap-2 overflow-x-auto font-poppins">
           {[
             { id: 'ladder', label: 'Rank Ladder', count: `${ranks.length} Tiers`, icon: <RiTrophyLine /> },
@@ -415,14 +415,14 @@ export default function Ranks() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${activeTab === tab.id
+              className={`px-3.5 sm:px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 sm:gap-2 cursor-pointer ${activeTab === tab.id
                   ? 'bg-gold-400 text-slate-900 font-bold shadow-gold'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
             >
               <span className="text-sm">{tab.icon}</span>
               <span>{tab.label}</span>
-              <span className="px-2 py-0.5 rounded-md text-[10px] bg-white/80 text-slate-800 font-bold border border-slate-200/80 shadow-2xs">
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/80 text-slate-800 font-bold border border-slate-200/80 shadow-2xs">
                 {tab.count}
               </span>
             </button>
@@ -437,7 +437,7 @@ export default function Ranks() {
             {/* Elegant Top Toolbar with proper margin & padding */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 font-poppins">
               <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-2xl bg-gold-400/20 text-gold-700 flex items-center justify-center border border-gold-300 shadow-2xs flex-shrink-0">
+                <div className="w-11 h-11 rounded-full bg-gold-400/20 text-gold-700 flex items-center justify-center border border-gold-300 shadow-2xs flex-shrink-0">
                   <RiTrophyLine size={22} />
                 </div>
                 <div>
@@ -454,6 +454,14 @@ export default function Ranks() {
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* Mobile Horizontal Scroll Helper Banner */}
+            <div className="md:hidden flex items-center justify-between text-xs text-amber-900 bg-amber-50/90 px-3.5 py-2 rounded-xl border border-amber-200/80 font-medium">
+              <span className="flex items-center gap-1.5 font-bold">
+                <RiTrophyLine size={14} className="text-amber-600" />
+                <span>Swipe table left to view all 9 tier criteria & rewards &rarr;</span>
+              </span>
             </div>
 
             {/* Grid Table with proper spacing from top */}
@@ -496,7 +504,7 @@ export default function Ranks() {
                       >
                         {/* Level Index */}
                         <td className="py-3 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-200 bg-gold-50/30">
-                          <span className={`w-6 h-6 rounded-md font-bold border inline-flex items-center justify-center shadow-2xs ${isCurrent
+                          <span className={`w-7 h-7 rounded-full font-bold border inline-flex items-center justify-center shadow-2xs ${isCurrent
                               ? 'bg-gold-400 text-slate-950 border-gold-500 font-black'
                               : 'bg-gold-100/90 text-gold-950 border-gold-300'
                             }`}>
@@ -507,7 +515,7 @@ export default function Ranks() {
                         {/* Rank Name */}
                         <td className="py-3 px-3.5 border-r border-slate-200">
                           <div className="flex items-center gap-2.5">
-                            <div className={`w-8 h-8 rounded-lg border shadow-2xs flex items-center justify-center flex-shrink-0 ${isCurrent
+                            <div className={`w-9 h-9 rounded-full border shadow-2xs flex items-center justify-center flex-shrink-0 ${isCurrent
                                 ? 'bg-gold-400/30 border-gold-400'
                                 : 'bg-gold-50/90 border-gold-300'
                               }`}>
@@ -519,12 +527,12 @@ export default function Ranks() {
                                   {r.name}
                                 </span>
                                 {isCurrent && (
-                                  <span className="text-[9px] font-black bg-slate-950 text-gold-300 px-1.5 py-0.2 rounded uppercase tracking-wider">
+                                  <span className="text-[9px] font-black bg-slate-950 text-gold-300 px-2 py-0.5 rounded-full uppercase tracking-wider">
                                     You
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] font-bold text-gold-900 bg-gold-100/90 border border-gold-300 px-1.5 py-0.2 rounded uppercase tracking-wider inline-block">
+                              <span className="text-[10px] font-bold text-gold-900 bg-gold-100/90 border border-gold-300 px-2 py-0.5 rounded-full uppercase tracking-wider inline-block mt-0.5">
                                 Tier {r.level}
                               </span>
                             </div>
@@ -543,14 +551,14 @@ export default function Ranks() {
 
                         {/* Condition */}
                         <td className="py-3 px-3.5 border-r border-slate-200">
-                          <span className="inline-block px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[11px] leading-snug">
+                          <span className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[11px] leading-snug">
                             {condText}
                           </span>
                         </td>
 
                         {/* One Time Cash Reward */}
                         <td className="py-3 px-3 text-center border-r border-slate-200 bg-emerald-50/20">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs">
                             +${rewardAmt.toLocaleString()}
                           </span>
                         </td>
@@ -558,11 +566,11 @@ export default function Ranks() {
                         {/* Company Profit %ge */}
                         <td className="py-3 px-3 text-center border-r border-slate-200">
                           {profitShare === '0' || profitShare === 0 || !profitShare ? (
-                            <span className="inline-block px-2.5 py-1 rounded bg-slate-100 text-slate-500 font-mono font-bold text-xs border border-slate-200">
+                            <span className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-500 font-mono font-bold text-xs border border-slate-200">
                               0
                             </span>
                           ) : (
-                            <span className="inline-block px-2.5 py-1 rounded-md bg-purple-50 text-purple-900 font-medium border border-purple-200 text-[11px] leading-tight text-left">
+                            <span className="inline-block px-3 py-1 rounded-full bg-purple-50 text-purple-900 font-medium border border-purple-200 text-[11px] leading-tight text-left">
                               {profitShare}
                             </span>
                           )}
@@ -570,7 +578,7 @@ export default function Ranks() {
 
                         {/* Downline Structure required */}
                         <td className="py-3 px-3.5 border-r border-slate-200">
-                          <span className="inline-block px-2.5 py-1 rounded-md bg-amber-50 text-amber-950 font-medium border border-amber-200 text-[11px] leading-tight">
+                          <span className="inline-block px-3 py-1 rounded-full bg-amber-50 text-amber-950 font-medium border border-amber-200 text-[11px] leading-tight">
                             {downlineReq}
                           </span>
                         </td>
@@ -578,18 +586,18 @@ export default function Ranks() {
                         {/* Status */}
                         <td className="py-3 px-3 text-center">
                           {isCurrent ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gold-400 text-slate-950 text-xs font-black shadow-2xs border border-gold-500">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gold-400 text-slate-950 text-xs font-black shadow-2xs border border-gold-500">
                               <RiStarLine size={12} /> Current
                             </span>
                           ) : isUnlocked ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
                               <RiCheckLine size={12} /> Claimed
                             </span>
                           ) : (
                             <button
                               type="button"
                               onClick={() => setSelectedRankDrawer(r)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-slate-950 border border-slate-200 text-xs font-bold transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-slate-950 border border-slate-200 text-xs font-bold transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
                             >
                               <RiLockLine size={12} /> View Audit
                             </button>
