@@ -86,3 +86,39 @@ exports.deleteFile = async (req, res) => {
     });
   }
 };
+
+// @desc    Generate Cloudinary Signature for direct browser-to-Cloudinary upload
+// @route   GET /api/upload/signature
+exports.getUploadSignature = async (req, res) => {
+  try {
+    const cloudinary = require("../configs/cloudinary");
+    const folder = req.query.folder || "horizoncap/videos";
+    const timestamp = Math.round(new Date().getTime() / 1000);
+
+    const paramsToSign = {
+      folder,
+      timestamp,
+    };
+
+    const signature = cloudinary.utils.api_sign_request(
+      paramsToSign,
+      process.env.CLOUDINARY_API_SECRET
+    );
+
+    res.status(200).json({
+      success: true,
+      signature,
+      timestamp,
+      apiKey: process.env.CLOUDINARY_API_KEY,
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+      folder,
+    });
+  } catch (error) {
+    console.error("[Cloudinary Signature Error]:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to generate Cloudinary signature.",
+    });
+  }
+};
+

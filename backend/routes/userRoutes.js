@@ -54,6 +54,7 @@ const {
   getNews,
   getNewsArticle,
   getDepositVideo,
+  getWithdrawalVideo,
   getSupportChannels,
   createSupportTicket,
   getMyTickets,
@@ -93,6 +94,7 @@ router.get("/deposits/gateways", protectUser, getDepositGateways);
 router.get("/deposits/tutorial-video", getDepositVideo);
 router.post("/deposits", protectUser, createDeposit);
 router.get("/withdrawals/settings", getWithdrawalSettings);
+router.get("/withdrawals/tutorial-video", getWithdrawalVideo);
 router.post("/withdrawals", protectUser, createWithdrawal);
 router.get("/transactions", protectUser, getTransactions);
 router.get("/transactions/:id", protectUser, getTransactionById);

@@ -7,7 +7,7 @@ import {
   RiShieldCheckLine, RiDeleteBinLine, RiRefreshLine,
   RiSmartphoneLine, RiBankLine,
   RiCoinsLine, RiWallet3Line, RiFlashlightLine,
-  RiLoader4Line
+  RiLoader4Line, RiDownload2Line
 } from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -164,6 +164,30 @@ export default function Deposit() {
     navigator.clipboard.writeText(text);
     setCopiedField(fieldName);
     setTimeout(() => setCopiedField(''), 2000);
+  };
+
+  const handleDownloadVideo = (url, fileName = "official_deposit_tutorial.mp4") => {
+    if (!url) {
+      toast.error("Video tutorial file is not available for download.");
+      return;
+    }
+    try {
+      let downloadUrl = url;
+      if (downloadUrl.includes("cloudinary.com") && downloadUrl.includes("/upload/")) {
+        downloadUrl = downloadUrl.replace("/upload/", "/upload/fl_attachment/");
+      }
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = fileName;
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success("Deposit guide video download started!", "Downloading Video");
+    } catch (err) {
+      console.error("Download failed:", err);
+      window.open(url, "_blank");
+    }
   };
 
   const handleSlipUpload = async (e) => {
@@ -1108,13 +1132,25 @@ export default function Deposit() {
         subtitle="Watch step-by-step video instructions uploaded by platform administration"
         size="lg"
         footer={
-          <button
-            type="button"
-            onClick={() => setIsVideoModalOpen(false)}
-            className="btn btn-primary text-xs px-5 py-2.5 rounded-xl font-bold shadow-gold cursor-pointer"
-          >
-            Got it, proceed to deposit
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-2.5">
+            {tutorialVideo.videoUrl && !tutorialVideo.videoUrl.includes('youtube.com') && !tutorialVideo.videoUrl.includes('youtu.be') && (
+              <button
+                type="button"
+                onClick={() => handleDownloadVideo(tutorialVideo.videoUrl, "official_deposit_tutorial.mp4")}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-gold-500 hover:from-amber-600 hover:to-gold-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-gold cursor-pointer"
+              >
+                <RiDownload2Line size={16} />
+                <span>Download Video Guide</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsVideoModalOpen(false)}
+              className="w-full sm:w-auto btn btn-primary text-xs px-5 py-2.5 rounded-xl font-bold shadow-gold cursor-pointer"
+            >
+              Got it, proceed to deposit
+            </button>
+          </div>
         }
       >
         <div className="space-y-5 font-poppins">

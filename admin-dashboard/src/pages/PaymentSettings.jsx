@@ -32,6 +32,8 @@ import {
   RiEyeLine,
   RiFileCopyLine,
   RiPercentLine,
+  RiDownload2Line,
+  RiVolumeUpLine,
 } from "react-icons/ri";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -48,10 +50,16 @@ import {
   deletePaymentMethod,
   getDepositVideo,
   updateDepositVideo,
+  getWithdrawalVideo,
+  updateWithdrawalVideo,
   getWithdrawalSettings,
   updateWithdrawalSettings,
 } from "../api/paymentGatewaysApi";
-import { uploadFileToCloudinary, deleteFileFromCloudinary } from "../api/uploadApi";
+import {
+  uploadFileToCloudinary,
+  deleteFileFromCloudinary,
+  uploadVideoDirectToCloudinary,
+} from "../api/uploadApi";
 import { useToast } from "../context/ToastContext";
 
 export default function PaymentSettings() {
@@ -77,7 +85,7 @@ export default function PaymentSettings() {
       "Watch this 2-minute step-by-step video before transferring funds to ensure instant auto-credit and zero delays.",
     videoType: "url",
     videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    youtubeUrl: "",
     uploadedVideoName: "",
     instructions: [
       "Choose your preferred deposit channel from the left menu.",
@@ -94,7 +102,38 @@ export default function PaymentSettings() {
   const [videoPreviewOpen, setVideoPreviewOpen] = useState(false);
   const [videoForm, setVideoForm] = useState(defaultTutorialVideo);
   const [videoSavedNotification, setVideoSavedNotification] = useState(false);
-  const videoFileInputRef = useRef(null);
+  const [uploadingDepositVideo, setUploadingDepositVideo] = useState(false);
+  const [depositVideoProgress, setDepositVideoProgress] = useState(0);
+  const depositFileInputRef = useRef(null);
+
+  // ──────── WITHDRAWAL VIDEO TUTORIAL STUDIO STATE ────────
+  const defaultWithdrawalVideo = {
+    title:
+      "Official Withdrawal Guide: How to withdraw funds to Bank, Crypto or E-Wallet",
+    subtitle:
+      "Watch this step-by-step video guide before submitting your withdrawal request for fastest clearance and zero rejection.",
+    videoType: "url",
+    videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
+    youtubeUrl: "",
+    uploadedVideoName: "",
+    instructions: [
+      "Ensure your available earning wallet balance meets the minimum withdrawal requirement.",
+      "Select your verified receiving channel (Bank, Crypto USDT/BTC, or Mobile E-Wallet).",
+      "Enter your correct recipient address / account number and requested amount.",
+      "Check the real-time fee calculation and net receiving amount.",
+      "Submit your request — platform clears requests within standard turnaround (12-24 hrs).",
+    ],
+    status: "Published",
+  };
+
+  const [withdrawalTutorialVideo, setWithdrawalTutorialVideo] = useState(defaultWithdrawalVideo);
+  const [withdrawalVideoModalOpen, setWithdrawalVideoModalOpen] = useState(false);
+  const [withdrawalVideoPreviewOpen, setWithdrawalVideoPreviewOpen] = useState(false);
+  const [withdrawalVideoForm, setWithdrawalVideoForm] = useState(defaultWithdrawalVideo);
+  const [withdrawalVideoSavedNotification, setWithdrawalVideoSavedNotification] = useState(false);
+  const [uploadingWithdrawalVideo, setUploadingWithdrawalVideo] = useState(false);
+  const [withdrawalVideoProgress, setWithdrawalVideoProgress] = useState(0);
+  const withdrawalFileInputRef = useRef(null);
 
   // ──────── WITHDRAWAL CHARGES & POLICY STATE ────────
   const defaultWithdrawalSettings = {
@@ -180,9 +219,10 @@ export default function PaymentSettings() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [methodsRes, videoRes, withdrawalRes] = await Promise.all([
+        const [methodsRes, videoRes, withdrawalVideoRes, withdrawalRes] = await Promise.all([
           getPaymentMethods().catch(() => null),
           getDepositVideo().catch(() => null),
+          getWithdrawalVideo().catch(() => null),
           getWithdrawalSettings().catch(() => null),
         ]);
 
@@ -198,6 +238,12 @@ export default function PaymentSettings() {
           const videoData = videoRes.video || videoRes;
           if (videoData && typeof videoData === "object") {
             setTutorialVideo((prev) => ({ ...prev, ...videoData }));
+          }
+        }
+        if (withdrawalVideoRes) {
+          const wVideoData = withdrawalVideoRes.video || withdrawalVideoRes;
+          if (wVideoData && typeof wVideoData === "object") {
+            setWithdrawalTutorialVideo((prev) => ({ ...prev, ...wVideoData }));
           }
         }
         if (withdrawalRes?.withdrawalSettings) {
@@ -368,7 +414,12 @@ export default function PaymentSettings() {
     setVideoModalOpen(true);
   };
 
-  // ──────── SAVE / UPDATE VIDEO TUTORIAL ────────
+  const handleOpenWithdrawalVideoStudio = () => {
+    setWithdrawalVideoForm(withdrawalTutorialVideo);
+    setWithdrawalVideoModalOpen(true);
+  };
+
+  // ──────── SAVE / UPDATE DEPOSIT VIDEO TUTORIAL ────────
   const handleSaveVideoTutorial = async () => {
     try {
       const updated = await updateDepositVideo(videoForm);
@@ -383,6 +434,24 @@ export default function PaymentSettings() {
     } catch (error) {
       console.error("Failed to update video:", error);
       toast.error("Failed to update deposit video tutorial.", "Update Failed");
+    }
+  };
+
+  // ──────── SAVE / UPDATE WITHDRAWAL VIDEO TUTORIAL ────────
+  const handleSaveWithdrawalVideoTutorial = async () => {
+    try {
+      const updated = await updateWithdrawalVideo(withdrawalVideoForm);
+      const videoData = updated?.video || updated;
+      if (videoData && typeof videoData === "object") {
+        setWithdrawalTutorialVideo((prev) => ({ ...prev, ...videoData }));
+      }
+      setWithdrawalVideoSavedNotification(true);
+      setWithdrawalVideoModalOpen(false);
+      toast.success("Withdrawal video tutorial and verified instructions saved successfully!", "Withdrawal Video Updated");
+      setTimeout(() => setWithdrawalVideoSavedNotification(false), 3000);
+    } catch (error) {
+      console.error("Failed to update withdrawal video:", error);
+      toast.error("Failed to update withdrawal video tutorial.", "Update Failed");
     }
   };
 
@@ -409,33 +478,107 @@ export default function PaymentSettings() {
     }
   };
 
-  const handleVideoFileUpload = async (e) => {
-    const file = e.target.files?.[0];
+  // ──────── DIRECT CLOUDINARY VIDEO UPLOAD (UP TO 2 GB) ────────
+  const handleVideoDirectUpload = async (file, target = "deposit") => {
     if (!file) return;
-    const videoObjectUrl = URL.createObjectURL(file);
-    setVideoForm((prev) => ({
-      ...prev,
-      videoType: "upload",
-      videoUrl: videoObjectUrl,
-      uploadedVideoName: file.name,
-    }));
+
+    // Validate 2 GB max file size
+    const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      const sizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(2);
+      toast.error(
+        `Video file size (${sizeGB} GB) exceeds the maximum allowed limit of 2 GB. Please choose a video under 2 GB.`,
+        "File Size Exceeded"
+      );
+      return;
+    }
+
+    if (target === "deposit") {
+      setUploadingDepositVideo(true);
+      setDepositVideoProgress(0);
+    } else {
+      setUploadingWithdrawalVideo(true);
+      setWithdrawalVideoProgress(0);
+    }
 
     try {
-      const previousVideo = tutorialVideo?.videoUrl;
-      const uploadRes = await uploadFileToCloudinary(file, {
+      const res = await uploadVideoDirectToCloudinary(file, {
         folder: "horizoncap/videos",
-        resource_type: "video",
-        oldUrl: previousVideo,
+        onUploadProgress: (percent) => {
+          if (target === "deposit") {
+            setDepositVideoProgress(percent);
+          } else {
+            setWithdrawalVideoProgress(percent);
+          }
+        },
       });
-      if (uploadRes?.secure_url) {
-        setVideoForm((prev) => ({
-          ...prev,
-          videoUrl: uploadRes.secure_url,
-        }));
+
+      if (res?.secure_url) {
+        if (target === "deposit") {
+          setVideoForm((prev) => ({
+            ...prev,
+            videoUrl: res.secure_url,
+            videoType: "upload",
+            uploadedVideoName: file.name,
+          }));
+          toast.success("Deposit video uploaded directly to Cloudinary successfully!", "Upload Complete");
+        } else {
+          setWithdrawalVideoForm((prev) => ({
+            ...prev,
+            videoUrl: res.secure_url,
+            videoType: "upload",
+            uploadedVideoName: file.name,
+          }));
+          toast.success("Withdrawal video uploaded directly to Cloudinary successfully!", "Upload Complete");
+        }
       }
     } catch (err) {
-      console.warn("Video upload to Cloudinary fallback:", err.message);
+      console.error("Direct Cloudinary video upload failed:", err);
+      toast.error(err.message || "Failed to upload video to Cloudinary.", "Upload Error");
+    } finally {
+      if (target === "deposit") {
+        setUploadingDepositVideo(false);
+      } else {
+        setUploadingWithdrawalVideo(false);
+      }
     }
+  };
+
+  // ──────── 1-CLICK ATTACHMENT DOWNLOAD HELPER ────────
+  const handleDownloadVideo = (url, fallbackName = "tutorial-video.mp4") => {
+    if (!url) {
+      toast.error("No video file URL found to download.", "Download Failed");
+      return;
+    }
+    try {
+      let downloadUrl = url;
+      // Cloudinary fl_attachment forces automatic attachment download dialog
+      if (downloadUrl.includes("cloudinary.com") && downloadUrl.includes("/upload/")) {
+        downloadUrl = downloadUrl.replace("/upload/", "/upload/fl_attachment/");
+      }
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.setAttribute("download", fallbackName);
+      link.setAttribute("target", "_blank");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Download started! Check your downloads folder.", "Downloading Video");
+    } catch (err) {
+      console.error("Download error:", err);
+      window.open(url, "_blank");
+    }
+  };
+
+  const handleRemoveVideo = (target = "deposit") => {
+    if (target === "deposit") {
+      setVideoForm((prev) => ({ ...prev, videoUrl: "", uploadedVideoName: "" }));
+      if (depositFileInputRef.current) depositFileInputRef.current.value = "";
+    } else {
+      setWithdrawalVideoForm((prev) => ({ ...prev, videoUrl: "", uploadedVideoName: "" }));
+      if (withdrawalFileInputRef.current) withdrawalFileInputRef.current.value = "";
+    }
+    toast.info("Video file removed. Remember to click Save & Broadcast.", "Video Cleared");
   };
 
   const openCreateDrawer = (defaultCat = "Mobile E-Wallet") => {
@@ -809,6 +952,22 @@ export default function PaymentSettings() {
             <Button
               variant="secondary"
               size="sm"
+              icon={<RiVideoLine className="text-gold-600" />}
+              onClick={handleOpenVideoStudio}
+            >
+              Deposit Video
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<RiMovieLine className="text-amber-600" />}
+              onClick={handleOpenWithdrawalVideoStudio}
+            >
+              Withdrawal Video
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               icon={<RiPercentLine className="text-emerald-600" />}
               onClick={() => {
                 setWithdrawalForm(withdrawalSettings);
@@ -816,14 +975,6 @@ export default function PaymentSettings() {
               }}
             >
               Withdrawal Charges
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<RiVideoLine className="text-gold-600" />}
-              onClick={handleOpenVideoStudio}
-            >
-              Deposit Video Studio
             </Button>
             <Button
               variant="primary"
@@ -845,6 +996,14 @@ export default function PaymentSettings() {
         </div>
       )}
 
+      {withdrawalVideoSavedNotification && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-fade-in shadow-xs">
+          <RiCheckLine size={18} className="text-emerald-600" />
+          Withdrawal tutorial video guide updated and broadcasted to user
+          dashboards successfully!
+        </div>
+      )}
+
       {withdrawalSavedNotice && (
         <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-fade-in shadow-xs">
           <RiCheckLine size={18} className="text-emerald-600" />
@@ -852,33 +1011,33 @@ export default function PaymentSettings() {
         </div>
       )}
 
-      {/* ──────────────── TWO STUDIO CARDS: DEPOSIT VIDEO & WITHDRAWAL CHARGES ──────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      {/* ──────────────── THREE STUDIO CARDS: DEPOSIT VIDEO, WITHDRAWAL VIDEO & WITHDRAWAL CHARGES ──────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {/* Card 1: Deposit Tutorial Video */}
         <div className="card p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-gold-500/5 to-white border-2 border-gold-300 shadow-sm flex flex-col justify-between gap-4">
-          <div className="flex items-start gap-4 min-w-0">
+          <div className="flex items-start gap-3.5 min-w-0">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-400 via-gold-500 to-amber-600 text-slate-950 flex items-center justify-center flex-shrink-0 shadow-gold">
               <RiVideoLine size={24} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-sm sm:text-base font-bold text-slate-900 font-display">
-                  Deposit Video Tutorial Studio
+                  Deposit Video Studio
                 </h3>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider border border-emerald-300">
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider border border-emerald-300">
                   ● Live on User App
                 </span>
               </div>
-              <p className="text-xs text-slate-600 font-poppins mt-1 line-clamp-1">
+              <p className="text-xs text-slate-700 font-poppins mt-1 line-clamp-1">
                 <strong>Title:</strong> {tutorialVideo?.title}
               </p>
-              <p className="text-[11px] text-slate-400 font-poppins mt-0.5">
-                Users can watch step-by-step deposit guides before transferring funds.
+              <p className="text-[11px] text-slate-500 font-poppins mt-0.5">
+                Direct Cloudinary upload (up to 2 GB) with full sound & download on /deposit.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 flex-shrink-0">
+          <div className="flex items-center justify-end gap-2.5 flex-shrink-0 pt-2 border-t border-gold-200/50">
             <Button
               variant="secondary"
               icon={<RiPlayCircleLine className="text-gold-700" />}
@@ -898,19 +1057,63 @@ export default function PaymentSettings() {
           </div>
         </div>
 
-        {/* Card 2: Withdrawal Charges & Policy Studio */}
+        {/* Card 2: Withdrawal Tutorial Video */}
+        <div className="card p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-white border-2 border-amber-300 shadow-sm flex flex-col justify-between gap-4">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+              <RiMovieLine size={24} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 font-display">
+                  Withdrawal Video Studio
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider border border-emerald-300">
+                  ● Live on User App
+                </span>
+              </div>
+              <p className="text-xs text-slate-700 font-poppins mt-1 line-clamp-1">
+                <strong>Title:</strong> {withdrawalTutorialVideo?.title}
+              </p>
+              <p className="text-[11px] text-slate-500 font-poppins mt-0.5">
+                Direct Cloudinary upload (up to 2 GB) with full sound & download on /withdraw.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 flex-shrink-0 pt-2 border-t border-amber-200/50">
+            <Button
+              variant="secondary"
+              icon={<RiPlayCircleLine className="text-amber-700" />}
+              size="sm"
+              onClick={() => setWithdrawalVideoPreviewOpen(true)}
+            >
+              Preview
+            </Button>
+            <Button
+              variant="primary"
+              icon={<RiUploadCloud2Line />}
+              size="sm"
+              onClick={handleOpenWithdrawalVideoStudio}
+            >
+              Edit Video
+            </Button>
+          </div>
+        </div>
+
+        {/* Card 3: Withdrawal Charges & Policy Studio */}
         <div className="card p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-white border-2 border-emerald-300 shadow-sm flex flex-col justify-between gap-4">
-          <div className="flex items-start gap-4 min-w-0">
+          <div className="flex items-start gap-3.5 min-w-0">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 text-white flex items-center justify-center flex-shrink-0 shadow-md">
               <RiPercentLine size={24} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-sm sm:text-base font-bold text-slate-900 font-display">
-                  Withdrawal Charges & Policy Studio
+                  Withdrawal Charges & Policy
                 </h3>
                 <span
-                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
                     withdrawalSettings.feeEnabled
                       ? "bg-emerald-100 text-emerald-800 border-emerald-300"
                       : "bg-slate-100 text-slate-600 border-slate-300"
@@ -929,16 +1132,15 @@ export default function PaymentSettings() {
                     : "0% (Free Payouts)"}
                 </span>
                 {" • "}
-                <strong>Min/Max:</strong> ${withdrawalSettings.minWithdrawal} - ${Number(withdrawalSettings.maxWithdrawal || 50000).toLocaleString()} USD
+                <strong>Min:</strong> ${withdrawalSettings.minWithdrawal}
               </p>
               <p className="text-[11px] text-slate-400 font-poppins mt-0.5 line-clamp-1">
                 Turnaround: <span className="font-semibold text-slate-700">{withdrawalSettings.processingTime}</span>
-                {" • "}Live on User /withdraw page with instant net calculation.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 flex-shrink-0">
+          <div className="flex items-center justify-end gap-2.5 flex-shrink-0 pt-2 border-t border-emerald-200/50">
             <Button
               variant="primary"
               icon={<RiPercentLine />}
@@ -1916,11 +2118,12 @@ export default function PaymentSettings() {
         )}
       </Modal>
 
-      {/* ──────────────── VIDEO STUDIO MODAL ──────────────── */}
+      {/* ──────────────── DEPOSIT VIDEO STUDIO MODAL ──────────────── */}
       <Modal
         isOpen={videoModalOpen}
         onClose={() => setVideoModalOpen(false)}
         title="Deposit Video Tutorial Studio"
+        subtitle="Upload or configure official step-by-step video guide for user deposits"
         size="lg"
         footer={
           <>
@@ -1940,32 +2143,180 @@ export default function PaymentSettings() {
           </>
         }
       >
-        <div className="space-y-4">
+        <div className="space-y-4 font-poppins">
           <div>
-            <label className="block text-xs font-semibold mb-1">Title *</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Tutorial Title *
+            </label>
             <input
               type="text"
               value={videoForm.title || ""}
               onChange={(e) =>
                 setVideoForm({ ...videoForm, title: e.target.value })
               }
-              className="w-full px-3 py-2 border rounded-xl text-xs"
+              placeholder="e.g. Official Deposit Guide: EasyPaisa, JazzCash & Crypto"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-gold-400 focus:border-gold-500 outline-none transition-all"
             />
           </div>
+
           <div>
-            <label className="block text-xs font-semibold mb-1">Subtitle</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Subtitle & Overview
+            </label>
             <textarea
               value={videoForm.subtitle || ""}
               onChange={(e) =>
                 setVideoForm({ ...videoForm, subtitle: e.target.value })
               }
-              className="w-full px-3 py-2 border rounded-xl text-xs"
+              placeholder="Short helpful guidance for investors..."
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-gold-400 focus:border-gold-500 outline-none transition-all"
               rows="2"
             ></textarea>
           </div>
+
+          {/* CLOUDINARY DIRECT VIDEO UPLOAD BOX (UP TO 2 GB) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider font-display">
+                Deposit Video File (Direct Cloudinary Upload)
+              </label>
+              <span className="text-[10px] font-bold text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-300">
+                Max size: 2 GB (Direct CDN)
+              </span>
+            </div>
+
+            {uploadingDepositVideo ? (
+              <div className="p-6 rounded-2xl border-2 border-dashed border-gold-400 bg-gradient-to-b from-gold-50/60 to-amber-50/30 text-center space-y-3 animate-fade-in">
+                <div className="flex items-center justify-center gap-2 text-gold-800">
+                  <RiLoader4Line className="animate-spin text-gold-600" size={26} />
+                  <span className="font-bold text-sm">Uploading Directly to Cloudinary CDN...</span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-3.5 overflow-hidden shadow-inner p-0.5">
+                  <div
+                    className="h-full bg-gradient-to-r from-gold-400 via-amber-500 to-gold-600 rounded-full transition-all duration-300 relative"
+                    style={{ width: `${depositVideoProgress}%` }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-xs font-bold text-slate-700 px-1">
+                  <span>Upload Progress: {depositVideoProgress}%</span>
+                  <span className="text-[11px] text-slate-500 font-normal">Fast CDN streaming ingestion</span>
+                </div>
+              </div>
+            ) : videoForm.videoUrl ? (
+              <div className="rounded-2xl border-2 border-gold-300/80 bg-white p-3.5 space-y-3 shadow-sm">
+                <div className="rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center shadow-inner relative group">
+                  <video
+                    key={videoForm.videoUrl}
+                    src={videoForm.videoUrl}
+                    controls
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pt-1 px-1">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300 flex items-center gap-1">
+                        <RiCheckLine size={13} /> Cloudinary Video Ready
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 text-[10px] font-semibold border border-blue-200 flex items-center gap-1">
+                        <RiVolumeUpLine size={12} /> Sound & Audio Enabled
+                      </span>
+                      {videoForm.uploadedVideoName && (
+                        <span className="text-xs text-slate-600 font-medium truncate max-w-[180px]">
+                          {videoForm.uploadedVideoName}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1 truncate max-w-md font-mono">
+                      {videoForm.videoUrl}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <input
+                      type="file"
+                      ref={depositFileInputRef}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleVideoDirectUpload(file, "deposit");
+                        e.target.value = "";
+                      }}
+                      accept="video/mp4,video/webm,video/quicktime,video/x-matroska,video/*"
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => depositFileInputRef.current?.click()}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <RiUploadCloud2Line size={14} /> Replace
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadVideo(videoForm.videoUrl, videoForm.uploadedVideoName || "deposit-tutorial.mp4")}
+                      className="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <RiDownload2Line size={14} /> Test Download
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveVideo("deposit")}
+                      className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <RiDeleteBinLine size={14} /> Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => { e.preventDefault(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleVideoDirectUpload(file, "deposit");
+                }}
+                onClick={() => depositFileInputRef.current?.click()}
+                className="border-2 border-dashed border-gold-300/90 bg-gradient-to-b from-gold-50/40 via-amber-50/20 to-white hover:border-gold-500 hover:bg-gold-50/60 transition-all rounded-2xl p-6 sm:p-8 text-center cursor-pointer group shadow-2xs"
+              >
+                <input
+                  type="file"
+                  ref={depositFileInputRef}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleVideoDirectUpload(file, "deposit");
+                    e.target.value = "";
+                  }}
+                  accept="video/mp4,video/webm,video/quicktime,video/x-matroska,video/*"
+                  className="hidden"
+                />
+                <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-gold-400 via-gold-500 to-amber-600 text-slate-950 flex items-center justify-center shadow-gold group-hover:scale-105 transition-transform">
+                  <RiUploadCloud2Line size={28} />
+                </div>
+                <h4 className="text-sm font-bold text-slate-900 font-display">
+                  Drop video here or click to browse
+                </h4>
+                <p className="text-xs text-slate-500 font-poppins mt-1">
+                  Uploads directly to Cloudinary CDN • Up to <strong className="text-amber-800">2 GB</strong> supported
+                </p>
+                <div className="flex items-center justify-center gap-2 mt-3 flex-wrap text-[10px] font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    ✓ Direct Cloudinary Ingestion
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                    ✓ Max 2 GB Allowed
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                    ✓ Sound & Audio Included
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
-            <label className="block text-xs font-semibold mb-1">
-              Video URL (MP4 / YouTube)
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Direct Video URL (Cloudinary or MP4 / YouTube)
             </label>
             <input
               type="url"
@@ -1973,11 +2324,13 @@ export default function PaymentSettings() {
               onChange={(e) =>
                 setVideoForm({ ...videoForm, videoUrl: e.target.value })
               }
-              className="w-full px-3 py-2 border rounded-xl text-xs"
+              placeholder="https://res.cloudinary.com/..."
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-gold-400 focus:border-gold-500 outline-none transition-all font-mono"
             />
           </div>
+
           <div>
-            <label className="block text-xs font-semibold mb-1">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
               Step-by-Step Instructions (1 per line)
             </label>
             <textarea
@@ -1992,39 +2345,388 @@ export default function PaymentSettings() {
                   instructions: e.target.value.split("\n"),
                 })
               }
-              className="w-full px-3 py-2 border rounded-xl text-xs"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-gold-400 focus:border-gold-500 outline-none transition-all leading-relaxed"
               rows="4"
             ></textarea>
+          </div>
+
+          <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <div>
+              <p className="text-xs font-semibold text-slate-900">Broadcast Status</p>
+              <p className="text-[11px] text-slate-500">When Published, video guide appears live on investor /deposit page</p>
+            </div>
+            <select
+              value={videoForm.status || "Published"}
+              onChange={(e) => setVideoForm({ ...videoForm, status: e.target.value })}
+              className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white outline-none cursor-pointer"
+            >
+              <option value="Published">Published (Live)</option>
+              <option value="Draft">Draft (Hidden)</option>
+            </select>
           </div>
         </div>
       </Modal>
 
-      {/* ──────────────── VIDEO PREVIEW MODAL ──────────────── */}
+      {/* ──────────────── DEPOSIT VIDEO PREVIEW MODAL ──────────────── */}
       <Modal
         isOpen={videoPreviewOpen}
         onClose={() => setVideoPreviewOpen(false)}
-        title={tutorialVideo?.title || "Video Preview"}
+        title={tutorialVideo?.title || "Deposit Video Preview"}
+        subtitle="Live player preview with full sound controls and download test"
         size="lg"
         footer={
-          <Button variant="primary" onClick={() => setVideoPreviewOpen(false)}>
-            Close
-          </Button>
+          <div className="flex items-center justify-between w-full">
+            {tutorialVideo?.videoUrl && (
+              <button
+                type="button"
+                onClick={() => handleDownloadVideo(tutorialVideo.videoUrl, tutorialVideo.uploadedVideoName || "deposit-tutorial.mp4")}
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              >
+                <RiDownload2Line size={16} />
+                <span>Download Video (With Sound)</span>
+              </button>
+            )}
+            <Button variant="primary" onClick={() => setVideoPreviewOpen(false)}>
+              Close Preview
+            </Button>
+          </div>
         }
       >
-        <div className="space-y-5">
-          <video
-            src={tutorialVideo?.videoUrl}
-            controls
-            autoPlay
-            className="w-full rounded-xl aspect-video bg-black"
-          />
+        <div className="space-y-4 font-poppins">
+          {tutorialVideo?.subtitle && (
+            <p className="text-xs text-slate-600 leading-relaxed">
+              {tutorialVideo.subtitle}
+            </p>
+          )}
+          <div className="rounded-2xl overflow-hidden bg-black aspect-video flex items-center justify-center shadow-md">
+            <video
+              src={tutorialVideo?.videoUrl}
+              controls
+              autoPlay
+              playsInline
+              className="w-full h-full object-contain"
+            />
+          </div>
           <div className="p-4 bg-gold-50/70 border border-gold-200 rounded-xl space-y-2">
-            <h4 className="text-xs font-bold">Instructions:</h4>
-            <ul className="text-xs space-y-1">
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <RiShieldCheckLine size={16} className="text-gold-700" />
+              Verified Deposit Steps:
+            </h4>
+            <ul className="text-xs space-y-1.5 text-slate-700">
               {(tutorialVideo?.instructions || []).map((step, i) => (
-                <li key={i}>
-                  {" "}
-                  {i + 1}. {step}
+                <li key={i} className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-gold-400 text-slate-950 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                    {i + 1}
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ──────────────── WITHDRAWAL VIDEO STUDIO MODAL ──────────────── */}
+      <Modal
+        isOpen={withdrawalVideoModalOpen}
+        onClose={() => setWithdrawalVideoModalOpen(false)}
+        title="Withdrawal Video Tutorial Studio"
+        subtitle="Upload or configure official step-by-step video guide for user payouts"
+        size="lg"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setWithdrawalVideoModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              icon={<RiCheckLine />}
+              onClick={handleSaveWithdrawalVideoTutorial}
+            >
+              Save & Broadcast
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4 font-poppins">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Tutorial Title *
+            </label>
+            <input
+              type="text"
+              value={withdrawalVideoForm.title || ""}
+              onChange={(e) =>
+                setWithdrawalVideoForm({ ...withdrawalVideoForm, title: e.target.value })
+              }
+              placeholder="e.g. Official Withdrawal Guide: How to withdraw to Bank or Crypto"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-none transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Subtitle & Overview
+            </label>
+            <textarea
+              value={withdrawalVideoForm.subtitle || ""}
+              onChange={(e) =>
+                setWithdrawalVideoForm({ ...withdrawalVideoForm, subtitle: e.target.value })
+              }
+              placeholder="Step-by-step overview for users requesting payouts..."
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-none transition-all"
+              rows="2"
+            ></textarea>
+          </div>
+
+          {/* CLOUDINARY DIRECT VIDEO UPLOAD BOX (UP TO 2 GB) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider font-display">
+                Withdrawal Video File (Direct Cloudinary Upload)
+              </label>
+              <span className="text-[10px] font-bold text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-300">
+                Max size: 2 GB (Direct CDN)
+              </span>
+            </div>
+
+            {uploadingWithdrawalVideo ? (
+              <div className="p-6 rounded-2xl border-2 border-dashed border-amber-400 bg-gradient-to-b from-amber-50/60 to-orange-50/30 text-center space-y-3 animate-fade-in">
+                <div className="flex items-center justify-center gap-2 text-amber-800">
+                  <RiLoader4Line className="animate-spin text-amber-600" size={26} />
+                  <span className="font-bold text-sm">Uploading Directly to Cloudinary CDN...</span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-3.5 overflow-hidden shadow-inner p-0.5">
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-400 via-orange-500 to-amber-600 rounded-full transition-all duration-300 relative"
+                    style={{ width: `${withdrawalVideoProgress}%` }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-xs font-bold text-slate-700 px-1">
+                  <span>Upload Progress: {withdrawalVideoProgress}%</span>
+                  <span className="text-[11px] text-slate-500 font-normal">Fast CDN streaming ingestion</span>
+                </div>
+              </div>
+            ) : withdrawalVideoForm.videoUrl ? (
+              <div className="rounded-2xl border-2 border-amber-300/80 bg-white p-3.5 space-y-3 shadow-sm">
+                <div className="rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center shadow-inner relative group">
+                  <video
+                    key={withdrawalVideoForm.videoUrl}
+                    src={withdrawalVideoForm.videoUrl}
+                    controls
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pt-1 px-1">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300 flex items-center gap-1">
+                        <RiCheckLine size={13} /> Cloudinary Video Ready
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 text-[10px] font-semibold border border-blue-200 flex items-center gap-1">
+                        <RiVolumeUpLine size={12} /> Sound & Audio Enabled
+                      </span>
+                      {withdrawalVideoForm.uploadedVideoName && (
+                        <span className="text-xs text-slate-600 font-medium truncate max-w-[180px]">
+                          {withdrawalVideoForm.uploadedVideoName}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1 truncate max-w-md font-mono">
+                      {withdrawalVideoForm.videoUrl}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <input
+                      type="file"
+                      ref={withdrawalFileInputRef}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleVideoDirectUpload(file, "withdrawal");
+                        e.target.value = "";
+                      }}
+                      accept="video/mp4,video/webm,video/quicktime,video/x-matroska,video/*"
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => withdrawalFileInputRef.current?.click()}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <RiUploadCloud2Line size={14} /> Replace
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadVideo(withdrawalVideoForm.videoUrl, withdrawalVideoForm.uploadedVideoName || "withdrawal-tutorial.mp4")}
+                      className="px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <RiDownload2Line size={14} /> Test Download
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveVideo("withdrawal")}
+                      className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <RiDeleteBinLine size={14} /> Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => { e.preventDefault(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleVideoDirectUpload(file, "withdrawal");
+                }}
+                onClick={() => withdrawalFileInputRef.current?.click()}
+                className="border-2 border-dashed border-amber-300/90 bg-gradient-to-b from-amber-50/40 via-orange-50/20 to-white hover:border-amber-500 hover:bg-amber-50/60 transition-all rounded-2xl p-6 sm:p-8 text-center cursor-pointer group shadow-2xs"
+              >
+                <input
+                  type="file"
+                  ref={withdrawalFileInputRef}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleVideoDirectUpload(file, "withdrawal");
+                    e.target.value = "";
+                  }}
+                  accept="video/mp4,video/webm,video/quicktime,video/x-matroska,video/*"
+                  className="hidden"
+                />
+                <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                  <RiUploadCloud2Line size={28} />
+                </div>
+                <h4 className="text-sm font-bold text-slate-900 font-display">
+                  Drop video here or click to browse
+                </h4>
+                <p className="text-xs text-slate-500 font-poppins mt-1">
+                  Uploads directly to Cloudinary CDN • Up to <strong className="text-amber-800">2 GB</strong> supported
+                </p>
+                <div className="flex items-center justify-center gap-2 mt-3 flex-wrap text-[10px] font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    ✓ Direct Cloudinary Ingestion
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                    ✓ Max 2 GB Allowed
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                    ✓ Sound & Audio Included
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Direct Video URL (Cloudinary or MP4 / YouTube)
+            </label>
+            <input
+              type="url"
+              value={withdrawalVideoForm.videoUrl || ""}
+              onChange={(e) =>
+                setWithdrawalVideoForm({ ...withdrawalVideoForm, videoUrl: e.target.value })
+              }
+              placeholder="https://res.cloudinary.com/..."
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-none transition-all font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Step-by-Step Instructions (1 per line)
+            </label>
+            <textarea
+              value={
+                Array.isArray(withdrawalVideoForm.instructions)
+                  ? withdrawalVideoForm.instructions.join("\n")
+                  : withdrawalVideoForm.instructions || ""
+              }
+              onChange={(e) =>
+                setWithdrawalVideoForm({
+                  ...withdrawalVideoForm,
+                  instructions: e.target.value.split("\n"),
+                })
+              }
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-none transition-all leading-relaxed"
+              rows="4"
+            ></textarea>
+          </div>
+
+          <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <div>
+              <p className="text-xs font-semibold text-slate-900">Broadcast Status</p>
+              <p className="text-[11px] text-slate-500">When Published, video guide appears live on investor /withdraw page</p>
+            </div>
+            <select
+              value={withdrawalVideoForm.status || "Published"}
+              onChange={(e) => setWithdrawalVideoForm({ ...withdrawalVideoForm, status: e.target.value })}
+              className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white outline-none cursor-pointer"
+            >
+              <option value="Published">Published (Live)</option>
+              <option value="Draft">Draft (Hidden)</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ──────────────── WITHDRAWAL VIDEO PREVIEW MODAL ──────────────── */}
+      <Modal
+        isOpen={withdrawalVideoPreviewOpen}
+        onClose={() => setWithdrawalVideoPreviewOpen(false)}
+        title={withdrawalTutorialVideo?.title || "Withdrawal Video Preview"}
+        subtitle="Live player preview with full sound controls and download test"
+        size="lg"
+        footer={
+          <div className="flex items-center justify-between w-full">
+            {withdrawalTutorialVideo?.videoUrl && (
+              <button
+                type="button"
+                onClick={() => handleDownloadVideo(withdrawalTutorialVideo.videoUrl, withdrawalTutorialVideo.uploadedVideoName || "withdrawal-tutorial.mp4")}
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              >
+                <RiDownload2Line size={16} />
+                <span>Download Video (With Sound)</span>
+              </button>
+            )}
+            <Button variant="primary" onClick={() => setWithdrawalVideoPreviewOpen(false)}>
+              Close Preview
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 font-poppins">
+          {withdrawalTutorialVideo?.subtitle && (
+            <p className="text-xs text-slate-600 leading-relaxed">
+              {withdrawalTutorialVideo.subtitle}
+            </p>
+          )}
+          <div className="rounded-2xl overflow-hidden bg-black aspect-video flex items-center justify-center shadow-md">
+            <video
+              src={withdrawalTutorialVideo?.videoUrl}
+              controls
+              autoPlay
+              playsInline
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <RiShieldCheckLine size={16} className="text-amber-700" />
+              Verified Withdrawal Steps:
+            </h4>
+            <ul className="text-xs space-y-1.5 text-slate-700">
+              {(withdrawalTutorialVideo?.instructions || []).map((step, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                    {i + 1}
+                  </span>
+                  <span>{step}</span>
                 </li>
               ))}
             </ul>

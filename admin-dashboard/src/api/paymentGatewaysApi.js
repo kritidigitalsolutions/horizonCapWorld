@@ -50,6 +50,16 @@ export const updateDepositVideo = async (videoData) => {
     return response.data;
 }
 
+export const getWithdrawalVideo = async () => {
+    const response = await API.get("/admin/payment-methods/video/withdrawal")
+    return response.data;
+}
+
+export const updateWithdrawalVideo = async (videoData) => {
+    const response = await API.put("/admin/payment-methods/video/withdrawal", videoData)
+    return response.data;
+}
+
 export const getWithdrawalSettings = async () => {
     try {
         const response = await API.get("/admin/payment-methods/withdrawal-settings");

@@ -1,5 +1,6 @@
 const NewsArticle = require("../../models/NewsArticle");
 const DepositVideo = require("../../models/DepositVideo");
+const WithdrawalVideo = require("../../models/WithdrawalVideo");
 const SupportChannel = require("../../models/SupportChannel");
 const SupportTicket = require("../../models/SupportTicket");
 const User = require("../../models/User");
@@ -60,6 +61,20 @@ exports.getDepositVideo = async (req, res) => {
     let video = await DepositVideo.findOne({ status: "Published" });
     if (!video) {
       video = await DepositVideo.findOne();
+    }
+    res.status(200).json({ success: true, video });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get Withdrawal Tutorial Video
+// @route   GET /api/user/withdrawals/tutorial-video
+exports.getWithdrawalVideo = async (req, res) => {
+  try {
+    let video = await WithdrawalVideo.findOne({ status: "Published" });
+    if (!video) {
+      video = await WithdrawalVideo.findOne();
     }
     res.status(200).json({ success: true, video });
   } catch (error) {

@@ -8,10 +8,15 @@ import {
   RiAlertLine,
   RiCheckLine,
   RiRefreshLine,
+  RiPlayCircleLine,
+  RiDownload2Line,
+  RiMovieLine,
 } from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
-import { createWithdrawal, getWithdrawalSettings } from '../api/withdrawalsApi';
+import { useToast } from '../context/ToastContext';
+import { createWithdrawal, getWithdrawalSettings, getWithdrawalVideo } from '../api/withdrawalsApi';
 import PageHeader from '../components/ui/PageHeader';
+import Modal from '../components/ui/Modal';
 
 const baseWithdrawMethods = [
   { id: 'usdt-trc20', name: 'USDT (TRC20)', type: 'crypto' },
@@ -21,12 +26,30 @@ const baseWithdrawMethods = [
 
 export default function Withdraw() {
   const { user, refreshUser } = useAuth();
+  const { toast } = useToast();
   const [amount, setAmount] = useState('');
   const [address, setAddress] = useState('');
   const [method, setMethod] = useState(baseWithdrawMethods[0]);
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // ──────── TUTORIAL VIDEO STATE ────────
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [withdrawalVideo, setWithdrawalVideo] = useState({
+    title: 'Official Withdrawal Guide: How to withdraw funds to Bank, Crypto or E-Wallet',
+    subtitle: 'Watch this step-by-step video guide before submitting your withdrawal request for fastest clearance and zero rejection.',
+    videoType: 'url',
+    videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    instructions: [
+      'Ensure your available earning wallet balance meets the minimum withdrawal requirement.',
+      'Select your verified receiving channel (Bank, Crypto USDT/BTC, or Mobile E-Wallet).',
+      'Enter your correct recipient address / account number and requested amount.',
+      'Check the real-time fee calculation and net receiving amount.',
+      'Submit your request — platform clears requests within standard turnaround (12-24 hrs).',
+    ],
+    status: 'Published',
+  });
 
   // ──────── DYNAMIC WITHDRAWAL CHARGES & SETTINGS ────────
   const [settings, setSettings] = useState({
@@ -44,27 +67,70 @@ export default function Withdraw() {
   });
   const [loadingSettings, setLoadingSettings] = useState(true);
 
-  // Fetch dynamic withdrawal charges from admin backend
+  // Fetch dynamic withdrawal charges and video from admin backend
   useEffect(() => {
     let isMounted = true;
-    const loadSettings = async () => {
+    const loadData = async () => {
       try {
         setLoadingSettings(true);
-        const res = await getWithdrawalSettings();
-        if (isMounted && res?.withdrawalSettings) {
-          setSettings(res.withdrawalSettings);
+        const [settingsRes, videoRes] = await Promise.allSettled([
+          getWithdrawalSettings(),
+          getWithdrawalVideo(),
+        ]);
+
+        if (isMounted) {
+          if (settingsRes.status === 'fulfilled' && settingsRes.value?.withdrawalSettings) {
+            setSettings(settingsRes.value.withdrawalSettings);
+          }
+          if (videoRes.status === 'fulfilled' && videoRes.value?.success && videoRes.value.video) {
+            setWithdrawalVideo(videoRes.value.video);
+          }
         }
       } catch (err) {
-        console.warn('Failed to load withdrawal settings from backend, using defaults:', err.message);
+        console.warn('Failed to load withdrawal data from backend:', err.message);
       } finally {
         if (isMounted) setLoadingSettings(false);
       }
     };
-    loadSettings();
+    loadData();
+
+    // Listen for live update events
+    const handleVideoSync = (e) => {
+      if (e.detail) setWithdrawalVideo(e.detail);
+    };
+    window.addEventListener('horizon-withdrawal-video-change', handleVideoSync);
+    window.addEventListener('storage', handleVideoSync);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('horizon-withdrawal-video-change', handleVideoSync);
+      window.removeEventListener('storage', handleVideoSync);
     };
   }, []);
+
+  const handleDownloadVideo = (url, fileName = "official_withdrawal_tutorial.mp4") => {
+    if (!url) {
+      toast.error("Withdrawal tutorial video is not available for download.");
+      return;
+    }
+    try {
+      let downloadUrl = url;
+      if (downloadUrl.includes("cloudinary.com") && downloadUrl.includes("/upload/")) {
+        downloadUrl = downloadUrl.replace("/upload/", "/upload/fl_attachment/");
+      }
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = fileName;
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success("Withdrawal guide video download started!", "Downloading Video");
+    } catch (err) {
+      console.error("Download failed:", err);
+      window.open(url, "_blank");
+    }
+  };
 
   // ──────── DYNAMIC LIVE FEE & NET PAYOUT CALCULATION ────────
   const numAmount = parseFloat(amount) || 0;
@@ -166,7 +232,50 @@ export default function Withdraw() {
         title="Withdraw Funds"
         subtitle="Request instant payout from your available earning wallet directly to your external address"
         badge="Payout Gateway"
+        action={
+          <button
+            type="button"
+            onClick={() => setIsVideoModalOpen(true)}
+            className="btn btn-secondary text-xs px-4 py-2.5 rounded-xl font-bold border border-gold-300/80 bg-gold-50/50 hover:bg-gold-50 text-slate-900 flex items-center gap-2 cursor-pointer shadow-2xs transition-all"
+          >
+            <RiPlayCircleLine size={18} className="text-gold-600" />
+            <span>Watch Withdrawal Tutorial</span>
+          </button>
+        }
       />
+
+      {/* ──────────────── WATCH WITHDRAWAL TUTORIAL BANNER ──────────────── */}
+      <div className="card p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-gold-500/10 to-white border-2 border-gold-300/80 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 font-poppins">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-gold-400 via-gold-500 to-amber-600 text-slate-950 flex items-center justify-center flex-shrink-0 shadow-gold">
+            <RiPlayCircleLine size={24} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="text-xs sm:text-sm font-bold text-slate-900 font-display">
+                {withdrawalVideo.title || "Official Withdrawal Video Guide"}
+              </h4>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase tracking-wider border border-emerald-300">
+                Official Guide
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
+              {withdrawalVideo.subtitle || "Step-by-step video guide for error-free withdrawal submission and instant clearance."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setIsVideoModalOpen(true)}
+            className="btn btn-primary text-xs px-4 py-2.5 rounded-xl font-bold shadow-gold flex items-center justify-center gap-1.5 w-full sm:w-auto cursor-pointer"
+          >
+            <RiPlayCircleLine size={16} />
+            <span>Watch Tutorial</span>
+          </button>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Balance & Method card */}
@@ -445,6 +554,81 @@ export default function Withdraw() {
           </div>
         </div>
       </div>
+
+      {/* ════════ WITHDRAWAL TUTORIAL VIDEO MODAL ════════ */}
+      <Modal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        title={withdrawalVideo.title || "Official Withdrawal Tutorial"}
+        subtitle="Watch step-by-step video instructions uploaded by platform administration"
+        size="lg"
+        footer={
+          <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-2.5">
+            {withdrawalVideo.videoUrl && !withdrawalVideo.videoUrl.includes('youtube.com') && !withdrawalVideo.videoUrl.includes('youtu.be') && (
+              <button
+                type="button"
+                onClick={() => handleDownloadVideo(withdrawalVideo.videoUrl, "official_withdrawal_tutorial.mp4")}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-gold-500 hover:from-amber-600 hover:to-gold-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-gold cursor-pointer"
+              >
+                <RiDownload2Line size={16} />
+                <span>Download Video Guide</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsVideoModalOpen(false)}
+              className="w-full sm:w-auto btn btn-primary text-xs px-5 py-2.5 rounded-xl font-bold shadow-gold cursor-pointer"
+            >
+              Got it, proceed to withdraw
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-5 font-poppins">
+          {withdrawalVideo.subtitle && (
+            <p className="text-xs text-slate-600 font-poppins leading-relaxed">
+              {withdrawalVideo.subtitle}
+            </p>
+          )}
+
+          <div className="rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-card aspect-video w-full flex items-center justify-center">
+            {withdrawalVideo.videoUrl?.includes('youtube.com') || withdrawalVideo.videoUrl?.includes('youtu.be') ? (
+              <iframe
+                src={withdrawalVideo.videoUrl.replace('watch?v=', 'embed/')}
+                title="Withdrawal Tutorial"
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <video
+                src={withdrawalVideo.videoUrl}
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            )}
+          </div>
+
+          <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2.5">
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <RiShieldCheckLine size={16} className="text-amber-700" />
+              Verified Withdrawal Instructions:
+            </h4>
+            <ul className="space-y-2 text-xs text-slate-700 font-poppins">
+              {(withdrawalVideo.instructions || []).map((step, idx) => (
+                <li key={idx} className="flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-amber-400 text-slate-950 font-extrabold text-[11px] flex items-center justify-center flex-shrink-0 mt-0.5 shadow-2xs">
+                    {idx + 1}
+                  </span>
+                  <span className="leading-relaxed">{step}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

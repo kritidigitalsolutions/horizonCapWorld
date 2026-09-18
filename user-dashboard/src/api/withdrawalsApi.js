@@ -14,3 +14,14 @@ export const getWithdrawalSettings = async () => {
     throw error;
   }
 };
+
+export const getWithdrawalVideo = async () => {
+  try {
+    const response = await API.get("/user/withdrawals/tutorial-video");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching withdrawal video:", error);
+    throw error;
+  }
+};
+

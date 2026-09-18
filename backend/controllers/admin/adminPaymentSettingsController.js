@@ -1,5 +1,6 @@
 const PaymentMethod = require("../../models/PaymentMethod");
 const DepositVideo = require("../../models/DepositVideo");
+const WithdrawalVideo = require("../../models/WithdrawalVideo");
 const AdminSettings = require("../../models/AdminSettings");
 const {
   uploadToCloudinary,
@@ -267,6 +268,89 @@ exports.updateDepositVideo = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Get Withdrawal Tutorial Video Settings
+// @route   GET /api/admin/payment-methods/video/withdrawal
+exports.getWithdrawalVideo = async (req, res) => {
+  try {
+    let video = await WithdrawalVideo.findOne();
+    if (!video) {
+      video = await WithdrawalVideo.create({
+        instructions: [
+          "Ensure your available earning wallet balance meets the minimum withdrawal requirement.",
+          "Select your verified receiving channel (Bank, Crypto USDT/BTC, or Mobile E-Wallet).",
+          "Enter your correct recipient address / account number and requested amount.",
+          "Check the real-time fee calculation and net receiving amount.",
+          "Submit your request — platform clears requests within standard turnaround (12-24 hrs).",
+        ],
+      });
+    }
+    res.status(200).json({ success: true, video });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update Withdrawal Tutorial Video Settings (Auto-deletes old Cloudinary video)
+// @route   PUT /api/admin/payment-methods/video/withdrawal
+exports.updateWithdrawalVideo = async (req, res) => {
+  try {
+    let video = await WithdrawalVideo.findOne();
+    if (!video) {
+      video = new WithdrawalVideo();
+    }
+
+    const {
+      title,
+      subtitle,
+      videoType,
+      videoUrl,
+      youtubeUrl,
+      uploadedVideoName,
+      instructions,
+      status,
+    } = req.body;
+
+    const oldVideoUrl = video.videoUrl;
+
+    if (title) video.title = title;
+    if (subtitle) video.subtitle = subtitle;
+    if (videoType) video.videoType = videoType;
+
+    if (videoUrl !== undefined) {
+      if (videoUrl && videoUrl.startsWith("data:")) {
+        const uploadRes = await replaceCloudinaryAsset(videoUrl, oldVideoUrl, {
+          folder: "horizoncap/videos",
+          resource_type: "video",
+        });
+        video.videoUrl = uploadRes.secure_url;
+      } else {
+        if (oldVideoUrl && oldVideoUrl !== videoUrl && oldVideoUrl.includes("cloudinary.com")) {
+          deleteFromCloudinary(oldVideoUrl, "video").catch((err) =>
+            console.warn("[Cloudinary] Old video removal failed:", err.message)
+          );
+        }
+        video.videoUrl = videoUrl;
+      }
+    }
+
+    if (youtubeUrl !== undefined) video.youtubeUrl = youtubeUrl;
+    if (uploadedVideoName !== undefined) video.uploadedVideoName = uploadedVideoName;
+    if (instructions !== undefined) video.instructions = instructions;
+    if (status !== undefined) video.status = status;
+
+    await video.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Withdrawal tutorial video settings updated successfully.",
+      video,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 // @desc    Get Platform Withdrawal Settings
 // @route   GET /api/admin/payment-methods/withdrawal-settings
