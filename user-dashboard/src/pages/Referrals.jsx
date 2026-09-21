@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   RiTeamLine, RiCoinsLine, RiCalculatorLine,
   RiCheckLine, RiNodeTree, RiShieldCheckLine,
   RiGroupLine, RiMoneyDollarCircleLine, RiPercentLine,
-RiFileCopyLine,
-  RiQrCodeLine, RiUserAddLine,
+  RiFileCopyLine, RiQrCodeLine, RiUserAddLine,
+  RiLockLine, RiAlertLine, RiArrowRightLine, RiArrowDownLine
 } from 'react-icons/ri';
 import { useAuth, getReferralLink } from '../context/AuthContext';
 import { getReferralOverview, getReferralCommissions, getReferralNetwork } from '../api/referralsApi';
@@ -35,6 +36,7 @@ export default function Referrals() {
 
   // Modals / Drawers
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [calcDeposit, setCalcDeposit] = useState('10000');
@@ -99,10 +101,30 @@ export default function Referrals() {
 
   const referralLink = overviewData?.referralLink || user?.referralLink || getReferralLink(user?.customId || user?.id || '');
 
+  const hasDeposited = Boolean(
+    overviewData?.hasDeposited !== undefined
+      ? overviewData.hasDeposited
+      : user?.hasDeposited ||
+        Number(user?.totalInvested || 0) > 0 ||
+        Number(user?.depositWallet || 0) > 0
+  );
+
   const copyLink = () => {
+    if (!hasDeposited) {
+      setDepositModalOpen(true);
+      return;
+    }
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleOpenQr = () => {
+    if (!hasDeposited) {
+      setDepositModalOpen(true);
+      return;
+    }
+    setIsQrModalOpen(true);
   };
 
   const depositEnabled = toggles.referralDepositCommissionEnabled !== false && toggles.referralSystemEnabled !== false;
@@ -207,30 +229,69 @@ export default function Referrals() {
 
           <button
             type="button"
-            onClick={() => setIsQrModalOpen(true)}
-            className="btn btn-secondary text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer bg-white shadow-2xs"
+            onClick={handleOpenQr}
+            className={`btn text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+              hasDeposited ? 'btn-secondary bg-white' : 'bg-amber-100 text-amber-900 border border-amber-300'
+            }`}
           >
-            <RiQrCodeLine size={15} />
-            <span>QR Code</span>
+            {hasDeposited ? <RiQrCodeLine size={15} /> : <RiLockLine size={15} className="text-amber-700" />}
+            <span>{hasDeposited ? 'QR Code' : 'QR Locked'}</span>
           </button>
         </div>
 
-        {/* Dynamic Link Input with instant copy */}
+        {/* Dynamic Link Input with instant copy or deposit lock */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 px-4 py-3 rounded-xl bg-white border border-gold-200 text-xs sm:text-sm font-mono font-bold text-slate-800 truncate shadow-2xs select-all">
-            {referralLink}
-          </div>
-          <button
-            type="button"
-            onClick={copyLink}
-            className={`btn text-xs px-5 py-3 rounded-xl font-bold transition-all shadow-gold flex items-center gap-1.5 cursor-pointer ${
-              copied ? 'bg-emerald-600 text-white' : 'btn-primary'
-            }`}
-          >
-            {copied ? <RiCheckLine size={16} /> : <RiFileCopyLine size={16} />}
-            <span>{copied ? 'Copied!' : 'Copy Link'}</span>
-          </button>
+          {hasDeposited ? (
+            <>
+              <div className="flex-1 px-4 py-3 rounded-xl bg-white border border-gold-200 text-xs sm:text-sm font-mono font-bold text-slate-800 truncate shadow-2xs select-all">
+                {referralLink}
+              </div>
+              <button
+                type="button"
+                onClick={copyLink}
+                className={`btn text-xs px-5 py-3 rounded-xl font-bold transition-all shadow-gold flex items-center gap-1.5 cursor-pointer ${
+                  copied ? 'bg-emerald-600 text-white' : 'btn-primary'
+                }`}
+              >
+                {copied ? <RiCheckLine size={16} /> : <RiFileCopyLine size={16} />}
+                <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="flex-1 px-4 py-3 rounded-xl bg-amber-50/80 border border-amber-300 text-xs sm:text-sm font-mono font-bold text-amber-900 truncate shadow-2xs flex items-center gap-2 select-none">
+                <RiLockLine size={16} className="text-amber-600 flex-shrink-0" />
+                <span className="truncate">Referral Link Locked • Mandatory Deposit Required (Min. $10 USD)</span>
+              </div>
+              <button
+                type="button"
+                onClick={copyLink}
+                className="btn text-xs px-5 py-3 rounded-xl font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer bg-amber-500 hover:bg-amber-600 text-slate-950"
+                title="Deposit required to unlock referral link"
+              >
+                <RiLockLine size={16} />
+                <span>Deposit Required</span>
+              </button>
+            </>
+          )}
         </div>
+
+        {!hasDeposited && (
+          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900">
+            <div className="flex items-center gap-2">
+              <RiAlertLine size={18} className="text-amber-600 flex-shrink-0" />
+              <span><strong>Mandatory Deposit Required:</strong> You must make a deposit to activate and copy your referral link.</span>
+            </div>
+            <Link
+              to="/deposit"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-gold-400 to-amber-500 hover:from-gold-500 hover:to-amber-600 text-slate-950 font-bold text-xs shadow-2xs self-start sm:self-auto transition-transform active:scale-95"
+            >
+              <RiArrowDownLine size={14} />
+              <span>Deposit Now</span>
+              <RiArrowRightLine size={13} />
+            </Link>
+          </div>
+        )}
 
         <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
           <span className="font-mono">
@@ -670,12 +731,12 @@ export default function Referrals() {
         </div>
       )}
 
-      {/* ──────────────── MODAL 1: INVITE QR CODE MODAL ──────────────── */}
+      {/* ──────────────── MODAL 1: QR CODE MODAL ──────────────── */}
       <Modal
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
-        title="Your Referral Invite QR Code"
-        subtitle="Scan with camera to register directly in your team"
+        title="Affiliate QR Code"
+        subtitle="Scan to register directly under your sponsor ID"
         size="sm"
         footer={
           <button
@@ -700,6 +761,56 @@ export default function Referrals() {
             <p className="text-[11px] font-mono text-slate-500 break-all select-all mt-1 px-3">
               {referralLink}
             </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ──────────────── MODAL: DEPOSIT MANDATORY TO UNLOCK REFERRAL LINK ──────────────── */}
+      <Modal
+        isOpen={depositModalOpen}
+        onClose={() => setDepositModalOpen(false)}
+        title="Mandatory Deposit Required"
+        subtitle="Active deposit required to unlock and copy your affiliate referral link"
+        size="md"
+        footer={
+          <div className="flex items-center justify-end gap-2.5 w-full">
+            <button
+              type="button"
+              onClick={() => setDepositModalOpen(false)}
+              className="btn btn-secondary text-xs px-4 py-2.5 rounded-xl font-bold cursor-pointer"
+            >
+              Close
+            </button>
+            <Link
+              to="/deposit"
+              className="btn btn-primary text-xs px-5 py-2.5 rounded-xl font-bold shadow-gold flex items-center gap-1.5 cursor-pointer"
+            >
+              <RiArrowDownLine size={15} />
+              <span>Make a Deposit ($10 Min)</span>
+            </Link>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2 font-poppins">
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-amber-900">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 flex-shrink-0 mt-0.5">
+              <RiLockLine size={20} />
+            </div>
+            <div className="space-y-1 text-xs">
+              <h4 className="font-bold text-sm text-slate-900">Referral Link is Currently Locked</h4>
+              <p className="text-slate-600 leading-relaxed">
+                To maintain platform security, prevent spam registrations, and ensure genuine network growth, you must make a mandatory deposit (minimum <strong>$10 USD</strong>) before you can copy or share your referral link.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+            <h5 className="font-bold text-slate-800">What happens after you deposit:</h5>
+            <ul className="space-y-1.5 text-slate-600 list-disc list-inside">
+              <li>Your personal referral link is unlocked immediately for one-click copying.</li>
+              <li>Your personal QR code is activated for instant mobile sharing.</li>
+              <li>You unlock multi-tier affiliate commissions on all your downlines' investments.</li>
+            </ul>
           </div>
         </div>
       </Modal>

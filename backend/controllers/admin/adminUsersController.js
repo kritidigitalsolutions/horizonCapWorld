@@ -41,6 +41,28 @@ exports.getAllUsers = async (req, res) => {
         .lean(),
     ]);
 
+    // Enhance users with active investment count
+    const userIds = users.map((u) => u._id);
+    const userEmails = users.map((u) => u.email).filter(Boolean);
+    const activeInvestmentsList = await UserInvestment.find({
+      $or: [
+        { user: { $in: userIds } },
+        { userEmail: { $in: userEmails } },
+      ],
+      status: "Active",
+    }).select("user userEmail");
+
+    const activeCountMap = {};
+    activeInvestmentsList.forEach((inv) => {
+      const uid = String(inv.user);
+      activeCountMap[uid] = (activeCountMap[uid] || 0) + 1;
+    });
+
+    const enhancedUsers = users.map((u) => ({
+      ...u,
+      activeInvestments: activeCountMap[String(u._id)] || (u.totalInvested > 0 ? 1 : 0),
+    }));
+
     res.status(200).json({
       success: true,
       total,
@@ -48,7 +70,7 @@ exports.getAllUsers = async (req, res) => {
       unseenCount,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum) || 1,
-      users,
+      users: enhancedUsers,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -71,7 +93,7 @@ exports.markUsersSeen = async (req, res) => {
   }
 };
 
-// @desc    Get Single User Details with Transactions
+// @desc    Get Single User Details with Active Investment Plans & Transactions
 // @route   GET /api/admin/users/:id
 exports.getUserById = async (req, res) => {
   try {
@@ -80,16 +102,68 @@ exports.getUserById = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found." });
     }
 
+    // Fetch active investment plans for this user
+    const activeInvestments = await UserInvestment.find({
+      $or: [
+        { user: user._id },
+        ...(user.email ? [{ userEmail: user.email }] : []),
+      ],
+    }).sort({ createdAt: -1 });
+
+    const activePlans = activeInvestments.map((inv) => ({
+      id: inv.customId || inv._id,
+      _id: inv._id,
+      name: inv.planName,
+      category: inv.planCategory || "Renewable Energy",
+      roi: `${inv.dailyRoi || 0.3}%/day (${inv.roi || 9.0}%/mo)`,
+      payoutMode: inv.payoutInterval || "Per Second (Live)",
+      invested: `$${Number(inv.amount || 0).toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`,
+      streamRate: `+$${Number(inv.perSecondRate || 0).toFixed(8)}/s`,
+      duration: inv.duration || "12 Months",
+      earned: `${Number(inv.totalProfitEarned || 0).toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`,
+      status: inv.status,
+      startDate: inv.startDate,
+    }));
+
+    // Fetch Top 50 Latest transactions (FIFO / latest 50)
     const recentTransactions = await Transaction.find({
-      $or: [{ user: user._id }, { userCustomId: user.customId }],
+      $or: [
+        { user: user._id },
+        { userCustomId: user.customId },
+        ...(user.email ? [{ userEmail: user.email }] : []),
+      ],
     })
       .sort({ createdAt: -1 })
-      .limit(10);
+      .limit(50);
+
+    const formattedTransactions = recentTransactions.map((tx) => ({
+      id: tx.customId || tx._id,
+      _id: tx._id,
+      type: tx.type,
+      amount: `$${Number(tx.amount || 0).toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`,
+      rawAmount: tx.amount,
+      gateway: tx.gateway,
+      cryptoNetwork: tx.cryptoNetwork,
+      referenceNo: tx.referenceNo,
+      date: tx.date || (tx.createdAt ? tx.createdAt.toISOString().split("T")[0] : ""),
+      time: tx.time || "",
+      status: tx.status,
+    }));
 
     res.status(200).json({
       success: true,
       user,
-      recentTransactions,
+      activePlans,
+      recentTransactions: formattedTransactions,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

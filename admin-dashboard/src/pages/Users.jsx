@@ -17,6 +17,7 @@ import PageHeader from '../components/ui/PageHeader';
 import { useToast } from '../context/ToastContext';
 import {
   getAllUsers,
+  getUserById,
   updateUserStatus,
   adjustUserWallet,
   deleteUser,
@@ -30,6 +31,7 @@ export default function Users() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
@@ -130,6 +132,27 @@ export default function Users() {
     toast.success(`User ${user.name} status updated to ${nextStatus}.`, 'Status Updated');
     if (selectedUser?.id === user.id) {
       setSelectedUser(prev => ({ ...prev, status: nextStatus }));
+    }
+  };
+
+  // Handle View User Details with dynamic Active Plans & Transaction History
+  const handleViewUser = async (user) => {
+    setSelectedUser(user);
+    setLoadingDetails(true);
+    try {
+      const res = await getUserById(user._id || user.id);
+      if (res?.success) {
+        setSelectedUser(prev => ({
+          ...prev,
+          ...(res.user || {}),
+          activePlans: res.activePlans || [],
+          recentTransactions: res.recentTransactions || [],
+        }));
+      }
+    } catch (err) {
+      console.warn('Error fetching user full details:', err.message);
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
@@ -315,7 +338,7 @@ export default function Users() {
                       <div className="flex items-center justify-end gap-2 font-poppins">
                         {/* View Button */}
                         <button
-                          onClick={() => setSelectedUser(user)}
+                          onClick={() => handleViewUser(user)}
                           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-gold-800 text-xs font-semibold transition-all border border-slate-200/80 hover:border-gold-300 active:scale-95 shadow-2xs"
                           title="View user details & investment portfolio"
                         >
@@ -473,7 +496,12 @@ export default function Users() {
                 <span className="text-[11px] text-slate-400 font-normal">Real-time yields & lock-in terms</span>
               </h4>
 
-              {selectedUser.activePlans && selectedUser.activePlans.length > 0 ? (
+              {loadingDetails ? (
+                <div className="p-8 bg-slate-50/70 rounded-2xl border border-slate-200/70 text-center space-y-2.5">
+                  <div className="w-6 h-6 border-2 border-gold-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs text-slate-500 font-poppins">Fetching active investment holdings...</p>
+                </div>
+              ) : selectedUser.activePlans && selectedUser.activePlans.length > 0 ? (
                 <div className="space-y-3 font-poppins">
                   {selectedUser.activePlans.map(plan => {
                     const isRenewable = plan.category === 'Renewable Energy';
@@ -558,7 +586,12 @@ export default function Users() {
                 </span>
               </div>
 
-              {selectedUser.recentTransactions && selectedUser.recentTransactions.length > 0 ? (
+              {loadingDetails ? (
+                <div className="p-8 bg-slate-50/70 rounded-2xl border border-slate-200/70 text-center space-y-2.5">
+                  <div className="w-6 h-6 border-2 border-gold-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs text-slate-500 font-poppins">Fetching user transaction history...</p>
+                </div>
+              ) : selectedUser.recentTransactions && selectedUser.recentTransactions.length > 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs font-poppins">
                   <table className="w-full text-xs text-left">
                     <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-400 font-medium uppercase text-[10px]">

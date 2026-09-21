@@ -49,6 +49,16 @@ const formatApiUser = (rawUser, overviewData = null) => {
     lastYieldSync: rawUser.lastYieldSync || overviewData?.streaming?.lastYieldSync || new Date().toISOString(),
     activeAssetNames: overviewData?.streaming?.activeAssetNames || '',
     referralLink: getReferralLink(customId),
+    hasDeposited: Boolean(
+      rawUser.hasDeposited !== undefined
+        ? rawUser.hasDeposited
+        : overviewData?.network?.hasDeposited !== undefined
+        ? overviewData.network.hasDeposited
+        : overviewData?.user?.hasDeposited !== undefined
+        ? overviewData.user.hasDeposited
+        : Number(rawUser.totalInvested || overviewData?.wallets?.totalInvested || 0) > 0 ||
+          Number(rawUser.depositWallet || overviewData?.wallets?.depositWallet || 0) > 0
+    ),
     is2FAEnabled: !!rawUser.is2FAEnabled,
   };
 };

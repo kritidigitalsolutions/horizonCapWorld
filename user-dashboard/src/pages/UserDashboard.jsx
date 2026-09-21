@@ -9,8 +9,10 @@ import {
   RiUser3Line, RiCustomerService2Line,
   RiFileCopyLine, RiArrowRightLine,
   RiWallet3Line, RiSafeLine, RiSparklingLine,
-  RiAwardLine, RiCalendarLine, RiCameraLine
+  RiAwardLine, RiCalendarLine, RiCameraLine,
+  RiLockLine, RiAlertLine
 } from 'react-icons/ri';
+import Modal from '../components/ui/Modal';
 import { UilBolt } from '@iconscout/react-unicons';
 
 const quickLinks = [
@@ -92,6 +94,7 @@ export default function UserDashboard() {
   const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [copiedRef, setCopiedRef] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [loading, setLoading] = useState(() => !localStorage.getItem('horizon_user'));
   const [avatar, setAvatar] = useState(() => localStorage.getItem('horizon_user_avatar') || '');
   const fileInputRef = useRef(null);
@@ -134,6 +137,12 @@ export default function UserDashboard() {
   const userId = user?.customId || user?.id || '';
   const userName = user?.fullName || user?.name || 'Investor';
   const userSponsor = user?.sponsorId || 'HORIZON-HQ';
+
+  const hasDeposited = Boolean(
+    user?.hasDeposited ||
+    Number(user?.totalInvested || 0) > 0 ||
+    Number(user?.depositWallet || 0) > 0
+  );
 
   const hasActiveStreaming = Number(user?.perSecondRate || 0) > 0 || Number(user?.activeInvestments || 0) > 0;
   const activeRate = hasActiveStreaming ? Number(user?.perSecondRate || 0) : 0;
@@ -340,6 +349,10 @@ export default function UserDashboard() {
   }, [hasActiveStreaming]);
 
   const copyReferralLink = () => {
+    if (!hasDeposited) {
+      setDepositModalOpen(true);
+      return;
+    }
     navigator.clipboard.writeText(referralLink);
     setCopiedRef(true);
     setTimeout(() => setCopiedRef(false), 2000);
@@ -695,20 +708,105 @@ export default function UserDashboard() {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex-1 px-4 py-3 rounded-2xl bg-white border border-gold-200 text-xs sm:text-sm font-mono font-bold text-slate-900 font-poppins truncate shadow-xs select-all">
-            {referralLink}
-          </div>
-          <button
-            type="button"
-            onClick={copyReferralLink}
-            className={`btn text-xs px-5 py-3 rounded-2xl flex-shrink-0 font-bold cursor-pointer transition-all ${
-              copiedRef ? 'btn-secondary text-emerald-700 border-emerald-300 bg-emerald-50' : 'btn-primary shadow-gold'
-            }`}
-          >
-            <RiFileCopyLine size={15} /> {copiedRef ? 'Copied!' : 'Copy Link'}
-          </button>
+          {hasDeposited ? (
+            <>
+              <div className="flex-1 px-4 py-3 rounded-2xl bg-white border border-gold-200 text-xs sm:text-sm font-mono font-bold text-slate-900 font-poppins truncate shadow-xs select-all">
+                {referralLink}
+              </div>
+              <button
+                type="button"
+                onClick={copyReferralLink}
+                className={`btn text-xs px-5 py-3 rounded-2xl flex-shrink-0 font-bold cursor-pointer transition-all ${
+                  copiedRef ? 'btn-secondary text-emerald-700 border-emerald-300 bg-emerald-50' : 'btn-primary shadow-gold'
+                }`}
+              >
+                <RiFileCopyLine size={15} /> {copiedRef ? 'Copied!' : 'Copy Link'}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="flex-1 px-4 py-3 rounded-2xl bg-amber-50/80 border border-amber-300 text-xs sm:text-sm font-mono font-bold text-amber-900 font-poppins truncate shadow-xs flex items-center gap-2 select-none">
+                <RiLockLine size={16} className="text-amber-600 flex-shrink-0" />
+                <span className="truncate">Referral Link Locked • Mandatory Deposit Required (Min. $10 USD)</span>
+              </div>
+              <button
+                type="button"
+                onClick={copyReferralLink}
+                className="btn text-xs px-5 py-3 rounded-2xl flex-shrink-0 font-bold cursor-pointer transition-all bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs flex items-center gap-1.5"
+                title="Deposit required to unlock referral link"
+              >
+                <RiLockLine size={15} /> Copy Locked
+              </button>
+            </>
+          )}
         </div>
+
+        {!hasDeposited && (
+          <div className="mt-3 p-3 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-amber-900">
+            <div className="flex items-center gap-2">
+              <RiAlertLine size={18} className="text-amber-600 flex-shrink-0" />
+              <span>Deposit is mandatory to activate and copy your referral link.</span>
+            </div>
+            <Link
+              to="/deposit"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-gold-400 to-amber-500 hover:from-gold-500 hover:to-amber-600 text-slate-950 font-bold text-xs shadow-2xs self-start sm:self-auto transition-transform active:scale-95"
+            >
+              <span>Deposit Now</span>
+              <RiArrowRightLine size={13} />
+            </Link>
+          </div>
+        )}
       </div>
+
+      {/* ──────────────── DEPOSIT MANDATORY MODAL ──────────────── */}
+      <Modal
+        isOpen={depositModalOpen}
+        onClose={() => setDepositModalOpen(false)}
+        title="Mandatory Deposit Required"
+        subtitle="Active deposit required to unlock and copy your affiliate referral link"
+        size="md"
+        footer={
+          <div className="flex items-center justify-end gap-2.5 w-full">
+            <button
+              type="button"
+              onClick={() => setDepositModalOpen(false)}
+              className="btn btn-secondary text-xs px-4 py-2.5 rounded-xl font-bold cursor-pointer"
+            >
+              Close
+            </button>
+            <Link
+              to="/deposit"
+              className="btn btn-primary text-xs px-5 py-2.5 rounded-xl font-bold shadow-gold flex items-center gap-1.5 cursor-pointer"
+            >
+              <RiArrowDownLine size={15} />
+              <span>Make a Deposit ($10 Min)</span>
+            </Link>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2 font-poppins">
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-amber-900">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 flex-shrink-0 mt-0.5">
+              <RiLockLine size={20} />
+            </div>
+            <div className="space-y-1 text-xs">
+              <h4 className="font-bold text-sm text-slate-900">Referral Link is Currently Locked</h4>
+              <p className="text-slate-600 leading-relaxed">
+                To maintain platform security, prevent spam registrations, and ensure genuine network growth, you must make a mandatory deposit (minimum <strong>$10 USD</strong>) before you can copy or share your referral link.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+            <h5 className="font-bold text-slate-800">What happens after you deposit:</h5>
+            <ul className="space-y-1.5 text-slate-600 list-disc list-inside">
+              <li>Your personal referral link is unlocked immediately for one-click copying.</li>
+              <li>Your personal QR code is activated for instant mobile sharing.</li>
+              <li>You unlock multi-tier affiliate commissions on all your downlines' investments.</li>
+            </ul>
+          </div>
+        </div>
+      </Modal>
 
       {/* ──────────────── QUICK ACCESS LINKS ──────────────── */}
       {/* <div className="card p-6 sm:p-7 border border-slate-200 shadow-sm">

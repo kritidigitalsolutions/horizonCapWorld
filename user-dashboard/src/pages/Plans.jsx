@@ -60,7 +60,7 @@ export default function Plans() {
   const [investDrawerOpen, setInvestDrawerOpen] = useState(false);
   const [calcDrawerOpen, setCalcDrawerOpen] = useState(false);
   const [investAmount, setInvestAmount] = useState(10);
-  const [lockInPeriod, setLockInPeriod] = useState('333 Days'); // '333 Days' | 'None'
+  const [lockInPeriod, setLockInPeriod] = useState('None'); // 'None' (Without Lock In Period) | '333 Days' (Cap is 3X approx. 333 Days)
   const [autoRenewal, setAutoRenewal] = useState(false);
   const [investSuccess, setInvestSuccess] = useState(false);
   const [investSubmitting, setInvestSubmitting] = useState(false);
@@ -161,7 +161,7 @@ export default function Plans() {
       if (targetPlan) {
         setSelectedPlan(targetPlan);
         setInvestAmount(location.state.amount || targetPlan.minAmountNumeric || 100);
-        setLockInPeriod(location.state.lockInPeriod || '365 Days');
+        setLockInPeriod(location.state.lockInPeriod || 'None');
         setAutoRenewal(Boolean(location.state.autoRenewal));
         setInvestDrawerOpen(true);
         // Clean up location state so modal does not re-pop on refresh
@@ -173,7 +173,7 @@ export default function Plans() {
   const handleOpenInvest = (plan) => {
     setSelectedPlan(plan);
     setInvestAmount(plan.minAmountNumeric || 100);
-    setLockInPeriod('365 Days');
+    setLockInPeriod('None');
     setAutoRenewal(false);
     setInvestSuccess(false);
     setInvestError('');
@@ -638,68 +638,152 @@ export default function Plans() {
             )}
           </div>
 
-          {/* ──────── LOCK-IN PERIOD SELECTION (Without Lock In vs Cap is 3X approx. 333 Days) ──────── */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-              ROI & Contract Mode *
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {/* ──────── ROI & CONTRACT MODE SWITCH TAB ──────── */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                ROI & Contract Mode *
+              </label>
+              <span className="text-[11px] font-bold text-gray-500">
+                {lockInPeriod === 'None' ? 'Standard 0.30% / Day' : 'Boosted 0.90% / Day (3X Cap)'}
+              </span>
+            </div>
+
+            {/* Segmented Switch Tab Bar */}
+            <div className="p-1 bg-slate-100/90 rounded-2xl border border-slate-200 grid grid-cols-2 gap-1.5 shadow-inner">
               <button
                 type="button"
                 onClick={() => setLockInPeriod('None')}
-                className={`p-3 rounded-xl text-xs font-bold transition-all border flex flex-col items-start gap-2 cursor-pointer ${
+                className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
                   lockInPeriod === 'None'
-                    ? 'bg-emerald-50/80 border-emerald-500 text-emerald-950 ring-2 ring-emerald-300 shadow-xs'
-                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 ring-1 ring-emerald-500'
+                    : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-white/60'
                 }`}
               >
-                <div className="flex flex-wrap items-center justify-between gap-1.5 w-full">
-                  <span className="font-extrabold flex items-center gap-1.5 text-xs sm:text-sm">
-                    <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs shadow-2xs">🔓</span>
-                    <span>Without Lock In Period</span>
+                <span className="text-sm">🔓</span>
+                <div className="text-left flex flex-col">
+                  <span className="leading-tight">Without Lock In Period</span>
+                  <span className={`text-[9.5px] font-semibold ${lockInPeriod === 'None' ? 'text-emerald-100' : 'text-emerald-700'}`}>
+                    0.3% / Day • Rewards Eligible
                   </span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-bold shadow-2xs">
-                      🎁 Rewards Eligible
-                    </span>
-                    <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-extrabold shadow-2xs">
-                      0.3% / Day
-                    </span>
-                  </div>
                 </div>
-                <span className="text-[11px] text-gray-500 font-normal leading-relaxed text-left">
-                  Standard Daily ROI (0.3% / day). Capital flexible as per platform protocol. <strong>Eligible for Reward (Loyalty Bonus up to 10%)</strong>.
-                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setLockInPeriod('333 Days')}
-                className={`p-3 rounded-xl text-xs font-bold transition-all border flex flex-col items-start gap-2 cursor-pointer ${
+                className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
                   lockInPeriod === '333 Days' || lockInPeriod === '365 Days' || lockInPeriod === '3 Months'
-                    ? 'bg-amber-50/80 border-amber-500 text-amber-950 ring-2 ring-amber-300 shadow-xs'
-                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/25 ring-1 ring-amber-400'
+                    : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-white/60'
                 }`}
               >
-                <div className="flex flex-wrap items-center justify-between gap-1.5 w-full">
-                  <span className="font-extrabold flex items-center gap-1.5 text-xs sm:text-sm">
-                    <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-900 flex items-center justify-center text-xs shadow-2xs">🔒</span>
-                    <span>Cap is 3X approx. 333 Days</span>
+                <span className="text-sm">🔒</span>
+                <div className="text-left flex flex-col">
+                  <span className="leading-tight">Cap is 3X approx. 333 Days</span>
+                  <span className={`text-[9.5px] font-semibold ${lockInPeriod === '333 Days' || lockInPeriod === '365 Days' || lockInPeriod === '3 Months' ? 'text-amber-950' : 'text-amber-700'}`}>
+                    0.9% / Day • 3X Cap • No Rewards
                   </span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold shadow-2xs">
-                      No Rewards
-                    </span>
-                    <span className="text-[10px] bg-amber-600 text-white px-2 py-0.5 rounded-full font-extrabold shadow-2xs">
-                      0.9% / Day (3X Cap)
-                    </span>
-                  </div>
                 </div>
-                <span className="text-[11px] text-gray-500 font-normal leading-relaxed text-left">
-                  Boosted Daily ROI (0.9% / day). 333 days contract delivers approx. 300% (3X) profit. <em>(Loyalty Rewards not applicable on 3X plan)</em>.
-                </span>
               </button>
             </div>
+
+            {/* ──────── REWARD (LOYALTY BONUS) SECTION (UP TOP) ──────── */}
+            {selectedPlan?.loyaltyBonusEnabled !== false && (
+              lockInPeriod === 'None' ? (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/90 via-gold-50/50 to-orange-50/40 border border-amber-300/80 space-y-2 shadow-xs font-poppins animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                        <RiGiftLine size={16} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wide">
+                          {selectedPlan?.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
+                        </h4>
+                        <p className="text-[10.5px] text-gray-500">
+                          {selectedPlan?.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet"}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs">
+                      Active: No Lock-In
+                    </span>
+                  </div>
+
+                  {/* Slabs Milestone Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                    {(selectedPlan?.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).map((slab, sIdx) => {
+                      const bonusVal = (Number(investAmount) || 0) * (Number(slab.bonusPercentage) / 100);
+                      return (
+                        <div key={sIdx} className="p-2.5 bg-white rounded-xl text-center border border-amber-200/80 shadow-2xs">
+                          <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
+                            {slab.label || `${slab.days} Days`}
+                          </p>
+                          <p className="text-xs font-extrabold text-amber-700 font-mono mt-0.5 truncate">
+                            +{slab.bonusPercentage}%
+                          </p>
+                          <p className="text-[10.5px] text-emerald-700 font-extrabold font-mono mt-0.5">
+                            +${bonusVal.toFixed(2)}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="text-[10.5px] text-amber-900 bg-amber-100/60 p-2 rounded-lg border border-amber-200/70 flex items-center gap-1.5">
+                    <RiInformationLine size={14} className="text-amber-600 shrink-0" />
+                    <span>One-time loyalty bonus credited directly to your wallet for keeping capital invested without premature withdrawal.</span>
+                  </div>
+
+                  <div className="p-2.5 bg-white/90 rounded-xl border border-amber-200 text-[11px] text-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <span className="text-gray-600">
+                      Want boosted yield (<strong>0.9% / day</strong> up to 300% profit)? Switch to 3X Cap contract.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setLockInPeriod('333 Days')}
+                      className="text-[11px] text-amber-700 font-extrabold hover:underline cursor-pointer inline-flex items-center gap-1 shrink-0"
+                    >
+                      Switch to Cap is 3X (~333 Days) &rarr;
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-300/80 text-amber-950 font-poppins space-y-2 animate-fade-in shadow-2xs">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center font-bold shadow-3xs shrink-0">
+                        <RiGiftLine size={16} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-amber-950 uppercase tracking-wide">
+                          Reward (Loyalty Bonus) Not Applicable on 3X Plan
+                        </h4>
+                        <p className="text-[11px] text-amber-800 mt-0.5">
+                          3X Cap contracts already offer boosted <strong>0.9% / day</strong> yield up to 300% profit.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shrink-0 shadow-2xs">
+                      3X Plan Excluded
+                    </span>
+                  </div>
+                  <div className="p-2.5 bg-white/90 rounded-xl border border-amber-200 text-[11px] text-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <span className="text-gray-600">
+                      Loyalty bonus rewards are exclusive to <strong>Without Lock In Period</strong> plans.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setLockInPeriod('None')}
+                      className="text-[11px] text-emerald-700 font-extrabold hover:underline cursor-pointer inline-flex items-center gap-1 shrink-0"
+                    >
+                      Switch to No Lock-In Period &rarr;
+                    </button>
+                  </div>
+                </div>
+              )
+            )}
           </div>
 
           {/* ──────── AMOUNT-WISE DAILY ROI PERCENTAGE SLABS TABLE ──────── */}
@@ -1027,90 +1111,6 @@ export default function Plans() {
               </div>
             );
           })()}
-
-          {/* ──────── REWARD ( LOYALTY BONUS ) MILESTONE BENEFITS ──────── */}
-          {selectedPlan?.loyaltyBonusEnabled !== false && (
-            lockInPeriod === 'None' ? (
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 via-gold-50/50 to-orange-50/40 border border-amber-300/80 space-y-2.5 shadow-xs font-poppins animate-fade-in">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
-                      <RiGiftLine size={16} />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wide">
-                        {selectedPlan?.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
-                      </h4>
-                      <p className="text-[10.5px] text-gray-500">
-                        {selectedPlan?.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet"}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs">
-                    Active: No Lock-In
-                  </span>
-                </div>
-
-                {/* Slabs Milestone Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
-                  {(selectedPlan?.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).map((slab, sIdx) => {
-                    const bonusVal = (Number(investAmount) || 0) * (Number(slab.bonusPercentage) / 100);
-                    return (
-                      <div key={sIdx} className="p-2.5 bg-white rounded-xl text-center border border-amber-200/80 shadow-2xs">
-                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                          {slab.label || `${slab.days} Days`}
-                        </p>
-                        <p className="text-xs font-extrabold text-amber-700 font-mono mt-0.5 truncate">
-                          +{slab.bonusPercentage}%
-                        </p>
-                        <p className="text-[10.5px] text-emerald-700 font-extrabold font-mono mt-0.5">
-                          +${bonusVal.toFixed(2)}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="text-[10.5px] text-amber-900 bg-amber-100/60 p-2 rounded-lg border border-amber-200/70 flex items-center gap-1.5">
-                  <RiInformationLine size={14} className="text-amber-600 shrink-0" />
-                  <span>One-time loyalty bonus credited directly to your wallet for keeping capital invested without premature withdrawal.</span>
-                </div>
-              </div>
-            ) : (
-              <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-300/80 text-amber-950 font-poppins space-y-2 animate-fade-in shadow-2xs">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center font-bold shadow-3xs shrink-0">
-                      <RiGiftLine size={16} />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-extrabold text-amber-950 uppercase tracking-wide">
-                        Reward (Loyalty Bonus) Not Applicable on 3X Plan
-                      </h4>
-                      <p className="text-[11px] text-amber-800 mt-0.5">
-                        3X Cap contracts already offer boosted <strong>0.9% / day</strong> yield up to 300% profit.
-                      </p>
-                    </div>
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shrink-0 shadow-2xs">
-                    3X Plan Excluded
-                  </span>
-                </div>
-                <div className="p-2.5 bg-white/90 rounded-xl border border-amber-200 text-[11px] text-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                  <span className="text-gray-600">
-                    Loyalty bonus rewards are exclusive to <strong>Without Lock In Period</strong> plans.
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setLockInPeriod('None')}
-                    className="text-[11px] text-emerald-700 font-extrabold hover:underline cursor-pointer inline-flex items-center gap-1 shrink-0"
-                  >
-                    Switch to No Lock-In Period &rarr;
-                  </button>
-                </div>
-              </div>
-            )
-          )}
         </div>
       </Modal>
 

@@ -72,6 +72,17 @@ exports.getDashboardOverview = async (req, res) => {
       activeAssetNames: activeAssetNames.length > 0 ? activeAssetNames.join(" & ") : "",
     };
 
+    // Determine if client has deposited (mandatory deposit for referral link copying)
+    const hasDeposited = Boolean(
+      (user.totalInvested || 0) > 0 ||
+      (user.depositWallet || 0) > 0 ||
+      (await Transaction.exists({
+        user: user._id,
+        type: "Deposit",
+        status: { $in: ["Approved", "Completed"] },
+      })) !== null
+    );
+
     // Affiliate Network stats
     const network = {
       totalReferrals: user.totalReferrals || 0,
@@ -81,6 +92,7 @@ exports.getDashboardOverview = async (req, res) => {
       rankLevel: user.rankLevel || 1,
       sponsorId: user.sponsorId || "HORIZON-HQ",
       customId: user.customId || "HORIZON-USR-01",
+      hasDeposited,
     };
 
     // Wallets
@@ -94,7 +106,10 @@ exports.getDashboardOverview = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      user,
+      user: {
+        ...user.toObject(),
+        hasDeposited,
+      },
       wallets,
       portfolioSummary,
       streaming,

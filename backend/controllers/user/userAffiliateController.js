@@ -46,11 +46,23 @@ exports.getReferralOverview = async (req, res) => {
     const origin = req.headers.origin || (req.headers.referer ? req.headers.referer.replace(/\/$/, "") : "https://horizoncapworlds.com");
     const referralLink = `${origin}/register?ref=${user.customId}`;
 
+    // Determine if client has deposited (mandatory deposit for referral link copying)
+    const hasDeposited = Boolean(
+      (user.totalInvested || 0) > 0 ||
+      (user.depositWallet || 0) > 0 ||
+      (await Transaction.exists({
+        user: user._id,
+        type: "Deposit",
+        status: { $in: ["Approved", "Completed"] },
+      })) !== null
+    );
+
     res.status(200).json({
       success: true,
       data: {
         referralCode: user.customId,
-        referralLink,
+        referralLink: hasDeposited ? referralLink : "",
+        hasDeposited,
         sponsorId: user.sponsorId,
         directReferralsCount: directUsers.length,
         totalTeamCount: user.totalReferrals || directUsers.length,
