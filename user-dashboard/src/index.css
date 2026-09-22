@@ -334,6 +334,52 @@ h1, h2, h3, h4, h5, h6 {
   padding-right: 44px !important;
 }
 
+/* ===== PHONE INPUT (react-phone-number-input) ===== */
+.custom-phone-input {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  background: var(--white);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+
+.custom-phone-input:focus-within {
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.15);
+}
+
+.custom-phone-input .PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+}
+
+.custom-phone-input .PhoneInputCountrySelect {
+  cursor: pointer;
+}
+
+.custom-phone-input .PhoneInputInput {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-primary);
+  width: 100%;
+  padding: 0 !important;
+}
+
+.custom-phone-input .PhoneInputInput::placeholder {
+  color: var(--text-muted);
+}
+
 /* ===== TABLE STYLES ===== */
 .table-container {
   overflow-x: auto;

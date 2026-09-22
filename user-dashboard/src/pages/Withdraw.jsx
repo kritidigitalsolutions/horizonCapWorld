@@ -21,7 +21,7 @@ import Modal from '../components/ui/Modal';
 const baseWithdrawMethods = [
   { id: 'usdt-trc20', name: 'USDT (TRC20)', type: 'crypto' },
   { id: 'btc', name: 'Bitcoin (BTC)', type: 'crypto' },
-  { id: 'bank', name: 'Bank Wire Transfer', type: 'bank' },
+  // { id: 'bank', name: 'Bank Wire Transfer', type: 'bank' },
 ];
 
 export default function Withdraw() {
@@ -209,6 +209,23 @@ export default function Withdraw() {
       });
 
       if (res?.success) {
+        if (res.accountBlocked) {
+          toast.warning(
+            "Your account has been blocked after withdrawing your full capital under the 3X Cap plan. Please create a new account to continue.",
+            "Account Blocked"
+          );
+          setSuccessMsg(
+            "Account Blocked: Full capital withdrawn under 3X Cap plan. Redirecting to registration to create a new account..."
+          );
+          setTimeout(() => {
+            localStorage.removeItem('horizon_user_token');
+            localStorage.removeItem('horizon_token');
+            localStorage.removeItem('horizon_user');
+            window.location.href = '/register';
+          }, 3500);
+          return;
+        }
+
         setSuccessMsg(
           res.message ||
             `Withdrawal request for $${withdrawNum.toLocaleString()} USD submitted successfully. Net payout: $${calculatedNet.toFixed(2)}.`
@@ -220,7 +237,17 @@ export default function Withdraw() {
         setErrorMsg(res?.message || 'Withdrawal request failed.');
       }
     } catch (err) {
-      setErrorMsg(err.response?.data?.message || err.message || 'Failed to submit withdrawal request.');
+      if (err.response?.status === 403 && err.response?.data?.message?.includes('blocked')) {
+        setErrorMsg(err.response.data.message);
+        setTimeout(() => {
+          localStorage.removeItem('horizon_user_token');
+          localStorage.removeItem('horizon_token');
+          localStorage.removeItem('horizon_user');
+          window.location.href = '/login';
+        }, 3000);
+      } else {
+        setErrorMsg(err.response?.data?.message || err.message || 'Failed to submit withdrawal request.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -534,6 +561,24 @@ export default function Withdraw() {
                   </p>
                 )}
               </div>
+
+              {/* 3X Cap Capital Withdrawal Notice & Warning */}
+              {totalInvested > 0 && (
+                <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-300/80 text-xs font-poppins space-y-1.5 text-amber-950">
+                  <div className="flex items-center gap-2 font-bold text-amber-900">
+                    <RiAlertLine size={16} className="text-amber-600 flex-shrink-0" />
+                    <span>3X Cap Capital Withdrawal Policy:</span>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">
+                    Under the 3X Cap plan, once your cumulative withdrawals reach your total invested capital (<strong>${totalInvested.toLocaleString()} USD</strong>), your account will be automatically completed and blocked. You will need to create a new account to continue investing.
+                  </p>
+                  {totalWithdrawn + numAmount >= totalInvested && numAmount > 0 && (
+                    <p className="text-red-600 font-bold bg-red-50 p-2.5 rounded-xl border border-red-200 mt-1">
+                      ⚠️ Warning: Submitting this withdrawal of ${numAmount.toFixed(2)} USD will reach or exceed your total invested capital (${(totalWithdrawn + numAmount).toFixed(2)} / ${totalInvested.toLocaleString()} USD). Your account will be blocked upon submission.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <button
                 type="submit"

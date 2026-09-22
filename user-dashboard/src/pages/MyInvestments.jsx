@@ -1,24 +1,20 @@
 import { useState, useEffect } from 'react';
-import { getMyInvestments, toggleAutoRenewal } from '../api/plansApi';
+import { getMyInvestments } from '../api/plansApi';
 import {
   RiFundsLine, RiLeafLine, RiCoinsLine,
   RiFlashlightLine, RiArrowRightLine, RiCalendarLine,
-  RiRefreshLine,
 } from 'react-icons/ri';
-import { UilClock} from '@iconscout/react-unicons';
+import { UilClock } from '@iconscout/react-unicons';
 import KPICard from '../components/ui/KPICard';
 import SearchBar from '../components/ui/SearchBar';
 import PageHeader from '../components/ui/PageHeader';
 import { Link } from 'react-router-dom';
-import { useToast } from '../context/ToastContext';
 
 export default function MyInvestments() {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [investmentsList, setInvestmentsList] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [togglingId, setTogglingId] = useState(null);
 
   const fetchInvestments = async () => {
     try {
@@ -34,8 +30,38 @@ export default function MyInvestments() {
             inv.daysRemaining === 'Lifetime'
           );
 
+          const is3XCap = Boolean(
+            inv.isLocked ||
+            inv.lockInPeriod === '3X Cap' ||
+            inv.lockInPeriod === '333 Days' ||
+            inv.lockInPeriod === '365 Days' ||
+            inv.lockInPeriod === '3 Months' ||
+            inv.planName?.toLowerCase().includes('3x')
+          );
+
           let daysRemaining = 'Lifetime';
-          if (!isInf) {
+          let endStr = 'Lifetime (No Expiry)';
+
+          if (is3XCap) {
+            const targetProfit = (inv.amount || 0) * 3;
+            const currentProfit = Number(inv.totalProfitEarned || inv.totalEarned || 0);
+            const remProfit = Math.max(0, targetProfit - currentProfit);
+
+            if (inv.status === 'Completed' || remProfit <= 0) {
+              daysRemaining = 0;
+              endStr = inv.endDate
+                ? (typeof inv.endDate === 'string' ? inv.endDate.split('T')[0] : new Date(inv.endDate).toISOString().split('T')[0])
+                : 'Completed';
+            } else if (inv.daysRemaining !== undefined && inv.daysRemaining !== 'Lifetime') {
+              daysRemaining = inv.daysRemaining;
+              endStr = inv.endDate
+                ? (typeof inv.endDate === 'string' ? inv.endDate.split('T')[0] : new Date(inv.endDate).toISOString().split('T')[0])
+                : new Date(Date.now() + daysRemaining * 86400000).toISOString().split('T')[0];
+            } else {
+              daysRemaining = 309;
+              endStr = new Date(Date.now() + 309 * 86400000).toISOString().split('T')[0];
+            }
+          } else if (!isInf) {
             if (inv.daysRemaining !== undefined && inv.daysRemaining !== 'Lifetime') {
               daysRemaining = inv.daysRemaining;
             } else if (inv.endDate) {
@@ -44,10 +70,14 @@ export default function MyInvestments() {
             } else {
               daysRemaining = 365;
             }
+            endStr = inv.endDate
+              ? (typeof inv.endDate === 'string' ? inv.endDate.split('T')[0] : new Date(inv.endDate).toISOString().split('T')[0])
+              : 'Perpetual';
           }
 
-          const startStr = inv.startDate ? inv.startDate.split('T')[0] : new Date().toISOString().split('T')[0];
-          const endStr = isInf ? 'Lifetime (No Expiry)' : (inv.endDate ? inv.endDate.split('T')[0] : 'Perpetual');
+          const startStr = inv.startDate
+            ? (typeof inv.startDate === 'string' ? inv.startDate.split('T')[0] : new Date(inv.startDate).toISOString().split('T')[0])
+            : new Date().toISOString().split('T')[0];
 
           return {
             _id: inv._id,
@@ -60,16 +90,14 @@ export default function MyInvestments() {
             dailyEarning: Number(inv.dailyEarning || 0),
             perSecondRate: Number(inv.perSecondRate || 0),
             totalEarned: Number(inv.totalProfitEarned || inv.totalEarned || 0),
-            duration: isInf ? '∞ Lifetime' : (inv.duration || '12 Months'),
-            durationDays: isInf ? 0 : (inv.durationDays || 365),
+            duration: isInf ? '∞ Lifetime' : is3XCap ? '3X Cap (~309 Days)' : (inv.duration || '12 Months'),
+            durationDays: isInf ? 0 : is3XCap ? 309 : (inv.durationDays || 365),
             isInfinite: isInf,
+            is3XCap,
             daysRemaining,
             startDate: startStr,
             endDate: endStr,
             payoutInterval: inv.payoutInterval || 'Per Second (Live)',
-            autoRenewal: Boolean(inv.autoRenewal),
-            autoRenewalIncentive: inv.autoRenewalIncentive || 0.25,
-            isCompounding: Boolean(inv.isCompounding),
             status: inv.status || 'Active',
           };
         });
@@ -82,27 +110,6 @@ export default function MyInvestments() {
       setInvestmentsList([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleToggleAutoRenewal = async (id) => {
-    try {
-      setTogglingId(id);
-      const res = await toggleAutoRenewal(id);
-      if (res?.success) {
-        toast.success(
-          res.message || 'Auto-renewal settings updated successfully.',
-          'Settings Updated'
-        );
-        await fetchInvestments();
-      } else {
-        toast.error(res?.message || 'Failed to update auto renewal setting.', 'Update Failed');
-      }
-    } catch (err) {
-      console.warn('Failed to toggle auto renewal:', err.message);
-      toast.error(err.response?.data?.message || err.message || 'Failed to toggle auto renewal.', 'Error');
-    } finally {
-      setTogglingId(null);
     }
   };
 
@@ -154,7 +161,7 @@ export default function MyInvestments() {
         }
       />
 
-      {/* ──────── KPI SUMMARY ROW (EXACT DESIGN.MD KPICARD) ──────── */}
+      {/* ──────── KPI SUMMARY ROW ──────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Total Capital Invested"
@@ -193,7 +200,7 @@ export default function MyInvestments() {
         />
       </div>
 
-      {/* ──────── FILTER & SEARCH BAR (MATCHING SUPER ADMIN) ──────── */}
+      {/* ──────── FILTER & SEARCH BAR ──────── */}
       <div className="card p-4">
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
           <SearchBar
@@ -231,6 +238,15 @@ export default function MyInvestments() {
           const isActive = inv.status === 'Active';
           const isRenewable = inv.planName?.toLowerCase().includes('solar') || inv.planName?.toLowerCase().includes('hydrogen') || inv.planName?.toLowerCase().includes('wind');
 
+          // Progress calculation: 3X Cap is based on 300% profit cap; standard plan is based on days
+          const progressPercent = inv.isInfinite
+            ? 100
+            : !isActive
+            ? 100
+            : inv.is3XCap
+            ? Math.min(100, Math.round(((inv.totalEarned || 0) / Math.max(1, (inv.amount || 0) * 3)) * 100))
+            : Math.min(100, Math.max(10, Math.round((((inv.durationDays || 365) - Number(inv.daysRemaining || 0)) / (inv.durationDays || 365)) * 100)));
+
           return (
             <div
               key={inv.id}
@@ -256,13 +272,9 @@ export default function MyInvestments() {
                       <span className={`badge ${isActive ? 'badge-success' : 'badge-gold'} text-[10px] font-bold`}>
                         {inv.status}
                       </span>
-                      {inv.autoRenewal ? (
-                        <span className="badge badge-gold text-[10px] font-bold flex items-center gap-1">
-                          <RiRefreshLine size={12} className="animate-spin" /> Auto Renewal: ON (+0.25%/mo)
-                        </span>
-                      ) : (
-                        <span className="badge bg-slate-100 text-slate-500 text-[10px] font-medium">
-                          Auto Renewal: OFF
+                      {inv.is3XCap && (
+                        <span className="badge badge-gold text-[10px] font-extrabold uppercase">
+                          3X Cap Plan
                         </span>
                       )}
                     </div>
@@ -282,24 +294,8 @@ export default function MyInvestments() {
                   </div>
                 </div>
 
-                {/* Right: Key Figures Matrix & Quick Toggle */}
+                {/* Right: Key Figures Matrix */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  {isActive && (
-                    <button
-                      type="button"
-                      disabled={togglingId === inv._id}
-                      onClick={() => handleToggleAutoRenewal(inv._id)}
-                      className={`text-[11px] font-bold px-3.5 py-1.5 rounded-full border transition-all cursor-pointer flex items-center gap-1.5 self-start sm:self-center ${
-                        inv.autoRenewal
-                          ? 'bg-amber-100/90 text-amber-950 border-amber-300 hover:bg-amber-200 shadow-2xs'
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-gold-400 hover:text-gold-700 shadow-2xs'
-                      }`}
-                    >
-                      <RiRefreshLine size={13} className={togglingId === inv._id ? 'animate-spin' : ''} />
-                      {inv.autoRenewal ? 'Auto Renewal: ON' : 'Turn ON Auto Renewal'}
-                    </button>
-                  )}
-
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 bg-white/60 p-4 rounded-xl border border-slate-100 font-poppins">
                     <div>
                       <p className="text-[10px] font-bold uppercase text-slate-400">Invested Capital</p>
@@ -350,20 +346,21 @@ export default function MyInvestments() {
 
                 <div className="h-2 rounded-full bg-slate-100 overflow-hidden border border-slate-200">
                   <div
-                    className={`h-full rounded-full ${
+                    className={`h-full rounded-full transition-all duration-500 ${
                       isActive
                         ? 'bg-gradient-to-r from-emerald-500 via-gold-400 to-amber-500'
                         : 'bg-emerald-500'
                     }`}
-                    style={{
-                      width: inv.isInfinite
-                        ? '100%'
-                        : isActive
-                        ? `${Math.min(100, Math.max(15, Math.round((((inv.durationDays || 365) - Number(inv.daysRemaining || 0)) / (inv.durationDays || 365)) * 100)))}%`
-                        : '100%',
-                    }}
+                    style={{ width: `${progressPercent}%` }}
                   />
                 </div>
+
+                {inv.is3XCap && isActive && (
+                  <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1">
+                    <span>3X Cap Progress: ${inv.totalEarned.toFixed(2)} / ${(inv.amount * 3).toLocaleString()} USD (300%)</span>
+                    <span className="font-semibold text-gold-700">{progressPercent}%</span>
+                  </div>
+                )}
               </div>
             </div>
           );

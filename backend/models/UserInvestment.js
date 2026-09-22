@@ -61,7 +61,7 @@ const userInvestmentSchema = new mongoose.Schema(
     },
     lockInPeriod: {
       type: String,
-      enum: ["None", "3 Months", "365 Days", "333 Days"],
+      enum: ["None", "3X Cap", "3 Months", "365 Days", "333 Days"],
       default: "None",
     },
     isLocked: {

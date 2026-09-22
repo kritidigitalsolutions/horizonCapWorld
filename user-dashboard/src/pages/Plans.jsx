@@ -17,7 +17,31 @@ import SearchBar from '../components/ui/SearchBar';
 import PageHeader from '../components/ui/PageHeader';
 
 export const DEFAULT_ROI_SLABS = [
-  { minAmount: 10, maxAmount: null, noMaxLimit: true, dailyRoi: 0.3, lockInDailyRoi: 0.9, monthlyRoi: 9.0, lockInMonthlyRoi: 27.0, annualRoi: 108.0, lockInAnnualRoi: 324.0 },
+  { minAmount: 10, maxAmount: null, noMaxLimit: true, dailyRoi: 0.3, lockInDailyRoi: 0.8, monthlyRoi: 9.0, lockInMonthlyRoi: 24.0, annualRoi: 108.0, lockInAnnualRoi: 288.0 },
+];
+
+export const ROI_SLABS_TABLE = [
+  {
+    amount: "10$ to Unlimited",
+    period: "",
+    periodDays: 0,
+    withoutLockIn: 0.3,
+    cap3X: 0.8,
+  },
+  {
+    amount: "Non Withdrawal Bonus",
+    period: "30",
+    periodDays: 30,
+    withoutLockIn: 0.35,
+    cap3X: 0.9,
+  },
+  {
+    amount: "Non Withdrawal Bonus",
+    period: "60",
+    periodDays: 60,
+    withoutLockIn: 0.4,
+    cap3X: 1.0,
+  },
 ];
 
 export const DEFAULT_LOYALTY_SLABS = [
@@ -60,8 +84,8 @@ export default function Plans() {
   const [investDrawerOpen, setInvestDrawerOpen] = useState(false);
   const [calcDrawerOpen, setCalcDrawerOpen] = useState(false);
   const [investAmount, setInvestAmount] = useState(10);
-  const [lockInPeriod, setLockInPeriod] = useState('None'); // 'None' (Without Lock In Period) | '333 Days' (Cap is 3X approx. 333 Days)
-  const [autoRenewal, setAutoRenewal] = useState(false);
+  const [lockInPeriod, setLockInPeriod] = useState('None'); // 'None' (Without Lock In Period) | '3X Cap'
+  const [selectedSlabPeriod, setSelectedSlabPeriod] = useState(0); // 0 (Base), 30 (30 Days), 60 (60 Days)
   const [investSuccess, setInvestSuccess] = useState(false);
   const [investSubmitting, setInvestSubmitting] = useState(false);
   const [investError, setInvestError] = useState('');
@@ -80,7 +104,7 @@ export default function Plans() {
                 const d = Number(s.dailyRoi) || 0.3;
                 const lockInD = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null
                   ? Number(s.lockInDailyRoi)
-                  : 0.9;
+                  : 0.8;
                 return {
                   ...s,
                   dailyRoi: d,
@@ -99,8 +123,8 @@ export default function Plans() {
 
           const minDaily = slabs[0]?.dailyRoi || 0.3;
           const maxDaily = slabs[slabs.length - 1]?.dailyRoi || 0.3;
-          const minLockInDaily = slabs[0]?.lockInDailyRoi || 0.9;
-          const maxLockInDaily = slabs[slabs.length - 1]?.lockInDailyRoi || 0.9;
+          const minLockInDaily = slabs[0]?.lockInDailyRoi || 0.8;
+          const maxLockInDaily = slabs[slabs.length - 1]?.lockInDailyRoi || 0.8;
 
           return {
             _id: p._id,
@@ -109,6 +133,7 @@ export default function Plans() {
             category: p.category || 'Renewable Energy',
             roiType: p.roiType || 'slab',
             roiSlabs: slabs,
+            roiSlabsTable: Array.isArray(p.roiSlabsTable) && p.roiSlabsTable.length > 0 ? p.roiSlabsTable : ROI_SLABS_TABLE,
             dailyRoi: p.dailyRoi || minDaily,
             minDaily,
             maxDaily,
@@ -161,8 +186,9 @@ export default function Plans() {
       if (targetPlan) {
         setSelectedPlan(targetPlan);
         setInvestAmount(location.state.amount || targetPlan.minAmountNumeric || 100);
-        setLockInPeriod(location.state.lockInPeriod || 'None');
-        setAutoRenewal(Boolean(location.state.autoRenewal));
+        if (location.state?.lockInPeriod) {
+          setLockInPeriod(location.state.lockInPeriod);
+        }
         setInvestDrawerOpen(true);
         // Clean up location state so modal does not re-pop on refresh
         window.history.replaceState({}, document.title);
@@ -172,10 +198,9 @@ export default function Plans() {
 
   const handleOpenInvest = (plan) => {
     setSelectedPlan(plan);
-    setInvestAmount(plan.minAmountNumeric || 100);
+    setInvestAmount(plan.minAmountNumeric || 10);
     setLockInPeriod('None');
-    setAutoRenewal(false);
-    setInvestSuccess(false);
+    setSelectedSlabPeriod(0);
     setInvestError('');
     setInvestDrawerOpen(true);
   };
@@ -214,7 +239,7 @@ export default function Plans() {
 
     setInvestSubmitting(true);
     try {
-      const res = await investInPlan(selectedPlan._id || selectedPlan.id, numAmount, autoRenewal, lockInPeriod);
+      const res = await investInPlan(selectedPlan._id || selectedPlan.id, numAmount, false, lockInPeriod);
       if (res?.success) {
         setInvestSuccess(true);
         toast.success(
@@ -397,9 +422,9 @@ export default function Plans() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-gray-600 pt-1 font-poppins">
-                    <span>Cap is 3X approx. 333 Days</span>
+                    <span>3X Cap</span>
                     <span className="font-extrabold text-amber-700 font-mono">
-                      {plan.minLockInDaily || 0.9}% / day
+                      {plan.minLockInDaily || 0.8}% / day
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-gray-500 pt-1 border-t border-gold-200/40 font-poppins">
@@ -434,117 +459,6 @@ export default function Plans() {
                     <span className="font-semibold text-gold-600 text-xs">{plan.investors} Users</span>
                   </div>
                 </div>
-
-                {/* Amount-Wise Slabs Accordion matching Spreadsheet */}
-                <div className="mb-4">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedSlabsPlanId(isExpanded ? null : plan.id)}
-                    className="w-full py-1.5 px-3 rounded-full bg-yellow-400/90 hover:bg-yellow-400 text-gray-950 border border-yellow-500 text-[11px] font-extrabold flex items-center justify-between transition-all cursor-pointer shadow-2xs"
-                  >
-                    <span className="flex items-center gap-1.5 truncate">
-                      <RiStackLine size={14} className="text-gray-950 shrink-0" />
-                      <span className="truncate">ROI Slabs Per Day (Without vs Cap is 3X ~333 Days)</span>
-                    </span>
-                    {isExpanded ? <RiArrowUpSLine size={16} className="shrink-0" /> : <RiArrowDownSLine size={16} className="shrink-0" />}
-                  </button>
-
-                  {isExpanded && (
-                    <div className="mt-2 overflow-hidden rounded-xl border border-yellow-400 shadow-xs bg-white text-[11px] font-poppins animate-fade-in">
-                      {/* Yellow Banner Header */}
-                      <div className="bg-yellow-300 py-1.5 px-3 text-center text-xs font-black text-gray-950 uppercase tracking-wide border-b border-yellow-400">
-                        ROI Slabs Per Day
-                      </div>
-                      <div className="grid grid-cols-3 font-bold text-gray-800 bg-yellow-50/80 text-[10px] py-1.5 px-2.5 border-b border-yellow-200 text-center">
-                        <span className="text-left">Amount</span>
-                        <span>Without Lock In Period</span>
-                        <span className="text-right">Cap is 3X approx. 333 Days</span>
-                      </div>
-                      {slabs.map((slab, idx) => {
-                        const lockInRate = slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null
-                          ? slab.lockInDailyRoi
-                          : 0.9;
-                        return (
-                          <div
-                            key={idx}
-                            className="grid grid-cols-3 items-center py-2 px-2.5 border-b border-gray-100 last:border-none text-[11px] hover:bg-yellow-50/30 transition-colors"
-                          >
-                            <span className="font-bold text-gray-900 text-left">
-                              {slab.noMaxLimit || !slab.maxAmount
-                                ? `${slab.minAmount}$ to any amount`
-                                : `${slab.minAmount}$ to ${slab.maxAmount}$`}
-                            </span>
-                            <span className="text-center font-bold text-emerald-700 font-mono">
-                              {slab.dailyRoi}%
-                            </span>
-                            <span className="text-right font-extrabold text-amber-700 font-mono">
-                              {lockInRate}%
-                            </span>
-                          </div>
-                        );
-                      })}
-                      <div className="bg-slate-50 p-2.5 border-t border-gray-200 text-[10px] text-gray-600 flex flex-col gap-1 font-medium">
-                        <div className="flex justify-between">
-                          <span>Min. Deposit: <b>${plan.minDepositAmount || 10}</b></span>
-                          <span>Min Withdrawal: <b>${plan.minWithdrawalAmount || 5}</b></span>
-                        </div>
-                        <div className="text-amber-800 font-bold text-[9.5px] border-t border-gray-200/60 pt-1 flex items-center justify-between">
-                          <span>Single ID Limit:</span>
-                          <span className="text-amber-950 font-extrabold">{plan.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* ──────── REWARD (LOYALTY BONUS) SECTION ──────── */}
-                {plan.loyaltyBonusEnabled !== false && (
-                  <div className="mb-4 p-3 rounded-xl bg-gradient-to-br from-amber-500/10 via-gold-500/5 to-orange-500/10 border border-amber-300/70 shadow-2xs font-poppins">
-                    <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] shadow-xs">
-                          <RiGiftLine size={13} />
-                        </span>
-                        <span className="text-xs font-bold text-amber-950">
-                          {plan.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-300 shadow-2xs">
-                          Without Lock-In Only
-                        </span>
-                        <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-300 shadow-2xs">
-                          Up to {(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS)[(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).length - 1]?.bonusPercentage || 10}% Extra
-                        </span>
-                      </div>
-                    </div>
-
-                    <p className="text-[10.5px] text-gray-600 leading-snug mb-1.5">
-                      {plan.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet"}
-                    </p>
-
-                    <div className="text-[9.5px] text-amber-900 font-semibold mb-2 bg-white/80 px-2 py-1 rounded border border-amber-200">
-                      ⭐ Note: Rewards are only applicable on <strong>Without Lock In Period</strong> mode (3X Cap plans excluded).
-                    </div>
-
-                    {/* Slabs Grid */}
-                    <div className="grid grid-cols-5 gap-1 text-center">
-                      {(plan.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).map((ls, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-white/90 border border-amber-200/80 rounded-lg p-1 shadow-3xs"
-                        >
-                          <p className="text-[9.5px] text-gray-500 font-medium truncate">
-                            {ls.days} Days
-                          </p>
-                          <p className="text-[11px] font-black text-amber-700 font-mono">
-                            +{ls.bonusPercentage}%
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Action Buttons */}
@@ -645,7 +559,7 @@ export default function Plans() {
                 ROI & Contract Mode *
               </label>
               <span className="text-[11px] font-bold text-gray-500">
-                {lockInPeriod === 'None' ? 'Standard 0.30% / Day' : 'Boosted 0.90% / Day (3X Cap)'}
+                {lockInPeriod === 'None' ? 'Standard 0.30% - 0.40% / Day' : 'Boosted 0.80% - 1.00% / Day (3X Cap)'}
               </span>
             </div>
 
@@ -664,25 +578,25 @@ export default function Plans() {
                 <div className="text-left flex flex-col">
                   <span className="leading-tight">Without Lock In Period</span>
                   <span className={`text-[9.5px] font-semibold ${lockInPeriod === 'None' ? 'text-emerald-100' : 'text-emerald-700'}`}>
-                    0.3% / Day • Rewards Eligible
+                    0.3% - 0.4% / Day • Rewards Eligible
                   </span>
                 </div>
               </button>
 
               <button
                 type="button"
-                onClick={() => setLockInPeriod('333 Days')}
+                onClick={() => setLockInPeriod('3X Cap')}
                 className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
-                  lockInPeriod === '333 Days' || lockInPeriod === '365 Days' || lockInPeriod === '3 Months'
+                  lockInPeriod === '3X Cap'
                     ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/25 ring-1 ring-amber-400'
                     : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-white/60'
                 }`}
               >
                 <span className="text-sm">🔒</span>
                 <div className="text-left flex flex-col">
-                  <span className="leading-tight">Cap is 3X approx. 333 Days</span>
-                  <span className={`text-[9.5px] font-semibold ${lockInPeriod === '333 Days' || lockInPeriod === '365 Days' || lockInPeriod === '3 Months' ? 'text-amber-950' : 'text-amber-700'}`}>
-                    0.9% / Day • 3X Cap • No Rewards
+                  <span className="leading-tight">3X Cap</span>
+                  <span className={`text-[9.5px] font-semibold ${lockInPeriod === '3X Cap' ? 'text-amber-950' : 'text-amber-700'}`}>
+                    0.8% - 1.0% / Day • 3X Cap • No Rewards
                   </span>
                 </div>
               </button>
@@ -738,14 +652,14 @@ export default function Plans() {
 
                   <div className="p-2.5 bg-white/90 rounded-xl border border-amber-200 text-[11px] text-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                     <span className="text-gray-600">
-                      Want boosted yield (<strong>0.9% / day</strong> up to 300% profit)? Switch to 3X Cap contract.
+                      Want boosted yield (<strong>0.8% - 1.0% / day</strong> up to 300% profit)? Switch to 3X Cap contract.
                     </span>
                     <button
                       type="button"
-                      onClick={() => setLockInPeriod('333 Days')}
+                      onClick={() => setLockInPeriod('3X Cap')}
                       className="text-[11px] text-amber-700 font-extrabold hover:underline cursor-pointer inline-flex items-center gap-1 shrink-0"
                     >
-                      Switch to Cap is 3X (~333 Days) &rarr;
+                      Switch to 3X Cap &rarr;
                     </button>
                   </div>
                 </div>
@@ -761,7 +675,7 @@ export default function Plans() {
                           Reward (Loyalty Bonus) Not Applicable on 3X Plan
                         </h4>
                         <p className="text-[11px] text-amber-800 mt-0.5">
-                          3X Cap contracts already offer boosted <strong>0.9% / day</strong> yield up to 300% profit.
+                          3X Cap contracts already offer boosted <strong>0.8% - 1.0% / day</strong> yield up to 300% profit.
                         </p>
                       </div>
                     </div>
@@ -786,117 +700,74 @@ export default function Plans() {
             )}
           </div>
 
-          {/* ──────── AMOUNT-WISE DAILY ROI PERCENTAGE SLABS TABLE ──────── */}
-          <div className="p-3.5 bg-gradient-to-br from-amber-50/70 via-gold-50/40 to-white rounded-2xl border border-gold-300 space-y-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wide text-gold-950 flex items-center gap-1.5">
-                <RiSparklingLine size={16} className="text-gold-600" />
-                ROI Slabs & Applied Rate
+          {/* ──────── ROI SLABS PER DAY TABLE (SPREADSHEET STANDARD) ──────── */}
+          <div className="rounded-2xl border border-gold-300 overflow-hidden shadow-xs bg-white font-poppins">
+            <div className="bg-yellow-300 px-3.5 py-2 flex items-center justify-between text-slate-950 border-b border-yellow-400">
+              <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                <RiSparklingLine size={15} className="text-slate-950" />
+                ROI Slabs Per Day
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs">
-                Active: {activeMatchedSlab?.noMaxLimit || !activeMatchedSlab?.maxAmount ? `${activeMatchedSlab?.minAmount}$ to any amount` : `$${activeMatchedSlab?.minAmount} – $${activeMatchedSlab?.maxAmount}`} &bull; {(lockInPeriod === '333 Days' || lockInPeriod === '365 Days' || lockInPeriod === '3 Months') ? `${activeMatchedSlab?.lockInDailyRoi || 0.9}% (Cap 3X)` : `${activeMatchedSlab?.dailyRoi || 0.3}% / day`}
+              <span className="text-[10px] font-black bg-slate-950 text-gold-300 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                {lockInPeriod === '3X Cap' ? 'Mode: 3X Cap' : 'Mode: Without Lock-In'}
               </span>
             </div>
 
-            {/* Slabs Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              {(selectedPlan?.roiSlabs || DEFAULT_ROI_SLABS).map((slab, idx) => {
-                const isMatched = activeMatchedSlab?.minAmount === slab.minAmount;
-                const isLocked = lockInPeriod === '333 Days' || lockInPeriod === '365 Days' || lockInPeriod === '3 Months';
-                const effectiveDaily = isLocked
-                  ? (slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null ? slab.lockInDailyRoi : 0.9)
-                  : slab.dailyRoi;
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="bg-yellow-50 border-b border-yellow-200/80 text-[11px] font-black text-slate-900 uppercase tracking-wider">
+                    <th className="py-2.5 px-3 border-r border-yellow-200/60">Amount</th>
+                    <th className="py-2.5 px-3 text-center border-r border-yellow-200/60">Period</th>
+                    <th className="py-2.5 px-3 text-center border-r border-yellow-200/60 text-emerald-800">Without Lock In Period</th>
+                    <th className="py-2.5 px-3 text-center text-amber-900">3X Cap</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-amber-100/60 font-medium text-slate-700">
+                  {ROI_SLABS_TABLE.map((row, idx) => {
+                    const isLocked = lockInPeriod === '3X Cap';
+                    const isSelected = selectedSlabPeriod === row.periodDays;
 
-                const withAutoRenewal = autoRenewal
-                  ? Number((effectiveDaily + (0.25 / 30)).toFixed(3))
-                  : effectiveDaily;
-
-                return (
-                  <div
-                    key={idx}
-                    className={`p-2.5 rounded-xl border text-center transition-all ${
-                      isMatched
-                        ? 'bg-yellow-300 border-yellow-500 text-gray-950 shadow-md ring-2 ring-yellow-400 font-bold'
-                        : 'bg-white border-gold-200 text-gray-700 opacity-80'
-                    }`}
-                  >
-                    <p className={`text-[11px] font-extrabold ${isMatched ? 'text-gray-950' : 'text-gray-600'}`}>
-                      {slab.noMaxLimit || !slab.maxAmount ? `${slab.minAmount}$ to any amount` : `$${slab.minAmount} – $${slab.maxAmount}`}
-                    </p>
-                    <p className={`text-sm font-black font-mono mt-0.5 ${isMatched ? 'text-gray-950' : 'text-emerald-700'}`}>
-                      {withAutoRenewal}% / day
-                    </p>
-                    <p className={`text-[10px] mt-0.5 ${isMatched ? 'text-gray-900 font-semibold' : 'text-gray-500'}`}>
-                      {isLocked ? 'Cap is 3X (~333 Days)' : 'Without Lock-In Period'}
-                    </p>
-                  </div>
-                );
-              })}
+                    return (
+                      <tr
+                        key={idx}
+                        onClick={() => setSelectedSlabPeriod(row.periodDays)}
+                        className={`transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-yellow-100/90 font-bold text-slate-950 ring-1 ring-inset ring-yellow-400'
+                            : 'hover:bg-amber-50/50'
+                        }`}
+                      >
+                        <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-amber-100/60">
+                          <div className="flex items-center gap-1.5">
+                            {isSelected && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />}
+                            <span>{row.amount}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-700 border-r border-amber-100/60">
+                          {row.period || '—'}
+                        </td>
+                        <td className={`py-2.5 px-3 text-center font-mono font-black border-r border-amber-100/60 ${!isLocked ? 'text-emerald-700 bg-emerald-50/50 font-black' : 'text-slate-600'}`}>
+                          {row.withoutLockIn}%
+                        </td>
+                        <td className={`py-2.5 px-3 text-center font-mono font-black ${isLocked ? 'text-amber-800 bg-amber-50/70 font-black' : 'text-slate-600'}`}>
+                          {row.cap3X}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </div>
 
-          {/* ──────── AUTO RENEWAL MODE INCENTIVE TOGGLE ──────── */}
-          <div className={`p-3.5 rounded-2xl border transition-all duration-300 font-poppins ${
-            autoRenewal
-              ? 'bg-gradient-to-r from-amber-500/15 via-gold-500/10 to-emerald-500/15 border-gold-400 ring-2 ring-gold-300/60 shadow-sm'
-              : 'bg-slate-50/80 border-slate-200 hover:border-slate-300'
-          }`}>
-            <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 shadow-xs transition-colors border ${
-                  autoRenewal ? 'bg-gold-500 text-slate-950 font-bold border-gold-400' : 'bg-slate-200 text-slate-600 border-slate-300'
-                }`}>
-                  <RiRefreshLine size={20} className={autoRenewal ? 'animate-spin' : ''} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                      Auto Renewal Mode
-                    </span>
-                    <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs ${
-                      autoRenewal
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        : 'bg-gold-100 text-gold-800 border border-gold-300'
-                    }`}>
-                      +0.25% / Month Boost
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                    {autoRenewal ? (
-                      <span className="text-emerald-950 font-medium">
-                        <strong>Auto Renewal ON:</strong> +0.25% monthly incentive applied across every slab. Returns are automatically added to your capital wallet for compounding benefit.
-                      </span>
-                    ) : (
-                      <span>
-                        Toggle ON to receive an additional <strong>+0.25% monthly ROI</strong> on each slab with automatic compounding to capital wallet.
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              {/* Interactive Switch with Visible Text */}
-              <button
-                type="button"
-                onClick={() => setAutoRenewal(!autoRenewal)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-xs border shrink-0 ${
-                  autoRenewal
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-emerald-500/20 ring-2 ring-emerald-200'
-                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
-                }`}
-                aria-label="Toggle Auto Renewal"
-              >
-                <div className={`w-8 h-4.5 rounded-full p-0.5 flex items-center transition-colors ${
-                  autoRenewal ? 'bg-emerald-800' : 'bg-slate-300'
-                }`}>
-                  <div className={`w-3.5 h-3.5 bg-white rounded-full shadow-md transform transition-transform ${
-                    autoRenewal ? 'translate-x-3.5' : 'translate-x-0'
-                  }`} />
-                </div>
-                <span className="font-extrabold uppercase tracking-wide">
-                  {autoRenewal ? 'ON (+0.25%)' : 'OFF'}
+            {/* Explanatory Policy Banner in English */}
+            <div className="p-2.5 bg-amber-50/90 border-t border-yellow-200 text-[11px] text-amber-950 flex items-start gap-2">
+              <RiInformationLine size={16} className="text-amber-700 shrink-0 mt-0.5" />
+              <div className="leading-snug">
+                <span className="font-bold">Non-Withdrawal Bonus Policy:</span>
+                <span className="text-slate-700 ml-1">
+                  If no withdrawal is made for <strong>30 days</strong>, daily ROI increases to <strong>{lockInPeriod === '3X Cap' ? '0.90%' : '0.35%'}</strong>. If no withdrawal is made for <strong>60 days</strong>, daily ROI increases to <strong>{lockInPeriod === '3X Cap' ? '1.00%' : '0.40%'}</strong>.
                 </span>
-              </button>
+              </div>
             </div>
           </div>
 
@@ -951,21 +822,17 @@ export default function Plans() {
           {(() => {
             const currentInvestCapital = Number(investAmount) || 0;
             const standardDailyRoi = Number(activeMatchedSlab?.dailyRoi) || 0.3;
-            const lockInDailyRoi = Number(activeMatchedSlab?.lockInDailyRoi) || 0.9;
-            const isLocked = lockInPeriod === '333 Days' || lockInPeriod === '365 Days' || lockInPeriod === '3 Months';
-            const baseDailyRoi = isLocked ? lockInDailyRoi : standardDailyRoi;
-            const baseMonthlyRoi = baseDailyRoi * 30;
-            const baseAnnualRoi = baseDailyRoi * 360;
-
-            const activeDailyRoi = autoRenewal
-              ? Number((baseDailyRoi + (0.25 / 30)).toFixed(5))
-              : baseDailyRoi;
-            const activeMonthlyRoi = autoRenewal
-              ? Number((baseMonthlyRoi + 0.25).toFixed(2))
-              : baseMonthlyRoi;
-            const activeAnnualRoi = autoRenewal
-              ? Number((baseAnnualRoi + 3.0).toFixed(1))
-              : baseAnnualRoi;
+            const lockInDailyRoi = Number(activeMatchedSlab?.lockInDailyRoi) || 0.8;
+            const isLocked = lockInPeriod === '3X Cap';
+            let baseDailyRoi = isLocked ? lockInDailyRoi : standardDailyRoi;
+            if (selectedSlabPeriod === 60) {
+              baseDailyRoi = isLocked ? 1.0 : 0.4;
+            } else if (selectedSlabPeriod === 30) {
+              baseDailyRoi = isLocked ? 0.9 : 0.35;
+            }
+            const activeDailyRoi = baseDailyRoi;
+            const activeMonthlyRoi = Number((baseDailyRoi * 30).toFixed(2));
+            const activeAnnualRoi = Number((baseDailyRoi * 360).toFixed(2));
 
             const isPlanInfinite =
               !!selectedPlan?.isInfinite ||

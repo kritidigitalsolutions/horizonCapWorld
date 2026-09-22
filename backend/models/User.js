@@ -143,7 +143,7 @@ const userSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["Active", "Inactive", "Suspended"],
+      enum: ["Active", "Inactive", "Suspended", "Blocked"],
       default: "Active",
     },
     isSeenByAdmin: {

@@ -133,16 +133,16 @@ router.put("/plans/:id", protectAdmin, updatePlan);
 router.delete("/plans/:id", protectAdmin, deletePlan);
 
 // ──────── 4. PAYMENT SETTINGS & GATEWAYS ────────
-router.get("/payment-methods", protectAdmin, getPaymentMethods);
-router.post("/payment-methods", protectAdmin, createPaymentMethod);
-router.put("/payment-methods/:id", protectAdmin, updatePaymentMethod);
-router.delete("/payment-methods/:id", protectAdmin, deletePaymentMethod);
+router.get("/payment-methods/withdrawal-settings", protectAdmin, getWithdrawalSettings);
+router.put("/payment-methods/withdrawal-settings", protectAdmin, updateWithdrawalSettings);
 router.get("/payment-methods/video/tutorial", protectAdmin, getDepositVideo);
 router.put("/payment-methods/video/tutorial", protectAdmin, updateDepositVideo);
 router.get("/payment-methods/video/withdrawal", protectAdmin, getWithdrawalVideo);
 router.put("/payment-methods/video/withdrawal", protectAdmin, updateWithdrawalVideo);
-router.get("/payment-methods/withdrawal-settings", protectAdmin, getWithdrawalSettings);
-router.put("/payment-methods/withdrawal-settings", protectAdmin, updateWithdrawalSettings);
+router.get("/payment-methods", protectAdmin, getPaymentMethods);
+router.post("/payment-methods", protectAdmin, createPaymentMethod);
+router.put("/payment-methods/:id", protectAdmin, updatePaymentMethod);
+router.delete("/payment-methods/:id", protectAdmin, deletePaymentMethod);
 
 // ──────── 5. TRANSACTIONS ────────
 router.get("/transactions", protectAdmin, getTransactions);

@@ -1,5 +1,6 @@
 const Transaction = require("../../models/Transaction");
 const User = require("../../models/User");
+const UserInvestment = require("../../models/UserInvestment");
 const { notifyUser, notifyAdmin } = require("../../utils/notificationService");
 
 // @desc    Get All Transactions with filters (Tab, Search, Date Range, Pagination)
@@ -150,11 +151,43 @@ exports.approveTransaction = async (req, res) => {
       }).catch((err) => console.warn("[Notification] Deposit approved notice warning:", err.message));
     }
 
-    // If Withdrawal, increment totalWithdrawn & trigger automated notification asynchronously
+    // If Withdrawal, ensure 3X Cap blocking logic is checked & trigger automated notification asynchronously
     if (transaction.type === "Withdrawal" && transaction.user) {
-      await User.findByIdAndUpdate(transaction.user, {
-        $inc: { totalWithdrawn: transaction.amount },
-      });
+      const user = await User.findById(transaction.user);
+      if (user) {
+        // Check if user has or had a 3X Cap plan
+        const has3XCap = await UserInvestment.exists({
+          user: user._id,
+          $or: [
+            { isLocked: true },
+            { lockInPeriod: "3X Cap" },
+            { lockInPeriod: { $regex: "3X", $options: "i" } },
+          ],
+        });
+
+        if (has3XCap && user.totalInvested > 0 && user.totalWithdrawn >= user.totalInvested && user.status !== "Blocked") {
+          user.status = "Blocked";
+          user.dailyEarning = 0;
+          user.perSecondRate = 0;
+          await user.save();
+
+          await UserInvestment.updateMany(
+            { user: user._id, status: "Active" },
+            { $set: { status: "Completed", dailyEarning: 0, perSecondRate: 0 } }
+          );
+
+          await notifyUser({
+            userId: user._id,
+            title: "Account Blocked - 3X Cap Full Capital Withdrawn",
+            message: `Your account has been blocked as you have completed full capital withdrawal under the 3X Cap plan. Please register a new account to continue.`,
+            category: "SYSTEM",
+            type: "account_blocked",
+            priority: "HIGH",
+            actionUrl: "/login",
+          });
+        }
+      }
+
       notifyUser({
         userId: transaction.user,
         title: "Withdrawal Approved & Dispatched",
@@ -196,11 +229,18 @@ exports.rejectTransaction = async (req, res) => {
       });
     }
 
-    // If pending withdrawal was rejected, refund earningWallet
+    // If pending withdrawal was rejected, refund earningWallet & restore totalWithdrawn
     if (transaction.type === "Withdrawal" && transaction.status === "Pending" && transaction.user) {
-      await User.findByIdAndUpdate(transaction.user, {
-        $inc: { earningWallet: transaction.amount },
-      });
+      const user = await User.findById(transaction.user);
+      if (user) {
+        user.earningWallet = (user.earningWallet || 0) + transaction.amount;
+        user.totalWithdrawn = Math.max(0, (user.totalWithdrawn || 0) - transaction.amount);
+        // If user was blocked solely due to this withdrawal and totalWithdrawn is now less than totalInvested
+        if (user.status === "Blocked" && user.totalWithdrawn < user.totalInvested) {
+          user.status = "Active";
+        }
+        await user.save();
+      }
     }
 
     transaction.status = "Rejected";

@@ -169,18 +169,16 @@ export default function Referrals() {
       />
 
       {/* ──────────────── ROLLING ODOMETER KPI CARDS ──────────────── */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 ${depositEnabled ? '2xl:grid-cols-4' : '2xl:grid-cols-3'} gap-3.5 sm:gap-4 xl:gap-5`}>
-        {depositEnabled && (
-          <KPICard
-            title="Total Referral Commissions Paid"
-            numericValue={Math.round(overviewData?.commissions?.totalEarned || 0)}
-            prefix="$"
-            decimals={0}
-            change={overviewData?.commissions?.totalEarned > 0 ? "Instant Payout" : "Ready"}
-            positive={overviewData?.commissions?.totalEarned > 0}
-            icon="money"
-          />
-        )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
+        <KPICard
+          title="Total Referral Commissions Paid"
+          numericValue={Math.round(overviewData?.commissions?.totalEarned || 0)}
+          prefix="$"
+          decimals={0}
+          change={overviewData?.commissions?.totalEarned > 0 ? "Instant Payout" : "Ready"}
+          positive={overviewData?.commissions?.totalEarned > 0}
+          icon="money"
+        />
         <KPICard
           title="Direct Active Promoters"
           numericValue={overviewData?.directReferralsCount || networkList.filter(u => u.level === 1).length || 0}
@@ -204,7 +202,7 @@ export default function Referrals() {
           numericValue={Math.round(overviewData?.totalTeamVolume || 0)}
           prefix="$"
           decimals={0}
-          change="Team Volume"
+          change="Group Volume"
           positive={true}
           icon="wallet"
         />

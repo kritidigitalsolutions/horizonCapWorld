@@ -40,8 +40,8 @@ const navSections = [
   {
     title: 'Affiliate & Ranks',
     items: [
-      { path: '/referrals', label: 'Referral Network', icon: RiGroupLine, activeIcon: RiGroupFill },
-      { path: '/referral-plans', label: 'Referral Plans', icon: RiNodeTree, activeIcon: RiNodeTree },
+      { path: '/referrals', label: 'Level Network', icon: RiGroupLine, activeIcon: RiGroupFill },
+      { path: '/referral-plans', label: 'Level Plans', icon: RiNodeTree, activeIcon: RiNodeTree },
       { path: '/ranks', label: 'Rank Ladder', icon: RiTrophyLine, activeIcon: RiTrophyFill },
     ]
   },

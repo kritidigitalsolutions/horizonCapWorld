@@ -21,24 +21,24 @@ const roiSlabSchema = new mongoose.Schema(
       default: 0.3,
     },
     lockInDailyRoi: {
-      type: Number, // 3 Months Lock In Daily ROI % (e.g. 0.4%, 0.6%, 0.9%, 1.1%)
-      default: 0.4,
+      type: Number, // 3X Cap Lock In Daily ROI % (Base 0.8%, 30d 0.9%, 60d 1.0%)
+      default: 0.8,
     },
     monthlyRoi: {
       type: Number, // Without lock-in monthly ROI (dailyRoi * 30)
       default: 9.0,
     },
     lockInMonthlyRoi: {
-      type: Number, // 3 Months lock-in monthly ROI (lockInDailyRoi * 30)
-      default: 12.0,
+      type: Number, // 3X Cap lock-in monthly ROI (lockInDailyRoi * 30)
+      default: 24.0,
     },
     annualRoi: {
       type: Number, // Without lock-in annual ROI (dailyRoi * 360)
       default: 108.0,
     },
     lockInAnnualRoi: {
-      type: Number, // 3 Months lock-in annual ROI (lockInDailyRoi * 360)
-      default: 144.0,
+      type: Number, // 3X Cap lock-in annual ROI (lockInDailyRoi * 360)
+      default: 288.0,
     },
   },
   { _id: false }
@@ -50,11 +50,46 @@ const defaultRoiSlabs = [
     maxAmount: null,
     noMaxLimit: true,
     dailyRoi: 0.3,
-    lockInDailyRoi: 0.9,
+    lockInDailyRoi: 0.8,
     monthlyRoi: 9.0,
-    lockInMonthlyRoi: 27.0,
+    lockInMonthlyRoi: 24.0,
     annualRoi: 108.0,
-    lockInAnnualRoi: 324.0,
+    lockInAnnualRoi: 288.0,
+  },
+];
+
+const roiSlabsTableRowSchema = new mongoose.Schema(
+  {
+    amount: { type: String, default: "10$ to Unlimited" },
+    period: { type: String, default: "" },
+    periodDays: { type: Number, default: 0 },
+    withoutLockIn: { type: Number, default: 0.3 },
+    cap3X: { type: Number, default: 0.8 },
+  },
+  { _id: false }
+);
+
+const defaultRoiSlabsTable = [
+  {
+    amount: "10$ to Unlimited",
+    period: "",
+    periodDays: 0,
+    withoutLockIn: 0.3,
+    cap3X: 0.8,
+  },
+  {
+    amount: "Non Withdrawal Bonus",
+    period: "30",
+    periodDays: 30,
+    withoutLockIn: 0.35,
+    cap3X: 0.9,
+  },
+  {
+    amount: "Non Withdrawal Bonus",
+    period: "60",
+    periodDays: 60,
+    withoutLockIn: 0.4,
+    cap3X: 1.0,
   },
 ];
 
@@ -97,9 +132,9 @@ const investmentPlanSchema = new mongoose.Schema(
       trim: true,
     },
     roiType: {
-      type: String,
       enum: ["slab", "fixed"],
       default: "slab",
+      type: String,
     },
     roi: {
       type: Number, // Monthly ROI percentage e.g. 9.0
@@ -114,13 +149,17 @@ const investmentPlanSchema = new mongoose.Schema(
       type: [roiSlabSchema],
       default: defaultRoiSlabs,
     },
+    roiSlabsTable: {
+      type: [roiSlabsTableRowSchema],
+      default: defaultRoiSlabsTable,
+    },
     hasLockInOption: {
       type: Boolean,
       default: true,
     },
     lockInPeriodDays: {
       type: Number,
-      default: 333, // approx. 333 Days (0.9% * 333 = ~300% = 3X Cap)
+      default: 0,
     },
     minDepositAmount: {
       type: Number,

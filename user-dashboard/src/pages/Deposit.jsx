@@ -18,6 +18,14 @@ import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import { Link } from 'react-router-dom';
 
+const parseNumericLimit = (limitStr) => {
+  if (!limitStr && limitStr !== 0) return null;
+  if (typeof limitStr === 'number') return limitStr;
+  const cleaned = limitStr.toString().replace(/,/g, '').trim();
+  const match = cleaned.match(/(\d+(\.\d+)?)/);
+  return match ? parseFloat(match[1]) : null;
+};
+
 export default function Deposit() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -32,6 +40,14 @@ export default function Deposit() {
   const [copiedField, setCopiedField] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Dynamic Numeric Limit Calculations for real-time validation
+  const minLimitNum = parseNumericLimit(selectedMethod?.minLimit);
+  const maxLimitNum = parseNumericLimit(selectedMethod?.maxLimit);
+  const numAmount = parseFloat(amount);
+  const hasAmount = !isNaN(numAmount) && amount.trim() !== '';
+  const isBelowMin = hasAmount && minLimitNum !== null && numAmount < minLimitNum;
+  const isAboveMax = hasAmount && maxLimitNum !== null && numAmount > maxLimitNum;
 
   // Modals state
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
@@ -72,10 +88,10 @@ export default function Deposit() {
             type,
             name: g.name,
             category: g.category || (type === 'crypto' ? 'Crypto Digital Treasury' : (type === 'bank' ? 'Direct Bank Deposit' : 'Mobile E-Wallet')),
-            subtitle: g.subtitle || (g.minLimit && g.maxLimit ? `${g.minLimit} – ${g.maxLimit}` : `$${g.minDeposit || 10} – $${g.maxDeposit || 1000000}`),
-            currency: g.currency || (type === 'crypto' ? 'USD' : (type === 'bank' ? 'PKR' : 'PKR')),
-            minLimit: g.minLimit || `$${g.minDeposit || 10}`,
-            maxLimit: g.maxLimit || `$${g.maxDeposit || 1000000}`,
+            subtitle: g.subtitle || (g.minLimit && g.maxLimit ? `${g.minLimit} – ${g.maxLimit}` : (g.minLimit || '')),
+            currency: g.currency || (type === 'crypto' ? 'USD' : (type === 'bank' ? 'INR' : 'PKR')),
+            minLimit: g.minLimit || '',
+            maxLimit: g.maxLimit || '',
             accountHolder: g.accountHolder || g.accountName || '',
             accountNumber: g.accountNumber || g.walletAddress || g.address || '',
             address: g.address || g.walletAddress || g.accountNumber || '',
@@ -88,15 +104,15 @@ export default function Deposit() {
             accountType: g.accountType || '',
             cnic: g.cnic || '',
             tillId: g.tillId || '',
-            network: g.network || (type === 'crypto' ? 'Mainnet' : 'Mobile Banking'),
-            networkCode: g.networkCode || (type === 'crypto' ? 'CRYPTO' : (type === 'bank' ? 'BANK' : 'E-WALLET')),
-            confirmationTime: g.confirmationTime || g.processingTime || '5 – 15 Minutes',
+            network: g.network || '',
+            networkCode: g.networkCode || '',
+            confirmationTime: g.confirmationTime || g.processingTime || '',
             qrCodeUrl: g.qrCodeUrl || g.qrCode || '',
             adminCustomQr: !!(g.qrCodeUrl || g.qrCode),
-            tokens: Array.isArray(g.tokens) && g.tokens.length > 0 ? g.tokens : (g.minDeposits && Array.isArray(g.minDeposits) ? g.minDeposits.map(d => d.token) : ['BNB', 'USDT', 'USDC', 'FDUSD']),
+            tokens: Array.isArray(g.tokens) && g.tokens.length > 0 ? g.tokens : (g.minDeposits && Array.isArray(g.minDeposits) ? g.minDeposits.map(d => d.token) : []),
             minDeposits: Array.isArray(g.minDeposits) && g.minDeposits.length > 0 ? g.minDeposits : [],
             warning: g.warning || '',
-            instructions: g.instructions || 'Transfer the exact amount to the coordinates above, then submit your transaction TID or proof slip below.',
+            instructions: g.instructions || '',
             iconColor: type === 'crypto' ? 'text-amber-600' : (type === 'bank' ? 'text-blue-600' : 'text-emerald-600'),
             iconBg: type === 'crypto' ? 'bg-amber-50 text-amber-600 border-amber-200' : (type === 'bank' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'),
             tagBg: type === 'crypto' ? 'bg-amber-100/80 text-amber-800 border-amber-300' : (type === 'bank' ? 'bg-blue-100/80 text-blue-800 border-blue-300' : 'bg-emerald-100/80 text-emerald-800 border-emerald-300'),
@@ -256,6 +272,20 @@ export default function Deposit() {
       return;
     }
 
+    if (isBelowMin) {
+      const msg = `Deposit amount cannot be less than minimum limit of ${selectedMethod.minLimit || minLimitNum}.`;
+      setErrorMsg(msg);
+      toast.warning(msg, 'Below Minimum Limit');
+      return;
+    }
+
+    if (isAboveMax) {
+      const msg = `Deposit amount cannot exceed maximum limit of ${selectedMethod.maxLimit || maxLimitNum}.`;
+      setErrorMsg(msg);
+      toast.warning(msg, 'Exceeds Maximum Limit');
+      return;
+    }
+
     if (!paymentSlip) {
       const msg = 'Please upload your proof of payment / deposit slip document.';
       setErrorMsg(msg);
@@ -347,7 +377,8 @@ export default function Deposit() {
   const getActiveQrCodeUrl = (method) => {
     if (!method) return '';
     if (method.qrCodeUrl) return method.qrCodeUrl;
-    const addressToEncode = method.address || method.accountNumber || 'HorizonCapital';
+    const addressToEncode = method.address || method.accountNumber || '';
+    if (!addressToEncode) return '';
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(addressToEncode)}`;
   };
 
@@ -438,7 +469,13 @@ export default function Deposit() {
                               {method.name}
                             </span>
                             <span className="text-[11px] text-slate-500 font-poppins block truncate">
-                              {method.subtitle || method.network}
+                              {method.minLimit || method.maxLimit ? (
+                                <span className="text-amber-700 font-medium">
+                                  Min: {method.minLimit || '0'} – Max: {method.maxLimit || 'Unlimited'}
+                                </span>
+                              ) : (
+                                method.subtitle || method.network
+                              )}
                             </span>
                           </div>
                         </div>
@@ -487,7 +524,13 @@ export default function Deposit() {
                                 {method.name}
                               </span>
                               <span className="text-[11px] text-slate-500 font-poppins block truncate">
-                                {method.subtitle || method.network}
+                                {method.minLimit || method.maxLimit ? (
+                                  <span className="text-amber-700 font-medium">
+                                    Min: {method.minLimit || '0'} – Max: {method.maxLimit || 'Unlimited'}
+                                  </span>
+                                ) : (
+                                  method.subtitle || method.network
+                                )}
                               </span>
                             </div>
                           </div>
@@ -543,6 +586,35 @@ export default function Deposit() {
                 <Badge variant="success" size="sm" className="flex-shrink-0">
                   Active Gateway
                 </Badge>
+              </div>
+
+              {/* Dynamic Limits & Settlement Speed Card */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-poppins">
+                <div className="p-3.5 bg-gradient-to-br from-amber-50/50 via-white to-white rounded-2xl border border-amber-200/80 shadow-2xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Minimum Deposit
+                  </span>
+                  <span className="font-bold text-slate-900 text-sm mt-0.5 block truncate">
+                    {selectedMethod.minLimit || 'No Minimum'}
+                  </span>
+                </div>
+                <div className="p-3.5 bg-gradient-to-br from-amber-50/50 via-white to-white rounded-2xl border border-amber-200/80 shadow-2xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Maximum Deposit
+                  </span>
+                  <span className="font-bold text-slate-900 text-sm mt-0.5 block truncate">
+                    {selectedMethod.maxLimit || 'No Maximum'}
+                  </span>
+                </div>
+                <div className="p-3.5 bg-gradient-to-br from-emerald-50/50 via-white to-white rounded-2xl border border-emerald-200/80 shadow-2xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Settlement Speed
+                  </span>
+                  <span className="font-bold text-emerald-700 text-sm mt-0.5 block flex items-center gap-1 truncate">
+                    <RiFlashlightLine size={14} className="text-emerald-600 flex-shrink-0" />
+                    <span>{selectedMethod.confirmationTime || 'Instant (< 1 Min)'}</span>
+                  </span>
+                </div>
               </div>
 
               {/* ─── CASE A: CRYPTOCURRENCY VIEW ─── */}
@@ -990,24 +1062,68 @@ export default function Deposit() {
 
             {/* ════════ DEPOSIT SUBMISSION FORM ════════ */}
             <form onSubmit={handleSubmitDeposit} className="space-y-4 pt-2 border-t border-slate-100 font-poppins">
-              {/* Amount Input */}
+              {/* Amount Input with Dynamic Min/Max Logical Validation */}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                  AMOUNT SENT ({selectedMethod.currency}) <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    AMOUNT SENT ({selectedMethod.currency}) <span className="text-red-500">*</span>
+                  </label>
+                  {(selectedMethod.minLimit || selectedMethod.maxLimit) && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                      isBelowMin || isAboveMax
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                    }`}>
+                      Limit: {selectedMethod.minLimit || '0'} – {selectedMethod.maxLimit || 'Unlimited'}
+                    </span>
+                  )}
+                </div>
                 <div className="relative">
                   <input
                     type="number"
                     step="any"
                     value={amount}
-                    onChange={e => setAmount(e.target.value)}
-                    placeholder={selectedMethod.currency === 'PKR' ? 'Rs 1 - 100000000' : 'Enter amount sent (e.g. 500)'}
-                    className="w-full px-4 py-3.5 rounded-2xl bg-white border border-slate-200 text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-gold-400 focus:ring-2 focus:ring-gold-200/60 font-poppins"
+                    onChange={e => {
+                      setAmount(e.target.value);
+                      if (errorMsg) setErrorMsg('');
+                    }}
+                    placeholder={
+                      selectedMethod.minLimit || selectedMethod.maxLimit
+                        ? `Min: ${selectedMethod.minLimit || '0'} | Max: ${selectedMethod.maxLimit || 'Unlimited'}`
+                        : `Enter amount sent in ${selectedMethod.currency}`
+                    }
+                    className={`w-full px-4 py-3.5 rounded-2xl bg-white border text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none transition-all font-poppins ${
+                      isBelowMin || isAboveMax
+                        ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200 bg-red-50/20'
+                        : hasAmount && !isBelowMin && !isAboveMax
+                          ? 'border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200'
+                          : 'border-slate-200 focus:border-gold-400 focus:ring-2 focus:ring-gold-200/60'
+                    }`}
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-extrabold text-slate-400 font-mono">
                     {selectedMethod.currency}
                   </div>
                 </div>
+
+                {/* Real-time Dynamic Validation Feedback */}
+                {isBelowMin && (
+                  <p className="text-xs text-red-600 font-semibold mt-1.5 flex items-center gap-1.5 animate-fade-in">
+                    <RiAlertLine size={15} className="flex-shrink-0" />
+                    <span>Amount is below the minimum deposit limit of <strong>{selectedMethod.minLimit}</strong>.</span>
+                  </p>
+                )}
+                {isAboveMax && (
+                  <p className="text-xs text-red-600 font-semibold mt-1.5 flex items-center gap-1.5 animate-fade-in">
+                    <RiAlertLine size={15} className="flex-shrink-0" />
+                    <span>Amount exceeds the maximum deposit limit of <strong>{selectedMethod.maxLimit}</strong>.</span>
+                  </p>
+                )}
+                {hasAmount && !isBelowMin && !isAboveMax && (
+                  <p className="text-xs text-emerald-600 font-medium mt-1.5 flex items-center gap-1.5 animate-fade-in">
+                    <RiCheckLine size={15} className="flex-shrink-0" />
+                    <span>Amount is within the allowed deposit range.</span>
+                  </p>
+                )}
               </div>
 
               {/* Transaction ID / TID / Hash Input */}

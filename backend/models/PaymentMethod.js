@@ -71,6 +71,10 @@ const paymentMethodSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    routingNo: {
+      type: String,
+      default: "",
+    },
     accountType: {
       type: String,
       default: "Current Account",

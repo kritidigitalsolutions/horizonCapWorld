@@ -153,7 +153,7 @@ export function AuthProvider({ children }) {
   const register = async (formData) => {
     try {
       const payload = {
-        name: formData.fullName || formData.name,
+        name: formData.userName || formData.fullName || formData.name,
         email: formData.email,
         phone: formData.phone || '',
         password: formData.password,

@@ -3,6 +3,7 @@ const PaymentMethod = require("../../models/PaymentMethod");
 const DepositVideo = require("../../models/DepositVideo");
 const AdminSettings = require("../../models/AdminSettings");
 const User = require("../../models/User");
+const UserInvestment = require("../../models/UserInvestment");
 const { notifyUser, notifyAdmin } = require("../../utils/notificationService");
 
 // @desc    Get Active Deposit Gateways (Fiat, Bank, Crypto)
@@ -47,10 +48,10 @@ exports.createDeposit = async (req, res) => {
     const { amount, rawAmount, gateway, referenceNo, slipUrl, senderName, senderAccount, senderPhone, cryptoNetwork, selectedToken } = req.body;
     const depositAmount = Number(amount);
 
-    if (!depositAmount || depositAmount < 10) {
+    if (!depositAmount || depositAmount <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Minimum deposit amount is $10 USD.",
+        message: "Please enter a valid deposit amount.",
       });
     }
 
@@ -59,6 +60,43 @@ exports.createDeposit = async (req, res) => {
         success: false,
         message: "Please select a valid deposit gateway/channel.",
       });
+    }
+
+    // Dynamic Payment Method Limit Validation
+    const isObjectId = typeof gateway === "string" && /^[0-9a-fA-F]{24}$/.test(gateway);
+    const paymentMethod = await PaymentMethod.findOne({
+      $or: [
+        { name: gateway },
+        ...(isObjectId ? [{ _id: gateway }] : [])
+      ],
+      status: { $ne: "Inactive" }
+    });
+
+    if (paymentMethod) {
+      const parseNumeric = (str) => {
+        if (!str && str !== 0) return null;
+        if (typeof str === "number") return str;
+        const cleaned = str.toString().replace(/,/g, "").trim();
+        const m = cleaned.match(/(\d+(\.\d+)?)/);
+        return m ? parseFloat(m[1]) : null;
+      };
+
+      const minLimitNum = parseNumeric(paymentMethod.minLimit);
+      const maxLimitNum = parseNumeric(paymentMethod.maxLimit);
+
+      if (minLimitNum !== null && depositAmount < minLimitNum) {
+        return res.status(400).json({
+          success: false,
+          message: `Minimum deposit for ${paymentMethod.name} is ${paymentMethod.minLimit || minLimitNum}.`,
+        });
+      }
+
+      if (maxLimitNum !== null && depositAmount > maxLimitNum) {
+        return res.status(400).json({
+          success: false,
+          message: `Maximum deposit for ${paymentMethod.name} is ${paymentMethod.maxLimit || maxLimitNum}.`,
+        });
+      }
     }
 
     if (!slipUrl || !slipUrl.trim()) {
@@ -247,6 +285,53 @@ exports.createWithdrawal = async (req, res) => {
     // Deduct from earning wallet immediately to prevent double spending
     user.earningWallet -= withdrawAmount;
     user.totalWithdrawn = (user.totalWithdrawn || 0) + withdrawAmount;
+
+    // Check if user has or had a 3X Cap plan
+    const has3XCap = await UserInvestment.exists({
+      user: user._id,
+      $or: [
+        { isLocked: true },
+        { lockInPeriod: "3X Cap" },
+        { lockInPeriod: { $regex: "3X", $options: "i" } },
+      ],
+    });
+
+    let accountBlocked = false;
+    // 3X Cap Rule: When client withdraws their full capital, their account is blocked
+    if (has3XCap && user.totalInvested > 0 && user.totalWithdrawn >= user.totalInvested) {
+      user.status = "Blocked";
+      user.dailyEarning = 0;
+      user.perSecondRate = 0;
+      accountBlocked = true;
+
+      // Mark all active investments as Completed & zero out streaming rates
+      await UserInvestment.updateMany(
+        { user: user._id, status: "Active" },
+        { $set: { status: "Completed", dailyEarning: 0, perSecondRate: 0 } }
+      );
+
+      // Automated alert to user
+      await notifyUser({
+        userId: user._id,
+        title: "Account Blocked - 3X Cap Full Capital Withdrawn",
+        message: `You have successfully withdrawn your full capital ($${user.totalWithdrawn.toLocaleString()} USD / $${user.totalInvested.toLocaleString()} USD invested) under the 3X Cap Plan. As per platform policy, your account has been blocked. Please create a new account to continue investing.`,
+        category: "SYSTEM",
+        type: "account_blocked",
+        priority: "HIGH",
+        actionUrl: "/login",
+      });
+
+      // Automated alert to admin
+      await notifyAdmin({
+        title: "Investor Account Blocked (3X Cap Full Capital Withdrawn)",
+        message: `${user.name} (${user.customId || user.email}) has withdrawn their full capital ($${user.totalWithdrawn.toLocaleString()} USD). Account automatically blocked.`,
+        category: "SECURITY",
+        type: "user_blocked",
+        priority: "HIGH",
+        actionUrl: "/users",
+      });
+    }
+
     await user.save();
 
     const userEnteredDest =
@@ -309,11 +394,15 @@ exports.createWithdrawal = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `Withdrawal request for $${withdrawAmount.toLocaleString()} USD submitted successfully. Net payout: $${netAmount.toLocaleString()}.`,
+      accountBlocked,
+      message: accountBlocked
+        ? `Withdrawal request for $${withdrawAmount.toLocaleString()} USD submitted. Note: You have withdrawn your full capital under the 3X Cap plan; your account has now been blocked as per platform terms. Please create a new account to continue.`
+        : `Withdrawal request for $${withdrawAmount.toLocaleString()} USD submitted successfully. Net payout: $${netAmount.toLocaleString()}.`,
       transaction: newTrx,
       user: {
         earningWallet: user.earningWallet,
         totalWithdrawn: user.totalWithdrawn,
+        status: user.status,
       },
     });
   } catch (error) {

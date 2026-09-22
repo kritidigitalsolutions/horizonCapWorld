@@ -251,6 +251,25 @@ export default function Ranks() {
     ? myRankData.nextRank.progressPercent
     : Math.min(100, Math.round((userTurnover / Math.max(1, nextRankMinInvest)) * 100));
 
+  // Helper to extract monthly rank salary from rank object or profit sharing string
+  const extractRankSalary = (rankObj) => {
+    if (!rankObj) return 0;
+    if (typeof rankObj.salary === 'number') return rankObj.salary;
+    if (typeof rankObj.monthlySalary === 'number') return rankObj.monthlySalary;
+    const str = rankObj.companyProfitSharing || rankObj.profitSharing || '';
+    const match = str.match(/(\d+)\s*\$\s*Per Month Salary/i) || str.match(/\$\s*(\d+)\s*Per Month Salary/i);
+    if (match) return Number(match[1]);
+    const lvl = Number(rankObj.level || 1);
+    if (lvl >= 9) return 3000;
+    if (lvl >= 8) return 1500;
+    if (lvl >= 7) return 1000;
+    if (lvl >= 6) return 500;
+    return 0;
+  };
+
+  const userRankBonus = Number(myRankData?.rewardUnlocked ?? currentRankReward ?? user?.rankBonus ?? 0);
+  const userRankSalary = Number(myRankData?.salary ?? user?.rankSalary ?? user?.salary ?? extractRankSalary(currentRankObj));
+
   const getRankIcon = (lvl) => {
     if (lvl >= 9) return <RiVipCrownLine size={24} className="text-amber-500" />;
     if (lvl >= 7) return <RiShieldStarLine size={24} className="text-purple-500" />;
@@ -288,8 +307,8 @@ export default function Ranks() {
         }
       />
 
-      {/* ──────────────── 4 ROLLING ODOMETER KPI CARDS ──────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 2xl:grid-cols-4 gap-2.5 sm:gap-4 xl:gap-5">
+      {/* ──────────────── 6 ROLLING ODOMETER KPI CARDS (3x2 GRID) ──────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Rank Rewards Distributed"
           numericValue={leaderboardList.reduce((sum, l) => sum + Number(l.rewardsEarned || l.reward || 0), 0)}
@@ -298,6 +317,8 @@ export default function Ranks() {
           change={leaderboardList.length > 0 ? "Live Rewards" : "Ready"}
           positive={true}
           icon="money"
+          subtitle="Total platform rewards unlocked"
+          delay={0}
         />
         <KPICard
           title="Active Rank Achievers"
@@ -307,6 +328,8 @@ export default function Ranks() {
           change={leaderboardList.length > 0 ? "Global Achievers" : "Ready"}
           positive={true}
           icon="users"
+          subtitle="Total leadership achievers"
+          delay={50}
         />
         <KPICard
           title="Network Referral Turnover"
@@ -316,15 +339,42 @@ export default function Ranks() {
           change={leaderboardList.length > 0 ? "Total Turnover" : "Ready"}
           positive={true}
           icon="chart"
+          subtitle="Cumulative team volume"
+          delay={100}
         />
         <KPICard
-          title="Top Level Titans"
+          title="Rank Bonus"
+          numericValue={userRankBonus}
+          prefix="$"
+          decimals={0}
+          change={userRankBonus > 0 ? "Instant Cash" : "Active"}
+          positive={true}
+          icon="trophy"
+          subtitle="One-time milestone reward"
+          delay={150}
+        />
+        <KPICard
+          title="Rank Salary"
+          numericValue={userRankSalary}
+          prefix="$"
+          suffix={userRankSalary > 0 ? "/mo" : ""}
+          decimals={0}
+          change={userRankSalary > 0 ? "Per Month" : "Tier 6+ Unlock"}
+          positive={true}
+          icon="revenue"
+          subtitle="Monthly leadership salary"
+          delay={200}
+        />
+        <KPICard
+          title="Top Level Clients  "
           numericValue={leaderboardList.filter(l => Number(l.rankLevel || l.level || 0) >= 7).length}
           prefix=""
           decimals={0}
           change="Apex Leaders"
           positive={true}
           icon="wallet"
+          subtitle="Tier 7+ council members"
+          delay={250}
         />
       </div>
 

@@ -99,7 +99,8 @@ export default function Users() {
     setCurrentPage(1);
   }, [search, statusFilter]);
 
-  const statusVariant = (status) => status === 'Active' ? 'success' : 'danger';
+  const statusVariant = (status) =>
+    status === 'Active' ? 'success' : status === 'Blocked' ? 'danger' : 'warning';
 
   // Handle Delete Confirmation
   const handleDeleteUser = async () => {
@@ -220,7 +221,7 @@ export default function Users() {
             className="flex-1 font-poppins text-xs"
           />
           <div className="flex gap-2 overflow-x-auto font-poppins scrollbar-none pb-0.5">
-            {['all', 'Active', 'Inactive'].map(st => (
+            {['all', 'Active', 'Blocked', 'Inactive'].map(st => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
@@ -388,6 +389,23 @@ export default function Users() {
         size="lg"
         footer={
           <>
+            {selectedUser && selectedUser.status === 'Blocked' ? (
+              <Button
+                variant="secondary"
+                onClick={() => handleToggleStatus(selectedUser, 'Active')}
+                className="bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+              >
+                Unblock User
+              </Button>
+            ) : selectedUser && selectedUser.status === 'Active' ? (
+              <Button
+                variant="secondary"
+                onClick={() => handleToggleStatus(selectedUser, 'Blocked')}
+                className="bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
+              >
+                Block User
+              </Button>
+            ) : null}
             <Button
               variant="danger"
               icon={<RiDeleteBinLine />}

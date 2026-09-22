@@ -40,7 +40,31 @@ import {
 
 // Default standard Amount-Wise Daily ROI Percentage Slabs requested by client
 export const DEFAULT_ROI_SLABS = [
-  { minAmount: 10, maxAmount: "", noMaxLimit: true, dailyRoi: 0.3, lockInDailyRoi: 0.9, monthlyRoi: 9.0, lockInMonthlyRoi: 27.0, annualRoi: 108.0, lockInAnnualRoi: 324.0 },
+  { minAmount: 10, maxAmount: "", noMaxLimit: true, dailyRoi: 0.3, lockInDailyRoi: 0.8, monthlyRoi: 9.0, lockInMonthlyRoi: 24.0, annualRoi: 108.0, lockInAnnualRoi: 288.0 },
+];
+
+export const ROI_SLABS_TABLE = [
+  {
+    amount: "10$ to Unlimited",
+    period: "",
+    periodDays: 0,
+    withoutLockIn: 0.3,
+    cap3X: 0.8,
+  },
+  {
+    amount: "Non Withdrawal Bonus",
+    period: "30",
+    periodDays: 30,
+    withoutLockIn: 0.35,
+    cap3X: 0.9,
+  },
+  {
+    amount: "Non Withdrawal Bonus",
+    period: "60",
+    periodDays: 60,
+    withoutLockIn: 0.4,
+    cap3X: 1.0,
+  },
 ];
 
 // Default Reward (Loyalty Bonus) Slabs based on Capital not withdrawn
@@ -137,15 +161,12 @@ export default function InvestmentPlans() {
     roi: "9.0", // Monthly ROI (%)
     dailyRoi: "0.3", // Daily ROI (%)
     roiSlabs: DEFAULT_ROI_SLABS,
+    roiSlabsTable: ROI_SLABS_TABLE,
     minDepositAmount: "10",
     minWithdrawalAmount: "5",
     singleIdMaxWithdrawal: "3X + Capital Maximum Withdrawal Allowed",
     hasLockInOption: true,
-    lockInPeriodDays: 333,
-    loyaltyBonusEnabled: true,
-    loyaltyBonusTitle: "Reward ( Loyalty Bonus )",
-    loyaltyBonusDescription: "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
-    loyaltyBonusSlabs: DEFAULT_LOYALTY_SLABS,
+    lockInPeriodDays: 0,
     isInfinite: false,
     durationDD: "",
     durationMM: "12",
@@ -198,15 +219,12 @@ export default function InvestmentPlans() {
       roi: "9.0",
       dailyRoi: "0.3",
       roiSlabs: DEFAULT_ROI_SLABS.map((s) => ({ ...s })),
+      roiSlabsTable: ROI_SLABS_TABLE.map((s) => ({ ...s })),
       minDepositAmount: "10",
       minWithdrawalAmount: "5",
       singleIdMaxWithdrawal: "3X + Capital Maximum Withdrawal Allowed",
       hasLockInOption: true,
-      lockInPeriodDays: 333,
-      loyaltyBonusEnabled: true,
-      loyaltyBonusTitle: "Reward ( Loyalty Bonus )",
-      loyaltyBonusDescription: "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
-      loyaltyBonusSlabs: DEFAULT_LOYALTY_SLABS.map((s) => ({ ...s })),
+      lockInPeriodDays: 0,
       isInfinite: false,
       durationDD: "",
       durationMM: "12",
@@ -241,7 +259,7 @@ export default function InvestmentPlans() {
             const d = Number(s.dailyRoi) || 0.3;
             const lockInD = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null
               ? Number(s.lockInDailyRoi)
-              : 0.9;
+              : 0.8;
             return {
               minAmount: s.minAmount,
               maxAmount: s.maxAmount || "",
@@ -256,14 +274,10 @@ export default function InvestmentPlans() {
           })
         : DEFAULT_ROI_SLABS.map((s) => ({ ...s }));
 
-    const loyaltySlabs =
-      Array.isArray(plan.loyaltyBonusSlabs) && plan.loyaltyBonusSlabs.length > 0
-        ? plan.loyaltyBonusSlabs.map((s) => ({
-            days: s.days,
-            bonusPercentage: s.bonusPercentage,
-            label: s.label || `${s.days} Days`,
-          }))
-        : DEFAULT_LOYALTY_SLABS.map((s) => ({ ...s }));
+    const slabsTable =
+      Array.isArray(plan.roiSlabsTable) && plan.roiSlabsTable.length > 0
+        ? plan.roiSlabsTable.map((s) => ({ ...s }))
+        : ROI_SLABS_TABLE.map((s) => ({ ...s }));
 
     setFormData({
       name: plan.name || "",
@@ -278,15 +292,12 @@ export default function InvestmentPlans() {
           ? (Number(plan.roi) / 30).toFixed(3)
           : "0.3",
       roiSlabs: slabs,
+      roiSlabsTable: slabsTable,
       minDepositAmount: plan.minDepositAmount ? plan.minDepositAmount.toString() : "10",
       minWithdrawalAmount: plan.minWithdrawalAmount ? plan.minWithdrawalAmount.toString() : "5",
       singleIdMaxWithdrawal: plan.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
       hasLockInOption: plan.hasLockInOption !== false,
-      lockInPeriodDays: plan.lockInPeriodDays || 333,
-      loyaltyBonusEnabled: plan.loyaltyBonusEnabled !== false,
-      loyaltyBonusTitle: plan.loyaltyBonusTitle || "Reward ( Loyalty Bonus )",
-      loyaltyBonusDescription: plan.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
-      loyaltyBonusSlabs: loyaltySlabs,
+      lockInPeriodDays: plan.lockInPeriodDays || 0,
       isInfinite: isInf,
       durationDD: isInf ? "" : dd,
       durationMM: isInf ? "" : mm,
@@ -302,122 +313,46 @@ export default function InvestmentPlans() {
     setModalOpen(true);
   };
 
-  // 4. Handle Slabs Changes with Dynamic Calculations
-  const handleSlabChange = (index, field, value) => {
-    const updated = [...formData.roiSlabs];
+  // 4. Handle ROI Slabs Table Changes (Spreadsheet Standard)
+  const handleSlabsTableChange = (index, field, value) => {
+    const updated = [...formData.roiSlabsTable];
     const item = { ...updated[index] };
-
-    if (field === "dailyRoi") {
-      item.dailyRoi = value;
-      const numDaily = parseFloat(value) || 0;
-      item.monthlyRoi = parseFloat((numDaily * 30).toFixed(2));
-      item.annualRoi = parseFloat((numDaily * 360).toFixed(2));
-      if (!item.lockInDailyRoi || parseFloat(item.lockInDailyRoi) <= numDaily) {
-        item.lockInDailyRoi = parseFloat((numDaily + 0.1).toFixed(2));
-        item.lockInMonthlyRoi = parseFloat(((numDaily + 0.1) * 30).toFixed(2));
-        item.lockInAnnualRoi = parseFloat(((numDaily + 0.1) * 360).toFixed(2));
-      }
-    } else if (field === "lockInDailyRoi") {
-      item.lockInDailyRoi = value;
-      const numLock = parseFloat(value) || 0;
-      item.lockInMonthlyRoi = parseFloat((numLock * 30).toFixed(2));
-      item.lockInAnnualRoi = parseFloat((numLock * 360).toFixed(2));
-    } else if (field === "monthlyRoi") {
-      item.monthlyRoi = value;
-      const numMonthly = parseFloat(value) || 0;
-      item.dailyRoi = parseFloat((numMonthly / 30).toFixed(3));
-      item.annualRoi = parseFloat((numMonthly * 12).toFixed(2));
-    } else if (field === "annualRoi") {
-      item.annualRoi = value;
-      const numAnnual = parseFloat(value) || 0;
-      item.monthlyRoi = parseFloat((numAnnual / 12).toFixed(2));
-      item.dailyRoi = parseFloat((numAnnual / 360).toFixed(3));
-    } else if (field === "minAmount") {
-      item.minAmount = value.replace(/[^0-9]/g, "");
-    } else if (field === "maxAmount") {
-      item.maxAmount = value.replace(/[^0-9]/g, "");
-    } else if (field === "noMaxLimit") {
-      item.noMaxLimit = value;
-      if (value) item.maxAmount = "";
-    }
-
+    const num = parseFloat(value);
+    item[field] = isNaN(num) ? value : num;
     updated[index] = item;
-    setFormData({ ...formData, roiSlabs: updated });
-  };
 
-  const handleAddSlab = () => {
-    const slabs = formData.roiSlabs.map((s) => ({ ...s }));
-    const lastIndex = slabs.length - 1;
-    const last = slabs[lastIndex];
-
-    let newMin = 5001;
-    if (last) {
-      const lastMin = Number(last.minAmount) || 0;
-      let prevMax = Number(last.maxAmount);
-      if (!prevMax || prevMax <= lastMin || last.noMaxLimit) {
-        prevMax = lastMin + 4999;
-        last.maxAmount = String(prevMax);
-      }
-      last.noMaxLimit = false;
-      newMin = prevMax + 1;
-    }
-
-    const prevDaily = last ? Number(last.dailyRoi) || 1.0 : 1.0;
-    const newDaily = parseFloat((prevDaily + 0.2).toFixed(2));
-    const newLockInDaily = parseFloat((newDaily + 0.1).toFixed(2));
-
-    const newSlab = {
-      minAmount: String(newMin),
+    // Keep base slab in sync
+    const baseRow = updated[0];
+    const baseWithout = Number(baseRow?.withoutLockIn) || 0.3;
+    const base3X = Number(baseRow?.cap3X) || 0.8;
+    const newRoiSlabs = [{
+      minAmount: 10,
       maxAmount: "",
       noMaxLimit: true,
-      dailyRoi: String(newDaily),
-      lockInDailyRoi: String(newLockInDaily),
-      monthlyRoi: parseFloat((newDaily * 30).toFixed(2)),
-      lockInMonthlyRoi: parseFloat((newLockInDaily * 30).toFixed(2)),
-      annualRoi: parseFloat((newDaily * 360).toFixed(2)),
-      lockInAnnualRoi: parseFloat((newLockInDaily * 360).toFixed(2)),
-    };
+      dailyRoi: baseWithout,
+      lockInDailyRoi: base3X,
+      monthlyRoi: Number((baseWithout * 30).toFixed(2)),
+      lockInMonthlyRoi: Number((base3X * 30).toFixed(2)),
+      annualRoi: Number((baseWithout * 360).toFixed(2)),
+      lockInAnnualRoi: Number((base3X * 360).toFixed(2)),
+    }];
 
     setFormData({
       ...formData,
-      roiSlabs: [...slabs, newSlab],
+      roiSlabsTable: updated,
+      roiSlabs: newRoiSlabs,
+      dailyRoi: String(baseWithout),
+      roi: String((baseWithout * 30).toFixed(2)),
     });
   };
 
-  const handleRemoveSlab = (index) => {
-    if (formData.roiSlabs.length <= 1) return;
-    const updated = formData.roiSlabs.filter((_, i) => i !== index);
-    const lastIdx = updated.length - 1;
-    if (lastIdx >= 0 && !updated.some((s) => s.noMaxLimit)) {
-      updated[lastIdx].noMaxLimit = true;
-      updated[lastIdx].maxAmount = "";
-    }
-    setFormData({ ...formData, roiSlabs: updated });
-  };
-
-  const handleResetSlabs = () => {
+  const handleResetSlabsTable = () => {
     setFormData({
       ...formData,
+      roiSlabsTable: ROI_SLABS_TABLE.map((s) => ({ ...s })),
       roiSlabs: DEFAULT_ROI_SLABS.map((s) => ({ ...s })),
-    });
-  };
-
-  const handleLoyaltySlabChange = (index, field, value) => {
-    const updated = [...formData.loyaltyBonusSlabs];
-    const item = { ...updated[index] };
-    if (field === "bonusPercentage") {
-      item.bonusPercentage = value;
-    } else if (field === "days") {
-      item.days = Number(value.replace(/[^0-9]/g, "")) || 0;
-    }
-    updated[index] = item;
-    setFormData({ ...formData, loyaltyBonusSlabs: updated });
-  };
-
-  const handleResetLoyaltySlabs = () => {
-    setFormData({
-      ...formData,
-      loyaltyBonusSlabs: DEFAULT_LOYALTY_SLABS.map((s) => ({ ...s })),
+      dailyRoi: "0.3",
+      roi: "9.0",
     });
   };
 
@@ -448,12 +383,6 @@ export default function InvestmentPlans() {
           };
         })
       : [];
-
-    const processedLoyaltySlabs = formData.loyaltyBonusSlabs.map((s) => ({
-      days: Number(s.days) || 30,
-      bonusPercentage: parseFloat(s.bonusPercentage) || 0.5,
-      label: s.label || `${s.days} Days`,
-    }));
 
     const minVal = isSlab && processedSlabs.length > 0
       ? processedSlabs[0].minAmount
@@ -502,16 +431,13 @@ export default function InvestmentPlans() {
       roi: roiVal,
       dailyRoi: dailyRoiVal,
       roiSlabs: processedSlabs,
+      roiSlabsTable: formData.roiSlabsTable || ROI_SLABS_TABLE,
       minDepositAmount: parseFloat(formData.minDepositAmount) || 10,
       minWithdrawalAmount: parseFloat(formData.minWithdrawalAmount) || 5,
       singleIdMaxWithdrawal: formData.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
       singleIdMaxWithdrawalMultiplier: 4,
-      hasLockInOption: formData.hasLockInOption !== false,
-      lockInPeriodDays: Number(formData.lockInPeriodDays) || 333,
-      loyaltyBonusEnabled: formData.loyaltyBonusEnabled,
-      loyaltyBonusTitle: formData.loyaltyBonusTitle,
-      loyaltyBonusDescription: formData.loyaltyBonusDescription,
-      loyaltyBonusSlabs: processedLoyaltySlabs,
+      hasLockInOption: formData.hasLockInOption,
+      lockInPeriodDays: Number(formData.lockInPeriodDays) || 0,
       duration: finalDuration,
       durationDays: totalDays,
       isInfinite: formData.isInfinite,
@@ -715,9 +641,9 @@ export default function InvestmentPlans() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-gray-600 pt-1">
-                    <span>Cap is 3X approx. 333 Days</span>
+                    <span>3X Cap</span>
                     <span className="font-extrabold text-amber-700 font-mono">
-                      {slabsList[0]?.lockInDailyRoi !== undefined ? slabsList[0].lockInDailyRoi : 0.9}% / day
+                      {slabsList[0]?.lockInDailyRoi !== undefined ? slabsList[0].lockInDailyRoi : 0.8}% / day
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gold-200/40">
@@ -769,7 +695,7 @@ export default function InvestmentPlans() {
                     >
                       <span className="flex items-center gap-1.5 min-w-0">
                         <RiStackLine size={14} className="text-gray-950 shrink-0" />
-                        <span className="truncate">ROI Slabs (Without vs Cap 3X ~333d)</span>
+                        <span className="truncate">ROI Slabs (Without Lock-In vs 3X Cap)</span>
                       </span>
                       {isExpanded ? (
                         <RiArrowUpSLine size={16} className="shrink-0 ml-1" />
@@ -784,34 +710,40 @@ export default function InvestmentPlans() {
                         <div className="bg-yellow-300 py-1.5 px-3 text-center text-xs font-black text-gray-950 uppercase tracking-wide border-b border-yellow-400">
                           ROI Slabs Per Day
                         </div>
-                        <div className="grid grid-cols-3 font-bold text-gray-800 bg-yellow-50/80 text-[10px] py-1.5 px-2.5 border-b border-yellow-200 text-center">
+                        <div className="grid grid-cols-4 font-black text-gray-800 bg-yellow-50/80 text-[10px] py-1.5 px-2.5 border-b border-yellow-200 text-center uppercase tracking-wider">
                           <span className="text-left">Amount</span>
-                          <span>Without Lock In Period</span>
-                          <span className="text-right">Cap is 3X approx. 333 Days</span>
+                          <span>Period</span>
+                          <span className="text-emerald-800">Without Lock In Period</span>
+                          <span className="text-amber-900 text-right">3X Cap</span>
                         </div>
-                        {slabsList.map((slab, idx) => {
-                          const lockInRate = slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null
-                            ? slab.lockInDailyRoi
-                            : 0.9;
-                          return (
-                            <div
-                              key={idx}
-                              className="grid grid-cols-3 items-center py-2 px-2.5 border-b border-gray-100 last:border-none text-[11px] hover:bg-yellow-50/30 transition-colors"
-                            >
-                              <span className="font-bold text-gray-900 text-left">
-                                {slab.noMaxLimit || !slab.maxAmount
-                                  ? `${slab.minAmount}$ to any amount`
-                                  : `${slab.minAmount}$ to ${slab.maxAmount}$`}
-                              </span>
-                              <span className="text-center font-bold text-emerald-700 font-mono">
-                                {slab.dailyRoi}%
-                              </span>
-                              <span className="text-right font-extrabold text-amber-700 font-mono">
-                                {lockInRate}%
-                              </span>
-                            </div>
-                          );
-                        })}
+                        {(plan.roiSlabsTable && plan.roiSlabsTable.length > 0
+                          ? plan.roiSlabsTable
+                          : ROI_SLABS_TABLE
+                        ).map((row, idx) => (
+                          <div
+                            key={idx}
+                            className="grid grid-cols-4 items-center py-2 px-2.5 border-b border-gray-100 last:border-none text-[11px] hover:bg-yellow-50/30 transition-colors"
+                          >
+                            <span className="font-bold text-gray-900 text-left">
+                              {row.amount}
+                            </span>
+                            <span className="text-center font-mono font-bold text-gray-700">
+                              {row.period || '—'}
+                            </span>
+                            <span className="text-center font-black text-emerald-700 font-mono">
+                              {row.withoutLockIn}%
+                            </span>
+                            <span className="text-right font-black text-amber-800 font-mono">
+                              {row.cap3X}%
+                            </span>
+                          </div>
+                        ))}
+                        <div className="p-2 bg-amber-50/80 border-t border-yellow-200 text-[10px] text-amber-950 flex items-start gap-1.5">
+                          <RiInformationLine size={14} className="text-amber-700 shrink-0 mt-0.5" />
+                          <div className="leading-tight">
+                            <span className="font-bold">Non-Withdrawal Bonus Policy:</span> If no withdrawal is made for 30 days, daily ROI increases to 0.35% (Without Lock-In) / 0.90% (3X Cap). If no withdrawal is made for 60 days, daily ROI increases to 0.40% (Without Lock-In) / 1.00% (3X Cap).
+                          </div>
+                        </div>
                         <div className="bg-slate-50 p-2.5 border-t border-gray-200 text-[10px] text-gray-600 flex flex-col gap-1 font-medium">
                           <div className="flex justify-between">
                             <span>Min. Deposit: <b>${plan.minDepositAmount || 10}</b></span>
@@ -824,30 +756,6 @@ export default function InvestmentPlans() {
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
-
-                {/* Reward (Loyalty Bonus) Information Box */}
-                {plan.loyaltyBonusEnabled !== false && (
-                  <div className="p-2.5 bg-gradient-to-r from-amber-50/90 via-gold-50/50 to-white rounded-xl border border-amber-200/80 mb-3 space-y-1.5">
-                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px]">
-                      <span className="font-bold text-amber-900 flex items-center gap-1">
-                        <RiSparklingLine size={13} className="text-amber-600" />
-                        Reward (Loyalty Bonus)
-                      </span>
-                      <span className="text-[10px] font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">Without Lock-In Only</span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 leading-tight">
-                      One time benefit for <strong>Without Lock In Period</strong> (Excluded from 3X plan):
-                    </p>
-                    <div className="grid grid-cols-5 gap-1 text-center">
-                      {(plan.loyaltyBonusSlabs && plan.loyaltyBonusSlabs.length > 0 ? plan.loyaltyBonusSlabs : DEFAULT_LOYALTY_SLABS).map((s, idx) => (
-                        <div key={idx} className="p-1 bg-white rounded-lg border border-amber-200/80 shadow-2xs">
-                          <span className="text-[9px] text-slate-400 font-bold block">{s.days}d</span>
-                          <span className="text-[10.5px] font-extrabold text-amber-700 block font-mono">+{s.bonusPercentage}%</span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 )}
               </div>
@@ -1083,292 +991,90 @@ export default function InvestmentPlans() {
             </div>
           </div>
 
-          {/* ──────── AMOUNT-WISE DAILY ROI SLABS CONFIGURATOR ──────── */}
+          {/* ──────── ROI SLABS PER DAY CONFIGURATOR (SPREADSHEET STANDARD) ──────── */}
           {formData.roiType === "slab" ? (
-            <div className="p-4 bg-gradient-to-br from-amber-50/70 via-gold-50/50 to-white rounded-2xl border border-gold-300/80 space-y-3.5 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-gold-200">
+            <div className="p-4 bg-gradient-to-br from-amber-50/70 via-gold-50/50 to-white rounded-2xl border border-yellow-400 space-y-3.5 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-yellow-300">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-full bg-yellow-400 text-gray-950 flex items-center justify-center font-bold shadow-2xs shrink-0">
                     <RiSparklingLine size={16} />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                      ROI Slabs Per Day
+                    <h4 className="text-xs font-black text-gray-900 uppercase tracking-wide">
+                      ROI Slabs Per Day (Without Lock-In vs 3X Cap)
                     </h4>
-                    <p className="text-[11px] text-gray-500">
-                      Without Lock In: 0.3% &bull; Cap 3X (~333d): 0.9%
+                    <p className="text-[11px] text-gray-600">
+                      Configure base daily ROI rates and non-withdrawal holding bonus boosts
                     </p>
                   </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={handleResetSlabs}
-                  className="self-start sm:self-auto px-3 py-1 rounded-full bg-white border border-gold-300 text-gold-900 hover:bg-gold-50 text-[11px] font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
+                  onClick={handleResetSlabsTable}
+                  className="self-start sm:self-auto px-3 py-1 rounded-full bg-white border border-yellow-400 text-yellow-950 hover:bg-yellow-50 text-[11px] font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
                 >
-                  <RiRefreshLine size={13} /> Reset Standard Slab
+                  <RiRefreshLine size={13} /> Reset Standard Slabs
                 </button>
               </div>
 
-              {/* Slabs Table Header */}
-              <div className="space-y-2.5">
-                {/* Desktop Header */}
-                <div className="hidden sm:grid sm:grid-cols-12 gap-2 text-[10.5px] font-extrabold text-gray-600 uppercase px-1">
-                  <span className="col-span-3">Amount Range ($)</span>
-                  <span className="col-span-3">Max Amount ($)</span>
-                  <span className="col-span-3">Without Lock In</span>
-                  <span className="col-span-2 text-right">Cap 3X (~333d)</span>
-                  <span className="col-span-1 text-right">Del</span>
+              {/* Table Matching Spreadsheet with Yellow Header */}
+              <div className="overflow-hidden rounded-xl border border-yellow-400 shadow-2xs bg-white text-xs">
+                <div className="bg-yellow-300 py-1.5 px-3 text-center text-xs font-black text-gray-950 uppercase tracking-wide border-b border-yellow-400">
+                  ROI Slabs Per Day
+                </div>
+                <div className="grid grid-cols-12 font-black text-gray-800 bg-yellow-50/80 text-[10px] py-2 px-3 border-b border-yellow-200 uppercase tracking-wider text-center">
+                  <span className="col-span-4 text-left">Amount</span>
+                  <span className="col-span-2">Period (Days)</span>
+                  <span className="col-span-3 text-emerald-800">Without Lock In (%)</span>
+                  <span className="col-span-3 text-amber-900 text-right">3X Cap (%)</span>
                 </div>
 
-                {/* Slabs List */}
-                {formData.roiSlabs.map((slab, idx) => (
-                  <React.Fragment key={idx}>
-                    {/* Mobile Stacked Card (< 640px) */}
-                    <div className="sm:hidden bg-white p-3 rounded-xl border border-gold-300/90 shadow-2xs space-y-2.5">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-                        <span className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider">
-                          Slab #{idx + 1}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSlab(idx)}
-                          disabled={formData.roiSlabs.length <= 1}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
-                          title="Delete Slab"
-                        >
-                          <RiDeleteBinLine size={16} />
-                        </button>
-                      </div>
-
-                      {/* Row 1: Min & Max Amount */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
-                            Min Amount ($)
-                          </label>
-                          <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50/50 px-2.5 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
-                            <span className="text-gray-400 font-bold text-xs mr-1">$</span>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={slab.minAmount}
-                              onChange={(e) =>
-                                handleSlabChange(idx, "minAmount", e.target.value)
-                              }
-                              className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
-                              placeholder="10"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
-                            Max Amount ($)
-                          </label>
-                          {slab.noMaxLimit ? (
-                            <div className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-gold-100/80 border border-gold-300 text-gold-900 font-bold text-xs">
-                              <span className="truncate text-[10.5px]">No Limit</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleSlabChange(idx, "noMaxLimit", false);
-                                  handleSlabChange(idx, "maxAmount", String((Number(slab.minAmount) || 0) + 499));
-                                }}
-                                className="text-[10px] text-gold-800 underline font-bold shrink-0 ml-1"
-                              >
-                                Set Limit
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50/50 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
-                              <div className="flex items-center flex-1 min-w-0">
-                                <span className="text-gray-400 font-bold text-xs mr-1">$</span>
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={slab.maxAmount}
-                                  onChange={(e) =>
-                                    handleSlabChange(idx, "maxAmount", e.target.value)
-                                  }
-                                  className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
-                                  placeholder="100"
-                                />
-                              </div>
-                              {idx === formData.roiSlabs.length - 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSlabChange(idx, "noMaxLimit", true)}
-                                  className="text-[10px] text-gold-700 font-bold ml-1 whitespace-nowrap shrink-0"
-                                >
-                                  ∞
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Row 2: Without Lock In & Cap 3X */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-[10px] font-bold text-emerald-700 uppercase mb-1">
-                            Without Lock In
-                          </label>
-                          <div className="flex items-center rounded-lg border border-emerald-300 bg-emerald-50/60 px-2.5 py-1.5 focus-within:border-emerald-500 focus-within:bg-white">
-                            <input
-                              type="text"
-                              value={slab.dailyRoi}
-                              onChange={(e) =>
-                                handleSlabChange(idx, "dailyRoi", e.target.value)
-                              }
-                              className="w-full bg-transparent outline-none font-extrabold text-emerald-700 text-xs text-center"
-                              placeholder="0.3"
-                            />
-                            <span className="text-emerald-600 font-bold text-xs">%</span>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-bold text-amber-800 uppercase mb-1">
-                            Cap 3X (~333d)
-                          </label>
-                          <div className="flex items-center rounded-lg border border-amber-300 bg-amber-50/60 px-2.5 py-1.5 focus-within:border-amber-500 focus-within:bg-white">
-                            <input
-                              type="text"
-                              value={slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null ? slab.lockInDailyRoi : 0.9}
-                              onChange={(e) =>
-                                handleSlabChange(idx, "lockInDailyRoi", e.target.value)
-                              }
-                              className="w-full bg-transparent outline-none font-extrabold text-amber-800 text-xs text-center"
-                              placeholder="0.9"
-                            />
-                            <span className="text-amber-600 font-bold text-xs">%</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Desktop 12-Column Row (>= 640px) */}
-                    <div className="hidden sm:grid sm:grid-cols-12 gap-2 items-center bg-white p-2 rounded-xl border border-gold-200/80 shadow-2xs hover:border-gold-400 transition-all text-xs">
-                      {/* Min Amount */}
-                      <div className="col-span-3 flex items-center rounded-lg border border-gray-200 bg-gray-50/50 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
-                        <span className="text-gray-400 font-bold text-xs mr-1">$</span>
+                {(formData.roiSlabsTable || ROI_SLABS_TABLE).map((row, idx) => (
+                  <div
+                    key={idx}
+                    className="grid grid-cols-12 items-center py-2.5 px-3 border-b border-gray-100 last:border-none text-xs hover:bg-yellow-50/30 transition-colors gap-2"
+                  >
+                    <span className="col-span-4 font-bold text-gray-900">
+                      {row.amount}
+                    </span>
+                    <span className="col-span-2 text-center font-mono font-bold text-gray-700">
+                      {row.period ? `${row.period} Days` : '—'}
+                    </span>
+                    <div className="col-span-3 flex items-center justify-center">
+                      <div className="flex items-center rounded-lg border border-emerald-300 bg-emerald-50/60 px-2 py-1 w-24">
                         <input
                           type="text"
-                          inputMode="numeric"
-                          value={slab.minAmount}
-                          onChange={(e) =>
-                            handleSlabChange(idx, "minAmount", e.target.value)
-                          }
-                          className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
-                          placeholder="10"
-                        />
-                      </div>
-
-                      {/* Max Amount + Unlimited checkbox */}
-                      <div className="col-span-3 flex items-center gap-1">
-                        {slab.noMaxLimit ? (
-                          <div className="w-full flex items-center justify-between py-1 px-2 rounded-lg bg-gold-100/80 border border-gold-300 text-gold-900 font-extrabold text-xs">
-                            <span className="truncate">{slab.minAmount || 0}$ to any amount</span>
-                            <button
-                              type="button"
-                              title="Set fixed max limit"
-                              onClick={() => {
-                                handleSlabChange(idx, "noMaxLimit", false);
-                                handleSlabChange(idx, "maxAmount", String((Number(slab.minAmount) || 0) + 499));
-                              }}
-                              className="text-[10px] text-gold-800 hover:text-gold-950 underline ml-1 cursor-pointer font-bold shrink-0"
-                            >
-                              Set Limit
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="w-full flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50/50 px-2 py-1.5 focus-within:border-gold-400 focus-within:bg-white">
-                            <div className="flex items-center flex-1 min-w-0">
-                              <span className="text-gray-400 font-bold text-xs mr-1">$</span>
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={slab.maxAmount}
-                                onChange={(e) =>
-                                  handleSlabChange(idx, "maxAmount", e.target.value)
-                                }
-                                className="w-full bg-transparent outline-none font-bold text-gray-800 text-xs"
-                                placeholder="100"
-                              />
-                            </div>
-                            {idx === formData.roiSlabs.length - 1 && (
-                              <button
-                                type="button"
-                                title="Make this slab unlimited"
-                                onClick={() => handleSlabChange(idx, "noMaxLimit", true)}
-                                className="text-[10px] text-gold-700 hover:text-gold-950 font-bold ml-1 cursor-pointer whitespace-nowrap shrink-0"
-                              >
-                                ∞ No Limit
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Without Lock In Daily ROI (%) */}
-                      <div className="col-span-3 flex items-center rounded-lg border border-emerald-300 bg-emerald-50/60 px-2 py-1.5 focus-within:border-emerald-500 focus-within:bg-white">
-                        <input
-                          type="text"
-                          value={slab.dailyRoi}
-                          onChange={(e) =>
-                            handleSlabChange(idx, "dailyRoi", e.target.value)
-                          }
-                          className="w-full bg-transparent outline-none font-extrabold text-emerald-700 text-xs text-center"
+                          value={row.withoutLockIn}
+                          onChange={(e) => handleSlabsTableChange(idx, "withoutLockIn", e.target.value)}
+                          className="w-full bg-transparent outline-none font-black text-emerald-700 text-xs text-center font-mono"
                           placeholder="0.3"
                         />
                         <span className="text-emerald-600 font-bold text-[10px]">%</span>
                       </div>
-
-                      {/* Cap is 3X approx. 333 Days Daily ROI (%) */}
-                      <div className="col-span-2 flex items-center rounded-lg border border-amber-300 bg-amber-50/60 px-2 py-1.5 focus-within:border-amber-500 focus-within:bg-white">
+                    </div>
+                    <div className="col-span-3 flex items-center justify-end">
+                      <div className="flex items-center rounded-lg border border-amber-300 bg-amber-50/60 px-2 py-1 w-24">
                         <input
                           type="text"
-                          value={slab.lockInDailyRoi !== undefined && slab.lockInDailyRoi !== null ? slab.lockInDailyRoi : 0.9}
-                          onChange={(e) =>
-                            handleSlabChange(idx, "lockInDailyRoi", e.target.value)
-                          }
-                          className="w-full bg-transparent outline-none font-extrabold text-amber-800 text-xs text-center"
-                          placeholder="0.9"
+                          value={row.cap3X}
+                          onChange={(e) => handleSlabsTableChange(idx, "cap3X", e.target.value)}
+                          className="w-full bg-transparent outline-none font-black text-amber-800 text-xs text-center font-mono"
+                          placeholder="0.8"
                         />
                         <span className="text-amber-600 font-bold text-[10px]">%</span>
                       </div>
-
-                      {/* Delete button */}
-                      <div className="col-span-1 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSlab(idx)}
-                          disabled={formData.roiSlabs.length <= 1}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
-                        >
-                          <RiDeleteBinLine size={15} />
-                        </button>
-                      </div>
                     </div>
-                  </React.Fragment>
+                  </div>
                 ))}
               </div>
 
-              {/* Add Slab Action */}
-              <div className="flex justify-between items-center pt-1">
-                <button
-                  type="button"
-                  onClick={handleAddSlab}
-                  className="px-3 py-1.5 rounded-xl bg-white border border-gold-400 text-gold-900 hover:bg-gold-50 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
-                >
-                  <RiAddLine size={15} /> Add Custom Slab
-                </button>
-
-                <span className="text-[11px] text-gray-500 font-medium">
-                  {formData.roiSlabs.length} Active Slabs Defined
-                </span>
+              {/* Policy Explainer in English */}
+              <div className="p-2.5 bg-amber-50/80 rounded-xl border border-yellow-300 text-[11px] text-amber-950 flex items-start gap-2">
+                <RiInformationLine size={16} className="text-amber-700 shrink-0 mt-0.5" />
+                <div className="leading-snug">
+                  <span className="font-bold">Non-Withdrawal Bonus Policy:</span> If no withdrawal is made for 30 days, daily ROI increases to 0.35% (Without Lock-In) / 0.90% (3X Cap). If no withdrawal is made for 60 days, daily ROI increases to 0.40% (Without Lock-In) / 1.00% (3X Cap).
+                </div>
               </div>
             </div>
           ) : (
@@ -1470,70 +1176,6 @@ export default function InvestmentPlans() {
               </div>
             </div>
           )}
-
-          {/* ──────── REWARD ( LOYALTY BONUS ) SECTION ──────── */}
-          <div className="p-4 bg-gradient-to-br from-amber-50/70 via-gold-50/50 to-white rounded-2xl border border-gold-300/80 space-y-3.5 shadow-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-gold-200">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold shadow-2xs">
-                  <RiSparklingLine size={16} />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                    Reward ( Loyalty Bonus )
-                  </h4>
-                  <p className="text-[11px] text-gray-500">
-                    Based on Capital not Withdrawn from the Account &bull; One time benefit directly given to the wallet
-                  </p>
-                </div>
-              </div>
-
-              <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={formData.loyaltyBonusEnabled}
-                  onChange={(e) => setFormData({ ...formData, loyaltyBonusEnabled: e.target.checked })}
-                  className="rounded border-gold-300 text-gold-500 focus:ring-gold-400"
-                />
-                <span>{formData.loyaltyBonusEnabled ? "Active" : "Disabled"}</span>
-              </label>
-            </div>
-
-            {formData.loyaltyBonusEnabled && (
-              <div className="space-y-2.5 animate-fade-in">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-center text-xs">
-                  {formData.loyaltyBonusSlabs.map((slab, idx) => (
-                    <div key={idx} className="p-2.5 bg-white rounded-xl border border-gold-200 shadow-2xs space-y-1">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block font-mono">
-                        {slab.days} Days
-                      </span>
-                      <div className="flex items-center justify-center rounded-lg border border-amber-200 bg-amber-50/60 px-1.5 py-1">
-                        <input
-                          type="text"
-                          value={slab.bonusPercentage}
-                          onChange={(e) => handleLoyaltySlabChange(idx, "bonusPercentage", e.target.value)}
-                          className="w-10 text-center bg-transparent outline-none font-extrabold text-amber-800 text-xs"
-                        />
-                        <span className="text-amber-600 font-bold text-[10px]">%</span>
-                      </div>
-                      <span className="text-[9.5px] text-slate-400 block font-medium">One-Time</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="p-2.5 bg-gold-50/60 rounded-xl border border-gold-200/80 text-[11px] text-gold-900 flex items-center justify-between">
-                  <span><strong>One-Time Benefit:</strong> Bonus % calculated on invested capital and credited to user wallet.</span>
-                  <button
-                    type="button"
-                    onClick={handleResetLoyaltySlabs}
-                    className="text-[10px] text-gold-800 font-bold underline hover:text-gold-950 ml-2 whitespace-nowrap cursor-pointer"
-                  >
-                    Reset Defaults
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Duration Selector (Infinite / Lifetime vs DD / MM / YYYY) */}
           <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-200/80 space-y-3">

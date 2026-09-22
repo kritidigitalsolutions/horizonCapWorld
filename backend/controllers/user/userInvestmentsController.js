@@ -50,7 +50,12 @@ exports.investInPlan = async (req, res) => {
     const { planId, amount, autoRenewal, lockInPeriod } = req.body;
     const investAmount = Number(amount);
     const isAutoRenewal = Boolean(autoRenewal);
-    const isLockIn = lockInPeriod === "365 Days" || lockInPeriod === "3 Months" || Boolean(req.body.has3MonthsLockIn);
+    const isLockIn =
+      lockInPeriod === "3X Cap" ||
+      lockInPeriod === "333 Days" ||
+      lockInPeriod === "365 Days" ||
+      lockInPeriod === "3 Months" ||
+      Boolean(req.body.has3MonthsLockIn);
 
     if (!planId || !investAmount || investAmount <= 0) {
       return res.status(400).json({
@@ -131,7 +136,7 @@ exports.investInPlan = async (req, res) => {
 
       if (matchedSlab) {
         if (isLockIn) {
-          effectiveDailyRoi = Number(matchedSlab.lockInDailyRoi || (matchedSlab.dailyRoi + 0.1).toFixed(4));
+          effectiveDailyRoi = Number(matchedSlab.lockInDailyRoi || 0.8);
           effectiveMonthlyRoi = matchedSlab.lockInMonthlyRoi || Number((effectiveDailyRoi * 30).toFixed(2));
           effectiveAnnualRoi = matchedSlab.lockInAnnualRoi || Number((effectiveDailyRoi * 360).toFixed(2));
         } else {
@@ -140,13 +145,6 @@ exports.investInPlan = async (req, res) => {
           effectiveAnnualRoi = matchedSlab.annualRoi || Number((effectiveDailyRoi * 360).toFixed(2));
         }
       }
-    }
-
-    // Auto Renewal Mode Incentive: +0.25% monthly boost on each slab
-    if (isAutoRenewal) {
-      effectiveMonthlyRoi = Number((effectiveMonthlyRoi + 0.25).toFixed(4));
-      effectiveDailyRoi = Number((effectiveDailyRoi + (0.25 / 30)).toFixed(6));
-      effectiveAnnualRoi = Number((effectiveAnnualRoi + 3.0).toFixed(2));
     }
 
     // Dynamic daily & per second calculations based on matched slab ROI
@@ -193,23 +191,23 @@ exports.investInPlan = async (req, res) => {
             isLockInApplied: isLockIn,
           }
         : undefined,
-      lockInPeriod: isLockIn ? (lockInPeriod || "333 Days") : "None",
+      lockInPeriod: isLockIn ? (lockInPeriod || "3X Cap") : "None",
       isLocked: isLockIn,
       loyaltyBonusEligible: !isLockIn,
       lockInDays: lockInPeriodDays,
       lockInUntil: lockInUntilDate,
-      autoRenewal: isAutoRenewal,
-      autoRenewalIncentive: 0.25,
-      isCompounding: isAutoRenewal,
+      autoRenewal: false,
+      autoRenewalIncentive: 0,
+      isCompounding: false,
       payoutInterval: plan.payoutInterval,
-      duration: isInfinitePlan ? "Infinite / Lifetime" : (plan.duration || "12 Months"),
-      durationDays: isInfinitePlan ? 0 : (plan.durationDays || 365),
+      duration: isInfinitePlan ? "Infinite / Lifetime" : isLockIn ? "3X Cap (~309 Days)" : (plan.duration || "12 Months"),
+      durationDays: isInfinitePlan ? 0 : isLockIn ? 309 : (plan.durationDays || 365),
       isInfinite: isInfinitePlan,
       dailyEarning,
       perSecondRate,
       status: "Active",
       startDate: new Date(),
-      endDate: isInfinitePlan ? null : undefined,
+      endDate: isInfinitePlan ? null : isLockIn ? new Date(Date.now() + 309 * 86400000) : undefined,
     });
 
     // Create Transaction Record
@@ -285,8 +283,17 @@ exports.getMyInvestments = async (req, res) => {
     }
 
     const rawInvestments = await UserInvestment.find(query).sort({ createdAt: -1 });
-    
-    const investments = rawInvestments.map(inv => {
+
+    // Check user's latest approved withdrawal to determine non-withdrawal holding period
+    const latestWithdrawal = await Transaction.findOne({
+      user: req.user._id,
+      type: "Withdrawal",
+      status: "Approved",
+    }).sort({ createdAt: -1 });
+
+    const now = new Date();
+
+    const investments = rawInvestments.map((inv) => {
       const isInf = Boolean(
         inv.isInfinite ||
         inv.duration === "Infinite / Lifetime" ||
@@ -295,16 +302,72 @@ exports.getMyInvestments = async (req, res) => {
         inv.durationDays === 0
       );
 
+      const is3XCap = Boolean(
+        inv.isLocked ||
+        inv.lockInPeriod === "3X Cap" ||
+        inv.lockInPeriod === "333 Days" ||
+        inv.lockInPeriod === "365 Days" ||
+        inv.lockInPeriod === "3 Months" ||
+        inv.planName?.toLowerCase().includes("3x")
+      );
+
       let daysRemaining = "Lifetime";
-      if (!isInf && inv.endDate) {
-        const diffMs = new Date(inv.endDate).getTime() - Date.now();
-        daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      let calculatedEndDate = inv.endDate;
+
+      if (is3XCap) {
+        // Slab-based calculation for 3X Cap Plan
+        const targetProfit = (inv.amount || 0) * 3;
+        const currentProfit = Number(inv.totalProfitEarned || 0);
+        let remProfit = Math.max(0, targetProfit - currentProfit);
+
+        if (inv.status === "Completed" || remProfit <= 0) {
+          daysRemaining = 0;
+          calculatedEndDate = inv.endDate || inv.updatedAt || now;
+        } else {
+          // Determine days without withdrawal for this contract
+          const invStartTime = inv.createdAt || inv.startDate || now;
+          const refDate =
+            latestWithdrawal && new Date(latestWithdrawal.createdAt) > new Date(invStartTime)
+              ? new Date(latestWithdrawal.createdAt)
+              : new Date(invStartTime);
+
+          const daysWithoutWithdrawal = Math.max(
+            0,
+            Math.floor((now.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24))
+          );
+
+          let currDay = daysWithoutWithdrawal;
+          let daysNeeded = 0;
+          while (remProfit > 0 && daysNeeded < 3000) {
+            let rate = 0.008; // Base 0.8% (0-30 Days)
+            if (currDay >= 60) rate = 0.01; // 60+ Days: 1.0%
+            else if (currDay >= 30) rate = 0.009; // 30-60 Days: 0.9%
+
+            const dayEarning = inv.amount * rate;
+            remProfit -= dayEarning;
+            currDay++;
+            daysNeeded++;
+          }
+
+          daysRemaining = daysNeeded;
+          calculatedEndDate = new Date(now.getTime() + daysNeeded * 86400000);
+        }
+      } else if (!isInf) {
+        if (inv.endDate) {
+          const diffMs = new Date(inv.endDate).getTime() - now.getTime();
+          daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+          calculatedEndDate = inv.endDate;
+        } else {
+          daysRemaining = 365;
+          calculatedEndDate = new Date(now.getTime() + 365 * 86400000);
+        }
       }
 
       return {
         ...inv.toObject(),
         isInfinite: isInf,
         daysRemaining,
+        endDate: calculatedEndDate,
       };
     });
 

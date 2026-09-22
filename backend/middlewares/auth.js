@@ -76,6 +76,13 @@ const protectUser = async (req, res, next) => {
       });
     }
 
+    if (user.status === "Blocked") {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been blocked after completing full capital withdrawal on 3X Cap plan. Please create a new account to continue.",
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {

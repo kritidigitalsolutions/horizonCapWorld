@@ -54,6 +54,7 @@ exports.createPlan = async (req, res) => {
       roi,
       dailyRoi,
       roiSlabs,
+      roiSlabsTable,
       loyaltyBonusEnabled,
       loyaltyBonusTitle,
       loyaltyBonusDescription,
@@ -85,7 +86,7 @@ exports.createPlan = async (req, res) => {
         const d = Number(s.dailyRoi) || 0.3;
         const lockInDaily = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null && s.lockInDailyRoi !== ""
           ? Number(s.lockInDailyRoi)
-          : 0.9;
+          : 0.8;
         return {
           minAmount: Number(s.minAmount) || 10,
           maxAmount: s.noMaxLimit ? null : (s.maxAmount ? Number(s.maxAmount) : null),
@@ -144,8 +145,9 @@ exports.createPlan = async (req, res) => {
       roi: numMonthlyRoi,
       dailyRoi: numDailyRoi,
       roiSlabs: processedSlabs.length > 0 ? processedSlabs : undefined,
+      roiSlabsTable: Array.isArray(roiSlabsTable) && roiSlabsTable.length > 0 ? roiSlabsTable : undefined,
       hasLockInOption: true,
-      lockInPeriodDays: Number(req.body.lockInPeriodDays) || 333,
+      lockInPeriodDays: Number(req.body.lockInPeriodDays) || 0,
       minDepositAmount: Number(req.body.minDepositAmount) || 10,
       minWithdrawalAmount: Number(req.body.minWithdrawalAmount) || 5,
       singleIdMaxWithdrawal: req.body.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
@@ -191,6 +193,7 @@ exports.updatePlan = async (req, res) => {
       roi,
       dailyRoi,
       roiSlabs,
+      roiSlabsTable,
       minDepositAmount,
       minWithdrawalAmount,
       hasLockInOption,
@@ -216,12 +219,16 @@ exports.updatePlan = async (req, res) => {
     if (category !== undefined) plan.category = category;
     if (roiType !== undefined) plan.roiType = roiType;
 
+    if (roiSlabsTable !== undefined && Array.isArray(roiSlabsTable)) {
+      plan.roiSlabsTable = roiSlabsTable;
+    }
+
     if (roiSlabs !== undefined && Array.isArray(roiSlabs)) {
       plan.roiSlabs = roiSlabs.map((s) => {
         const d = Number(s.dailyRoi) || 0.3;
         const lockInDaily = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null && s.lockInDailyRoi !== ""
           ? Number(s.lockInDailyRoi)
-          : 0.9;
+          : 0.8;
         return {
           minAmount: Number(s.minAmount) || 10,
           maxAmount: s.noMaxLimit ? null : (s.maxAmount ? Number(s.maxAmount) : null),

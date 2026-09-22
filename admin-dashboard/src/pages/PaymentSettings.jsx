@@ -159,14 +159,14 @@ export default function PaymentSettings() {
   // Form State
   const [category, setCategory] = useState("Mobile E-Wallet");
   const [name, setName] = useState("");
-  const [network, setNetwork] = useState("EasyPaisa Mobile Banking");
-  const [networkCode, setNetworkCode] = useState("EASYPAISA");
+  const [currency, setCurrency] = useState("PKR");
+  const [network, setNetwork] = useState("");
+  const [networkCode, setNetworkCode] = useState("");
   const [address, setAddress] = useState("");
   const [memo, setMemo] = useState("");
-  const [minDeposit, setMinDeposit] = useState("PKR 1,500 (~$5 USD)");
-  const [confirmationTime, setConfirmationTime] = useState(
-    "Instant / 5 Minutes",
-  );
+  const [minDeposit, setMinDeposit] = useState("");
+  const [maxDeposit, setMaxDeposit] = useState("");
+  const [confirmationTime, setConfirmationTime] = useState("");
   const [instructions, setInstructions] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [status, setStatus] = useState("Active");
@@ -175,42 +175,33 @@ export default function PaymentSettings() {
   const [qrUploadError, setQrUploadError] = useState("");
 
   // Mobile E-Wallet Form Fields
-  const [ewalletProvider, setEwalletProvider] = useState("EasyPaisa");
+  const [ewalletProvider, setEwalletProvider] = useState("");
   const [ewalletMobileNo, setEwalletMobileNo] = useState("");
   const [ewalletAccountTitle, setEwalletAccountTitle] = useState("");
   const [ewalletCnic, setEwalletCnic] = useState("");
   const [ewalletTillId, setEwalletTillId] = useState("");
 
   // Indian Bank Form Fields
-  const [indianBankName, setIndianBankName] = useState("HDFC Bank Ltd");
+  const [indianBankName, setIndianBankName] = useState("");
   const [indianAccountNo, setIndianAccountNo] = useState("");
   const [indianIfsc, setIndianIfsc] = useState("");
-  const [indianHolder, setIndianHolder] = useState(
-    "Horizon Capital India Pvt Ltd",
-  );
+  const [indianHolder, setIndianHolder] = useState("");
   const [indianAccountType, setIndianAccountType] = useState("Current Account");
-  const [indianBranch, setIndianBranch] = useState("Mumbai, India");
+  const [indianBranch, setIndianBranch] = useState("");
   const [indianUpiId, setIndianUpiId] = useState("");
 
   // International Bank Form Fields
-  const [intlBankName, setIntlBankName] = useState("JPMorgan Chase Bank, N.A.");
+  const [intlBankName, setIntlBankName] = useState("");
   const [intlAccountNo, setIntlAccountNo] = useState("");
-  const [intlSwift, setIntlSwift] = useState("CHASUS33XXX");
-  const [intlRouting, setIntlRouting] = useState("021000021");
-  const [intlHolder, setIntlHolder] = useState(
-    "Horizon Capital Global Holdings LLC",
-  );
+  const [intlSwift, setIntlSwift] = useState("");
+  const [intlRouting, setIntlRouting] = useState("");
+  const [intlHolder, setIntlHolder] = useState("");
   const [intlAccountType, setIntlAccountType] = useState(
     "Corporate Escrow Trust",
   );
-  const [intlBranch, setIntlBranch] = useState("270 Park Ave, New York, USA");
+  const [intlBranch, setIntlBranch] = useState("");
 
-  const [cryptoMinDeposits, setCryptoMinDeposits] = useState([
-    { token: "BNB", min: "0.004" },
-    { token: "USDT", min: "5" },
-    { token: "USDC", min: "5" },
-    { token: "FDUSD", min: "5" },
-  ]);
+  const [cryptoMinDeposits, setCryptoMinDeposits] = useState([]);
 
   const fileInputRef = useRef(null);
 
@@ -273,72 +264,72 @@ export default function PaymentSettings() {
     setCryptoMinDeposits(updated);
   };
 
-  const handleApplyCryptoPreset = (presetKey) => {
-    // Preset logic remains unchanged
-    if (presetKey === "bnb") {
-      setName("BNB Smart Chain Depository");
-      setNetwork("BNB Smart Chain (BEP-20)");
-      setNetworkCode("BSC");
-      setMinDeposit("$10 USD (0.004 BNB)");
-      setCryptoMinDeposits([
-        { token: "BNB", min: "0.004" },
-        { token: "USDT", min: "5" },
-        { token: "USDC", min: "5" },
-        { token: "FDUSD", min: "5" },
-      ]);
-    } else if (presetKey === "solana") {
-      setName("Solana High-Speed Treasury");
-      setNetwork("Solana Network (SPL)");
-      setNetworkCode("SOL");
-      setMinDeposit("$25 USD (0.02 SOL)");
-      setCryptoMinDeposits([
-        { token: "SOL", min: "0.02" },
-        { token: "USDC", min: "5" },
-        { token: "USDT", min: "5" },
-      ]);
-    } else if (presetKey === "tron") {
-      setName("TRON Primary Treasury");
-      setNetwork("TRON (TRC-20)");
-      setNetworkCode("TRC20");
-      setMinDeposit("$10 USD (20 TRX)");
-      setCryptoMinDeposits([
-        { token: "TRX", min: "20" },
-        { token: "USDT", min: "10" },
-        { token: "USDD", min: "10" },
-      ]);
-    } else if (presetKey === "eth") {
-      setName("Ethereum Institutional Vault");
-      setNetwork("Ethereum Mainnet (ERC-20)");
-      setNetworkCode("ERC20");
-      setMinDeposit("$50 USD (0.01 ETH)");
-      setCryptoMinDeposits([
-        { token: "ETH", min: "0.01" },
-        { token: "USDT", min: "50" },
-        { token: "USDC", min: "50" },
-        { token: "DAI", min: "50" },
-      ]);
-    } else if (presetKey === "polygon") {
-      setName("Polygon PoS Depository");
-      setNetwork("Polygon PoS (POL)");
-      setNetworkCode("POL");
-      setMinDeposit("$5 USD (10 POL)");
-      setCryptoMinDeposits([
-        { token: "POL", min: "10" },
-        { token: "USDT", min: "5" },
-        { token: "USDC", min: "5" },
-      ]);
-    } else if (presetKey === "opbnb") {
-      setName("opBNB Layer-2 Fast Hub");
-      setNetwork("opBNB Mainnet (L2)");
-      setNetworkCode("OPBNB");
-      setMinDeposit("$5 USD (0.005 BNB)");
-      setCryptoMinDeposits([
-        { token: "BNB", min: "0.005" },
-        { token: "USDT", min: "5" },
-        { token: "FDUSD", min: "5" },
-      ]);
-    }
-  };
+  // const handleApplyCryptoPreset = (presetKey) => {
+  //   // Preset logic remains unchanged
+  //   if (presetKey === "bnb") {
+  //     setName("BNB Smart Chain Depository");
+  //     setNetwork("BNB Smart Chain (BEP-20)");
+  //     setNetworkCode("BSC");
+  //     setMinDeposit("$10 USD (0.004 BNB)");
+  //     setCryptoMinDeposits([
+  //       { token: "BNB", min: "0.004" },
+  //       { token: "USDT", min: "5" },
+  //       { token: "USDC", min: "5" },
+  //       { token: "FDUSD", min: "5" },
+  //     ]);
+  //   } else if (presetKey === "solana") {
+  //     setName("Solana High-Speed Treasury");
+  //     setNetwork("Solana Network (SPL)");
+  //     setNetworkCode("SOL");
+  //     setMinDeposit("$25 USD (0.02 SOL)");
+  //     setCryptoMinDeposits([
+  //       { token: "SOL", min: "0.02" },
+  //       { token: "USDC", min: "5" },
+  //       { token: "USDT", min: "5" },
+  //     ]);
+  //   } else if (presetKey === "tron") {
+  //     setName("TRON Primary Treasury");
+  //     setNetwork("TRON (TRC-20)");
+  //     setNetworkCode("TRC20");
+  //     setMinDeposit("$10 USD (20 TRX)");
+  //     setCryptoMinDeposits([
+  //       { token: "TRX", min: "20" },
+  //       { token: "USDT", min: "10" },
+  //       { token: "USDD", min: "10" },
+  //     ]);
+  //   } else if (presetKey === "eth") {
+  //     setName("Ethereum Institutional Vault");
+  //     setNetwork("Ethereum Mainnet (ERC-20)");
+  //     setNetworkCode("ERC20");
+  //     setMinDeposit("$50 USD (0.01 ETH)");
+  //     setCryptoMinDeposits([
+  //       { token: "ETH", min: "0.01" },
+  //       { token: "USDT", min: "50" },
+  //       { token: "USDC", min: "50" },
+  //       { token: "DAI", min: "50" },
+  //     ]);
+  //   } else if (presetKey === "polygon") {
+  //     setName("Polygon PoS Depository");
+  //     setNetwork("Polygon PoS (POL)");
+  //     setNetworkCode("POL");
+  //     setMinDeposit("$5 USD (10 POL)");
+  //     setCryptoMinDeposits([
+  //       { token: "POL", min: "10" },
+  //       { token: "USDT", min: "5" },
+  //       { token: "USDC", min: "5" },
+  //     ]);
+  //   } else if (presetKey === "opbnb") {
+  //     setName("opBNB Layer-2 Fast Hub");
+  //     setNetwork("opBNB Mainnet (L2)");
+  //     setNetworkCode("OPBNB");
+  //     setMinDeposit("$5 USD (0.005 BNB)");
+  //     setCryptoMinDeposits([
+  //       { token: "BNB", min: "0.005" },
+  //       { token: "USDT", min: "5" },
+  //       { token: "FDUSD", min: "5" },
+  //     ]);
+  //   }
+  // };
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -585,73 +576,54 @@ export default function PaymentSettings() {
     setEditingWallet(null);
     setCategory(defaultCat);
     setName("");
+    setCurrency(
+      defaultCat === "Mobile E-Wallet"
+        ? "PKR"
+        : defaultCat === "Indian Bank Account"
+          ? "INR"
+          : "USD",
+    );
+    setNetwork("");
+    setNetworkCode("");
+    setAddress("");
+    setMemo("");
+    setMinDeposit("");
+    setMaxDeposit("");
+    setConfirmationTime("");
+    setInstructions("");
     setIsDefault(false);
     setStatus("Active");
     setQrCodeUrl("");
     setUploadingQr(false);
     setQrUploadError("");
 
-    if (defaultCat === "Mobile E-Wallet") {
-      setEwalletProvider("EasyPaisa");
-      setEwalletMobileNo("");
-      setEwalletAccountTitle("");
-      setEwalletCnic("");
-      setEwalletTillId("");
-      setNetwork("EasyPaisa Mobile Banking");
-      setNetworkCode("EASYPAISA");
-      setMinDeposit("PKR 1,500 (~$5 USD)");
-      setConfirmationTime("Instant / 5 Minutes");
-      setInstructions(
-        "Send payment to this mobile number or scan QR code. Save transaction TRX ID as deposit proof.",
-      );
-    } else if (defaultCat === "Indian Bank Account") {
-      setIndianBankName("HDFC Bank Ltd");
-      setIndianAccountNo("");
-      setIndianIfsc("HDFC0000128");
-      setIndianHolder("Horizon Capital India Pvt Ltd");
-      setIndianAccountType("Current Account");
-      setIndianBranch("Nariman Point, Mumbai");
-      setIndianUpiId("horizoncapital@hdfcbank");
-      setNetwork("Indian Domestic (IMPS / NEFT / RTGS / UPI)");
-      setNetworkCode("INR");
-      setMinDeposit("₹5,000 INR (~$60 USD)");
-      setConfirmationTime("Instant / 15 Minutes");
-      setInstructions(
-        "Transfer via IMPS/NEFT/RTGS or UPI QR. Include user ID in remarks.",
-      );
-    } else if (defaultCat === "International Bank Account") {
-      setIntlBankName("JPMorgan Chase Bank, N.A.");
-      setIntlAccountNo("");
-      setIntlSwift("CHASUS33XXX");
-      setIntlRouting("021000021");
-      setIntlHolder("Horizon Capital Global Holdings LLC");
-      setIntlAccountType("Corporate Escrow Trust");
-      setIntlBranch("270 Park Ave, New York, USA");
-      setNetwork("Global Wire Transfer / SWIFT / FedNow");
-      setNetworkCode("GLOBAL");
-      setMinDeposit("$5,000 USD");
-      setConfirmationTime("1-2 Business Days");
-      setInstructions(
-        "Official USD custody escrow account. Specify User ID in Field 70 memo.",
-      );
-    } else {
-      setName("BNB Smart Chain Depository");
-      setNetwork("BNB Smart Chain (BEP-20)");
-      setNetworkCode("BSC");
-      setAddress("");
-      setMemo("");
-      setMinDeposit("$10 USD (0.004 BNB)");
-      setConfirmationTime("Instant (~3 Seconds)");
-      setInstructions(
-        "Send only BEP-20 tokens (BNB, USDT, USDC, FDUSD) to this address. Verified automatically.",
-      );
-      setCryptoMinDeposits([
-        { token: "BNB", min: "0.004" },
-        { token: "USDT", min: "5" },
-        { token: "USDC", min: "5" },
-        { token: "FDUSD", min: "5" },
-      ]);
-    }
+    // Mobile E-Wallet Form Fields
+    setEwalletProvider("");
+    setEwalletMobileNo("");
+    setEwalletAccountTitle("");
+    setEwalletCnic("");
+    setEwalletTillId("");
+
+    // Indian Bank Form Fields
+    setIndianBankName("");
+    setIndianAccountNo("");
+    setIndianIfsc("");
+    setIndianHolder("");
+    setIndianAccountType("Current Account");
+    setIndianBranch("");
+    setIndianUpiId("");
+
+    // International Bank Form Fields
+    setIntlBankName("");
+    setIntlAccountNo("");
+    setIntlSwift("");
+    setIntlRouting("");
+    setIntlHolder("");
+    setIntlAccountType("Corporate Escrow Trust");
+    setIntlBranch("");
+
+    // Crypto
+    setCryptoMinDeposits([]);
 
     setDrawerOpen(true);
   };
@@ -660,12 +632,21 @@ export default function PaymentSettings() {
     setEditingWallet(w);
     setCategory(w.category || "Mobile E-Wallet");
     setName(w.name || "");
+    setCurrency(
+      w.currency ||
+        (w.category === "Mobile E-Wallet"
+          ? "PKR"
+          : w.category === "Indian Bank Account"
+            ? "INR"
+            : "USD"),
+    );
     setNetwork(w.network || "");
     setNetworkCode(w.networkCode || "");
     setAddress(w.address || "");
     setMemo(w.memo || "");
-    setMinDeposit(w.minLimit || w.minDeposit || "$50 USD");
-    setConfirmationTime(w.confirmationTime || "Instant");
+    setMinDeposit(w.minLimit || w.minDeposit || "");
+    setMaxDeposit(w.maxLimit || w.maxDeposit || "");
+    setConfirmationTime(w.confirmationTime || "");
     setInstructions(w.instructions || "");
     setIsDefault(!!w.isDefault);
     setStatus(w.status || "Active");
@@ -680,75 +661,117 @@ export default function PaymentSettings() {
     ) {
       setCryptoMinDeposits(w.minDeposits);
     } else if (w.tokens && Array.isArray(w.tokens)) {
-      setCryptoMinDeposits(w.tokens.map((t) => ({ token: t, min: "5" })));
+      setCryptoMinDeposits(w.tokens.map((t) => ({ token: t, min: "" })));
+    } else {
+      setCryptoMinDeposits([]);
     }
 
     if (w.category === "Mobile E-Wallet") {
-      setEwalletProvider(w.provider || "EasyPaisa");
+      setEwalletProvider(w.provider || "");
       setEwalletMobileNo(w.accountNumber || "");
       setEwalletAccountTitle(w.accountHolder || "");
       setEwalletCnic(w.cnic || w.memo?.replace("CNIC: ", "") || "");
       setEwalletTillId(w.tillId || "");
     } else if (w.category === "Indian Bank Account") {
-      setIndianBankName(w.bankName || "HDFC Bank Ltd");
+      setIndianBankName(w.bankName || "");
       setIndianAccountNo(w.accountNumber || "");
-      setIndianIfsc(w.ifsc || "HDFC0000128");
-      setIndianHolder(w.accountHolder || "Horizon Capital India Pvt Ltd");
+      setIndianIfsc(w.ifsc || "");
+      setIndianHolder(w.accountHolder || "");
       setIndianAccountType(w.accountType || "Current Account");
-      setIndianBranch(w.branch || "Mumbai, India");
+      setIndianBranch(w.branch || "");
       setIndianUpiId(w.upiId || w.memo?.replace("UPI: ", "") || "");
     } else if (w.category === "International Bank Account") {
-      setIntlBankName(w.bankName || "JPMorgan Chase Bank, N.A.");
+      setIntlBankName(w.bankName || "");
       setIntlAccountNo(w.accountNumber || w.iban || "");
-      setIntlSwift(
-        w.swiftCode || w.memo?.replace("SWIFT: ", "") || "CHASUS33XXX",
-      );
-      setIntlRouting(w.routingNo || "021000021");
-      setIntlHolder(w.accountHolder || "Horizon Capital Global Holdings LLC");
+      setIntlSwift(w.swiftCode || w.memo?.replace("SWIFT: ", "") || "");
+      setIntlRouting(w.routingNo || "");
+      setIntlHolder(w.accountHolder || "");
       setIntlAccountType(w.accountType || "Corporate Escrow Trust");
-      setIntlBranch(w.branch || "270 Park Ave, New York, USA");
+      setIntlBranch(w.branch || "");
     }
     setDrawerOpen(true);
   };
 
   // ──────── SAVE / UPDATE PAYMENT METHOD ────────
   const handleSaveWallet = async () => {
-    let finalName = name;
-    let finalAddress = address;
-    let finalMemo = memo;
-    let finalNetwork = network;
-    let finalCode = networkCode;
+    let finalName = name.trim();
+    if (!finalName) {
+      if (category === "Mobile E-Wallet" && ewalletProvider.trim()) {
+        finalName = `${ewalletProvider.trim()} E-Wallet`;
+      } else if (category === "Indian Bank Account" && indianBankName.trim()) {
+        finalName = indianBankName.trim();
+      } else if (category === "International Bank Account" && intlBankName.trim()) {
+        finalName = intlBankName.trim();
+      }
+    }
+
+    if (!finalName) {
+      toast.warning("Please enter a Gateway Display Name.", "Name Required");
+      return;
+    }
 
     // Resolve DB `type` mapping
     let schemaType = "crypto";
     if (category === "Mobile E-Wallet") schemaType = "fiat";
     else if (category.includes("Bank")) schemaType = "bank";
 
-    if (category === "Mobile E-Wallet") {
-      finalName = `${ewalletProvider} Official Merchant Wallet`;
-      finalAddress = `Mobile No: ${ewalletMobileNo || "0300 0000000"} • Title: ${ewalletAccountTitle || "Horizon Agent"}`;
-      finalMemo = ewalletCnic
-        ? `CNIC: ${ewalletCnic}`
-        : ewalletTillId
-          ? `Till ID: ${ewalletTillId}`
-          : "";
-      finalNetwork = `${ewalletProvider} Mobile Banking`;
-      finalCode = ewalletProvider.toUpperCase().replace(/\s+/g, "");
-    } else if (category === "Indian Bank Account") {
-      finalName = `${indianBankName} Corporate Account`;
-      finalAddress = `A/C: ${indianAccountNo || "50200084920194"} • IFSC: ${indianIfsc || "HDFC0000128"}`;
-      finalMemo = indianUpiId ? `UPI: ${indianUpiId}` : "";
-      finalNetwork = "Indian Domestic (IMPS / NEFT / RTGS / UPI)";
-      finalCode = "INR";
-    } else if (category === "International Bank Account") {
-      finalName = `${intlBankName} Institutional Wire`;
-      finalAddress = `A/C: ${intlAccountNo || "109288492019"} • Routing: ${intlRouting || "021000021"}`;
-      finalMemo = intlSwift ? `SWIFT: ${intlSwift}` : "";
-      finalNetwork = "Global Wire Transfer / SWIFT / FedNow";
-      finalCode = "GLOBAL";
-    }
+    let finalAddress = "";
+    let finalAccountNumber = "";
+    let finalHolder = "";
 
-    if (!finalName.trim() || !finalAddress.trim()) return;
+    if (category === "Mobile E-Wallet") {
+      if (!ewalletMobileNo.trim()) {
+        toast.warning("Please enter the Mobile Number for the E-Wallet.", "Mobile Number Required");
+        return;
+      }
+      if (!ewalletAccountTitle.trim()) {
+        toast.warning("Please enter the Account Holder / Title.", "Account Title Required");
+        return;
+      }
+      finalAddress = ewalletMobileNo.trim();
+      finalAccountNumber = ewalletMobileNo.trim();
+      finalHolder = ewalletAccountTitle.trim();
+    } else if (category === "Indian Bank Account") {
+      if (!indianBankName.trim()) {
+        toast.warning("Please enter the Bank Name.", "Bank Name Required");
+        return;
+      }
+      if (!indianAccountNo.trim()) {
+        toast.warning("Please enter the Account Number.", "Account Number Required");
+        return;
+      }
+      if (!indianIfsc.trim()) {
+        toast.warning("Please enter the IFSC Code.", "IFSC Required");
+        return;
+      }
+      finalAddress = indianAccountNo.trim();
+      finalAccountNumber = indianAccountNo.trim();
+      finalHolder = indianHolder.trim();
+    } else if (category === "International Bank Account") {
+      if (!intlBankName.trim()) {
+        toast.warning("Please enter the Bank Name.", "Bank Name Required");
+        return;
+      }
+      if (!intlAccountNo.trim()) {
+        toast.warning("Please enter the Account Number / IBAN.", "Account Number Required");
+        return;
+      }
+      if (!intlSwift.trim()) {
+        toast.warning("Please enter the SWIFT / BIC Code.", "SWIFT Code Required");
+        return;
+      }
+      finalAddress = intlAccountNo.trim();
+      finalAccountNumber = intlAccountNo.trim();
+      finalHolder = intlHolder.trim();
+    } else {
+      // Crypto
+      if (!address.trim()) {
+        toast.warning("Please enter the Public Receiving Address.", "Address Required");
+        return;
+      }
+      finalAddress = address.trim();
+      finalAccountNumber = address.trim();
+    }
 
     const validMinDeposits = cryptoMinDeposits.filter(
       (d) => d.token && d.token.trim(),
@@ -762,41 +785,30 @@ export default function PaymentSettings() {
       type: schemaType,
       category,
       name: finalName,
-      network: finalNetwork,
-      networkCode: finalCode,
-      address: schemaType === "crypto" ? address : finalAddress,
-      memo: finalMemo,
-      minLimit: minDeposit,
-      confirmationTime,
-      instructions,
-      qrCodeUrl,
+      currency: (currency || (category === "Mobile E-Wallet" ? "PKR" : category === "Indian Bank Account" ? "INR" : "USD")).trim().toUpperCase(),
+      network: network.trim(),
+      networkCode: networkCode.trim().toUpperCase(),
+      address: finalAddress,
+      accountNumber: finalAccountNumber,
+      accountHolder: finalHolder,
+      memo: memo.trim(),
+      minLimit: minDeposit.trim(),
+      maxLimit: maxDeposit.trim(),
+      confirmationTime: confirmationTime.trim(),
+      instructions: instructions.trim(),
+      qrCodeUrl: qrCodeUrl.trim(),
       tokens: validTokens,
       minDeposits: validMinDeposits,
-      provider: ewalletProvider,
-      accountNumber:
-        category === "Mobile E-Wallet"
-          ? ewalletMobileNo
-          : category === "Indian Bank Account"
-            ? indianAccountNo
-            : intlAccountNo,
-      accountHolder:
-        category === "Mobile E-Wallet"
-          ? ewalletAccountTitle
-          : category === "Indian Bank Account"
-            ? indianHolder
-            : intlHolder,
-      cnic: ewalletCnic,
-      tillId: ewalletTillId,
-      bankName:
-        category === "Indian Bank Account" ? indianBankName : intlBankName,
-      ifsc: indianIfsc,
-      swiftCode: intlSwift,
-      accountType:
-        category === "Indian Bank Account"
-          ? indianAccountType
-          : intlAccountType,
-      branch: category === "Indian Bank Account" ? indianBranch : intlBranch,
-      upiId: indianUpiId,
+      provider: ewalletProvider.trim(),
+      cnic: ewalletCnic.trim(),
+      tillId: ewalletTillId.trim(),
+      bankName: (category === "Indian Bank Account" ? indianBankName : intlBankName).trim(),
+      ifsc: indianIfsc.trim(),
+      swiftCode: intlSwift.trim(),
+      routingNo: intlRouting.trim(),
+      accountType: (category === "Indian Bank Account" ? indianAccountType : intlAccountType).trim(),
+      branch: (category === "Indian Bank Account" ? indianBranch : intlBranch).trim(),
+      upiId: indianUpiId.trim(),
       status,
       isDefault,
     };
@@ -830,7 +842,7 @@ export default function PaymentSettings() {
       setDrawerOpen(false);
       toast.success(
         editingWallet
-          ? `Payment gateway "${editingWallet.name}" updated successfully!`
+          ? `Payment gateway "${finalName}" updated successfully!`
           : "New payment gateway created and activated successfully!",
         "Gateway Saved"
       );
@@ -1387,17 +1399,17 @@ export default function PaymentSettings() {
                 <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                   <div className="p-2.5 bg-white rounded-xl border border-slate-100">
                     <span className="text-[10px] text-slate-400 block">
-                      Min. Deposit
+                      Min / Max Deposit
                     </span>
-                    <span className="font-semibold text-slate-800">
-                      {wallet.minLimit || wallet.minDeposit || "No Min."}
+                    <span className="font-semibold text-slate-800 truncate block">
+                      {wallet.minLimit || "No Min"} – {wallet.maxLimit || "No Max"}
                     </span>
                   </div>
                   <div className="p-2.5 bg-white rounded-xl border border-slate-100">
                     <span className="text-[10px] text-slate-400 block">
                       Settlement Speed
                     </span>
-                    <span className="font-medium text-slate-700">
+                    <span className="font-medium text-slate-700 truncate block">
                       {wallet.confirmationTime || "Instant"}
                     </span>
                   </div>
@@ -1502,7 +1514,14 @@ export default function PaymentSettings() {
                 <button
                   key={cat.id}
                   type="button"
-                  onClick={() => setCategory(cat.id)}
+                  onClick={() => {
+                    setCategory(cat.id);
+                    if (!editingWallet) {
+                      if (cat.id === "Mobile E-Wallet") setCurrency("PKR");
+                      else if (cat.id === "Indian Bank Account") setCurrency("INR");
+                      else setCurrency("USD");
+                    }
+                  }}
                   className={`p-2.5 rounded-xl text-xs font-medium text-center border transition-all ${
                     category === cat.id
                       ? "bg-gold-50 border-gold-400 text-gold-900 font-semibold shadow-2xs ring-1 ring-gold-300"
@@ -1512,6 +1531,80 @@ export default function PaymentSettings() {
                   {cat.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* ──────────────── COMMON GENERAL INFO (FOR ALL CATEGORIES) ──────────────── */}
+          <div className="p-4 bg-slate-50/90 rounded-2xl border border-slate-200/90 space-y-3 shadow-2xs">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 font-poppins">
+              <RiBankLine size={16} className="text-gold-600" />
+              Gateway Basic Info
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Gateway Display Name *
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={
+                    category === "Mobile E-Wallet"
+                      ? "e.g. EasyPaisa Official, JazzCash Fast Deposit"
+                      : category === "Indian Bank Account"
+                        ? "e.g. HDFC Bank Corporate Account, SBI Current"
+                        : category === "International Bank Account"
+                          ? "e.g. JPMorgan Chase Institutional Wire, Barclays UK"
+                          : "e.g. BNB Smart Chain (BEP-20), TRON USDT Vault"
+                  }
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none focus:border-gold-400 focus:ring-1 focus:ring-gold-300 font-poppins"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Operating Currency *
+                </label>
+                <input
+                  type="text"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                  placeholder="e.g. USD, PKR, INR, EUR"
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-bold font-mono outline-none focus:border-gold-400 focus:ring-1 focus:ring-gold-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Network Tag / Code
+                </label>
+                <input
+                  type="text"
+                  value={networkCode}
+                  onChange={(e) => setNetworkCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. EASYPAISA, INR, BSC, TRC20, USD"
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-bold font-mono outline-none focus:border-gold-400 focus:ring-1 focus:ring-gold-300"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Transfer Network / Method Protocol
+                </label>
+                <input
+                  type="text"
+                  value={network}
+                  onChange={(e) => setNetwork(e.target.value)}
+                  placeholder={
+                    category === "Mobile E-Wallet"
+                      ? "e.g. Mobile Banking / Microfinance"
+                      : category === "Indian Bank Account"
+                        ? "e.g. Indian Domestic (IMPS / NEFT / RTGS / UPI)"
+                        : category === "International Bank Account"
+                          ? "e.g. Global Wire Transfer / SWIFT / FedNow"
+                          : "e.g. TRON (TRC-20), BNB Smart Chain (BEP-20)"
+                  }
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none focus:border-gold-400 focus:ring-1 focus:ring-gold-300 font-poppins"
+                />
+              </div>
             </div>
           </div>
 
@@ -1531,6 +1624,7 @@ export default function PaymentSettings() {
                     type="text"
                     value={ewalletProvider}
                     onChange={(e) => setEwalletProvider(e.target.value)}
+                    placeholder="e.g. EasyPaisa, JazzCash, SadaPay"
                     className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none"
                   />
                 </div>
@@ -1542,6 +1636,7 @@ export default function PaymentSettings() {
                     type="text"
                     value={ewalletAccountTitle}
                     onChange={(e) => setEwalletAccountTitle(e.target.value)}
+                    placeholder="e.g. Muhammad Ali"
                     className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none"
                   />
                 </div>
@@ -1553,6 +1648,7 @@ export default function PaymentSettings() {
                     type="text"
                     value={ewalletMobileNo}
                     onChange={(e) => setEwalletMobileNo(e.target.value)}
+                    placeholder="e.g. 03451234567"
                     className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none"
                   />
                 </div>
@@ -1564,6 +1660,7 @@ export default function PaymentSettings() {
                     type="text"
                     value={ewalletCnic}
                     onChange={(e) => setEwalletCnic(e.target.value)}
+                    placeholder="e.g. 37405-1234567-1"
                     className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none"
                   />
                 </div>
@@ -1575,6 +1672,7 @@ export default function PaymentSettings() {
                     type="text"
                     value={ewalletTillId}
                     onChange={(e) => setEwalletTillId(e.target.value)}
+                    placeholder="e.g. 849201"
                     className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none"
                   />
                 </div>
@@ -1598,6 +1696,7 @@ export default function PaymentSettings() {
                     type="text"
                     value={indianBankName}
                     onChange={(e) => setIndianBankName(e.target.value)}
+                    placeholder="e.g. HDFC Bank, State Bank of India"
                     className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none"
                   />
                 </div>
@@ -1609,6 +1708,7 @@ export default function PaymentSettings() {
                     type="text"
                     value={indianHolder}
                     onChange={(e) => setIndianHolder(e.target.value)}
+                    placeholder="e.g. Horizon Capital India Pvt Ltd"
                     className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none"
                   />
                 </div>
@@ -1620,6 +1720,7 @@ export default function PaymentSettings() {
                     type="text"
                     value={indianAccountNo}
                     onChange={(e) => setIndianAccountNo(e.target.value)}
+                    placeholder="e.g. 50200084920194"
                     className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none"
                   />
                 </div>
@@ -1630,8 +1731,9 @@ export default function PaymentSettings() {
                   <input
                     type="text"
                     value={indianIfsc}
-                    onChange={(e) => setIndianIfsc(e.target.value)}
-                    className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none"
+                    onChange={(e) => setIndianIfsc(e.target.value.toUpperCase())}
+                    placeholder="e.g. HDFC0000128"
+                    className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-mono outline-none"
                   />
                 </div>
                 <div>
@@ -1642,17 +1744,31 @@ export default function PaymentSettings() {
                     type="text"
                     value={indianUpiId}
                     onChange={(e) => setIndianUpiId(e.target.value)}
+                    placeholder="e.g. merchant@okhdfcbank"
                     className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Branch
+                    Branch Name / City
                   </label>
                   <input
                     type="text"
                     value={indianBranch}
                     onChange={(e) => setIndianBranch(e.target.value)}
+                    placeholder="e.g. Nariman Point, Mumbai"
+                    className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Account Type
+                  </label>
+                  <input
+                    type="text"
+                    value={indianAccountType}
+                    onChange={(e) => setIndianAccountType(e.target.value)}
+                    placeholder="e.g. Current Account, Savings Account"
                     className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs outline-none"
                   />
                 </div>
@@ -1676,7 +1792,8 @@ export default function PaymentSettings() {
                     type="text"
                     value={intlBankName}
                     onChange={(e) => setIntlBankName(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-xl text-xs"
+                    placeholder="e.g. JPMorgan Chase Bank, N.A."
+                    className="w-full px-3 py-2 border rounded-xl text-xs bg-white"
                   />
                 </div>
                 <div>
@@ -1687,7 +1804,8 @@ export default function PaymentSettings() {
                     type="text"
                     value={intlHolder}
                     onChange={(e) => setIntlHolder(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-xl text-xs"
+                    placeholder="e.g. Horizon Capital Global Holdings LLC"
+                    className="w-full px-3 py-2 border rounded-xl text-xs bg-white"
                   />
                 </div>
                 <div>
@@ -1698,7 +1816,8 @@ export default function PaymentSettings() {
                     type="text"
                     value={intlAccountNo}
                     onChange={(e) => setIntlAccountNo(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-xl text-xs"
+                    placeholder="e.g. GB29NWBK60161331926819 or 109288492019"
+                    className="w-full px-3 py-2 border rounded-xl text-xs font-mono bg-white"
                   />
                 </div>
                 <div>
@@ -1708,19 +1827,21 @@ export default function PaymentSettings() {
                   <input
                     type="text"
                     value={intlSwift}
-                    onChange={(e) => setIntlSwift(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-xl text-xs"
+                    onChange={(e) => setIntlSwift(e.target.value.toUpperCase())}
+                    placeholder="e.g. CHASUS33XXX"
+                    className="w-full px-3 py-2 border rounded-xl text-xs font-mono bg-white"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold mb-1">
-                    Routing Code
+                    Routing Code (Fedwire / ABA)
                   </label>
                   <input
                     type="text"
                     value={intlRouting}
                     onChange={(e) => setIntlRouting(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-xl text-xs"
+                    placeholder="e.g. 021000021"
+                    className="w-full px-3 py-2 border rounded-xl text-xs font-mono bg-white"
                   />
                 </div>
                 <div>
@@ -1731,7 +1852,20 @@ export default function PaymentSettings() {
                     type="text"
                     value={intlBranch}
                     onChange={(e) => setIntlBranch(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-xl text-xs"
+                    placeholder="e.g. 270 Park Ave, New York, USA"
+                    className="w-full px-3 py-2 border rounded-xl text-xs bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1">
+                    Account Type
+                  </label>
+                  <input
+                    type="text"
+                    value={intlAccountType}
+                    onChange={(e) => setIntlAccountType(e.target.value)}
+                    placeholder="e.g. Corporate Escrow Trust, Checking"
+                    className="w-full px-3 py-2 border rounded-xl text-xs bg-white"
                   />
                 </div>
               </div>
@@ -1742,41 +1876,6 @@ export default function PaymentSettings() {
           {category === "Crypto Digital Wallet" && (
             <>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Wallet Display Name *
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2 bg-white rounded-xl border text-xs"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold mb-1">
-                    Blockchain / Network *
-                  </label>
-                  <input
-                    type="text"
-                    value={network}
-                    onChange={(e) => setNetwork(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-xl text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">
-                    Network Tag
-                  </label>
-                  <input
-                    type="text"
-                    value={networkCode}
-                    onChange={(e) => setNetworkCode(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-xl text-xs"
-                  />
-                </div>
-              </div>
-              <div>
                 <label className="block text-xs font-semibold mb-1">
                   Public Receiving Address *
                 </label>
@@ -1784,68 +1883,80 @@ export default function PaymentSettings() {
                   type="text"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-xl text-xs"
+                  placeholder="e.g. 0x71C... or TXYZ123..."
+                  className="w-full px-4 py-2 border rounded-xl text-xs font-mono bg-white"
                 />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1">
-                  Deposit Memo (Optional)
+                  Deposit Memo / Tag (Optional)
                 </label>
                 <input
                   type="text"
                   value={memo}
                   onChange={(e) => setMemo(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-xl text-xs"
+                  placeholder="e.g. Destination Tag for XRP / Memo for BNB"
+                  className="w-full px-3 py-2 border rounded-xl text-xs bg-white"
                 />
               </div>
 
               {/* Tokens */}
               <div className="p-4 bg-gold-50/50 rounded-2xl border border-gold-200/80">
                 <div className="flex justify-between items-center mb-2">
-                  <label className="text-xs font-bold text-slate-900">
-                    Supported Tokens
-                  </label>
+                  <div>
+                    <label className="text-xs font-bold text-slate-900 block">
+                      Supported Tokens & Minimums
+                    </label>
+                    <p className="text-[11px] text-slate-400 font-normal">Add tokens accepted on this address</p>
+                  </div>
                   <button
                     onClick={handleAddTokenRow}
                     type="button"
-                    className="px-3 py-1 bg-gold-400 rounded-xl text-xs font-bold"
+                    className="px-3 py-1 bg-gold-400 hover:bg-gold-500 rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-2xs"
                   >
-                    Add Token
+                    + Add Token
                   </button>
                 </div>
-                {cryptoMinDeposits.map((row, idx) => (
-                  <div key={idx} className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={row.token}
-                      onChange={(e) =>
-                        handleTokenRowChange(
-                          idx,
-                          "token",
-                          e.target.value.toUpperCase(),
-                        )
-                      }
-                      placeholder="Token"
-                      className="w-1/2 px-2 py-1 border rounded-lg text-xs"
-                    />
-                    <input
-                      type="text"
-                      value={row.min}
-                      onChange={(e) =>
-                        handleTokenRowChange(idx, "min", e.target.value)
-                      }
-                      placeholder="Min Limit"
-                      className="w-1/2 px-2 py-1 border rounded-lg text-xs"
-                    />
-                    <button
-                      onClick={() => handleRemoveTokenRow(idx)}
-                      type="button"
-                      className="text-red-500"
-                    >
-                      <RiDeleteBinLine size={16} />
-                    </button>
-                  </div>
-                ))}
+                {cryptoMinDeposits.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-2 italic text-center">
+                    No token rows added. Click "+ Add Token" to configure minimums.
+                  </p>
+                ) : (
+                  cryptoMinDeposits.map((row, idx) => (
+                    <div key={idx} className="flex gap-2 mb-2 items-center">
+                      <input
+                        type="text"
+                        value={row.token}
+                        onChange={(e) =>
+                          handleTokenRowChange(
+                            idx,
+                            "token",
+                            e.target.value.toUpperCase(),
+                          )
+                        }
+                        placeholder="Token (e.g. USDT, BNB)"
+                        className="w-1/2 px-2.5 py-1.5 border rounded-lg text-xs bg-white font-bold"
+                      />
+                      <input
+                        type="text"
+                        value={row.min}
+                        onChange={(e) =>
+                          handleTokenRowChange(idx, "min", e.target.value)
+                        }
+                        placeholder="Min Limit (e.g. 5)"
+                        className="w-1/2 px-2.5 py-1.5 border rounded-lg text-xs bg-white"
+                      />
+                      <button
+                        onClick={() => handleRemoveTokenRow(idx)}
+                        type="button"
+                        className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
+                        title="Remove token row"
+                      >
+                        <RiDeleteBinLine size={16} />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </>
           )}
@@ -2035,16 +2146,29 @@ export default function PaymentSettings() {
           </div>
 
           {/* COMMON LIMITS & SPEED */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold mb-1">
-                Minimum Deposit
+                Minimum Deposit *
               </label>
               <input
                 type="text"
                 value={minDeposit}
                 onChange={(e) => setMinDeposit(e.target.value)}
-                className="w-full px-3 py-2 border rounded-xl text-xs"
+                placeholder="e.g. $10 USD or PKR 1,500 or ₹500"
+                className="w-full px-3 py-2 border rounded-xl text-xs bg-white outline-none focus:border-gold-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1">
+                Maximum Deposit
+              </label>
+              <input
+                type="text"
+                value={maxDeposit}
+                onChange={(e) => setMaxDeposit(e.target.value)}
+                placeholder="e.g. $100,000 USD or PKR 1,000,000"
+                className="w-full px-3 py-2 border rounded-xl text-xs bg-white outline-none focus:border-gold-400"
               />
             </div>
             <div>
@@ -2055,7 +2179,8 @@ export default function PaymentSettings() {
                 type="text"
                 value={confirmationTime}
                 onChange={(e) => setConfirmationTime(e.target.value)}
-                className="w-full px-3 py-2 border rounded-xl text-xs"
+                placeholder="e.g. Instant (< 1 Min) or 1-2 Business Days"
+                className="w-full px-3 py-2 border rounded-xl text-xs bg-white outline-none focus:border-gold-400"
               />
             </div>
           </div>
@@ -2066,21 +2191,39 @@ export default function PaymentSettings() {
             <textarea
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              className="w-full p-2 border rounded-xl text-xs"
+              placeholder="e.g. Transfer funds to the account details above and upload your transaction slip."
+              className="w-full p-2.5 border rounded-xl text-xs bg-white"
               rows="2"
             ></textarea>
           </div>
 
-          <div className="flex items-center justify-between p-3.5 bg-gold-50/60 rounded-xl border border-gold-200/80">
-            <div>
-              <p className="text-xs font-semibold">Set as Default Channel</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex items-center justify-between p-3.5 bg-gold-50/60 rounded-xl border border-gold-200/80">
+              <div>
+                <p className="text-xs font-semibold">Set as Default Channel</p>
+                <p className="text-[11px] text-slate-400">Mark as primary deposit gateway</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={isDefault}
+                onChange={(e) => setIsDefault(e.target.checked)}
+                className="w-4 h-4 text-gold-500 rounded cursor-pointer"
+              />
             </div>
-            <input
-              type="checkbox"
-              checked={isDefault}
-              onChange={(e) => setIsDefault(e.target.checked)}
-              className="w-4 h-4 text-gold-500 rounded"
-            />
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+              <div>
+                <p className="text-xs font-semibold text-slate-800">Gateway Status</p>
+                <p className="text-[11px] text-slate-400">Active gateways appear on /deposit</p>
+              </div>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none cursor-pointer"
+              >
+                <option value="Active">Active (Live)</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
           </div>
         </div>
       </Modal>

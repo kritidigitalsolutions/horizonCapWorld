@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getTransactions } from '../api/transactionsApi';
+import { getReferralOverview } from '../api/referralsApi';
 import {
   RiDownloadLine, RiEyeLine, RiArrowUpCircleLine,
   RiArrowDownCircleLine, RiFlashlightLine, RiGiftLine,
@@ -18,16 +19,28 @@ export default function Transactions() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const [txnList, setTxnList] = useState([]);
+  const [referralStats, setReferralStats] = useState(null);
   const [filterType, setFilterType] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedTxn, setSelectedTxn] = useState(null);
   const [copiedHash, setCopiedHash] = useState(false);
   const [previewProofModal, setPreviewProofModal] = useState(null);
 
+  const fetchReferralStats = useCallback(async () => {
+    try {
+      const res = await getReferralOverview();
+      if (res?.success && res.data) {
+        setReferralStats(res.data);
+      }
+    } catch (err) {
+      console.warn('Error fetching referral stats in transactions:', err.message);
+    }
+  }, []);
+
   const fetchTxns = useCallback(async () => {
     try {
       const res = await getTransactions({
-        type: filterType !== 'all' ? filterType : undefined,
+        type: filterType !== 'all' && filterType !== 'Level Income' && filterType !== 'Affiliate Level Income' ? filterType : undefined,
         search: search.trim() || undefined,
         limit: 100,
       });
@@ -70,28 +83,32 @@ export default function Transactions() {
 
   useEffect(() => {
     fetchTxns();
-  }, [fetchTxns]);
+    fetchReferralStats();
+  }, [fetchTxns, fetchReferralStats]);
 
-  // Real-time synchronization with Super Admin approvals/rejections and new deposits
+  // Real-time synchronization with Super Admin approvals/rejections, new deposits, and referrals
   useEffect(() => {
     const handleSync = () => {
       fetchTxns();
+      fetchReferralStats();
     };
     window.addEventListener('horizon-transactions-change', handleSync);
+    window.addEventListener('horizon-referrals-change', handleSync);
     window.addEventListener('storage', handleSync);
     return () => {
       window.removeEventListener('horizon-transactions-change', handleSync);
+      window.removeEventListener('horizon-referrals-change', handleSync);
       window.removeEventListener('storage', handleSync);
     };
-  }, [fetchTxns]);
+  }, [fetchTxns, fetchReferralStats]);
 
-  const types = ['all', 'Deposit', 'Withdrawal', 'ROI Earning', 'Referral Bonus', 'Rank Bonus'];
+  const types = ['all', 'Deposit', 'Withdrawal', 'ROI Earning', 'Level Income', 'Affiliate Level Income', 'Rank Bonus'];
 
   const typeIcon = (type) => {
     if (type === 'Deposit') return <RiArrowDownCircleLine className="text-emerald-600 flex-shrink-0" size={18} />;
     if (type === 'Withdrawal') return <RiArrowUpCircleLine className="text-amber-500 flex-shrink-0" size={18} />;
-    if (type === 'ROI Earning' || type === 'ROI Return') return <RiFlashlightLine className="text-gold-500 flex-shrink-0" size={18} />;
-    if (type === 'Referral Bonus') return <RiGiftLine className="text-purple-600 flex-shrink-0" size={18} />;
+    if (type === 'ROI Earning' || type === 'ROI Return' || type === 'Level Income') return <RiFlashlightLine className="text-gold-500 flex-shrink-0" size={18} />;
+    if (type === 'Referral Bonus' || type === 'Affiliate Level Income') return <RiGiftLine className="text-purple-600 flex-shrink-0" size={18} />;
     return <RiTrophyLine className="text-gold-600 flex-shrink-0" size={18} />;
   };
 
@@ -107,14 +124,46 @@ export default function Transactions() {
     return parseFloat(String(amt).replace(/[^0-9.]/g, '')) || 0;
   };
 
-  // KPIs
-  const totalDeposits = txnList.filter(t => t.type === 'Deposit' && (t.status === 'Completed' || t.status === 'Approved')).reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
-  const totalWithdrawals = txnList.filter(t => t.type === 'Withdrawal' && (t.status === 'Completed' || t.status === 'Approved')).reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
-  const totalRoiEarned = txnList.filter(t => t.type === 'ROI Earning' || t.type === 'ROI Return').reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
-  const totalReferralBonus = txnList.filter(t => t.type === 'Referral Bonus' || t.type === 'Rank Bonus').reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
+  // Dynamic KPIs
+  const totalDeposits = txnList
+    .filter(t => t.type === 'Deposit' && (t.status === 'Completed' || t.status === 'Approved'))
+    .reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
+
+  const totalWithdrawals = txnList
+    .filter(t => t.type === 'Withdrawal' && (t.status === 'Completed' || t.status === 'Approved'))
+    .reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
+
+  const totalRoiEarned = txnList
+    .filter(t => (t.type === 'ROI Earning' || t.type === 'ROI Return') && (t.status === 'Completed' || t.status === 'Approved'))
+    .reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
+
+  // Dynamic Level Income (Streaming ROI / Multi-tier daily yield)
+  const totalLevelIncome = totalRoiEarned > 0 ? totalRoiEarned : Number(user?.totalProfit || user?.dailyEarning || 0);
+
+  // Dynamic Affiliate Level Income (Direct & downline referral commission)
+  const totalReferralTxns = txnList
+    .filter(t => (t.type === 'Referral Bonus' || t.type?.toLowerCase().includes('referral')) && (t.status === 'Completed' || t.status === 'Approved'))
+    .reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
+
+  const affiliateLevelIncome = (referralStats?.commissions?.totalEarned !== undefined && referralStats?.commissions?.totalEarned > 0)
+    ? Number(referralStats.commissions.totalEarned)
+    : totalReferralTxns;
+
+  const totalReferralBonus = txnList
+    .filter(t => (t.type === 'Referral Bonus' || t.type === 'Rank Bonus') && (t.status === 'Completed' || t.status === 'Approved'))
+    .reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
 
   const filtered = txnList.filter(txn => {
-    const matchType = filterType === 'all' || txn.type === filterType;
+    let matchType = filterType === 'all';
+    if (!matchType) {
+      if (filterType === 'Level Income') {
+        matchType = txn.type === 'ROI Earning' || txn.type === 'ROI Return' || txn.type === 'Level Income';
+      } else if (filterType === 'Affiliate Level Income') {
+        matchType = txn.type === 'Referral Bonus' || txn.type === 'Affiliate Level Income';
+      } else {
+        matchType = txn.type === filterType;
+      }
+    }
     const q = search.toLowerCase();
     const matchSearch = String(txn.id).toLowerCase().includes(q) ||
       String(txn.type).toLowerCase().includes(q) ||
@@ -216,8 +265,8 @@ export default function Transactions() {
         }
       />
 
-      {/* ──────── KPI SUMMARY ROW ──────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
+      {/* ──────── KPI SUMMARY ROW (3x2 GRID) ──────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Total Gross Deposits"
           numericValue={totalDeposits || 0}
@@ -236,7 +285,7 @@ export default function Transactions() {
           positive={true}
           change={totalWithdrawals > 0 ? "Completed" : "No Payouts"}
           subtitle="Total cleared payouts"
-          delay={60}
+          delay={50}
         />
         <KPICard
           title="ROI Yield Distributed"
@@ -244,19 +293,39 @@ export default function Transactions() {
           prefix="$"
           icon="revenue"
           positive={true}
-          change="Per Second"
+          change="Per Day"
           subtitle="Continuous yield credited"
-          delay={120}
+          delay={100}
+        />
+        <KPICard
+          title="Level Income"
+          numericValue={Math.round(totalLevelIncome || 0)}
+          prefix="$"
+          icon="chart"
+          positive={true}
+          change={totalLevelIncome > 0 ? "Daily Yield" : "Active"}
+          subtitle="Multi-tier daily ROI yield"
+          delay={150}
+        />
+        <KPICard
+          title="Affiliate Level Income"
+          numericValue={Math.round(affiliateLevelIncome || 0)}
+          prefix="$"
+          icon="users"
+          positive={true}
+          change={affiliateLevelIncome > 0 ? "Instant Payout" : "Ready"}
+          subtitle="Direct & downline earnings"
+          delay={200}
         />
         <KPICard
           title="Affiliate & Rank Bonuses"
           numericValue={Math.round(totalReferralBonus || 0)}
           prefix="$"
-          icon="users"
+          icon="trophy"
           positive={true}
           change="Instant"
           subtitle="Direct & multi-tier bonus"
-          delay={180}
+          delay={250}
         />
       </div>
 
@@ -296,7 +365,7 @@ export default function Transactions() {
                 <th>Transaction ID</th>
                 <th>Type</th>
                 <th>Amount</th>
-                <th>Gateway / Source</th>
+                <th>Network</th>
                 <th>Proof Slip</th>
                 <th>Timestamp</th>
                 <th>Status</th>

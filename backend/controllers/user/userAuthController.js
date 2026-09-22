@@ -174,6 +174,13 @@ exports.login = async (req, res) => {
       });
     }
 
+    if (user.status === "Blocked") {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been blocked as you have withdrawn your full capital under the 3X Cap Plan. Please create a new account to continue.",
+      });
+    }
+
     // ──────── 2FA CHECK ────────
     if (user.is2FAEnabled) {
       if (!otp) {

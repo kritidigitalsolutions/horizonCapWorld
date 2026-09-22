@@ -376,13 +376,6 @@ export default function UserDashboard() {
     );
   }
 
-  const currentDateFormatted = new Date().toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
-
   return (
     <div className="page-enter space-y-6 pb-12 font-poppins">
       {/* ──────────────── LUXURY GOLD & WHITE DECORATED HERO WELCOME CARD ──────────────── */}
@@ -392,40 +385,6 @@ export default function UserDashboard() {
         <div className="absolute left-1/4 bottom-0 w-72 h-72 bg-amber-100/40 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 space-y-6">
-          {/* Top Status & Date Pill */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gold-200/80 pb-4 text-xs font-poppins">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              {hasActiveStreaming ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-100/90 text-emerald-900 border border-emerald-300 text-xs font-extrabold shadow-2xs">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                  Live Multi-Asset Yield Streaming Active
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold shadow-2xs">
-                  <span className="w-2 h-2 rounded-full bg-slate-400" />
-                  Yield Streaming Idle • No Active Plans
-                </span>
-              )}
-              <span className="text-slate-400 font-medium hidden sm:inline">•</span>
-              <span className="text-slate-600 font-semibold hidden sm:flex items-center gap-1">
-                <RiCalendarLine size={14} className="text-gold-600" /> {currentDateFormatted}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 font-medium text-xs">Next Daily Settlement:</span>
-              {hasActiveStreaming ? (
-                <span className="px-3 py-1 rounded-xl bg-gold-100 text-gold-900 border border-gold-300 font-mono font-bold text-xs shadow-2xs">
-                  {countdown.hours}h {countdown.minutes}m {countdown.seconds}s
-                </span>
-              ) : (
-                <span className="px-3 py-1 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 font-mono font-bold text-xs">
-                  --h --m --s (No Active Plan)
-                </span>
-              )}
-            </div>
-          </div>
-
           {/* Main Hero Row: Avatar + Dynamic Name + Badges + CTAs */}
           <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5 sm:gap-6">
             <div className="flex items-center gap-4 sm:gap-6 min-w-0">
@@ -538,8 +497,8 @@ export default function UserDashboard() {
             </div>
           </div>
 
-          {/* 3 Highlight Metric Cards Embedded In Hero */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-gold-200/80">
+          {/* 2 Highlight Metric Cards Embedded In Hero */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 pt-4 border-t border-gold-200/80">
             {/* 1. Deposit Wallet */}
             <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 hover:border-gold-300 transition-colors shadow-2xs flex items-center justify-between">
               <div className="flex items-center gap-2.5 sm:gap-3">
@@ -574,29 +533,6 @@ export default function UserDashboard() {
               <Link to="/withdraw" className="text-xs font-bold text-emerald-700 hover:text-emerald-900 underline flex-shrink-0 ml-1">
                 Payout
               </Link>
-            </div>
-
-            {/* 3. Live Streaming Yield */}
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-gold-100/70 to-amber-100/50 border border-gold-300 shadow-2xs flex items-center justify-between">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gold-300 flex items-center justify-center text-gold-600 shadow-2xs flex-shrink-0">
-                  <UilBolt size={20} />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[10px] font-bold text-gold-900 uppercase tracking-wider block truncate">Live Yield Streaming</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-lg sm:text-xl font-black font-mono text-slate-950">
-                      ${streamingValue.toFixed(6).split('.')[0]}
-                    </span>
-                    <span className="text-xs font-black font-mono text-gold-700">
-                      .{streamingValue.toFixed(6).split('.')[1]}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <span className={`text-[10px] sm:text-[11px] font-bold font-mono flex-shrink-0 ml-1 ${hasActiveStreaming ? 'text-emerald-700' : 'text-slate-500'}`}>
-                +${activeRate.toFixed(7)}/s
-              </span>
             </div>
           </div>
         </div>

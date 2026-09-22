@@ -46,13 +46,58 @@ const syncUserStreamingEarnings = async (user) => {
     let currentDailyEarning = 0;
     let currentPerSecondRate = 0;
 
+    // Check user's latest approved withdrawal to determine non-withdrawal holding period
+    const latestWithdrawal = await Transaction.findOne({
+      user: userDoc._id,
+      type: "Withdrawal",
+      status: "Approved",
+    }).sort({ createdAt: -1 });
+
     for (const inv of activeInvestments) {
-      const invDaily =
-        inv.dailyEarning ||
-        (inv.dailyRoi
-          ? inv.amount * (inv.dailyRoi / 100)
-          : (inv.amount * (inv.roi || 7.5) / 100) / 30);
-      const invPerSec = inv.perSecondRate || invDaily / 86400;
+      // Determine non-withdrawal holding period for this contract
+      const invStartTime = inv.createdAt || inv.startDate || now;
+      const refDate =
+        latestWithdrawal && new Date(latestWithdrawal.createdAt) > new Date(invStartTime)
+          ? new Date(latestWithdrawal.createdAt)
+          : new Date(invStartTime);
+
+      const daysWithoutWithdrawal = Math.max(
+        0,
+        Math.floor((now.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24))
+      );
+
+      const isLocked = Boolean(
+        inv.isLocked ||
+        inv.lockInPeriod === "3X Cap" ||
+        inv.lockInPeriod === "333 Days" ||
+        inv.lockInPeriod === "365 Days" ||
+        inv.lockInPeriod === "3 Months"
+      );
+
+      let dynamicDailyRoi = 0.3;
+      if (isLocked) {
+        if (daysWithoutWithdrawal >= 60) {
+          dynamicDailyRoi = 1.0;
+        } else if (daysWithoutWithdrawal >= 30) {
+          dynamicDailyRoi = 0.9;
+        } else {
+          dynamicDailyRoi = Number(inv.slabApplied?.lockInDailyRoi) || 0.8;
+        }
+      } else {
+        if (daysWithoutWithdrawal >= 60) {
+          dynamicDailyRoi = 0.4;
+        } else if (daysWithoutWithdrawal >= 30) {
+          dynamicDailyRoi = 0.35;
+        } else {
+          dynamicDailyRoi = Number(inv.slabApplied?.dailyRoi) || 0.3;
+        }
+      }
+
+      inv.dailyRoi = dynamicDailyRoi;
+      const invDaily = inv.amount * (dynamicDailyRoi / 100);
+      const invPerSec = invDaily / 86400;
+      inv.dailyEarning = invDaily;
+      inv.perSecondRate = invPerSec;
 
       currentDailyEarning += invDaily;
       currentPerSecondRate += invPerSec;
@@ -64,8 +109,14 @@ const syncUserStreamingEarnings = async (user) => {
       inv.totalProfitEarned = Number(((inv.totalProfitEarned || 0) + contractYield).toFixed(8));
       inv.lastSettlementAt = now;
 
-      // Check if non-infinite contract has expired
-      if (!inv.isInfinite && inv.endDate && now >= new Date(inv.endDate)) {
+      // Check if 3X Cap contract has reached 300% profit
+      if (isLocked) {
+        if (inv.totalProfitEarned >= inv.amount * 3) {
+          inv.status = "Completed";
+          inv.dailyEarning = 0;
+          inv.perSecondRate = 0;
+        }
+      } else if (!inv.isInfinite && inv.endDate && now >= new Date(inv.endDate)) {
         inv.status = "Completed";
       }
 

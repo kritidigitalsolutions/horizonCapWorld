@@ -8,58 +8,62 @@ import {
   RiShieldCheckLine, RiCheckLine,
 } from 'react-icons/ri';
 
-const countries = [
-  'India',
-  'Pakistan',
-  'United States',
-  'United Kingdom',
-  'United Arab Emirates',
-  'Saudi Arabia',
-  'Canada',
-  'Australia',
-  'Germany',
-  'France',
-  'Singapore',
-  'Malaysia',
-  'Bangladesh',
-  'South Africa',
-  'Nigeria',
-  'Turkey',
-  'Kuwait',
-  'Qatar',
-  'Oman',
-  'Bahrain',
-  'Switzerland',
-  'Netherlands',
-  'Italy',
-  'Spain',
-  'Sweden',
-  'Norway',
-  'Denmark',
-  'Brazil',
-  'Mexico',
-  'Japan',
-  'South Korea',
-  'China',
-  'Hong Kong',
-  'Thailand',
-  'Vietnam',
-  'Indonesia',
-  'Philippines',
-  'Egypt',
-  'Kenya',
-  'Ghana',
-  'Sri Lanka',
-  'Nepal',
-  'New Zealand',
-  'Ireland',
-  'Belgium',
-  'Austria',
-  'Portugal',
-  'Poland',
-  'Czech Republic',
-  'Greece'
-];
+import PhoneInput, { getCountries, getCountryCallingCode } from 'react-phone-number-input';
+import en from 'react-phone-number-input/locale/en';
+import 'react-phone-number-input/style.css';
+
+// Complete dynamic country list with ISO codes and dial codes from react-phone-number-input
+const countryList = getCountries()
+  .map(code => ({
+    code,
+    name: en[code] || code,
+    callingCode: getCountryCallingCode(code),
+  }))
+  .filter(c => c.name && c.callingCode)
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+// Aliases for common shortcuts/abbreviations
+const COUNTRY_ALIASES = {
+  usa: 'US',
+  us: 'US',
+  america: 'US',
+  uk: 'GB',
+  britain: 'GB',
+  england: 'GB',
+  uae: 'AE',
+  dubai: 'AE',
+  emirates: 'AE',
+  russia: 'RU',
+  korea: 'KR',
+};
+
+const findCountryMatch = (text) => {
+  if (!text) return null;
+  const q = text.trim().toLowerCase();
+  if (!q) return null;
+
+  // 1. Check aliases
+  if (COUNTRY_ALIASES[q]) {
+    const aliasCode = COUNTRY_ALIASES[q];
+    return countryList.find(c => c.code === aliasCode);
+  }
+
+  // 2. Exact match on country name
+  const exactName = countryList.find(c => c.name.toLowerCase() === q);
+  if (exactName) return exactName;
+
+  // 3. Exact match on country 2-letter ISO code
+  const exactCode = countryList.find(c => c.code.toLowerCase() === q);
+  if (exactCode) return exactCode;
+
+  // 4. Prefix match on country name if at least 3 characters
+  if (q.length >= 3) {
+    const prefixMatch = countryList.find(c => c.name.toLowerCase().startsWith(q));
+    if (prefixMatch) return prefixMatch;
+  }
+
+  return null;
+};
 
 export default function Register() {
   const navigate = useNavigate();
@@ -67,9 +71,17 @@ export default function Register() {
   const refFromUrl = searchParams.get('ref') || searchParams.get('sponsor') || '';
 
   const { register } = useAuth();
+  const [selectedCountry, setSelectedCountry] = useState('IN');
   const [form, setForm] = useState({
-    fullName: '', email: '', password: '', confirmPassword: '',
-    phone: '', country: 'India', sponsorId: refFromUrl || '',
+    userName: '',
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    phone: `+${getCountryCallingCode('IN')}`,
+    country: 'India',
+    countryCode: 'IN',
+    sponsorId: refFromUrl || '',
   });
 
   useEffect(() => {
@@ -83,14 +95,73 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Helper to update phone field country code and flag
+  const updatePhoneForCountry = (countryObj) => {
+    setSelectedCountry(countryObj.code);
+    const newCallingCode = `+${countryObj.callingCode}`;
+    setForm(p => {
+      let updatedPhone = p.phone || '';
+      const prevCode = p.countryCode ? `+${getCountryCallingCode(p.countryCode)}` : '';
+      if (!updatedPhone || updatedPhone.trim() === '' || updatedPhone === prevCode) {
+        updatedPhone = newCallingCode;
+      } else if (prevCode && updatedPhone.startsWith(prevCode)) {
+        updatedPhone = updatedPhone.replace(prevCode, newCallingCode);
+      } else if (!updatedPhone.startsWith('+')) {
+        updatedPhone = `${newCallingCode}${updatedPhone}`;
+      } else {
+        updatedPhone = newCallingCode;
+      }
+      return {
+        ...p,
+        countryCode: countryObj.code,
+        phone: updatedPhone,
+      };
+    });
+    setError('');
+  };
+
+  // Normal typeable Country field change handler - automatically changes phone field country code
+  const handleCountryChange = (e) => {
+    const val = e.target.value;
+    setForm(p => ({ ...p, country: val }));
+
+    // Automatically detect and change phone country code when user types country
+    const matched = findCountryMatch(val);
+    if (matched) {
+      updatePhoneForCountry(matched);
+    }
+  };
+
+  // Sync Country text input when user selects country flag in PhoneInput
+  const handlePhoneCountryChange = (countryCode) => {
+    if (countryCode) {
+      setSelectedCountry(countryCode);
+      const found = countryList.find(c => c.code === countryCode);
+      if (found) {
+        setForm(p => ({
+          ...p,
+          country: found.name,
+          countryCode,
+        }));
+      }
+    }
+  };
+
   const handleChange = (e) => {
-    setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm(p => ({
+      ...p,
+      [name]: value,
+      ...(name === 'userName' ? { fullName: value } : {}),
+      ...(name === 'fullName' ? { userName: value } : {}),
+    }));
     setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.fullName || !form.email || !form.password || !form.phone) {
+    const uname = (form.userName || form.fullName || '').trim();
+    if (!uname || !form.email || !form.password || !form.phone) {
       setError('Please fill all required fields');
       return;
     }
@@ -104,7 +175,12 @@ export default function Register() {
     }
     setError('');
     setLoading(true);
-    const res = await register(form);
+    const res = await register({
+      ...form,
+      name: uname,
+      fullName: uname,
+      userName: uname,
+    });
     setLoading(false);
     if (res?.success) {
       navigate('/');
@@ -189,10 +265,17 @@ export default function Register() {
               <legend className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 font-poppins mb-1">Identity</legend>
               
               <div>
-                <label className="text-xs font-semibold text-slate-700 mb-1.5 block font-poppins">Full Name</label>
+                <label className="text-xs font-semibold text-slate-700 mb-1.5 block font-poppins">User Name</label>
                 <div className="relative">
                   <RiUser3Line size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  <input name="fullName" value={form.fullName} onChange={handleChange} placeholder="Ada Lovelace" className="input input-icon-left" />
+                  <input
+                    name="userName"
+                    value={form.userName}
+                    onChange={handleChange}
+                    placeholder="User Name"
+                    className="input input-icon-left"
+                    autoComplete="username"
+                  />
                 </div>
               </div>
 
@@ -241,17 +324,32 @@ export default function Register() {
                 <div>
                   <label className="text-xs font-semibold text-slate-700 mb-1.5 block font-poppins">Mobile Number</label>
                   <div className="relative">
-                    <RiPhoneLine size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    <input name="phone" value={form.phone} onChange={handleChange} placeholder="+91" className="input input-icon-left" />
+                    <PhoneInput
+                      international
+                      country={selectedCountry}
+                      value={form.phone}
+                      onChange={(val) => {
+                        setForm(p => ({ ...p, phone: val || '' }));
+                        setError('');
+                      }}
+                      onCountryChange={handlePhoneCountryChange}
+                      placeholder="+91"
+                      className="custom-phone-input font-poppins"
+                    />
                   </div>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-700 mb-1.5 block font-poppins">Country</label>
                   <div className="relative">
                     <RiGlobalLine size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    <select name="country" value={form.country} onChange={handleChange} className="input input-icon-left appearance-none cursor-pointer">
-                      {countries.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <input
+                      type="text"
+                      name="country"
+                      value={form.country}
+                      onChange={handleCountryChange}
+                      placeholder="Country"
+                      className="input input-icon-left text-slate-800 text-sm font-poppins"
+                    />
                   </div>
                 </div>
               </div>
