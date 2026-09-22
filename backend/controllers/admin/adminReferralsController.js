@@ -3,14 +3,224 @@ const User = require("../../models/User");
 const Transaction = require("../../models/Transaction");
 const AdminSettings = require("../../models/AdminSettings");
 
+const LEVEL_ROI_DATA = [
+  {
+    level: "L0",
+    levelNumber: 0,
+    name: "Self Investment (Level 0)",
+    depositAmount: 1000,
+    profitAmount: 8,
+    percentage: 0,
+    roiPerDay: 0,
+    eligibleConditions: "NA",
+    groupVolumeMin: 0,
+    directClientsMin: 0,
+    investCommission: "0%",
+    investCommissionRate: 0,
+    earningsCommission: "0%",
+    earningsCommissionRate: 0,
+    levelTitle: "Level 0",
+    status: "Active",
+  },
+  {
+    level: "L1",
+    levelNumber: 1,
+    name: "Direct Referrals (Level 1)",
+    depositAmount: 0,
+    profitAmount: 0,
+    percentage: 10,
+    roiPerDay: 10,
+    eligibleConditions: "No Condition",
+    groupVolumeMin: 0,
+    directClientsMin: 0,
+    investCommission: "5%",
+    investCommissionRate: 5,
+    earningsCommission: "10%",
+    earningsCommissionRate: 10,
+    levelTitle: "Level 1",
+    status: "Active",
+  },
+  {
+    level: "L2",
+    levelNumber: 2,
+    name: "Sub-Referrals (Level 2)",
+    depositAmount: 0,
+    profitAmount: 0,
+    percentage: 10,
+    roiPerDay: 10,
+    eligibleConditions: "Group Volume Min. 500$, 2 Direct Clients",
+    groupVolumeMin: 500,
+    directClientsMin: 2,
+    investCommission: "4%",
+    investCommissionRate: 4,
+    earningsCommission: "10%",
+    earningsCommissionRate: 10,
+    levelTitle: "Level 2",
+    status: "Active",
+  },
+  {
+    level: "L3",
+    levelNumber: 3,
+    name: "Network Tier (Level 3)",
+    depositAmount: 0,
+    profitAmount: 0,
+    percentage: 5,
+    roiPerDay: 5,
+    eligibleConditions: "Group Volume Min. 1500$, 3 Direct Clients",
+    groupVolumeMin: 1500,
+    directClientsMin: 3,
+    investCommission: "3%",
+    investCommissionRate: 3,
+    earningsCommission: "5%",
+    earningsCommissionRate: 5,
+    levelTitle: "Level 3",
+    status: "Active",
+  },
+  {
+    level: "L4",
+    levelNumber: 4,
+    name: "Network Tier (Level 4)",
+    depositAmount: 0,
+    profitAmount: 0,
+    percentage: 5,
+    roiPerDay: 5,
+    eligibleConditions: "Group Volume Min. 3000$, 4 Direct Clients",
+    groupVolumeMin: 3000,
+    directClientsMin: 4,
+    investCommission: "2%",
+    investCommissionRate: 2,
+    earningsCommission: "5%",
+    earningsCommissionRate: 5,
+    levelTitle: "Level 4",
+    status: "Active",
+  },
+  {
+    level: "L5",
+    levelNumber: 5,
+    name: "Global Depth (Level 5)",
+    depositAmount: 0,
+    profitAmount: 0,
+    percentage: 5,
+    roiPerDay: 5,
+    eligibleConditions: "Group Volume Min. 4000$, 5 Direct Clients",
+    groupVolumeMin: 4000,
+    directClientsMin: 5,
+    investCommission: "1.5%",
+    investCommissionRate: 1.5,
+    earningsCommission: "5%",
+    earningsCommissionRate: 5,
+    levelTitle: "Level 5",
+    status: "Active",
+  },
+  {
+    level: "L6",
+    levelNumber: 6,
+    name: "Expansion Tier (Level 6)",
+    depositAmount: 0,
+    profitAmount: 0,
+    percentage: 5,
+    roiPerDay: 5,
+    eligibleConditions: "Group Volume Min. 5,000$, 10 Direct Clients",
+    groupVolumeMin: 5000,
+    directClientsMin: 10,
+    investCommission: "1%",
+    investCommissionRate: 1,
+    earningsCommission: "5%",
+    earningsCommissionRate: 5,
+    levelTitle: "Level 6",
+    status: "Active",
+  },
+  {
+    level: "L7",
+    levelNumber: 7,
+    name: "Regional Depth (Level 7)",
+    depositAmount: 0,
+    profitAmount: 0,
+    percentage: 5,
+    roiPerDay: 5,
+    eligibleConditions: "Group Volume Min. 10,000$, 11 Direct Clients",
+    groupVolumeMin: 10000,
+    directClientsMin: 11,
+    investCommission: "0.8%",
+    investCommissionRate: 0.8,
+    earningsCommission: "5%",
+    earningsCommissionRate: 5,
+    levelTitle: "Level 7",
+    status: "Active",
+  },
+  {
+    level: "L8",
+    levelNumber: 8,
+    name: "Executive Tier (Level 8)",
+    depositAmount: 0,
+    profitAmount: 0,
+    percentage: 5,
+    roiPerDay: 5,
+    eligibleConditions: "Group Volume Min. 15,000$, 11 Direct Clients",
+    groupVolumeMin: 15000,
+    directClientsMin: 11,
+    investCommission: "0.6%",
+    investCommissionRate: 0.6,
+    earningsCommission: "5%",
+    earningsCommissionRate: 5,
+    levelTitle: "Level 8",
+    status: "Active",
+  },
+  {
+    level: "L9",
+    levelNumber: 9,
+    name: "Leadership Tier (Level 9)",
+    depositAmount: 0,
+    profitAmount: 0,
+    percentage: 5,
+    roiPerDay: 5,
+    eligibleConditions: "Group Volume Min. 20,000$, 11 Direct Clients",
+    groupVolumeMin: 20000,
+    directClientsMin: 11,
+    investCommission: "0.5%",
+    investCommissionRate: 0.5,
+    earningsCommission: "5%",
+    earningsCommissionRate: 5,
+    levelTitle: "Level 9",
+    status: "Active",
+  },
+  {
+    level: "L10",
+    levelNumber: 10,
+    name: "Ambassador Tier (Level 10)",
+    depositAmount: 0,
+    profitAmount: 0,
+    percentage: 5,
+    roiPerDay: 5,
+    eligibleConditions: "Group Volume Min.25,000$, 11 Direct Clients",
+    groupVolumeMin: 25000,
+    directClientsMin: 11,
+    investCommission: "0.4%",
+    investCommissionRate: 0.4,
+    earningsCommission: "5%",
+    earningsCommissionRate: 5,
+    levelTitle: "Level 10",
+    status: "Active",
+  },
+];
+
 // @desc    Get All Referral Commission Settings & Global Toggles (100% Dynamic Stats)
 // @route   GET /api/admin/referrals/settings
 exports.getReferralSettings = async (req, res) => {
   try {
-    const [settings, allUsers] = await Promise.all([
-      ReferralSetting.find().sort({ levelNumber: 1 }),
-      User.find().select("customId sponsorId totalInvested totalReferrals"),
-    ]);
+    let settings = await ReferralSetting.find().sort({ levelNumber: 1 });
+    const hasLevel0 = settings.some(s => s.levelNumber === 0);
+    const hasLevel1LegacyDeposit = settings.some(s => s.levelNumber === 1 && s.depositAmount === 1000);
+    const hasLevel11 = settings.some(s => s.levelNumber > 10);
+
+    if (!hasLevel0 || hasLevel1LegacyDeposit || hasLevel11 || settings.length !== 11) {
+      console.log("[Referrals Admin] Outdated settings detected. Resyncing Level 0-10 matrix...");
+      await ReferralSetting.deleteMany({});
+      await ReferralSetting.insertMany(LEVEL_ROI_DATA);
+      settings = await ReferralSetting.find().sort({ levelNumber: 1 });
+    }
+
+    const allUsers = await User.find().select("customId sponsorId totalInvested totalReferrals");
 
     let adminSettings = await AdminSettings.findOne();
     if (!adminSettings) {
@@ -234,6 +444,15 @@ exports.updateReferralSetting = async (req, res) => {
       const rate = parseFloat(String(earningsCommission).replace("%", "")) || 0;
       setting.earningsCommission = `${rate}%`;
       setting.earningsCommissionRate = rate;
+      setting.percentage = rate;
+    }
+
+    if (req.body.percentage !== undefined) {
+      const pRate = Number(req.body.percentage) || 0;
+      setting.percentage = pRate;
+      setting.earningsCommissionRate = pRate;
+      setting.earningsCommission = `${pRate}%`;
+      setting.roiPerDay = pRate;
     }
 
     if (depositAmount !== undefined) {
@@ -307,6 +526,12 @@ exports.bulkUpdateReferralSettings = async (req, res) => {
         if (item.depositAmount !== undefined) doc.depositAmount = Number(item.depositAmount) || 0;
         if (item.profitAmount !== undefined) doc.profitAmount = Number(item.profitAmount) || 0;
         if (item.roiPerDay !== undefined) doc.roiPerDay = Number(item.roiPerDay) || 0;
+        if (item.percentage !== undefined) {
+          doc.percentage = Number(item.percentage) || 0;
+          doc.earningsCommissionRate = doc.percentage;
+          doc.earningsCommission = `${doc.percentage}%`;
+          doc.roiPerDay = doc.percentage;
+        }
         if (item.eligibleConditions !== undefined) doc.eligibleConditions = String(item.eligibleConditions);
         if (item.groupVolumeMin !== undefined) doc.groupVolumeMin = Number(item.groupVolumeMin) || 0;
         if (item.directClientsMin !== undefined) doc.directClientsMin = Number(item.directClientsMin) || 0;
@@ -321,6 +546,7 @@ exports.bulkUpdateReferralSettings = async (req, res) => {
           const rate = parseFloat(String(item.earningsCommission).replace("%", "")) || 0;
           doc.earningsCommission = `${rate}%`;
           doc.earningsCommissionRate = rate;
+          doc.percentage = rate;
         }
         await doc.save();
         updated.push(doc);

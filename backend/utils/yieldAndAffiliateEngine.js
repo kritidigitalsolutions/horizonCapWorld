@@ -215,8 +215,8 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
 
       // For Level ROI Earnings Profit Share, enforce eligibility conditions (Group Volume & Direct Clients)
       if (commissionType === "earnings") {
-        if (tier.levelNumber === 1 || tier.roiPerDay === 0) {
-          // Level 1 has No ROI Per Day (NR)
+        if (tier.levelNumber === 0 || (tier.percentage === 0 && tier.earningsCommissionRate === 0 && tier.roiPerDay === 0)) {
+          // Level 0 has No Downline Commission (Self Investment only)
           currentSponsorId = sponsor.sponsorId;
           continue;
         }
@@ -238,7 +238,7 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
         }
       }
 
-      const rate = commissionType === "investment" ? (tier.investCommissionRate || 5) : (tier.earningsCommissionRate || 0);
+      const rate = commissionType === "investment" ? (tier.investCommissionRate || 5) : (tier.percentage !== undefined && tier.percentage !== null ? tier.percentage : tier.earningsCommissionRate || 0);
       const bonus = parseFloat(((amount * rate) / 100).toFixed(2));
 
       if (bonus > 0) {

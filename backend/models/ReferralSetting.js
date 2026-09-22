@@ -41,6 +41,10 @@ const referralSettingSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    percentage: {
+      type: Number, // e.g. 0, 10, 5 (%ge of daily profit)
+      default: 0,
+    },
     roiPerDay: {
       type: Number, // e.g. 0.08, 0.16, 0.24, 0.40, etc.
       default: 0.08,

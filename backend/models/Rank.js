@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const rankSchema = new mongoose.Schema(
   {
     level: {
-      type: Number, // 1 to 10
+      type: Number, // 1 to 12
       required: true,
       unique: true,
     },
@@ -28,8 +28,8 @@ const rankSchema = new mongoose.Schema(
       required: true,
     },
     condition: {
-      type: String, // e.g. "1 Leg should not be more than 40% of the GV"
-      default: "1 Leg should not be more than 40% of the GV",
+      type: String, // e.g. "Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )"
+      default: "Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )",
     },
     companyProfitSharing: {
       type: String, // Company Profit %ge (e.g. "0" or "0.20% of the total company Profit + 500$ Per Month Salary")

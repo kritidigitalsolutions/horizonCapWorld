@@ -242,26 +242,30 @@ Iske liye **Eligibility Conditions (Group Volume & Direct Clients)** poori honi 
 
 ## 6. Rank Progression Ladder
 
-Platform mein 9 leadership ranks hain. Har rank unlock hone par **One-Time Instant Cash Reward**, **Monthly Salary**, aur **Company Profit Sharing** milti hai.
+Platform mein 12 leadership ranks hain. Har rank unlock hone par **One-Time Instant Cash Reward**, **Monthly Salary**, aur **Company Profit Sharing** milti hai.
 
-### 40% Leg Rule (Condition):
-$$\text{Single Leg Maximum Volume} \le 40\% \text{ of Total Required GV}$$
-- Kisi bhi ek single direct referral leg se total required client deposit ka **40% se zyada count nahi hoga**.
-- Baaki ka 60% volume doosri legs/referrals se aana zaroori hai. Isse genuine network balancing ensure hoti hai.
+### Power Leg Rule (Condition):
+$$\text{Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )}$$
+- Kam se kam 2 direct referral legs hona anivarya hai.
+- 1 Leg Power Leg honi chahiye jisme maximum 60% required client deposit volume count hoga.
+- Baaki ka volume doosri legs se aana zaroori hai. Isse genuine network balancing ensure hoti hai.
 
-### Complete 9-Tier Rank Table:
+### Complete 12-Tier Rank Table:
 
-| Level | Rank Name | Own Deposit ($) | Total Client Deposit ($) | One Time Cash Reward ($) | Company Profit %ge & Salary | Downline Structure Required |
-|:---:|:---|:---:|:---:|:---:|:---|:---|
-| **1** | **Associate** | $50 | $5,000 | **+$100** | 0 | 2 Active Direct Clients |
-| **2** | **Senior Associate** | $100 | $10,000 | **+$300** | 0 | 3 Active Direct Clients |
-| **3** | **Team Leader** | $250 | $25,000 | **+$875** | 0 | 3 Active Direct Clients (Min. 1 Associate) |
-| **4** | **Director** | $500 | $50,000 | **+$2,000** | 0 | 4 Active Direct Clients (Min. 2 Sr. Associates) |
-| **5** | **Regional Director** | $1,000 | $100,000 | **+$5,000** | 0 | 4 Active Direct Clients (Min. 2 Team Leaders) |
-| **6** | **Executive Director** | $1,500 | $200,000 | **+$10,000** | **0.20% Profit + $500/Month Salary** | 5 Active Direct Clients (Min. 2 Directors) |
-| **7** | **Diamond** | $2,000 | $300,000 | **+$15,000** | **0.50% Profit + $1,000/Month Salary** | 6 Active Direct Clients (Min. 2 Regional Directors) |
-| **8** | **Crown Diamond** | $3,000 | $600,000 | **+$35,000** | **0.75% Profit + $1,500/Month Salary** | 8 Active Direct Clients (Min. 2 Executive Directors) |
-| **9** | **Global Ambassador** | $5,000 | $1,000,000 | **+$60,000** | **1% Profit + $3,000/Month Salary** | 10 Active Direct Clients (Min. 2 Diamonds) |
+| Level | Rank Name | Own Deposit ($) | Total Client Deposit ($) | Condition | One Time Cash Reward ($) | Company Profit %ge & Salary | Downline Structure Required |
+|:---:|:---|:---:|:---:|:---|:---:|:---|:---|
+| **1** | **Associate** | $50 | $5,000 | Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% ) | **+$100** | 0 | 2 Active Direct Client |
+| **2** | **Senior Associate** | $100 | $10,000 | Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% ) | **+$300** | 0 | 3 Active Direct Clients |
+| **3** | **Team Leader** | $250 | $25,000 | Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% ) | **+$875** | 0 | 3 Active Direct Clients ( Min. 1 Associate ) |
+| **4** | **Director** | $500 | $50,000 | Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% ) | **+$2,000** | 0 | 4 Active Direct Clients ( Min 2 Sr. Associate ) |
+| **5** | **Regional Director** | $1,000 | $100,000 | Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% ) | **+$5,000** | 0 | 4 Active Direct Clients ( Min. 2 Team Leaders ) |
+| **6** | **Executive Director** | $1,500 | $200,000 | Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% ) | **+$10,000** | **0.20% of the total company Profit + 500$ Per Month Salary** | 5 Active Direct Clients ( Min. 2 Directors ) |
+| **7** | **Diamond** | $2,000 | $300,000 | Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% ) | **+$15,000** | **0.50% of the Total Company Profit + 1000$ Per Month Salary** | 6 Active Direct Clients ( Min. 2 Regional Directors ) |
+| **8** | **Crown Diamond** | $3,000 | $600,000 | Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% ) | **+$30,000** | **0.75% of the Total Company Profit + 1500$ Per Month Salary** | 8 Active Direct Clients ( Min. 2 Executive Directors ) |
+| **9** | **Global Ambassador** | $5,000 | $1,000,000 | Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% ) | **+$50,000** | **1% of the Total Company Profit + 3000$ Per Month Salary** | 10 Active Direct Clients ( Min. 2 Diamonds ) |
+| **10** | **Titan** | $0 | $5,000,000 | Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% ) | **+$250,000** | **1.25% of the Total Company Profit + 5000$ Per Month Salary** | 15 Active Direct Clients ( Min. 2 Crown Diamond ) |
+| **11** | **Crown Titan** | $0 | $10,000,000 | Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% ) | **+$500,000** | **1.50% of the Total Company Profit + 7500$ Per Month Salary** | 20 Active Direct Clients ( Min. 2 Global Ambassador ) |
+| **12** | **Global Titan** | $0 | $25,000,000 | Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% ) | **+$1,250,000** | **2% of the Total Company Profit + 10000$ Per Month Salary** | 25 Active Direct Clients ( Min. 2 Titan ) |
 
 ---
 

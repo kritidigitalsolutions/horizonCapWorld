@@ -24,11 +24,25 @@ import {
   getPromotersNetwork
 } from '../api/referralsApi';
 
+const defaultAdminTiers = [
+  { level: 'L0', levelNumber: 0, name: 'Self Investment (Level 0)', depositAmount: 1000, profitAmount: 8, percentage: 0, roiPerDay: 0, eligibleConditions: 'NA', groupVolumeMin: 0, directClientsMin: 0, investCommission: '0%', earningsCommission: '0%', status: 'Active' },
+  { level: 'L1', levelNumber: 1, name: 'Direct Referrals (Level 1)', depositAmount: 0, profitAmount: 0, percentage: 10, roiPerDay: 10, eligibleConditions: 'No Condition', groupVolumeMin: 0, directClientsMin: 0, investCommission: '5%', earningsCommission: '10%', status: 'Active' },
+  { level: 'L2', levelNumber: 2, name: 'Sub-Referrals (Level 2)', depositAmount: 0, profitAmount: 0, percentage: 10, roiPerDay: 10, eligibleConditions: 'Group Volume Min. 500$, 2 Direct Clients', groupVolumeMin: 500, directClientsMin: 2, investCommission: '4%', earningsCommission: '10%', status: 'Active' },
+  { level: 'L3', levelNumber: 3, name: 'Network Tier (Level 3)', depositAmount: 0, profitAmount: 0, percentage: 5, roiPerDay: 5, eligibleConditions: 'Group Volume Min. 1500$, 3 Direct Clients', groupVolumeMin: 1500, directClientsMin: 3, investCommission: '3%', earningsCommission: '5%', status: 'Active' },
+  { level: 'L4', levelNumber: 4, name: 'Network Tier (Level 4)', depositAmount: 0, profitAmount: 0, percentage: 5, roiPerDay: 5, eligibleConditions: 'Group Volume Min. 3000$, 4 Direct Clients', groupVolumeMin: 3000, directClientsMin: 4, investCommission: '2%', earningsCommission: '5%', status: 'Active' },
+  { level: 'L5', levelNumber: 5, name: 'Global Depth (Level 5)', depositAmount: 0, profitAmount: 0, percentage: 5, roiPerDay: 5, eligibleConditions: 'Group Volume Min. 4000$, 5 Direct Clients', groupVolumeMin: 4000, directClientsMin: 5, investCommission: '1.5%', earningsCommission: '5%', status: 'Active' },
+  { level: 'L6', levelNumber: 6, name: 'Expansion Tier (Level 6)', depositAmount: 0, profitAmount: 0, percentage: 5, roiPerDay: 5, eligibleConditions: 'Group Volume Min. 5,000$, 10 Direct Clients', groupVolumeMin: 5000, directClientsMin: 10, investCommission: '1%', earningsCommission: '5%', status: 'Active' },
+  { level: 'L7', levelNumber: 7, name: 'Regional Depth (Level 7)', depositAmount: 0, profitAmount: 0, percentage: 5, roiPerDay: 5, eligibleConditions: 'Group Volume Min. 10,000$, 11 Direct Clients', groupVolumeMin: 10000, directClientsMin: 11, investCommission: '0.8%', earningsCommission: '5%', status: 'Active' },
+  { level: 'L8', levelNumber: 8, name: 'Executive Tier (Level 8)', depositAmount: 0, profitAmount: 0, percentage: 5, roiPerDay: 5, eligibleConditions: 'Group Volume Min. 15,000$, 11 Direct Clients', groupVolumeMin: 15000, directClientsMin: 11, investCommission: '0.6%', earningsCommission: '5%', status: 'Active' },
+  { level: 'L9', levelNumber: 9, name: 'Leadership Tier (Level 9)', depositAmount: 0, profitAmount: 0, percentage: 5, roiPerDay: 5, eligibleConditions: 'Group Volume Min. 20,000$, 11 Direct Clients', groupVolumeMin: 20000, directClientsMin: 11, investCommission: '0.5%', earningsCommission: '5%', status: 'Active' },
+  { level: 'L10', levelNumber: 10, name: 'Ambassador Tier (Level 10)', depositAmount: 0, profitAmount: 0, percentage: 5, roiPerDay: 5, eligibleConditions: 'Group Volume Min.25,000$, 11 Direct Clients', groupVolumeMin: 25000, directClientsMin: 11, investCommission: '0.4%', earningsCommission: '5%', status: 'Active' },
+];
+
 export default function Referrals() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('plans'); // 'plans', 'promoters'
-  const [commissions, setCommissions] = useState([]);
+  const [commissions, setCommissions] = useState(defaultAdminTiers);
   const [promoterList, setPromoterList] = useState([]);
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,13 +57,14 @@ export default function Referrals() {
   const [savingToggle, setSavingToggle] = useState(null);
   const [feedbackMsg, setFeedbackMsg] = useState('');
 
-  // Add Tier Modal State (Level 6+)
+  // Add Tier Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [addLevelNum, setAddLevelNum] = useState(12);
+  const [addLevelNum, setAddLevelNum] = useState(11);
   const [addName, setAddName] = useState('');
   const [addDepositAmount, setAddDepositAmount] = useState('0');
   const [addProfitAmount, setAddProfitAmount] = useState('0');
-  const [addRoiPerDay, setAddRoiPerDay] = useState('0.08');
+  const [addPercentage, setAddPercentage] = useState('5');
+  const [addRoiPerDay, setAddRoiPerDay] = useState('5');
   const [addEligibleConditions, setAddEligibleConditions] = useState('No Condition');
   const [addGroupVolumeMin, setAddGroupVolumeMin] = useState('0');
   const [addDirectClientsMin, setAddDirectClientsMin] = useState('0');
@@ -63,7 +78,8 @@ export default function Referrals() {
   const [editName, setEditName] = useState('');
   const [editDepositAmount, setEditDepositAmount] = useState('0');
   const [editProfitAmount, setEditProfitAmount] = useState('0');
-  const [editRoiPerDay, setEditRoiPerDay] = useState('0.08');
+  const [editPercentage, setEditPercentage] = useState('0');
+  const [editRoiPerDay, setEditRoiPerDay] = useState('0');
   const [editEligibleConditions, setEditEligibleConditions] = useState('');
   const [editGroupVolumeMin, setEditGroupVolumeMin] = useState('0');
   const [editDirectClientsMin, setEditDirectClientsMin] = useState('0');
@@ -156,13 +172,14 @@ export default function Referrals() {
 
   // Open Add New Level Modal
   const openAddTierModal = () => {
-    const highestNum = commissions.reduce((max, c) => Math.max(max, Number(c.levelNumber || 0)), 0);
-    const nextNum = (highestNum || commissions.length || 11) + 1;
+    const highestNum = commissions.reduce((max, c) => Math.max(max, Number(c.levelNumber !== undefined ? c.levelNumber : (parseInt(String(c.level).replace('L', ''), 10) || 0))), 0);
+    const nextNum = (highestNum !== undefined ? highestNum : commissions.length) + 1;
     setAddLevelNum(nextNum);
     setAddName(`Level ${nextNum}`);
     setAddDepositAmount('0');
     setAddProfitAmount('0');
-    setAddRoiPerDay('0.08');
+    setAddPercentage('5');
+    setAddRoiPerDay('5');
     setAddEligibleConditions('No Condition');
     setAddGroupVolumeMin('0');
     setAddDirectClientsMin('0');
@@ -181,7 +198,8 @@ export default function Referrals() {
         name: addName.trim() || `Level ${addLevelNum}`,
         depositAmount: Number(addDepositAmount) || 0,
         profitAmount: Number(addProfitAmount) || 0,
-        roiPerDay: Number(addRoiPerDay) || 0.08,
+        percentage: Number(addPercentage) || 0,
+        roiPerDay: Number(addPercentage) || 0,
         eligibleConditions: addEligibleConditions.trim() || 'No Condition',
         groupVolumeMin: Number(addGroupVolumeMin) || 0,
         directClientsMin: Number(addDirectClientsMin) || 0,
@@ -191,7 +209,7 @@ export default function Referrals() {
       });
 
       if (res?.success && res.tier) {
-        setCommissions(prev => [...prev, res.tier].sort((a, b) => a.levelNumber - b.levelNumber));
+        setCommissions(prev => [...prev, res.tier].sort((a, b) => (a.levelNumber ?? 0) - (b.levelNumber ?? 0)));
         showNotification(`Level ${addLevelNum} tier created successfully!`);
         setIsAddModalOpen(false);
         fetchReferralData();
@@ -206,11 +224,12 @@ export default function Referrals() {
   // Open Edit Commission Modal
   const openEditCommission = (c) => {
     setEditingCommission(c);
-    setEditName(c.name || `Level ${c.levelNumber || c.level}`);
+    setEditName(c.name || `Level ${c.levelNumber !== undefined ? c.levelNumber : c.level}`);
     setEditDepositAmount(String(c.depositAmount ?? 0));
     setEditProfitAmount(String(c.profitAmount ?? 0));
-    setEditRoiPerDay(String(c.roiPerDay ?? 0.08));
-    setEditEligibleConditions(c.eligibleConditions || 'No Condition');
+    setEditPercentage(String(c.percentage !== undefined && c.percentage !== null ? c.percentage : (c.roiPerDay ?? 0)));
+    setEditRoiPerDay(String(c.percentage !== undefined && c.percentage !== null ? c.percentage : (c.roiPerDay ?? 0)));
+    setEditEligibleConditions(c.eligibleConditions || (c.levelNumber === 0 ? 'NA' : 'No Condition'));
     setEditGroupVolumeMin(String(c.groupVolumeMin ?? 0));
     setEditDirectClientsMin(String(c.directClientsMin ?? 0));
     setEditInvestComm(String(c.investCommission || '5').replace('%', ''));
@@ -228,7 +247,8 @@ export default function Referrals() {
         name: editName.trim(),
         depositAmount: Number(editDepositAmount) || 0,
         profitAmount: Number(editProfitAmount) || 0,
-        roiPerDay: Number(editRoiPerDay) || 0,
+        percentage: Number(editPercentage) || 0,
+        roiPerDay: Number(editPercentage) || 0,
         eligibleConditions: editEligibleConditions.trim(),
         groupVolumeMin: Number(editGroupVolumeMin) || 0,
         directClientsMin: Number(editDirectClientsMin) || 0,
@@ -249,7 +269,8 @@ export default function Referrals() {
       name: editName.trim(),
       depositAmount: Number(editDepositAmount) || 0,
       profitAmount: Number(editProfitAmount) || 0,
-      roiPerDay: Number(editRoiPerDay) || 0,
+      percentage: Number(editPercentage) || 0,
+      roiPerDay: Number(editPercentage) || 0,
       eligibleConditions: editEligibleConditions.trim(),
       groupVolumeMin: Number(editGroupVolumeMin) || 0,
       directClientsMin: Number(editDirectClientsMin) || 0,
@@ -537,90 +558,83 @@ export default function Referrals() {
             </div>
 
             {/* Grid Table with proper spacing and full vertical & horizontal gridlines */}
-            <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-2xs bg-white">
+            <div className="overflow-x-auto rounded-xl border border-slate-300 shadow-sm bg-white">
+              <div className="bg-yellow-400 text-slate-950 font-extrabold text-center py-2.5 text-sm sm:text-base tracking-wide border-b-2 border-yellow-500">
+                Level ROI Per day Income
+              </div>
               <table className="w-full text-left border-collapse font-poppins">
                 <thead>
-                  <tr className="bg-gradient-to-r from-amber-50/90 via-gold-50/70 to-amber-50/50 border-b-2 border-gold-300 text-slate-900 text-[11px] font-extrabold uppercase tracking-wider">
-                    <th className="py-3 px-3 text-center border-r border-slate-200/90 w-16">Levels</th>
-                    <th className="py-3 px-3.5 text-center border-r border-slate-200/90 min-w-[130px]">Deposit in $</th>
-                    <th className="py-3 px-3.5 text-center border-r border-slate-200/90 min-w-[130px]">Profit in $</th>
-                    <th className="py-3 px-3.5 text-center border-r border-slate-200/90 min-w-[150px]">ROI per Day in $</th>
-                    <th className="py-3 px-3.5 text-left border-r border-slate-200/90 min-w-[240px]">Eligibility</th>
+                  <tr className="bg-slate-50 border-b-2 border-slate-300 text-slate-900 text-xs font-extrabold tracking-wider">
+                    <th className="py-3 px-3 text-center border-r border-slate-300 w-16">Levels</th>
+                    <th className="py-3 px-3.5 text-center border-r border-slate-300 min-w-[120px]">Deposit in $</th>
+                    <th className="py-3 px-3.5 text-center border-r border-slate-300 min-w-[120px]">Profit in $</th>
+                    <th className="py-3 px-3.5 text-center border-r border-slate-300 min-w-[100px]">%ge</th>
+                    <th className="py-3 px-4 text-left border-r border-slate-300 min-w-[280px]">Eligible Conditions</th>
                     <th className="py-3 px-3 text-center min-w-[110px]">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 text-xs text-slate-700">
+                <tbody className="divide-y divide-slate-200 text-xs text-slate-800">
                   {commissions.map((tier, i) => {
-                    const levelNum = tier.levelNumber || parseInt(String(tier.level).replace('L', ''), 10) || 1;
+                    const levelNum = tier.levelNumber !== undefined ? tier.levelNumber : (parseInt(String(tier.level).replace('L', ''), 10) || 0);
                     const depAmt = Number(tier.depositAmount || 0);
                     const profitAmt = Number(tier.profitAmount || 0);
-                    const roiDay = tier.roiPerDay !== undefined && tier.roiPerDay !== null ? Number(tier.roiPerDay) : 0;
-                    const conditions = tier.eligibleConditions || (tier.directClientsMin || tier.groupVolumeMin ? `Group Volume Min. ${Number(tier.groupVolumeMin).toLocaleString()}$, ${tier.directClientsMin} Direct Clients` : (levelNum === 1 ? 'NR' : 'No Condition'));
-                    const isNR = conditions.trim().toUpperCase() === 'NR';
+                    const pct = tier.percentage !== undefined && tier.percentage !== null
+                      ? Number(tier.percentage)
+                      : (tier.roiPerDay !== undefined && tier.roiPerDay !== null ? Number(tier.roiPerDay) : 0);
+                    const conditions = tier.eligibleConditions || (
+                      levelNum === 0
+                        ? 'NA'
+                        : (tier.directClientsMin || tier.groupVolumeMin
+                          ? `Group Volume Min. ${Number(tier.groupVolumeMin).toLocaleString()}$, ${tier.directClientsMin} Direct Clients`
+                          : 'No Condition')
+                    );
+                    const isNA = conditions.trim().toUpperCase() === 'NA' || levelNum === 0;
 
                     return (
                       <tr
-                        key={tier._id || tier.level}
+                        key={tier._id || tier.level || levelNum}
                         className={`hover:bg-amber-50/40 transition-colors ${
-                          i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
+                          i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
                         }`}
                       >
                         {/* Level Index */}
-                        <td className="py-3 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-200 bg-gold-50/30">
-                          <span className="w-7 h-7 rounded-full bg-gold-100/90 text-gold-950 font-bold border border-gold-300 inline-flex items-center justify-center shadow-2xs">
-                            {levelNum}
-                          </span>
+                        <td className="py-2.5 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-300">
+                          {levelNum}
                         </td>
 
                         {/* Deposit in $ */}
-                        <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-800 text-xs border-r border-slate-200">
-                          {depAmt > 0 ? `$${depAmt.toLocaleString()}` : '—'}
+                        <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-900 text-xs border-r border-slate-300">
+                          {levelNum === 0 ? '1000' : (depAmt > 0 ? depAmt : '')}
                         </td>
 
                         {/* Profit in $ */}
-                        <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-800 text-xs border-r border-slate-200">
-                          ${profitAmt.toLocaleString()}
+                        <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-900 text-xs border-r border-slate-300">
+                          {levelNum === 0 ? '8' : profitAmt}
                         </td>
 
-                        {/* ROI per Day in $ */}
-                        <td className="py-3 px-3.5 text-center border-r border-slate-200 bg-emerald-50/20">
-                          {roiDay > 0 ? (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs">
-                              +${roiDay}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-mono font-bold text-xs">
-                              0
-                            </span>
-                          )}
+                        {/* %ge */}
+                        <td className="py-2.5 px-3.5 text-center border-r border-slate-300 font-mono font-bold text-xs text-slate-900">
+                          {pct}
                         </td>
 
-                        {/* Eligibility */}
-                        <td className="py-3 px-3.5 text-left border-r border-slate-200">
-                          <span className={`inline-block px-3 py-1 rounded-full text-[11px] leading-snug font-semibold ${
-                            isNR
-                              ? 'bg-slate-100 text-slate-700 border border-slate-200 font-mono'
-                              : conditions.toLowerCase().includes('no condition')
-                                ? 'bg-slate-100 text-slate-600 border border-slate-200 font-mono'
-                                : 'bg-amber-50 text-amber-950 border border-amber-200'
-                          }`}>
-                            {conditions}
-                          </span>
+                        {/* Eligible Conditions */}
+                        <td className="py-2.5 px-4 text-left border-r border-slate-300 font-medium text-slate-800 text-xs">
+                          {conditions}
                         </td>
 
                         {/* Action */}
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-2.5 px-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => openEditCommission(tier)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold transition-all shadow-2xs border border-gold-500 active:scale-95 cursor-pointer"
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold transition-all shadow-2xs border border-gold-500 active:scale-95 cursor-pointer"
                               title="Edit Level Conditions & ROI"
                             >
                               <RiEditLine size={13} />
                               <span>Edit</span>
                             </button>
-                            {tier.levelNumber > 1 && (
+                            {levelNum > 0 && (
                               <button
                                 type="button"
                                 onClick={() => setDeletingTier(tier)}
@@ -981,14 +995,17 @@ export default function Referrals() {
               </div>
               <div>
                 <label className="block font-semibold text-amber-950 uppercase tracking-wider mb-1">
-                  ROI per Day in $ *
+                  %ge (% Profit Share) *
                 </label>
                 <input
                   type="number"
-                  step="0.01"
-                  value={addRoiPerDay}
-                  onChange={e => setAddRoiPerDay(e.target.value)}
-                  placeholder="0.08"
+                  step="0.5"
+                  value={addPercentage}
+                  onChange={e => {
+                    setAddPercentage(e.target.value);
+                    setAddRoiPerDay(e.target.value);
+                  }}
+                  placeholder="5"
                   className="w-full px-3 py-2 bg-white rounded-xl border border-amber-300 text-sm font-mono font-extrabold text-amber-900 outline-none focus:border-gold-400 shadow-2xs"
                 />
               </div>
@@ -1144,14 +1161,17 @@ export default function Referrals() {
 
                     <div>
                       <label className="block text-xs font-extrabold text-amber-950 uppercase tracking-wider mb-1">
-                        ROI per Day in $ *
+                        %ge (% Profit Share) *
                       </label>
                       <input
                         type="number"
-                        step="0.01"
-                        value={editRoiPerDay}
-                        onChange={e => setEditRoiPerDay(e.target.value)}
-                        placeholder="0.08"
+                        step="0.5"
+                        value={editPercentage}
+                        onChange={e => {
+                          setEditPercentage(e.target.value);
+                          setEditRoiPerDay(e.target.value);
+                        }}
+                        placeholder="10"
                         className="w-full px-3 py-2 bg-white rounded-xl border border-amber-400 text-sm font-mono font-black text-amber-900 outline-none focus:border-gold-400 ring-1 ring-amber-300"
                       />
                     </div>

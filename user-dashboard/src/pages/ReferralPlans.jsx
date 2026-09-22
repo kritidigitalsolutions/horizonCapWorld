@@ -9,19 +9,19 @@ import PageHeader from '../components/ui/PageHeader';
 import KPICard from '../components/ui/KPICard';
 import Badge from '../components/ui/Badge';
 
-// Initial Referral Commissions Tiers (11-Level ROI Matrix)
+// Initial Referral Commissions Tiers (Level 0-10 Matrix)
 const defaultTiers = [
-  { level: 'L1', levelNumber: 1, name: 'Direct Referrals (Level 1)', depositAmount: 1000, profitAmount: 8, roiPerDay: 0, eligibleConditions: 'NR', groupVolumeMin: 0, directClientsMin: 0, investCommission: '5%', earningsCommission: '0%' },
-  { level: 'L2', levelNumber: 2, name: 'Sub-Referrals (Level 2)', depositAmount: 0, profitAmount: 0, roiPerDay: 1.6, eligibleConditions: 'No Condition', groupVolumeMin: 0, directClientsMin: 0, investCommission: '4%', earningsCommission: '20%' },
-  { level: 'L3', levelNumber: 3, name: 'Network Tier (Level 3)', depositAmount: 0, profitAmount: 0, roiPerDay: 1.2, eligibleConditions: 'Group Volume Min. 1000$, 2 Direct Clients', groupVolumeMin: 1000, directClientsMin: 2, investCommission: '3%', earningsCommission: '15%' },
-  { level: 'L4', levelNumber: 4, name: 'Network Tier (Level 4)', depositAmount: 0, profitAmount: 0, roiPerDay: 0.8, eligibleConditions: 'Group Volume Min. 2000$, 3 Direct Clients', groupVolumeMin: 2000, directClientsMin: 3, investCommission: '2%', earningsCommission: '10%' },
-  { level: 'L5', levelNumber: 5, name: 'Global Depth (Level 5)', depositAmount: 0, profitAmount: 0, roiPerDay: 0.64, eligibleConditions: 'Group Volume Min. 3000$, 4 Direct Clients', groupVolumeMin: 3000, directClientsMin: 4, investCommission: '1.5%', earningsCommission: '8%' },
-  { level: 'L6', levelNumber: 6, name: 'Expansion Tier (Level 6)', depositAmount: 0, profitAmount: 0, roiPerDay: 0.48, eligibleConditions: 'Group Volume Min. 4000$, 5 Direct Clients', groupVolumeMin: 4000, directClientsMin: 5, investCommission: '1%', earningsCommission: '6%' },
-  { level: 'L7', levelNumber: 7, name: 'Regional Depth (Level 7)', depositAmount: 0, profitAmount: 0, roiPerDay: 0.4, eligibleConditions: 'Group Volume Min. 5,000$, 10 Direct Clients', groupVolumeMin: 5000, directClientsMin: 10, investCommission: '0.8%', earningsCommission: '5%' },
-  { level: 'L8', levelNumber: 8, name: 'Executive Tier (Level 8)', depositAmount: 0, profitAmount: 0, roiPerDay: 0.24, eligibleConditions: 'Group Volume Min. 10,000$, 11 Direct Clients', groupVolumeMin: 10000, directClientsMin: 11, investCommission: '0.6%', earningsCommission: '3%' },
-  { level: 'L9', levelNumber: 9, name: 'Leadership Tier (Level 9)', depositAmount: 0, profitAmount: 0, roiPerDay: 0.08, eligibleConditions: 'Group Volume Min. 15,000$, 11 Direct Clients', groupVolumeMin: 15000, directClientsMin: 11, investCommission: '0.5%', earningsCommission: '1%' },
-  { level: 'L10', levelNumber: 10, name: 'Ambassador Tier (Level 10)', depositAmount: 0, profitAmount: 0, roiPerDay: 0.08, eligibleConditions: 'Group Volume Min. 20,000$, 11 Direct Clients', groupVolumeMin: 20000, directClientsMin: 11, investCommission: '0.4%', earningsCommission: '1%' },
-  { level: 'L11', levelNumber: 11, name: 'Crown Ambassador (Level 11)', depositAmount: 0, profitAmount: 0, roiPerDay: 0.08, eligibleConditions: 'Group Volume Min.25,000$, 11 Direct Clients', groupVolumeMin: 25000, directClientsMin: 11, investCommission: '0.3%', earningsCommission: '1%' },
+  { level: 'L0', levelNumber: 0, name: 'Self Investment (Level 0)', depositAmount: 1000, profitAmount: 8, percentage: 0, eligibleConditions: 'NA', groupVolumeMin: 0, directClientsMin: 0, investCommission: '0%', earningsCommission: '0%' },
+  { level: 'L1', levelNumber: 1, name: 'Direct Referrals (Level 1)', depositAmount: 0, profitAmount: 0, percentage: 10, eligibleConditions: 'No Condition', groupVolumeMin: 0, directClientsMin: 0, investCommission: '5%', earningsCommission: '10%' },
+  { level: 'L2', levelNumber: 2, name: 'Sub-Referrals (Level 2)', depositAmount: 0, profitAmount: 0, percentage: 10, eligibleConditions: 'Group Volume Min. 500$, 2 Direct Clients', groupVolumeMin: 500, directClientsMin: 2, investCommission: '4%', earningsCommission: '10%' },
+  { level: 'L3', levelNumber: 3, name: 'Network Tier (Level 3)', depositAmount: 0, profitAmount: 0, percentage: 5, eligibleConditions: 'Group Volume Min. 1500$, 3 Direct Clients', groupVolumeMin: 1500, directClientsMin: 3, investCommission: '3%', earningsCommission: '5%' },
+  { level: 'L4', levelNumber: 4, name: 'Network Tier (Level 4)', depositAmount: 0, profitAmount: 0, percentage: 5, eligibleConditions: 'Group Volume Min. 3000$, 4 Direct Clients', groupVolumeMin: 3000, directClientsMin: 4, investCommission: '2%', earningsCommission: '5%' },
+  { level: 'L5', levelNumber: 5, name: 'Global Depth (Level 5)', depositAmount: 0, profitAmount: 0, percentage: 5, eligibleConditions: 'Group Volume Min. 4000$, 5 Direct Clients', groupVolumeMin: 4000, directClientsMin: 5, investCommission: '1.5%', earningsCommission: '5%' },
+  { level: 'L6', levelNumber: 6, name: 'Expansion Tier (Level 6)', depositAmount: 0, profitAmount: 0, percentage: 5, eligibleConditions: 'Group Volume Min. 5,000$, 10 Direct Clients', groupVolumeMin: 5000, directClientsMin: 10, investCommission: '1%', earningsCommission: '5%' },
+  { level: 'L7', levelNumber: 7, name: 'Regional Depth (Level 7)', depositAmount: 0, profitAmount: 0, percentage: 5, eligibleConditions: 'Group Volume Min. 10,000$, 11 Direct Clients', groupVolumeMin: 10000, directClientsMin: 11, investCommission: '0.8%', earningsCommission: '5%' },
+  { level: 'L8', levelNumber: 8, name: 'Executive Tier (Level 8)', depositAmount: 0, profitAmount: 0, percentage: 5, eligibleConditions: 'Group Volume Min. 15,000$, 11 Direct Clients', groupVolumeMin: 15000, directClientsMin: 11, investCommission: '0.6%', earningsCommission: '5%' },
+  { level: 'L9', levelNumber: 9, name: 'Leadership Tier (Level 9)', depositAmount: 0, profitAmount: 0, percentage: 5, eligibleConditions: 'Group Volume Min. 20,000$, 11 Direct Clients', groupVolumeMin: 20000, directClientsMin: 11, investCommission: '0.5%', earningsCommission: '5%' },
+  { level: 'L10', levelNumber: 10, name: 'Ambassador Tier (Level 10)', depositAmount: 0, profitAmount: 0, percentage: 5, eligibleConditions: 'Group Volume Min.25,000$, 11 Direct Clients', groupVolumeMin: 25000, directClientsMin: 11, investCommission: '0.4%', earningsCommission: '5%' },
 ];
 
 export default function ReferralPlans() {
@@ -95,7 +95,7 @@ export default function ReferralPlans() {
 
   // Dynamic Level Stats Calculation from live network list
   const getDynamicTierStats = (tier) => {
-    const levelNum = tier.levelNumber || parseInt(String(tier.level).replace('L', ''), 10) || 1;
+    const levelNum = tier.levelNumber !== undefined ? tier.levelNumber : (parseInt(String(tier.level).replace('L', ''), 10) || 1);
     if (networkList && networkList.length > 0) {
       const tierMembers = networkList.filter(u => Number(u.level) === levelNum);
       const tierVolume = tierMembers.reduce((sum, u) => sum + Number(u.invested || 0), 0);
@@ -175,10 +175,10 @@ export default function ReferralPlans() {
             <div>
               <div className="flex items-center gap-2.5">
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-                  Level ROI Per Day Income
+                  Level ROI Per day Income
                 </h3>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs">
-                  {commissions.length} Active Levels
+                  {commissions.length} Levels
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1">
@@ -189,96 +189,90 @@ export default function ReferralPlans() {
         </div>
 
         {/* Grid Table with proper spacing and full vertical & horizontal gridlines */}
-        <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-2xs bg-white">
+        <div className="overflow-x-auto rounded-xl border border-slate-300 shadow-sm bg-white">
+          <div className="bg-yellow-400 text-slate-950 font-extrabold text-center py-2.5 text-sm sm:text-base tracking-wide border-b-2 border-yellow-500">
+            Level ROI Per day Income
+          </div>
           <table className="w-full text-left border-collapse font-poppins">
             <thead>
-              <tr className="bg-gradient-to-r from-amber-50/90 via-gold-50/70 to-amber-50/50 border-b-2 border-gold-300 text-slate-900 text-[11px] font-extrabold uppercase tracking-wider">
-                <th className="py-3 px-3 text-center border-r border-slate-200/90 w-16">Levels</th>
-                <th className="py-3 px-3.5 text-center border-r border-slate-200/90 min-w-[130px]">Deposit in $</th>
-                <th className="py-3 px-3.5 text-center border-r border-slate-200/90 min-w-[130px]">Profit in $</th>
-                <th className="py-3 px-3.5 text-center border-r border-slate-200/90 min-w-[150px]">ROI per Day in $</th>
-                <th className="py-3 px-3.5 text-left border-r border-slate-200/90 min-w-[240px]">Eligibility</th>
+              <tr className="bg-slate-50 border-b-2 border-slate-300 text-slate-900 text-xs font-extrabold tracking-wider">
+                <th className="py-3 px-3 text-center border-r border-slate-300 w-16">Levels</th>
+                <th className="py-3 px-3.5 text-center border-r border-slate-300 min-w-[120px]">Deposit in $</th>
+                <th className="py-3 px-3.5 text-center border-r border-slate-300 min-w-[120px]">Profit in $</th>
+                <th className="py-3 px-3.5 text-center border-r border-slate-300 min-w-[100px]">%ge</th>
+                <th className="py-3 px-4 text-left border-r border-slate-300 min-w-[280px]">Eligible Conditions</th>
                 <th className="py-3 px-3 text-center min-w-[130px]">My Eligibility</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 text-xs text-slate-700">
+            <tbody className="divide-y divide-slate-200 text-xs text-slate-800">
               {commissions.map((tier, i) => {
-                const levelNum = tier.levelNumber || parseInt(String(tier.level).replace('L', ''), 10) || 1;
+                const levelNum = tier.levelNumber !== undefined ? tier.levelNumber : (parseInt(String(tier.level).replace('L', ''), 10) || 0);
                 const depAmt = Number(tier.depositAmount || 0);
                 const profitAmt = Number(tier.profitAmount || 0);
-                const roiDay = tier.roiPerDay !== undefined && tier.roiPerDay !== null ? Number(tier.roiPerDay) : 0;
-                const conditions = tier.eligibleConditions || (tier.directClientsMin || tier.groupVolumeMin ? `Group Volume Min. ${Number(tier.groupVolumeMin).toLocaleString()}$, ${tier.directClientsMin} Direct Clients` : (levelNum === 1 ? 'NR' : 'No Condition'));
+                const pct = tier.percentage !== undefined && tier.percentage !== null
+                  ? Number(tier.percentage)
+                  : (tier.roiPerDay !== undefined && tier.roiPerDay !== null ? Number(tier.roiPerDay) : 0);
+                const conditions = tier.eligibleConditions || (
+                  levelNum === 0
+                    ? 'NA'
+                    : (tier.directClientsMin || tier.groupVolumeMin
+                      ? `Group Volume Min. ${Number(tier.groupVolumeMin).toLocaleString()}$, ${tier.directClientsMin} Direct Clients`
+                      : 'No Condition')
+                );
 
                 const userDirects = Number(overviewData?.directReferralsCount || networkList.filter(u => u.level === 1).length || 0);
                 const userVolume = Number(overviewData?.totalTeamVolume || networkList.reduce((sum, u) => sum + Number(u.invested || 0), 0) || 0);
                 const minVol = Number(tier.groupVolumeMin || 0);
                 const minDir = Number(tier.directClientsMin || 0);
 
-                const isNR = conditions.trim().toUpperCase() === 'NR';
-                const isEligible = !isNR && ((minVol === 0 && minDir === 0) || (userVolume >= minVol && userDirects >= minDir));
+                const isNA = conditions.trim().toUpperCase() === 'NA' || levelNum === 0;
+                const isNoCondition = conditions.toLowerCase().includes('no condition');
+                const isEligible = isNoCondition || (!isNA && userVolume >= minVol && userDirects >= minDir);
 
                 return (
                   <tr
-                    key={tier._id || tier.level}
+                    key={tier._id || tier.level || levelNum}
                     className={`hover:bg-amber-50/40 transition-colors ${
-                      i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
+                      i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
                     }`}
                   >
                     {/* Level Index */}
-                    <td className="py-3 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-200 bg-gold-50/30">
-                      <span className="w-7 h-7 rounded-lg bg-gold-100/90 text-gold-950 font-bold border border-gold-300 inline-flex items-center justify-center shadow-2xs">
-                        {levelNum}
-                      </span>
+                    <td className="py-2.5 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-300">
+                      {levelNum}
                     </td>
 
                     {/* Deposit in $ */}
-                    <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-800 text-xs border-r border-slate-200">
-                      {depAmt > 0 ? `$${depAmt.toLocaleString()}` : '—'}
+                    <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-900 text-xs border-r border-slate-300">
+                      {levelNum === 0 ? '1000' : (depAmt > 0 ? depAmt : '')}
                     </td>
 
                     {/* Profit in $ */}
-                    <td className="py-3 px-3.5 text-center font-mono font-bold text-slate-800 text-xs border-r border-slate-200">
-                      ${profitAmt.toLocaleString()}
+                    <td className="py-2.5 px-3.5 text-center font-mono font-bold text-slate-900 text-xs border-r border-slate-300">
+                      {levelNum === 0 ? '8' : profitAmt}
                     </td>
 
-                    {/* ROI per Day in $ */}
-                    <td className="py-3 px-3.5 text-center border-r border-slate-200 bg-emerald-50/20">
-                      {roiDay > 0 ? (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs">
-                          +${roiDay}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-mono font-bold text-xs">
-                          0
-                        </span>
-                      )}
+                    {/* %ge */}
+                    <td className="py-2.5 px-3.5 text-center border-r border-slate-300 font-mono font-bold text-xs text-slate-900">
+                      {pct}
                     </td>
 
-                    {/* Eligibility */}
-                    <td className="py-3 px-3.5 text-left border-r border-slate-200">
-                      <span className={`inline-block px-2.5 py-1 rounded-md text-[11px] leading-snug font-semibold ${
-                        isNR
-                          ? 'bg-slate-100 text-slate-700 border border-slate-200 font-mono'
-                          : conditions.toLowerCase().includes('no condition')
-                            ? 'bg-slate-100 text-slate-600 border border-slate-200 font-mono'
-                            : 'bg-amber-50 text-amber-950 border border-amber-200'
-                      }`}>
-                        {conditions}
-                      </span>
+                    {/* Eligible Conditions */}
+                    <td className="py-2.5 px-4 text-left border-r border-slate-300 font-medium text-slate-800 text-xs">
+                      {conditions}
                     </td>
 
                     {/* My Eligibility */}
-                    <td className="py-3 px-3 text-center">
-                      {isNR ? (
+                    <td className="py-2.5 px-3 text-center">
+                      {isNA ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-500 font-bold text-xs border border-slate-200">
-                          NR
+                          NA
                         </span>
                       ) : isEligible ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shadow-2xs">
+                        <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shadow-2xs">
                           <RiCheckLine size={13} className="font-black" /> Unlocked
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200">
                           {userDirects}/{minDir} Directs
                         </span>
                       )}
@@ -318,7 +312,7 @@ export default function ReferralPlans() {
           </div>
 
           <div className="space-y-2.5">
-            {commissions.map((tier) => {
+            {commissions.filter(t => (t.levelNumber !== undefined ? t.levelNumber : (parseInt(String(t.level).replace('L', ''), 10) || 0)) > 0).map((tier) => {
               const stats = getDynamicTierStats(tier);
               return (
                 <div

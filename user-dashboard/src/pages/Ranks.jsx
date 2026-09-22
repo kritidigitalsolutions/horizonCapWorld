@@ -15,7 +15,7 @@ import Modal from '../components/ui/Modal';
 import SearchBar from '../components/ui/SearchBar';
 import Badge from '../components/ui/Badge';
 
-// Initial 9-Tier Rank Ladder (Spreadsheet Standard)
+// Initial 12-Tier Rank Ladder (Spreadsheet Standard)
 const defaultRanksList = [
   {
     level: 1,
@@ -24,7 +24,7 @@ const defaultRanksList = [
     totalClientDeposit: 5000,
     minInvest: 5000,
     reward: 100,
-    condition: '1 Leg should not be more than 40% of the GV',
+    condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0',
     downlineStructureRequired: '2 Active Direct Client',
     achievers: 4890,
@@ -38,7 +38,7 @@ const defaultRanksList = [
     totalClientDeposit: 10000,
     minInvest: 10000,
     reward: 300,
-    condition: '1 Leg should not be more than 40% of the GV',
+    condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0',
     downlineStructureRequired: '3 Active Direct Clients',
     achievers: 2340,
@@ -52,7 +52,7 @@ const defaultRanksList = [
     totalClientDeposit: 25000,
     minInvest: 25000,
     reward: 875,
-    condition: '1 Leg should not be more than 40% of the GV',
+    condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0',
     downlineStructureRequired: '3 Active Direct Clients ( Min. 1 Associate )',
     achievers: 1210,
@@ -66,7 +66,7 @@ const defaultRanksList = [
     totalClientDeposit: 50000,
     minInvest: 50000,
     reward: 2000,
-    condition: '1 Leg should not be more than 40% of the GV',
+    condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0',
     downlineStructureRequired: '4 Active Direct Clients ( Min 2 Sr. Associate )',
     achievers: 680,
@@ -80,7 +80,7 @@ const defaultRanksList = [
     totalClientDeposit: 100000,
     minInvest: 100000,
     reward: 5000,
-    condition: '1 Leg should not be more than 40% of the GV',
+    condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0',
     downlineStructureRequired: '4 Active Direct Clients ( Min. 2 Team Leaders )',
     achievers: 340,
@@ -94,7 +94,7 @@ const defaultRanksList = [
     totalClientDeposit: 200000,
     minInvest: 200000,
     reward: 10000,
-    condition: '1 Leg should not be more than 40% of the GV',
+    condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0.20% of the total company Profit + 500$ Per Month Salary',
     downlineStructureRequired: '5 Active Direct Clients ( Min. 2 Directors )',
     achievers: 160,
@@ -108,7 +108,7 @@ const defaultRanksList = [
     totalClientDeposit: 300000,
     minInvest: 300000,
     reward: 15000,
-    condition: '1 Leg should not be more than 40% of the GV',
+    condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0.50% of the Total Company Profit + 1000$ Per Month Salary',
     downlineStructureRequired: '6 Active Direct Clients ( Min. 2 Regional Directors )',
     achievers: 72,
@@ -121,8 +121,8 @@ const defaultRanksList = [
     ownDeposit: 3000,
     totalClientDeposit: 600000,
     minInvest: 600000,
-    reward: 35000,
-    condition: '1 Leg should not be more than 40% of the GV',
+    reward: 30000,
+    condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0.75% of the Total Company Profit + 1500$ Per Month Salary',
     downlineStructureRequired: '8 Active Direct Clients ( Min. 2 Executive Directors )',
     achievers: 28,
@@ -135,12 +135,54 @@ const defaultRanksList = [
     ownDeposit: 5000,
     totalClientDeposit: 1000000,
     minInvest: 1000000,
-    reward: 60000,
-    condition: '1 Leg should not be more than 40% of the GV',
+    reward: 50000,
+    condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '1% of the Total Company Profit + 3000$ Per Month Salary',
     downlineStructureRequired: '10 Active Direct Clients ( Min. 2 Diamonds )',
     achievers: 11,
     desc: 'Apex global ambassador commanding global network volume.',
+    status: 'Active',
+  },
+  {
+    level: 10,
+    name: 'Titan',
+    ownDeposit: 0,
+    totalClientDeposit: 5000000,
+    minInvest: 5000000,
+    reward: 250000,
+    condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
+    companyProfitSharing: '1.25% of the Total Company Profit + 5000$ Per Month Salary',
+    downlineStructureRequired: '15 Active Direct Clients ( Min. 2 Crown Diamond )',
+    achievers: 5,
+    desc: 'Titan council leader commanding multi-million network turnover.',
+    status: 'Active',
+  },
+  {
+    level: 11,
+    name: 'Crown Titan',
+    ownDeposit: 0,
+    totalClientDeposit: 10000000,
+    minInvest: 10000000,
+    reward: 500000,
+    condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
+    companyProfitSharing: '1.50% of the Total Company Profit + 7500$ Per Month Salary',
+    downlineStructureRequired: '20 Active Direct Clients ( Min. 2 Global Ambassador )',
+    achievers: 2,
+    desc: 'Crown titan executive with premier corporate profit share.',
+    status: 'Active',
+  },
+  {
+    level: 12,
+    name: 'Global Titan',
+    ownDeposit: 0,
+    totalClientDeposit: 25000000,
+    minInvest: 25000000,
+    reward: 1250000,
+    condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
+    companyProfitSharing: '2% of the Total Company Profit + 10000$ Per Month Salary',
+    downlineStructureRequired: '25 Active Direct Clients ( Min. 2 Titan )',
+    achievers: 1,
+    desc: 'Pinnacle global titan summit leader commanding worldwide operations.',
     status: 'Active',
   },
 ];
@@ -260,6 +302,9 @@ export default function Ranks() {
     const match = str.match(/(\d+)\s*\$\s*Per Month Salary/i) || str.match(/\$\s*(\d+)\s*Per Month Salary/i);
     if (match) return Number(match[1]);
     const lvl = Number(rankObj.level || 1);
+    if (lvl >= 12) return 10000;
+    if (lvl >= 11) return 7500;
+    if (lvl >= 10) return 5000;
     if (lvl >= 9) return 3000;
     if (lvl >= 8) return 1500;
     if (lvl >= 7) return 1000;
@@ -271,7 +316,8 @@ export default function Ranks() {
   const userRankSalary = Number(myRankData?.salary ?? user?.rankSalary ?? user?.salary ?? extractRankSalary(currentRankObj));
 
   const getRankIcon = (lvl) => {
-    if (lvl >= 9) return <RiVipCrownLine size={24} className="text-amber-500" />;
+    if (lvl >= 10) return <RiVipCrownLine size={24} className="text-amber-500" />;
+    if (lvl >= 9) return <RiVipCrownLine size={24} className="text-gold-500" />;
     if (lvl >= 7) return <RiShieldStarLine size={24} className="text-purple-500" />;
     if (lvl >= 5) return <RiSparklingLine size={24} className="text-blue-500" />;
     if (lvl >= 3) return <RiMedalLine size={24} className="text-gold-600" />;
@@ -510,7 +556,7 @@ export default function Ranks() {
             <div className="md:hidden flex items-center justify-between text-xs text-amber-900 bg-amber-50/90 px-3.5 py-2 rounded-xl border border-amber-200/80 font-medium">
               <span className="flex items-center gap-1.5 font-bold">
                 <RiTrophyLine size={14} className="text-amber-600" />
-                <span>Swipe table left to view all 9 tier criteria & rewards &rarr;</span>
+                <span>Swipe table left to view all {ranks.length} tier criteria & rewards &rarr;</span>
               </span>
             </div>
 
@@ -901,7 +947,7 @@ export default function Ranks() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-4 h-4 rounded-full bg-gold-400 text-slate-950 font-extrabold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                  <span>Build downline structure ({selectedRankDrawer.downlineStructureRequired}) with min. ${Number(selectedRankDrawer.totalClientDeposit || selectedRankDrawer.minInvest || 0).toLocaleString()} volume (1 Leg ≤ 40%).</span>
+                  <span>Build downline structure ({selectedRankDrawer.downlineStructureRequired}) with min. ${Number(selectedRankDrawer.totalClientDeposit || selectedRankDrawer.minInvest || 0).toLocaleString()} volume ({selectedRankDrawer.condition || 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )'}).</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-4 h-4 rounded-full bg-gold-400 text-slate-950 font-extrabold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
