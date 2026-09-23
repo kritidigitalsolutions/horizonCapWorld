@@ -161,7 +161,7 @@ router.put("/users/:id/status", protectAdmin, updateUserStatus);
 router.put("/users/:id/adjust-wallet", protectAdmin, adjustUserWallet);
 router.delete("/users/:id", protectAdmin, deleteUser);
 
-// ──────── 7. REFERRAL PLANS & PROMOTERS ────────
+// ──────── 7. Level Plans & PROMOTERS ────────
 router.get("/referrals/settings", protectAdmin, getReferralSettings);
 router.put("/referrals/toggles", protectAdmin, updateReferralToggles);
 router.post("/referrals/tiers", protectAdmin, createReferralTier);

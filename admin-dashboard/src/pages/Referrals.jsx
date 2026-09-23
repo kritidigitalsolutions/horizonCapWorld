@@ -150,17 +150,24 @@ export default function Referrals() {
   // Toggle master commission switches
   const handleToggleSwitch = async (key) => {
     setSavingToggle(key);
-    const updatedValue = !toggles[key];
+    const currentValue = toggles[key] !== false;
+    const updatedValue = !currentValue;
     const newToggles = { ...toggles, [key]: updatedValue };
     setToggles(newToggles);
+    try {
+      localStorage.setItem('horizon_referral_toggles', JSON.stringify(newToggles));
+    } catch (e) {}
 
     try {
       const res = await updateReferralToggles({ [key]: updatedValue });
       if (res?.success && res.toggles) {
         setToggles(res.toggles);
+        try {
+          localStorage.setItem('horizon_referral_toggles', JSON.stringify(res.toggles));
+        } catch (e) {}
       }
       showNotification(`Referral switch updated: ${key === 'referralDepositCommissionEnabled' ? 'Direct Deposit Commission' : 'Daily ROI Profit Share'} is now ${updatedValue ? 'ENABLED' : 'PAUSED'}.`);
-      window.dispatchEvent(new CustomEvent('horizon-referrals-change', { detail: newToggles }));
+      window.dispatchEvent(new CustomEvent('horizon-referrals-change', { detail: res?.toggles || newToggles }));
     } catch (err) {
       console.error('Error updating referral toggle:', err.message);
       setToggles(toggles);
@@ -351,7 +358,7 @@ export default function Referrals() {
     <div className="space-y-6 animate-fade-in pb-8 font-poppins">
       {/* Header */}
       <PageHeader
-        title="Referral Plans & Multi-Tier Commissions"
+        title="Level Plans & Multi-Tier Commissions"
         subtitle="Manage master commission toggles, direct deposit rates & dynamic multi-tier depth"
         badge={`${commissions.length}-Tier Active System`}
       />
@@ -388,16 +395,14 @@ export default function Referrals() {
 
         <div className="grid grid-cols-1 gap-4">
           {/* Switch 1: Direct Investment Deposit Commission */}
-          <div className={`p-4 rounded-2xl border transition-all ${
-            depositEnabled
-              ? 'bg-emerald-50/50 border-emerald-300'
-              : 'bg-rose-50/50 border-rose-300'
-          }`}>
+          <div className={`p-4 rounded-2xl border transition-all ${depositEnabled
+            ? 'bg-emerald-50/50 border-emerald-300'
+            : 'bg-rose-50/50 border-rose-300'
+            }`}>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-2xs ${
-                  depositEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                }`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-2xs ${depositEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                  }`}>
                   <RiTeamLine size={20} />
                 </div>
                 <div>
@@ -415,26 +420,23 @@ export default function Referrals() {
                 type="button"
                 disabled={savingToggle === 'referralDepositCommissionEnabled'}
                 onClick={() => handleToggleSwitch('referralDepositCommissionEnabled')}
-                className={`relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  depositEnabled ? 'bg-emerald-600' : 'bg-slate-300'
-                }`}
+                className={`relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${depositEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                  }`}
                 title={`Click to ${depositEnabled ? 'Disable' : 'Enable'} Direct Deposit Commission`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                    depositEnabled ? 'translate-x-6' : 'translate-x-0'
-                  }`}
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${depositEnabled ? 'translate-x-6' : 'translate-x-0'
+                    }`}
                 />
               </button>
             </div>
 
             <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs">
               <span className="text-slate-500 font-medium">Distribution Status:</span>
-              <span className={`font-bold px-3 py-0.5 rounded-full text-[11px] ${
-                depositEnabled
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                  : 'bg-rose-100 text-rose-800 border border-rose-200'
-              }`}>
+              <span className={`font-bold px-3 py-0.5 rounded-full text-[11px] ${depositEnabled
+                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                : 'bg-rose-100 text-rose-800 border border-rose-200'
+                }`}>
                 {depositEnabled ? 'Active (Distributing Rewards)' : 'Paused (Rewards Disabled)'}
               </span>
             </div>
@@ -454,7 +456,7 @@ export default function Referrals() {
           icon="money"
         />
         <KPICard
-          title="Active Network Promoters"
+          title="Active Network Clients"
           numericValue={promoterList.filter(p => Number(p.totalReferrals || p.directReferrals || 0) > 0).length || promoterList.length}
           prefix=""
           decimals={0}
@@ -473,7 +475,7 @@ export default function Referrals() {
           icon="chart"
         />
         <KPICard
-          title="Average Affiliate Yield"
+          title="Average Level Yield"
           numericValue={commissions.reduce((sum, c) => sum + (parseFloat(c.investCommission) || 0), 0) || 15.0}
           prefix=""
           suffix="%"
@@ -488,17 +490,16 @@ export default function Referrals() {
       <div className="card p-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 overflow-x-auto">
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5">
           {[
-            { id: 'plans', label: 'Multi-Tier Referral Plans', count: `${commissions.length} Active Levels`, icon: <RiTeamLine /> },
+            { id: 'plans', label: 'Multi-Tier Level Plans', count: `${commissions.length} Active Levels`, icon: <RiTeamLine /> },
             { id: 'promoters', label: 'Affiliate Promoters Directory', count: `${filteredPromoters.length} Leaders`, icon: <RiGroupLine /> },
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
-                activeTab === tab.id
-                  ? 'bg-gold-400 text-slate-900 shadow-gold'
-                  : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200'
-              }`}
+              className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${activeTab === tab.id
+                ? 'bg-gold-400 text-slate-900 shadow-gold'
+                : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200'
+                }`}
             >
               <span className="text-sm">{tab.icon}</span>
               <span>{tab.label}</span>
@@ -593,9 +594,8 @@ export default function Referrals() {
                     return (
                       <tr
                         key={tier._id || tier.level || levelNum}
-                        className={`hover:bg-amber-50/40 transition-colors ${
-                          i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
-                        }`}
+                        className={`hover:bg-amber-50/40 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
+                          }`}
                       >
                         {/* Level Index */}
                         <td className="py-2.5 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-300">
@@ -781,106 +781,106 @@ export default function Referrals() {
                   {filteredPromoters
                     .slice((currentPage - 1) * pageSize, currentPage * pageSize)
                     .map((u, i) => {
-                    const userCustomId = u.customId || `HORIZON-USR-0${u.id}`;
+                      const userCustomId = u.customId || `HORIZON-USR-0${u.id}`;
 
-                    return (
-                      <tr
-                        key={u.id}
-                        className="animate-fade-in hover:bg-slate-50/70 transition-colors"
-                        style={{ animationDelay: `${i * 35}ms` }}
-                      >
-                        {/* Promoter Details */}
-                        <td>
-                          <div className="flex items-center gap-3.5">
-                            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 text-slate-900 font-bold flex items-center justify-center flex-shrink-0 shadow-xs ring-2 ring-gold-200/80 text-xs font-poppins">
-                              {u.name.split(' ').map(n => n[0]).join('')}
+                      return (
+                        <tr
+                          key={u.id}
+                          className="animate-fade-in hover:bg-slate-50/70 transition-colors"
+                          style={{ animationDelay: `${i * 35}ms` }}
+                        >
+                          {/* Promoter Details */}
+                          <td>
+                            <div className="flex items-center gap-3.5">
+                              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 text-slate-900 font-bold flex items-center justify-center flex-shrink-0 shadow-xs ring-2 ring-gold-200/80 text-xs font-poppins">
+                                {u.name.split(' ').map(n => n[0]).join('')}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-slate-700 truncate leading-tight font-poppins">
+                                  {u.name}
+                                </p>
+                                <p className="text-[11px] font-medium text-gold-600 font-poppins tracking-tight mt-0.5">
+                                  {userCustomId}
+                                </p>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-slate-700 truncate leading-tight font-poppins">
-                                {u.name}
-                              </p>
-                              <p className="text-[11px] font-medium text-gold-600 font-poppins tracking-tight mt-0.5">
-                                {userCustomId}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Email */}
-                        <td className="text-xs font-normal text-slate-500 font-poppins">
-                          {u.email}
-                        </td>
+                          {/* Email */}
+                          <td className="text-xs font-normal text-slate-500 font-poppins">
+                            {u.email}
+                          </td>
 
-                        {/* Mobile Number */}
-                        <td className="text-xs font-normal text-slate-500 font-poppins">
-                          {u.phone || '—'}
-                        </td>
+                          {/* Mobile Number */}
+                          <td className="text-xs font-normal text-slate-500 font-poppins">
+                            {u.phone || '—'}
+                          </td>
 
-                        {/* Referred By / Sponsor */}
-                        <td className="text-xs font-medium text-slate-700 font-mono">
-                          {u.sponsor || u.referredBy || 'Direct Platform'}
-                        </td>
+                          {/* Referred By / Sponsor */}
+                          <td className="text-xs font-medium text-slate-700 font-mono">
+                            {u.sponsor || u.referredBy || 'Direct Platform'}
+                          </td>
 
-                        {/* Direct Referrals */}
-                        <td>
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200/80 whitespace-nowrap font-poppins">
-                            <RiGroupLine size={13} className="text-blue-500" />
-                            {u.totalReferrals || u.directRefs || 0} Direct
-                          </span>
-                        </td>
+                          {/* Direct Referrals */}
+                          <td>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200/80 whitespace-nowrap font-poppins">
+                              <RiGroupLine size={13} className="text-blue-500" />
+                              {u.totalReferrals || u.directRefs || 0} Direct
+                            </span>
+                          </td>
 
-                        {/* Total Team Volume */}
-                        <td>
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-50/90 text-amber-900 text-xs font-semibold border border-amber-300/80 whitespace-nowrap font-poppins">
-                            <RiCoinsLine size={13} className="text-amber-600" />
-                            ${u.teamVolume.toLocaleString()}.00
-                          </span>
-                        </td>
+                          {/* Total Team Volume */}
+                          <td>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-50/90 text-amber-900 text-xs font-semibold border border-amber-300/80 whitespace-nowrap font-poppins">
+                              <RiCoinsLine size={13} className="text-amber-600" />
+                              ${u.teamVolume.toLocaleString()}.00
+                            </span>
+                          </td>
 
-                        {/* Direct Comm */}
-                        <td>
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200 whitespace-nowrap font-poppins">
-                            +${u.directComm.toLocaleString()}.00
-                          </span>
-                        </td>
+                          {/* Direct Comm */}
+                          <td>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200 whitespace-nowrap font-poppins">
+                              +${u.directComm.toLocaleString()}.00
+                            </span>
+                          </td>
 
-                        {/* Multi-Tier Team Comm */}
-                        <td>
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gold-50 text-gold-800 text-xs font-bold border border-gold-300/80 whitespace-nowrap font-poppins">
-                            +${u.multiTierComm.toLocaleString()}.00
-                          </span>
-                        </td>
+                          {/* Multi-Tier Team Comm */}
+                          <td>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gold-50 text-gold-800 text-xs font-bold border border-gold-300/80 whitespace-nowrap font-poppins">
+                              +${u.multiTierComm.toLocaleString()}.00
+                            </span>
+                          </td>
 
-                        {/* Total Commissions Paid */}
-                        <td>
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800 text-xs font-extrabold border border-emerald-300 whitespace-nowrap font-poppins shadow-2xs">
-                            <RiMoneyDollarCircleLine size={14} className="text-emerald-600" />
-                            +${u.totalComm.toLocaleString()}.00
-                          </span>
-                        </td>
+                          {/* Total Commissions Paid */}
+                          <td>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800 text-xs font-extrabold border border-emerald-300 whitespace-nowrap font-poppins shadow-2xs">
+                              <RiMoneyDollarCircleLine size={14} className="text-emerald-600" />
+                              +${u.totalComm.toLocaleString()}.00
+                            </span>
+                          </td>
 
-                        {/* Status */}
-                        <td>
-                          <Badge variant={u.status === 'Active' ? 'success' : 'danger'} size="sm">
-                            {u.status}
-                          </Badge>
-                        </td>
+                          {/* Status */}
+                          <td>
+                            <Badge variant={u.status === 'Active' ? 'success' : 'danger'} size="sm">
+                              {u.status}
+                            </Badge>
+                          </td>
 
-                        {/* Action Button */}
-                        <td className="text-right pr-6">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPromoter(u)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins cursor-pointer"
-                            title="View downline hierarchy"
-                          >
-                            <RiNodeTree size={14} className="text-slate-900" />
-                            <span>Audit Tree</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          {/* Action Button */}
+                          <td className="text-right pr-6">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPromoter(u)}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins cursor-pointer"
+                              title="View downline hierarchy"
+                            >
+                              <RiNodeTree size={14} className="text-slate-900" />
+                              <span>Audit Tree</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
@@ -1394,9 +1394,8 @@ export default function Referrals() {
                   return (
                     <div
                       key={tier.level}
-                      className={`p-2.5 rounded-xl border shadow-2xs transition-colors ${
-                        memberCount > 0 ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-200' : 'bg-white border-slate-200 opacity-60'
-                      }`}
+                      className={`p-2.5 rounded-xl border shadow-2xs transition-colors ${memberCount > 0 ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-200' : 'bg-white border-slate-200 opacity-60'
+                        }`}
                     >
                       <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-0.5">
                         <span>{tier.level}</span>

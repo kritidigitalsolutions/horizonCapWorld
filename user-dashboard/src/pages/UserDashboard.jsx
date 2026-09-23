@@ -13,6 +13,7 @@ import {
   RiLockLine, RiAlertLine
 } from 'react-icons/ri';
 import Modal from '../components/ui/Modal';
+import ReferralTreeModal from '../components/referrals/ReferralTreeModal';
 import { UilBolt } from '@iconscout/react-unicons';
 
 const quickLinks = [
@@ -23,7 +24,7 @@ const quickLinks = [
   { name: 'Referrals', path: '/referrals' },
   { name: 'Ranks', path: '/ranks' },
   { name: 'History', path: '/transactions' },
-  { name: 'Referral Plans', path: '/referral-plans' },
+  { name: 'Level Plans', path: '/referral-plans' },
   { name: 'Profile', path: '/profile' },
   { name: 'Support', path: '/support' },
 ];
@@ -36,7 +37,7 @@ const quickLinkIcons = {
   'Referrals': RiGroupLine,
   'Ranks': RiTrophyLine,
   'History': RiExchangeDollarLine,
-  'Referral Plans': RiNodeTree,
+  'Level Plans': RiNodeTree,
   'Profile': RiUser3Line,
   'Support': RiCustomerService2Line,
 };
@@ -95,6 +96,7 @@ export default function UserDashboard() {
   const [copiedRef, setCopiedRef] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [treeModalOpen, setTreeModalOpen] = useState(false);
   const [loading, setLoading] = useState(() => !localStorage.getItem('horizon_user'));
   const [avatar, setAvatar] = useState(() => localStorage.getItem('horizon_user_avatar') || '');
   const fileInputRef = useRef(null);
@@ -229,7 +231,7 @@ export default function UserDashboard() {
           timestamp: Date.now(),
           rate: 0,
         }));
-      } catch (err) {}
+      } catch (err) { }
       return;
     }
 
@@ -253,7 +255,7 @@ export default function UserDashboard() {
           timestamp: now,
           rate: streamAnchorRef.current.rate,
         }));
-      } catch (err) {}
+      } catch (err) { }
     };
 
     // Auto persist every 1 second for crash/refresh resilience
@@ -294,7 +296,7 @@ export default function UserDashboard() {
           timestamp: Date.now(),
           rate: 0,
         }));
-      } catch (err) {}
+      } catch (err) { }
       return;
     }
 
@@ -321,32 +323,58 @@ export default function UserDashboard() {
         timestamp: Date.now(),
         rate: currentRate,
       }));
-    } catch (err) {}
+    } catch (err) { }
   }, [user?.totalProfit, user?.totalEarned, user?.perSecondRate, user?.lastYieldSync]);
 
-  // Countdown to next daily payout (midnight) - active only when user has investments
+  // Countdown to next daily settlement - 24 hours rolling from the time investment started
   useEffect(() => {
     if (!hasActiveStreaming) {
       setCountdown({ hours: '00', minutes: '00', seconds: '00' });
       return;
     }
 
+    const CYCLE_MS = 24 * 60 * 60 * 1000;
+
     const tick = () => {
-      const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
-      const diff = tomorrow - now;
-      setCountdown({
-        hours: String(Math.floor(diff / 3600000)).padStart(2, '0'),
-        minutes: String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0'),
-        seconds: String(Math.floor((diff % 60000) / 1000)).padStart(2, '0'),
-      });
+      const now = Date.now();
+
+      if (user?.nextSettlementTime) {
+        let target = new Date(user.nextSettlementTime).getTime();
+        if (!isNaN(target)) {
+          while (target <= now) {
+            target += CYCLE_MS;
+          }
+          const diff = Math.max(0, target - now);
+          setCountdown({
+            hours: String(Math.floor(diff / 3600000)).padStart(2, '0'),
+            minutes: String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0'),
+            seconds: String(Math.floor((diff % 60000) / 1000)).padStart(2, '0'),
+          });
+          return;
+        }
+      }
+
+      const startRaw = user?.settlementStartTime || user?.startDate || user?.createdAt;
+      const startTime = startRaw ? new Date(startRaw).getTime() : now;
+      if (!isNaN(startTime)) {
+        const elapsed = Math.max(0, now - startTime);
+        const cycleIndex = Math.floor(elapsed / CYCLE_MS);
+        const nextTarget = startTime + (cycleIndex + 1) * CYCLE_MS;
+        const diff = Math.max(0, nextTarget - now);
+        setCountdown({
+          hours: String(Math.floor(diff / 3600000)).padStart(2, '0'),
+          minutes: String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0'),
+          seconds: String(Math.floor((diff % 60000) / 1000)).padStart(2, '0'),
+        });
+      } else {
+        setCountdown({ hours: '24', minutes: '00', seconds: '00' });
+      }
     };
+
     tick();
     const iv = setInterval(tick, 1000);
     return () => clearInterval(iv);
-  }, [hasActiveStreaming]);
+  }, [hasActiveStreaming, user?.nextSettlementTime, user?.settlementStartTime, user?.startDate, user?.createdAt]);
 
   const copyReferralLink = () => {
     if (!hasDeposited) {
@@ -497,17 +525,17 @@ export default function UserDashboard() {
             </div>
           </div>
 
-          {/* 2 Highlight Metric Cards Embedded In Hero */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 pt-4 border-t border-gold-200/80">
+          {/* 4 Highlight Metric Cards Embedded In Hero */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5 pt-4 border-t border-gold-200/80">
             {/* 1. Deposit Wallet */}
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 hover:border-gold-300 transition-colors shadow-2xs flex items-center justify-between">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs flex-shrink-0">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-gold-300 transition-colors shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs flex-shrink-0">
                   <RiWallet3Line size={18} />
                 </div>
                 <div className="min-w-0">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">Deposit Wallet</span>
-                  <span className="text-lg sm:text-xl font-bold font-mono text-slate-900 tabular-nums truncate block">
+                  <span className="text-sm sm:text-base xl:text-lg font-bold font-mono text-slate-900 tabular-nums truncate block">
                     ${(user?.depositWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -518,14 +546,14 @@ export default function UserDashboard() {
             </div>
 
             {/* 2. Earning Wallet */}
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 transition-colors shadow-2xs flex items-center justify-between">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-2xs flex-shrink-0">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 transition-colors shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-2xs flex-shrink-0">
                   <RiSafeLine size={18} />
                 </div>
                 <div className="min-w-0">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">Earning Wallet</span>
-                  <span className="text-lg sm:text-xl font-bold font-mono text-emerald-700 tabular-nums truncate block">
+                  <span className="text-sm sm:text-base xl:text-lg font-bold font-mono text-emerald-700 tabular-nums truncate block">
                     ${(user?.earningWallet || user?.earningsWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -533,6 +561,46 @@ export default function UserDashboard() {
               <Link to="/withdraw" className="text-xs font-bold text-emerald-700 hover:text-emerald-900 underline flex-shrink-0 ml-1">
                 Payout
               </Link>
+            </div>
+
+            {/* 3. Personal Volume */}
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-purple-300 transition-colors shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shadow-2xs flex-shrink-0">
+                  <RiFundsLine size={18} />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate" title="Total deposits made by you">Personal Volume</span>
+                  <span className="text-sm sm:text-base xl:text-lg font-bold font-mono text-purple-700 tabular-nums truncate block">
+                    ${(user?.personalVolume || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+              <Link to="/transactions" className="text-xs font-bold text-purple-700 hover:text-purple-900 underline flex-shrink-0 ml-1">
+                History
+              </Link>
+            </div>
+
+            {/* 4. Group Volume */}
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-amber-300 transition-colors shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shadow-2xs flex-shrink-0">
+                  <RiGroupLine size={18} />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate" title="Total deposits made by your referral tree downline (excludes personal deposit)">Group Volume</span>
+                  <span className="text-sm sm:text-base xl:text-lg font-bold font-mono text-amber-700 tabular-nums truncate block">
+                    ${(user?.groupVolume || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTreeModalOpen(true)}
+                className="text-xs font-bold text-amber-700 hover:text-amber-900 underline flex-shrink-0 ml-1 cursor-pointer"
+              >
+                View Tree →
+              </button>
             </div>
           </div>
         </div>
@@ -638,9 +706,19 @@ export default function UserDashboard() {
             </div>
           </div>
 
-          <Link to="/referrals" className="text-xs font-bold text-gold-800 hover:text-gold-950 underline hidden sm:inline">
-            View Downline Matrix →
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTreeModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-gold-400 to-amber-400 hover:from-gold-500 hover:to-amber-500 text-slate-950 font-bold text-xs shadow-gold transition-all cursor-pointer active:scale-95"
+            >
+              <RiNodeTree size={15} />
+              <span>View Referral Tree</span>
+            </button>
+            <Link to="/referrals" className="text-xs font-bold text-gold-800 hover:text-gold-950 underline hidden sm:inline">
+              Downline Matrix →
+            </Link>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -652,9 +730,8 @@ export default function UserDashboard() {
               <button
                 type="button"
                 onClick={copyReferralLink}
-                className={`btn text-xs px-5 py-3 rounded-2xl flex-shrink-0 font-bold cursor-pointer transition-all ${
-                  copiedRef ? 'btn-secondary text-emerald-700 border-emerald-300 bg-emerald-50' : 'btn-primary shadow-gold'
-                }`}
+                className={`btn text-xs px-5 py-3 rounded-2xl flex-shrink-0 font-bold cursor-pointer transition-all ${copiedRef ? 'btn-secondary text-emerald-700 border-emerald-300 bg-emerald-50' : 'btn-primary shadow-gold'
+                  }`}
               >
                 <RiFileCopyLine size={15} /> {copiedRef ? 'Copied!' : 'Copy Link'}
               </button>
@@ -743,6 +820,12 @@ export default function UserDashboard() {
           </div>
         </div>
       </Modal>
+
+      {/* ──────────────── REFERRAL TREE MODAL (TIERS 0 - 10) ──────────────── */}
+      <ReferralTreeModal
+        isOpen={treeModalOpen}
+        onClose={() => setTreeModalOpen(false)}
+      />
 
       {/* ──────────────── QUICK ACCESS LINKS ──────────────── */}
       {/* <div className="card p-6 sm:p-7 border border-slate-200 shadow-sm">

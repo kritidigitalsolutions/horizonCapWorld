@@ -24,7 +24,7 @@
    - Always maintain the crisp, luxurious **White & Gold Light Theme** (`bg-white`, `bg-gold-50`, `bg-slate-50`, `border-gold-300`, `text-slate-800`).
 3. **SEPARATE RANK & REFERRAL PAGES**:
    - `/ranks` -> Rank Progression Ladder & Achievers (`Ranks.jsx`)
-   - `/referrals` -> Referral Plans & Multi-Level Commissions (`Referrals.jsx`)
+   - `/referrals` -> Level Plans & Multi-Level Commissions (`Referrals.jsx`)
 
 ---
 

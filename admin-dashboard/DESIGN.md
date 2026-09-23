@@ -24,7 +24,7 @@
    - Always maintain the crisp, luxurious **White & Gold Light Theme** (`bg-white`, `bg-gold-50`, `bg-slate-50`, `border-gold-300`, `text-slate-800`).
 3. **SEPARATE RANK & REFERRAL PAGES**:
    - `/ranks` -> Rank Progression Ladder & Achievers (`Ranks.jsx`)
-   - `/referrals` -> Referral Plans & Multi-Level Commissions (`Referrals.jsx`)
+   - `/referrals` -> Level Plans & Multi-Level Commissions (`Referrals.jsx`)
 
 ---
 
@@ -373,7 +373,7 @@ animation: shimmer 1.5s ease-in-out infinite;
 | 2026-08-20 | Payment Settings: integrated Mobile E-Wallets (EasyPaisa, JazzCash, SadaPay) with custom mobile, CNIC & Till fields; resolved circle badge overflow by replacing text in circles with centered SVG icons and separate pill tags | PaymentSettings.jsx, mockData.js, DESIGN.md |
 | 2026-08-20 | Ranks & Referrals overhaul: separated 4 program pillars (Rank Ladder, 5-Tier Commissions, Leaders Directory & Calculation Simulator); fixed high-contrast sticky table headers; added live Downline Tree Audit Drawer | Ranks.jsx, AGENTS.md, DESIGN.md |
 | 2026-08-20 | Added interactive In-Drawer Auto-Calculation Engines to Edit Rank and Edit Commission slide-over drawers with live volume testers, margin metrics, scale projections, and revenue share math | Ranks.jsx, Users.jsx, AGENTS.md, DESIGN.md |
-| 2026-08-20 | Split Ranks and Referrals into 2 dedicated pages & routes (`/ranks` Rank Ladder & `/referrals` Referral Plans); enforced strict ZERO EMOJI policy across entire platform in favor of pure SVG icons; eliminated all dark color containers in favor of White & Gold light theme | Ranks.jsx, Referrals.jsx, App.jsx, Sidebar.jsx, Header.jsx, Breadcrumb.jsx, PaymentSettings.jsx, InvestmentPlans.jsx, AGENTS.md, DESIGN.md |
+| 2026-08-20 | Split Ranks and Referrals into 2 dedicated pages & routes (`/ranks` Rank Ladder & `/referrals` Level Plans); enforced strict ZERO EMOJI policy across entire platform in favor of pure SVG icons; eliminated all dark color containers in favor of White & Gold light theme | Ranks.jsx, Referrals.jsx, App.jsx, Sidebar.jsx, Header.jsx, Breadcrumb.jsx, PaymentSettings.jsx, InvestmentPlans.jsx, AGENTS.md, DESIGN.md |
 | 2026-08-20 | Removed standalone simulator tab; updated Rank Achievers and Affiliate Promoters tables to 100% match Users.jsx data-table styling with large round avatars, horizontal scrolling, and generous column widths | Ranks.jsx, Referrals.jsx, AGENTS.md, DESIGN.md |
 | 2026-08-20 | Replaced all dark weights and font-mono in table cells (Direct Referrals, Turnover, Commissions, Rewards) with soft Poppins typography (slate-600, slate-700, emerald-600, gold-600) exactly matching Users.jsx | Ranks.jsx, Referrals.jsx, AGENTS.md, DESIGN.md |
 | 2026-08-20 | Upgraded table amount cells to full vibrant color badges (Blue for Referrals, Amber for Turnover, Emerald for Commissions/Rewards, Emerald gradient for Total Payout) and styled Audit/Audit Tree as prominent gold action buttons | Ranks.jsx, Referrals.jsx, AGENTS.md, DESIGN.md |

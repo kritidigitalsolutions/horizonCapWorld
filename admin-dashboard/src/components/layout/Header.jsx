@@ -11,7 +11,7 @@ const pageTitles = {
   '/admin/investment-plans': 'Investment Plans',
   '/admin/users': 'Users Management',
   '/admin/ranks': 'Rank Progression Ladder',
-  '/admin/referrals': 'Referral Plans & Commissions',
+  '/admin/referrals': 'Level Plans & Commissions',
   '/admin/transactions': 'Transactions',
   '/admin/notifications': 'Notifications & Alerts',
   '/admin/support-tickets': 'Support Tickets & Helpdesk',

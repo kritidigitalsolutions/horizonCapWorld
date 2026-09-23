@@ -32,7 +32,7 @@ const navSections = [
     title: 'Financial & Growth',
     items: [
       { path: '/admin/ranks', label: 'Rank Ladder', icon: RiTrophyLine, activeIcon: RiTrophyFill },
-      { path: '/admin/referrals', label: 'Referral Plans', icon: RiNodeTree, activeIcon: RiNodeTree },
+      { path: '/admin/referrals', label: 'Level Plans', icon: RiNodeTree, activeIcon: RiNodeTree },
       { path: '/admin/transactions', label: 'Transactions', icon: RiExchangeDollarLine, activeIcon: RiExchangeDollarFill },
       { path: '/admin/payment-settings', label: 'Payment Settings', icon: RiBankCardLine, activeIcon: RiBankCardFill },
     ]
@@ -136,9 +136,8 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
         `}
       >
         {/* ──────────────── TOP BRANDING HEADER ──────────────── */}
-        <div className={`flex items-center border-b border-slate-100 flex-shrink-0 ${
-          (isOpen || isMobile) ? 'h-[76px] px-3.5 justify-between' : 'h-[68px] px-2 justify-center'
-        }`}>
+        <div className={`flex items-center border-b border-slate-100 flex-shrink-0 ${(isOpen || isMobile) ? 'h-[76px] px-3.5 justify-between' : 'h-[68px] px-2 justify-center'
+          }`}>
           {(isOpen || isMobile) ? (
             <div className="flex items-center gap-2.5 font-poppins flex-1 min-w-0">
               {/* Large Luxury Round Circle with Official Logo Image */}
@@ -186,11 +185,10 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
 
         {/* ──────────────── CATEGORIZED NAVIGATION LIST (EVEN DISTRIBUTION) ──────────────── */}
         <nav
-          className={`flex-1 flex flex-col justify-evenly ${
-            (isOpen || isMobile)
+          className={`flex-1 flex flex-col justify-evenly ${(isOpen || isMobile)
               ? 'py-3 px-3.5 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]'
               : 'py-3 px-2 overflow-visible'
-          }`}
+            }`}
         >
           {navSections.map((sec, secIdx) => (
             <div key={secIdx} className={(isOpen || isMobile) ? 'space-y-1 my-1' : 'space-y-1.5 my-1'}>
@@ -222,13 +220,13 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
                         className={`flex items-center rounded-xl transition-all duration-150 relative
                           ${(isOpen || isMobile)
                             ? `gap-3 px-3.5 py-2.5 ${isActive
-                                ? 'bg-gold-50/90 text-gold-950 font-bold border border-gold-300/80 shadow-2xs'
-                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
-                              }`
+                              ? 'bg-gold-50/90 text-gold-950 font-bold border border-gold-300/80 shadow-2xs'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
+                            }`
                             : `w-10 h-10 justify-center mx-auto ${isActive
-                                ? 'bg-gold-400 text-slate-950 shadow-gold ring-2 ring-gold-200 font-bold'
-                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                              }`
+                              ? 'bg-gold-400 text-slate-950 shadow-gold ring-2 ring-gold-200 font-bold'
+                              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                            }`
                           }
                         `}
                       >
@@ -257,11 +255,10 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
                             {/* Minimal Luxury Counter Badge (DESIGN.md Gold Pill) */}
                             {count > 0 && (
                               <span
-                                className={`min-w-[24px] h-[22px] px-2 rounded-full text-xs font-bold tabular-nums flex items-center justify-center flex-shrink-0 transition-all shadow-2xs ${
-                                  isActive
+                                className={`min-w-[24px] h-[22px] px-2 rounded-full text-xs font-bold tabular-nums flex items-center justify-center flex-shrink-0 transition-all shadow-2xs ${isActive
                                     ? 'bg-gold-400 text-slate-950 font-black shadow-xs'
                                     : 'bg-gold-100 text-gold-900 border border-gold-300/90 group-hover:bg-gold-200/80 group-hover:border-gold-400'
-                                }`}
+                                  }`}
                               >
                                 {count > 99 ? '99+' : count}
                               </span>
@@ -295,9 +292,8 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
         </nav>
 
         {/* ──────────────── BOTTOM FOOTER CARD ──────────────── */}
-        <div className={`border-t border-slate-100 flex-shrink-0 font-poppins bg-white ${
-          (isOpen || isMobile) ? 'p-3' : 'p-2'
-        }`}>
+        <div className={`border-t border-slate-100 flex-shrink-0 font-poppins bg-white ${(isOpen || isMobile) ? 'p-3' : 'p-2'
+          }`}>
           {(isOpen || isMobile) ? (
             <div className="p-2.5 bg-slate-50/90 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-2 shadow-2xs">
               <div className="flex items-center gap-2.5 min-w-0">

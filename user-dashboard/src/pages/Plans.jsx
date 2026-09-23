@@ -5,7 +5,7 @@ import {
   RiPercentLine, RiTimeLine, RiShieldFlashLine, RiLeafLine, RiCoinsLine,
   RiFlashlightLine, RiCalculatorLine, RiArrowRightLine, RiWalletLine,
   RiCheckLine, RiAlertLine, RiInformationLine, RiStackLine,
-  RiArrowDownSLine, RiArrowUpSLine, RiSparklingLine, RiGiftLine,
+  RiArrowDownSLine, RiArrowUpSLine, RiSparklingLine,
   RiRefreshLine,
 } from 'react-icons/ri';
 import { UilMoneyBill } from '@iconscout/react-unicons';
@@ -578,7 +578,7 @@ export default function Plans() {
                 <div className="text-left flex flex-col">
                   <span className="leading-tight">Without Lock In Period</span>
                   <span className={`text-[9.5px] font-semibold ${lockInPeriod === 'None' ? 'text-emerald-100' : 'text-emerald-700'}`}>
-                    0.3% - 0.4% / Day • Rewards Eligible
+                    0.3% - 0.4% / Day
                   </span>
                 </div>
               </button>
@@ -596,108 +596,11 @@ export default function Plans() {
                 <div className="text-left flex flex-col">
                   <span className="leading-tight">3X Cap</span>
                   <span className={`text-[9.5px] font-semibold ${lockInPeriod === '3X Cap' ? 'text-amber-950' : 'text-amber-700'}`}>
-                    0.8% - 1.0% / Day • 3X Cap • No Rewards
+                    0.8% - 1.0% / Day • 3X Cap
                   </span>
                 </div>
               </button>
             </div>
-
-            {/* ──────── REWARD (LOYALTY BONUS) SECTION (UP TOP) ──────── */}
-            {selectedPlan?.loyaltyBonusEnabled !== false && (
-              lockInPeriod === 'None' ? (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/90 via-gold-50/50 to-orange-50/40 border border-amber-300/80 space-y-2 shadow-xs font-poppins animate-fade-in">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
-                        <RiGiftLine size={16} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wide">
-                          {selectedPlan?.loyaltyBonusTitle || "Reward ( Loyalty Bonus )"}
-                        </h4>
-                        <p className="text-[10.5px] text-gray-500">
-                          {selectedPlan?.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet"}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 shadow-2xs">
-                      Active: No Lock-In
-                    </span>
-                  </div>
-
-                  {/* Slabs Milestone Cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
-                    {(selectedPlan?.loyaltyBonusSlabs || DEFAULT_LOYALTY_SLABS).map((slab, sIdx) => {
-                      const bonusVal = (Number(investAmount) || 0) * (Number(slab.bonusPercentage) / 100);
-                      return (
-                        <div key={sIdx} className="p-2.5 bg-white rounded-xl text-center border border-amber-200/80 shadow-2xs">
-                          <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                            {slab.label || `${slab.days} Days`}
-                          </p>
-                          <p className="text-xs font-extrabold text-amber-700 font-mono mt-0.5 truncate">
-                            +{slab.bonusPercentage}%
-                          </p>
-                          <p className="text-[10.5px] text-emerald-700 font-extrabold font-mono mt-0.5">
-                            +${bonusVal.toFixed(2)}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="text-[10.5px] text-amber-900 bg-amber-100/60 p-2 rounded-lg border border-amber-200/70 flex items-center gap-1.5">
-                    <RiInformationLine size={14} className="text-amber-600 shrink-0" />
-                    <span>One-time loyalty bonus credited directly to your wallet for keeping capital invested without premature withdrawal.</span>
-                  </div>
-
-                  <div className="p-2.5 bg-white/90 rounded-xl border border-amber-200 text-[11px] text-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                    <span className="text-gray-600">
-                      Want boosted yield (<strong>0.8% - 1.0% / day</strong> up to 300% profit)? Switch to 3X Cap contract.
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setLockInPeriod('3X Cap')}
-                      className="text-[11px] text-amber-700 font-extrabold hover:underline cursor-pointer inline-flex items-center gap-1 shrink-0"
-                    >
-                      Switch to 3X Cap &rarr;
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-300/80 text-amber-950 font-poppins space-y-2 animate-fade-in shadow-2xs">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center font-bold shadow-3xs shrink-0">
-                        <RiGiftLine size={16} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-extrabold text-amber-950 uppercase tracking-wide">
-                          Reward (Loyalty Bonus) Not Applicable on 3X Plan
-                        </h4>
-                        <p className="text-[11px] text-amber-800 mt-0.5">
-                          3X Cap contracts already offer boosted <strong>0.8% - 1.0% / day</strong> yield up to 300% profit.
-                        </p>
-                      </div>
-                    </div>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shrink-0 shadow-2xs">
-                      3X Plan Excluded
-                    </span>
-                  </div>
-                  <div className="p-2.5 bg-white/90 rounded-xl border border-amber-200 text-[11px] text-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                    <span className="text-gray-600">
-                      Loyalty bonus rewards are exclusive to <strong>Without Lock In Period</strong> plans.
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setLockInPeriod('None')}
-                      className="text-[11px] text-emerald-700 font-extrabold hover:underline cursor-pointer inline-flex items-center gap-1 shrink-0"
-                    >
-                      Switch to No Lock-In Period &rarr;
-                    </button>
-                  </div>
-                </div>
-              )
-            )}
           </div>
 
           {/* ──────── ROI SLABS PER DAY TABLE (SPREADSHEET STANDARD) ──────── */}
@@ -717,9 +620,12 @@ export default function Plans() {
                 <thead>
                   <tr className="bg-yellow-50 border-b border-yellow-200/80 text-[11px] font-black text-slate-900 uppercase tracking-wider">
                     <th className="py-2.5 px-3 border-r border-yellow-200/60">Amount</th>
-                    <th className="py-2.5 px-3 text-center border-r border-yellow-200/60">Period</th>
-                    <th className="py-2.5 px-3 text-center border-r border-yellow-200/60 text-emerald-800">Without Lock In Period</th>
-                    <th className="py-2.5 px-3 text-center text-amber-900">3X Cap</th>
+                    <th className="py-2.5 px-3 text-center border-r border-yellow-200/60">Period (Days)</th>
+                    {lockInPeriod === 'None' ? (
+                      <th className="py-2.5 px-3 text-center text-emerald-800">Without Lock In Period (Daily ROI)</th>
+                    ) : (
+                      <th className="py-2.5 px-3 text-center text-amber-900">3X Cap (Daily ROI)</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-amber-100/60 font-medium text-slate-700">
@@ -746,12 +652,15 @@ export default function Plans() {
                         <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-700 border-r border-amber-100/60">
                           {row.period || '—'}
                         </td>
-                        <td className={`py-2.5 px-3 text-center font-mono font-black border-r border-amber-100/60 ${!isLocked ? 'text-emerald-700 bg-emerald-50/50 font-black' : 'text-slate-600'}`}>
-                          {row.withoutLockIn}%
-                        </td>
-                        <td className={`py-2.5 px-3 text-center font-mono font-black ${isLocked ? 'text-amber-800 bg-amber-50/70 font-black' : 'text-slate-600'}`}>
-                          {row.cap3X}%
-                        </td>
+                        {lockInPeriod === 'None' ? (
+                          <td className="py-2.5 px-3 text-center font-mono font-black text-emerald-700 bg-emerald-50/50">
+                            {row.withoutLockIn}% / day
+                          </td>
+                        ) : (
+                          <td className="py-2.5 px-3 text-center font-mono font-black text-amber-800 bg-amber-50/70">
+                            {row.cap3X}% / day
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -765,7 +674,11 @@ export default function Plans() {
               <div className="leading-snug">
                 <span className="font-bold">Non-Withdrawal Bonus Policy:</span>
                 <span className="text-slate-700 ml-1">
-                  If no withdrawal is made for <strong>30 days</strong>, daily ROI increases to <strong>{lockInPeriod === '3X Cap' ? '0.90%' : '0.35%'}</strong>. If no withdrawal is made for <strong>60 days</strong>, daily ROI increases to <strong>{lockInPeriod === '3X Cap' ? '1.00%' : '0.40%'}</strong>.
+                  {lockInPeriod === '3X Cap' ? (
+                    <>If no withdrawal is made for <strong>30 days</strong>, daily ROI increases to <strong>0.90%</strong>. If no withdrawal is made for <strong>60 days</strong>, daily ROI increases to <strong>1.00%</strong> (3X profit cap).</>
+                  ) : (
+                    <>If no withdrawal is made for <strong>30 days</strong>, daily ROI increases to <strong>0.35%</strong>. If no withdrawal is made for <strong>60 days</strong>, daily ROI increases to <strong>0.40%</strong>.</>
+                  )}
                 </span>
               </div>
             </div>
@@ -844,8 +757,32 @@ export default function Plans() {
             const calcDailyYield = currentInvestCapital * (activeDailyRoi / 100);
             const calcWeeklyYield = calcDailyYield * 7;
             const calcMonthlyYield = calcDailyYield * 30;
-            const calcQuarterlyYield = calcMonthlyYield * 3;
+            const calc60DaysYield = calcDailyYield * 60;
+            const calc60DaysRoi = Number((activeDailyRoi * 60).toFixed(2));
             const calcAnnualYield = calcDailyYield * 360;
+
+            // Progressive holding calculations for Day 30 vs 31 and Day 60 vs 61
+            const baseDailyPercent = isLocked ? 0.80 : 0.30;
+            const tier1DailyPercent = isLocked ? 0.90 : 0.35;
+            const tier2DailyPercent = isLocked ? 1.00 : 0.40;
+
+            const profitDay30 = currentInvestCapital * (baseDailyPercent / 100) * 30;
+            const roiDay30 = Number((baseDailyPercent * 30).toFixed(2));
+
+            const profitDay31 = profitDay30 + currentInvestCapital * (tier1DailyPercent / 100);
+            const roiDay31 = Number((roiDay30 + tier1DailyPercent).toFixed(2));
+
+            const profitDay60 = profitDay30 + (currentInvestCapital * (tier1DailyPercent / 100) * 30);
+            const roiDay60 = Number((roiDay30 + (tier1DailyPercent * 30)).toFixed(2));
+
+            const profitDay61 = profitDay60 + currentInvestCapital * (tier2DailyPercent / 100);
+            const roiDay61 = Number((roiDay60 + tier2DailyPercent).toFixed(2));
+
+            const profitDay90 = profitDay60 + (currentInvestCapital * (tier2DailyPercent / 100) * 30);
+            const roiDay90 = Number((roiDay60 + (tier2DailyPercent * 30)).toFixed(2));
+
+            const profitAnnualWithoutLock = profitDay60 + (currentInvestCapital * (tier2DailyPercent / 100) * 300);
+            const roiAnnualWithoutLock = Number((roiDay60 + (tier2DailyPercent * 300)).toFixed(2));
 
             const calcTotalProfit = calcDailyYield * planDurationDays;
             const calcTotalMaturity = currentInvestCapital + calcTotalProfit;
@@ -859,84 +796,224 @@ export default function Plans() {
                       <RiCalculatorLine size={16} />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
-                        ROI & Yield Return Breakdown ({(lockInPeriod === '365 Days' || lockInPeriod === '3 Months') ? '365 Days Lock-In Boost' : 'Without Lock-In'})
+                      <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide flex items-center gap-1.5 flex-wrap">
+                        <span>ROI & Yield Return Breakdown ({isLocked ? '3X Cap' : 'Without Lock In Period'})</span>
+                        {selectedSlabPeriod > 0 && (
+                          <span className="text-[9.5px] font-black text-amber-950 bg-amber-200 px-2 py-0.5 rounded-full border border-amber-300">
+                            {selectedSlabPeriod} Days Slab ({activeDailyRoi}% / d)
+                          </span>
+                        )}
                       </h4>
                       <p className="text-[11px] text-gray-500">
-                        Slab Rate: {activeDailyRoi}% Daily &bull; {activeMonthlyRoi}% Monthly &bull; {activeAnnualRoi}% Annual APY
+                        {isLocked ? (
+                          <>Slab Rate: {activeDailyRoi}% Daily &bull; {activeMonthlyRoi}% Monthly &bull; 300% Profit Cap</>
+                        ) : (
+                          <>Slab Rate: {activeDailyRoi}% Daily &bull; {activeMonthlyRoi}% Monthly &bull; {activeAnnualRoi}% Annual APY</>
+                        )}
                       </p>
                     </div>
                   </div>
 
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs shrink-0">
-                    {selectedPlan?.payoutInterval || "Per Second (Live)"}
+                    {isLocked ? '3X Cap Boost Mode' : (selectedPlan?.payoutInterval || "Per Second (Live)")}
                   </span>
                 </div>
 
-                {/* 5-Column Periodic Cards Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
-                  {/* 1. Daily */}
-                  <div className="p-2.5 bg-white rounded-xl text-center border border-gold-100 shadow-2xs">
-                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                      Daily (24h)
-                    </p>
-                    <p className="text-xs font-extrabold text-emerald-600 font-mono mt-0.5 truncate">
-                      +${calcDailyYield.toFixed(2)}
-                    </p>
-                    <p className="text-[10px] text-gray-500 font-medium mt-0.5 font-mono">
-                      {activeDailyRoi}%
-                    </p>
-                  </div>
-
-                  {/* 2. Weekly */}
-                  <div className="p-2.5 bg-white rounded-xl text-center border border-gold-100 shadow-2xs">
-                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                      Weekly (7d)
-                    </p>
-                    <p className="text-xs font-extrabold text-blue-600 font-mono mt-0.5 truncate">
-                      +${calcWeeklyYield.toFixed(2)}
-                    </p>
-                    <p className="text-[10px] text-gray-500 font-medium mt-0.5 font-mono">
-                      {(activeDailyRoi * 7).toFixed(2)}%
-                    </p>
-                  </div>
-
-                  {/* 3. Monthly */}
-                  <div className="p-2.5 bg-white rounded-xl text-center border border-gold-300 shadow-2xs ring-1 ring-gold-200 bg-gradient-to-b from-white to-gold-50/40">
-                    <p className="text-[10px] text-gold-700 font-bold uppercase tracking-wider">
-                      Monthly (30d)
-                    </p>
-                    <p className="text-xs font-extrabold text-gold-700 font-mono mt-0.5 truncate">
-                      +${calcMonthlyYield.toFixed(2)}
-                    </p>
-                    <p className="text-[10px] text-gold-800 font-bold mt-0.5 font-mono">
-                      {activeMonthlyRoi}% / mo
+                {/* 3x2 Periodic Cards Grid (Daily, Weekly, Monthly 30/31d, 60/61d, Quarterly, Annually/3X) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                  {/* 1. Daily (24h) */}
+                  <div
+                    onClick={() => setSelectedSlabPeriod(0)}
+                    className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${
+                      selectedSlabPeriod === 0
+                        ? 'border-2 border-gold-400 ring-2 ring-gold-300/60 bg-gradient-to-b from-white to-gold-50/40 shadow-sm'
+                        : 'border border-slate-200 hover:border-gold-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Daily Yield</span>
+                      <span className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap border border-slate-200">
+                        24 Hours
+                      </span>
+                    </div>
+                    <div className="my-2.5 space-y-1">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xl font-extrabold text-emerald-600 font-mono tracking-tight">
+                          +${calcDailyYield.toFixed(2)}
+                        </span>
+                        <span className="text-xs font-bold text-slate-700 font-mono bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                          {baseDailyPercent}% / day
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-medium">Standard 24h base return</p>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-1.5 truncate">
+                      Real-time live streaming return
                     </p>
                   </div>
 
-                  {/* 4. Quarterly */}
-                  <div className="p-2.5 bg-white rounded-xl text-center border border-gold-100 shadow-2xs">
-                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                      Quarterly (90d)
-                    </p>
-                    <p className="text-xs font-extrabold text-purple-600 font-mono mt-0.5 truncate">
-                      +${calcQuarterlyYield.toFixed(2)}
-                    </p>
-                    <p className="text-[10px] text-gray-500 font-medium mt-0.5 font-mono">
-                      {(activeMonthlyRoi * 3).toFixed(1)}%
+                  {/* 2. Weekly (7d) */}
+                  <div
+                    onClick={() => setSelectedSlabPeriod(0)}
+                    className="p-3.5 bg-white rounded-2xl shadow-2xs border border-slate-200 hover:border-gold-300 transition-all cursor-pointer flex flex-col justify-between"
+                  >
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Weekly Return</span>
+                      <span className="text-[10px] font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap border border-blue-200">
+                        7 Days
+                      </span>
+                    </div>
+                    <div className="my-2.5 space-y-1">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xl font-extrabold text-emerald-600 font-mono tracking-tight">
+                          +${calcWeeklyYield.toFixed(2)}
+                        </span>
+                        <span className="text-xs font-bold text-slate-700 font-mono bg-blue-50/70 px-2 py-0.5 rounded border border-blue-200">
+                          {(baseDailyPercent * 7).toFixed(2)}% (7d)
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-medium">7 consecutive days @ {baseDailyPercent}%/d</p>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-1.5 truncate">
+                      Weekly accumulated earnings
                     </p>
                   </div>
 
-                  {/* 5. Annually */}
-                  <div className="p-2.5 bg-white rounded-xl text-center border border-gold-200 shadow-2xs col-span-2 sm:col-span-1">
-                    <p className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">
-                      Annually (12m)
+                  {/* 3. Monthly (331d Boost) */}
+                  <div
+                    onClick={() => setSelectedSlabPeriod(30)}
+                    className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${
+                      selectedSlabPeriod === 30
+                        ? 'border-2 border-emerald-500 ring-2 ring-emerald-300/80 bg-emerald-50/30 shadow-sm'
+                        : 'border border-emerald-200 bg-emerald-50/15 hover:border-emerald-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-emerald-100">
+                      <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
+                        Monthly (30d •31d)
+                      </span>
+                      <span className="text-[9.5px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap shadow-2xs">
+                        +{tier1DailyPercent}%/d ⚡
+                      </span>
+                    </div>
+                    <div className="my-1.5 space-y-1.5">
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 border border-slate-200/80 text-xs">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-600 block leading-tight">Day 30 (Withdraw)</span>
+                          <span className="text-[9px] text-slate-400 font-mono">{roiDay30}% @ {baseDailyPercent}%/d</span>
+                        </div>
+                        <span className="font-mono font-bold text-slate-800 text-xs">+${profitDay30.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-emerald-100/70 border border-emerald-300/80 text-xs">
+                        <div>
+                          <span className="text-[10px] font-extrabold text-emerald-900 block leading-tight">Day 31 (Hold Bonus)</span>
+                          <span className="text-[9px] text-emerald-700 font-mono font-semibold">{roiDay31}% • {tier1DailyPercent}%/d ⚡</span>
+                        </div>
+                        <span className="font-mono font-black text-emerald-700 text-xs">+${profitDay31.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <p className="text-[9.5px] text-emerald-800 font-medium leading-tight border-t border-emerald-100 pt-1.5">
+                      Hold past 30 days: rate upgrades to <strong>{tier1DailyPercent}%/d</strong> (+${(profitDay31 - profitDay30).toFixed(2)})
                     </p>
-                    <p className="text-xs font-extrabold text-emerald-700 font-mono mt-0.5 truncate">
-                      +${calcAnnualYield.toFixed(2)}
+                  </div>
+
+                  {/* 4. 60 Days (60d • 61d Max Boost) */}
+                  <div
+                    onClick={() => setSelectedSlabPeriod(60)}
+                    className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${
+                      selectedSlabPeriod === 60
+                        ? 'border-2 border-amber-500 ring-2 ring-amber-300/80 bg-amber-50/30 shadow-sm'
+                        : 'border border-amber-200 bg-amber-50/15 hover:border-amber-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-amber-100">
+                      <span className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                        60 Days (60d • 61d)
+                      </span>
+                      <span className="text-[9.5px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap shadow-2xs">
+                        +{tier2DailyPercent}%/d 🚀
+                      </span>
+                    </div>
+                    <div className="my-1.5 space-y-1.5">
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 border border-slate-200/80 text-xs">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-600 block leading-tight">Day 60 (Withdraw)</span>
+                          <span className="text-[9px] text-slate-400 font-mono">{roiDay60}% @ {tier1DailyPercent}%/d</span>
+                        </div>
+                        <span className="font-mono font-bold text-slate-800 text-xs">+${profitDay60.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-amber-100/70 border border-amber-300/80 text-xs">
+                        <div>
+                          <span className="text-[10px] font-extrabold text-amber-950 block leading-tight">Day 61 (Max Boost)</span>
+                          <span className="text-[9px] text-amber-800 font-mono font-semibold">{roiDay61}% • {tier2DailyPercent}%/d 🚀</span>
+                        </div>
+                        <span className="font-mono font-black text-amber-800 text-xs">+${profitDay61.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <p className="text-[9.5px] text-amber-900 font-medium leading-tight border-t border-amber-100 pt-1.5">
+                      Hold past 60 days: max rate unlocks at <strong>{tier2DailyPercent}%/d</strong> (+${(profitDay61 - profitDay60).toFixed(2)})
                     </p>
-                    <p className="text-[10px] text-emerald-800 font-bold mt-0.5 font-mono">
-                      {activeAnnualRoi}% APY
+                  </div>
+
+                  {/* 5. Quarterly (90d) */}
+                  <div
+                    onClick={() => setSelectedSlabPeriod(60)}
+                    className="p-3.5 bg-white rounded-2xl shadow-2xs border border-purple-200 bg-purple-50/15 hover:border-purple-300 transition-all cursor-pointer flex flex-col justify-between"
+                  >
+                    <div className="flex items-center justify-between pb-2 border-b border-purple-100">
+                      <span className="text-xs font-bold text-purple-950 uppercase tracking-wider">Quarterly Yield</span>
+                      <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap border border-purple-200">
+                        90 Days
+                      </span>
+                    </div>
+                    <div className="my-2.5 space-y-1">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xl font-extrabold text-emerald-600 font-mono tracking-tight">
+                          +${profitDay90.toFixed(2)}
+                        </span>
+                        <span className="text-xs font-bold text-purple-900 font-mono bg-purple-100/60 px-2 py-0.5 rounded border border-purple-200">
+                          {roiDay90}% (90d)
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        30d @ {baseDailyPercent}% + 30d @ {tier1DailyPercent}% + 30d @ {tier2DailyPercent}%
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-purple-700 font-medium border-t border-purple-100 pt-1.5 truncate">
+                      Includes Day 31 & 61 tier upgrades
+                    </p>
+                  </div>
+
+                  {/* 6. Annually (12m) / 3X Cap */}
+                  <div
+                    className="p-3.5 bg-white rounded-2xl shadow-2xs border border-gold-300 bg-gold-50/25 hover:border-gold-400 transition-all flex flex-col justify-between"
+                  >
+                    <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-gold-200">
+                      <span className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                        {isLocked ? '3X Cap Limit' : 'Annual Yield'}
+                      </span>
+                      <span className="text-[9.5px] font-extrabold bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap shadow-2xs">
+                        {isLocked ? '300% Cap' : `${roiAnnualWithoutLock}% APY`}
+                      </span>
+                    </div>
+                    <div className="my-2.5 space-y-1">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xl font-extrabold text-emerald-700 font-mono tracking-tight">
+                          +${isLocked ? (currentInvestCapital * 3).toFixed(2) : profitAnnualWithoutLock.toFixed(2)}
+                        </span>
+                        <span className="text-xs font-bold text-amber-950 font-mono bg-amber-100/60 px-2 py-0.5 rounded border border-amber-200">
+                          {isLocked ? '300% Profit' : `${roiAnnualWithoutLock}% APY`}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        {isLocked
+                          ? `Total Contract Return: $${(currentInvestCapital * 4).toFixed(2)}`
+                          : `Running at ${tier2DailyPercent}%/day max tier`
+                        }
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-amber-900 font-medium border-t border-gold-200 pt-1.5 truncate">
+                      {isLocked ? 'Contract completes upon reaching 300% profit' : 'Continuous real-time streaming annual yield'}
                     </p>
                   </div>
                 </div>
@@ -946,19 +1023,22 @@ export default function Plans() {
                   <div>
                     <p className="font-bold text-gray-800 flex items-center gap-1.5">
                       <RiInformationLine className="text-gold-500" size={15} />
-                      Continuous Real-time Yield Stream:
+                      {isLocked ? '3X Cap Contract Maturity:' : 'Continuous Real-time Yield Stream:'}
                     </p>
                     <p className="text-[11px] text-gray-500">
-                      Principal (${currentInvestCapital.toLocaleString()}) +{" "}
-                      1-Year Projected Return (+$${calcAnnualYield.toFixed(2)})
+                      {isLocked ? (
+                        <>Principal (${currentInvestCapital.toLocaleString()}) + 300% Max Profit (+${(currentInvestCapital * 3).toFixed(2)})</>
+                      ) : (
+                        <>Principal (${currentInvestCapital.toLocaleString()}) + 1-Year Projected Return (+${calcAnnualYield.toFixed(2)})</>
+                      )}
                     </p>
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="text-[10px] text-gray-400 uppercase font-semibold">
-                      1-Year Projected Maturity Value
+                      {isLocked ? 'Total 3X Maturity Value' : '1-Year Projected Maturity Value'}
                     </p>
                     <span className="text-base font-extrabold text-emerald-700 font-mono">
-                      ${(currentInvestCapital + calcAnnualYield).toFixed(2)}
+                      ${isLocked ? (currentInvestCapital + (currentInvestCapital * 3)).toFixed(2) : (currentInvestCapital + calcAnnualYield).toFixed(2)}
                     </span>
                   </div>
                 </div>

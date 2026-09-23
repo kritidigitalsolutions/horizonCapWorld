@@ -9,7 +9,7 @@ const routeLabels = {
   'transactions': 'Transactions',
   'deposit': 'Deposit Funds',
   'withdraw': 'Withdraw Funds',
-  'referrals': 'Referral Network',
+  'referrals': 'Level Network',
   'referral-plans': 'Referral Commission Plans',
   'ranks': 'Rank Progression Ladder',
   'notifications': 'Notification Center',

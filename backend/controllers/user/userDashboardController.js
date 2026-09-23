@@ -62,6 +62,29 @@ exports.getDashboardOverview = async (req, res) => {
     };
 
     // Live Yield Streaming details
+    // 3. Next Daily Settlement Timing: 24 hours rolling from the investment start time
+    const CYCLE_MS = 24 * 60 * 60 * 1000;
+    let nextSettlementTime = null;
+    let settlementStartTime = null;
+    let settlementRemainingMs = 0;
+
+    if (activeContracts > 0) {
+      const startDates = activeInvestments
+        .map((inv) => new Date(inv.startDate || inv.createdAt).getTime())
+        .filter((time) => !isNaN(time) && time > 0);
+
+      const referenceStartTime = startDates.length > 0 ? Math.min(...startDates) : Date.now();
+      settlementStartTime = new Date(referenceStartTime).toISOString();
+
+      const now = Date.now();
+      const elapsedMs = Math.max(0, now - referenceStartTime);
+      const currentCycleIndex = Math.floor(elapsedMs / CYCLE_MS);
+      const nextSettlementMs = referenceStartTime + (currentCycleIndex + 1) * CYCLE_MS;
+
+      nextSettlementTime = new Date(nextSettlementMs).toISOString();
+      settlementRemainingMs = Math.max(0, nextSettlementMs - now);
+    }
+
     const streaming = {
       perSecondRate: user.perSecondRate || 0,
       dailyEarning: user.dailyEarning || 0,
@@ -70,6 +93,9 @@ exports.getDashboardOverview = async (req, res) => {
       lastYieldSync: user.lastYieldSync || new Date(),
       serverTime: new Date().toISOString(),
       activeAssetNames: activeAssetNames.length > 0 ? activeAssetNames.join(" & ") : "",
+      nextSettlementTime,
+      settlementStartTime,
+      settlementRemainingMs,
     };
 
     // Determine if client has deposited (mandatory deposit for referral link copying)
@@ -83,6 +109,85 @@ exports.getDashboardOverview = async (req, res) => {
       })) !== null
     );
 
+    // 1. Personal Volume: All deposits made by the user
+    const personalDepositAggr = await Transaction.aggregate([
+      {
+        $match: {
+          user: user._id,
+          type: "Deposit",
+          status: { $in: ["Approved", "Completed"] },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$amount" },
+        },
+      },
+    ]);
+    const txnPersonalDeposit = personalDepositAggr.length > 0 ? Number(personalDepositAggr[0].total) : 0;
+    const fallbackPersonalDeposit = Number(user.depositWallet || 0) + Number(user.totalInvested || 0);
+    const personalVolume = Math.max(txnPersonalDeposit, fallbackPersonalDeposit);
+
+    // 2. Group Volume: All deposits made in user's referral tree downline (excluding user's own deposits)
+    const allUsers = await User.find({}).select("_id customId sponsorId totalInvested depositWallet");
+    const childrenMap = new Map();
+    for (const u of allUsers) {
+      if (u.sponsorId) {
+        if (!childrenMap.has(u.sponsorId)) childrenMap.set(u.sponsorId, []);
+        childrenMap.get(u.sponsorId).push(u);
+      }
+    }
+
+    const downlineUsers = [];
+    const queue = [user.customId, String(user._id)].filter(Boolean);
+    const seen = new Set([user.customId, String(user._id)]);
+
+    while (queue.length > 0) {
+      const currentSponsorId = queue.shift();
+      const children = childrenMap.get(currentSponsorId) || [];
+      for (const ch of children) {
+        const chIdStr = String(ch._id);
+        if (!seen.has(chIdStr) && (!ch.customId || !seen.has(ch.customId))) {
+          seen.add(chIdStr);
+          if (ch.customId) seen.add(ch.customId);
+          downlineUsers.push(ch);
+          queue.push(ch.customId || chIdStr);
+        }
+      }
+    }
+
+    let groupVolume = 0;
+    if (downlineUsers.length > 0) {
+      const downlineUserObjectIds = downlineUsers.map((u) => u._id);
+      const groupDepositAggr = await Transaction.aggregate([
+        {
+          $match: {
+            user: { $in: downlineUserObjectIds },
+            type: "Deposit",
+            status: { $in: ["Approved", "Completed"] },
+          },
+        },
+        {
+          $group: {
+            _id: "$user",
+            totalDeposit: { $sum: "$amount" },
+          },
+        },
+      ]);
+
+      const depositMap = new Map();
+      groupDepositAggr.forEach((item) => {
+        depositMap.set(String(item._id), Number(item.totalDeposit || 0));
+      });
+
+      for (const downline of downlineUsers) {
+        const txnDeposit = depositMap.get(String(downline._id)) || 0;
+        const fallbackDeposit = Number(downline.totalInvested || 0) + Number(downline.depositWallet || 0);
+        groupVolume += Math.max(txnDeposit, fallbackDeposit);
+      }
+    }
+
     // Affiliate Network stats
     const network = {
       totalReferrals: user.totalReferrals || 0,
@@ -93,6 +198,8 @@ exports.getDashboardOverview = async (req, res) => {
       sponsorId: user.sponsorId || "HORIZON-HQ",
       customId: user.customId || "HORIZON-USR-01",
       hasDeposited,
+      personalVolume,
+      groupVolume,
     };
 
     // Wallets
@@ -102,6 +209,8 @@ exports.getDashboardOverview = async (req, res) => {
       totalInvested: user.totalInvested || 0,
       totalProfit: user.totalProfit || 0,
       totalWithdrawn: user.totalWithdrawn || 0,
+      personalVolume,
+      groupVolume,
     };
 
     res.status(200).json({
@@ -109,7 +218,11 @@ exports.getDashboardOverview = async (req, res) => {
       user: {
         ...user.toObject(),
         hasDeposited,
+        personalVolume,
+        groupVolume,
       },
+      personalVolume,
+      groupVolume,
       wallets,
       portfolioSummary,
       streaming,

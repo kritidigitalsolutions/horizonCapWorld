@@ -281,7 +281,7 @@ export default function KPICard({
       <div className="flex items-center gap-2 pt-2.5 mt-2 border-t border-gray-100 font-poppins">
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gold-50 text-gold-700 text-[11px] font-bold border border-gold-200/60 shadow-2xs">
           <span className="w-1.5 h-1.5 rounded-full bg-gold-400 animate-pulse"></span>
-          {magnitude?.compact || `${prefix}${formattedNumber}`}
+          {magnitude?.compact ? `${magnitude.compact}${suffix ? ` ${suffix}` : ''}` : `${prefix}${formattedNumber}${suffix || ''}`}
         </span>
         <span className="text-[11px] text-gray-400 font-medium truncate">
           {subtitle || magnitude?.label || 'Total Recorded'}

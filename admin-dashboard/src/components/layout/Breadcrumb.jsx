@@ -7,7 +7,7 @@ const routeLabels = {
   'investment-plans': 'Investment Plans',
   'users': 'Users Management',
   'ranks': 'Rank Ladder',
-  'referrals': 'Referral Plans',
+  'referrals': 'Level Plans',
   'transactions': 'Transactions',
   'notifications': 'Notifications & Alerts',
   'support-tickets': 'Support Tickets',

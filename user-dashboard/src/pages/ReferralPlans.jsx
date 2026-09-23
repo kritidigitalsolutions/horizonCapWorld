@@ -73,14 +73,22 @@ export default function ReferralPlans() {
       if (e?.detail) {
         setToggles(prev => ({ ...prev, ...e.detail }));
       }
+      const saved = localStorage.getItem('horizon_referral_toggles');
+      if (saved) {
+        try {
+          setToggles(prev => ({ ...prev, ...JSON.parse(saved) }));
+        } catch (err) {}
+      }
       fetchData();
     };
 
     window.addEventListener('horizon-referrals-change', handleSync);
     window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', fetchData);
     return () => {
       window.removeEventListener('horizon-referrals-change', handleSync);
       window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', fetchData);
     };
   }, []);
 
@@ -114,13 +122,13 @@ export default function ReferralPlans() {
     <div className="page-enter space-y-6 pb-8 font-poppins">
       {/* ──────── PAGE HEADER ──────── */}
       <PageHeader
-        title="Referral Plans & Commissions"
+        title="Level Plans & Commissions"
         subtitle={
           depositEnabled
-            ? `Earn multi-tier passive commissions across ${commissions.length} levels from active downline deposits`
-            : `Earn multi-tier passive commissions across ${commissions.length} levels`
+            ? `Earn multi-tier passive commissions across 10 levels from active downline deposits`
+            : `Earn multi-tier passive commissions across 10 levels`
         }
-        badge={`${commissions.length}-Tier Active System`}
+        badge="10-Tier Active System"
       />
 
       {/* ──────────────── ROLLING ODOMETER KPI CARDS ──────────────── */}
@@ -135,7 +143,7 @@ export default function ReferralPlans() {
           icon="money"
         />
         <KPICard
-          title="Active Network Promoters"
+          title="Active Network Clients"
           numericValue={directPromoters}
           prefix=""
           decimals={0}
@@ -148,12 +156,12 @@ export default function ReferralPlans() {
           numericValue={totalDownlines}
           prefix=""
           decimals={0}
-          change={`${commissions.length} Tiers Active`}
+          change="10 Tiers Active"
           positive={true}
           icon="chart"
         />
         <KPICard
-          title="Average Affiliate Yield"
+          title="Average Level Yield"
           numericValue={avgAffiliateYield}
           prefix=""
           suffix="%"
@@ -178,7 +186,7 @@ export default function ReferralPlans() {
                   Level ROI Per day Income
                 </h3>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gold-100 text-gold-900 border border-gold-300 shadow-2xs">
-                  {commissions.length} Levels
+                  10 Active Levels
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1">
@@ -232,9 +240,8 @@ export default function ReferralPlans() {
                 return (
                   <tr
                     key={tier._id || tier.level || levelNum}
-                    className={`hover:bg-amber-50/40 transition-colors ${
-                      i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
-                    }`}
+                    className={`hover:bg-amber-50/40 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
+                      }`}
                   >
                     {/* Level Index */}
                     <td className="py-2.5 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-300">
@@ -286,68 +293,68 @@ export default function ReferralPlans() {
       </div>
 
       {/* ──────────────── DIRECT INVESTMENT DEPOSIT COMMISSION CARD ──────────────── */}
-      <div className="grid grid-cols-1 gap-6">
-        {/* Direct Investment Deposit Commission Box */}
-        <div className="card p-5 space-y-4 border border-emerald-200/80 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                <RiTeamLine size={22} />
+      {depositEnabled && (
+        <div className="grid grid-cols-1 gap-6">
+          {/* Direct Investment Deposit Commission Box */}
+          <div className="card p-5 space-y-4 border border-emerald-200/80 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                  <RiTeamLine size={22} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 font-poppins">
+                    Direct Investment Deposit Commission
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    Commission credited instantly when downline members deposit into investment plans
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-800 font-poppins">
-                  Direct Investment Deposit Commission
-                </h4>
-                <p className="text-xs text-slate-400">
-                  {depositEnabled
-                    ? "Commission credited instantly when downline members deposit into investment plans"
-                    : "Direct deposit commissions are currently paused by platform administration"}
-                </p>
-              </div>
+
+              <Badge variant="success" size="sm">
+                Active
+              </Badge>
             </div>
 
-            <Badge variant={depositEnabled ? "success" : "neutral"} size="sm">
-              {depositEnabled ? "Active" : "Paused"}
-            </Badge>
-          </div>
+            <div className="space-y-2.5">
+              {commissions.filter(t => (t.levelNumber !== undefined ? t.levelNumber : (parseInt(String(t.level).replace('L', ''), 10) || 0)) > 0).map((tier) => {
+                const stats = getDynamicTierStats(tier);
+                return (
+                  <div
+                    key={tier._id || tier.level}
+                    className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-emerald-50/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
+                        {tier.level}
+                      </span>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
+                        <p className="text-[11px] text-slate-400">
+                          {stats.promoters} Promoters • Total Volume: {stats.volume}
+                        </p>
+                      </div>
+                    </div>
 
-          <div className="space-y-2.5">
-            {commissions.filter(t => (t.levelNumber !== undefined ? t.levelNumber : (parseInt(String(t.level).replace('L', ''), 10) || 0)) > 0).map((tier) => {
-              const stats = getDynamicTierStats(tier);
-              return (
-                <div
-                  key={tier._id || tier.level}
-                  className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-emerald-50/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
-                      {tier.level}
-                    </span>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
-                      <p className="text-[11px] text-slate-400">
-                        {stats.promoters} Promoters • Total Volume: {stats.volume}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl shadow-2xs text-emerald-600 bg-emerald-50 border border-emerald-200">
+                        {tier.investCommission}
+                      </span>
                     </div>
                   </div>
+                );
+              })}
+            </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl shadow-2xs text-emerald-600 bg-emerald-50 border border-emerald-200">
-                      {tier.investCommission}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-poppins">
-            <strong>Formula:</strong> Deposit Commission = Downline Deposit Amount × Tier % (e.g. $10,000 Level 1 deposit = $500 direct commission)
+            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-poppins">
+              <strong>Formula:</strong> Deposit Commission = Downline Deposit Amount × Tier % (e.g. $10,000 Level 1 deposit = $500 direct commission)
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      
+
     </div>
   );
 }

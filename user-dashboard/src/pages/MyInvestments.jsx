@@ -121,7 +121,10 @@ export default function MyInvestments() {
   const totalEarned = investmentsList.reduce((sum, inv) => sum + (inv.totalEarned || 0), 0);
   const activeContracts = investmentsList.filter(inv => inv.status === 'Active');
   const completedContracts = investmentsList.filter(inv => inv.status === 'Completed');
-  const totalDailyEarning = activeContracts.reduce((sum, inv) => sum + (inv.dailyEarning || 0), 0);
+  const totalDailyEarning = activeContracts.reduce(
+    (sum, inv) => sum + (Number(inv.dailyEarning) || ((inv.amount || 0) * (Number(inv.dailyRoi || 0) / 100)) || 0),
+    0
+  );
 
   const filteredInvestments = investmentsList.filter(inv => {
     const matchStatus = statusFilter === 'all' || inv.status === statusFilter;
@@ -169,25 +172,28 @@ export default function MyInvestments() {
           prefix="$"
           icon="investment"
           positive={true}
-          change="+14.2%"
+          change={totalInvested > 0 ? "Active Capital" : "No Investment"}
+          subtitle="Cumulative deposited funds"
           delay={0}
         />
         <KPICard
           title="Total Returns Generated"
-          numericValue={totalEarned}
+          numericValue={totalEarned >= 1 ? totalEarned.toFixed(2) : totalEarned.toFixed(3)}
           prefix="$"
           icon="revenue"
           positive={true}
-          change="+19.8%"
+          change={totalEarned > 0 ? "Accruing" : "Ready"}
+          subtitle="Cumulative profit credited"
           delay={60}
         />
         <KPICard
-          title="Daily Projected Yield"
-          numericValue={Math.round(totalDailyEarning)}
+          title="Total Daily Profit / ROI"
+          numericValue={totalDailyEarning > 0 ? totalDailyEarning.toFixed(2) : '0.00'}
           prefix="$"
           icon="bolt"
           positive={true}
-          change="Live /sec"
+          change="Per Day"
+          subtitle={`${activeContracts.length} Active Plan${activeContracts.length === 1 ? '' : 's'}`}
           delay={120}
         />
         <KPICard
@@ -195,7 +201,8 @@ export default function MyInvestments() {
           numericValue={activeContracts.length}
           icon="users"
           positive={true}
-          change="100% On-Time"
+          change={`${activeContracts.length} Active`}
+          subtitle="Active earning contracts"
           delay={180}
         />
       </div>

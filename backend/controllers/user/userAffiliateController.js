@@ -20,13 +20,17 @@ exports.getReferralOverview = async (req, res) => {
 
     // Direct referrals (Level 1)
     const directUsers = await User.find({ sponsorId: user.customId }).select(
-      "customId name email phone country totalInvested createdAt status"
+      "customId name email phone country totalInvested depositWallet firstInvestmentAmount hasDeposited createdAt status"
     );
 
     const directInvestedTotal = directUsers.reduce(
       (sum, u) => sum + (u.totalInvested || 0),
       0
     );
+
+    const activeDirectCount = directUsers.filter(
+      (u) => Boolean(u.hasDeposited) || Number(u.totalInvested || 0) > 0 || Number(u.depositWallet || 0) > 0
+    ).length;
 
     // Fetch referral bonus transactions strictly for this user
     const bonusTxns = await Transaction.find({
@@ -64,7 +68,8 @@ exports.getReferralOverview = async (req, res) => {
         referralLink: hasDeposited ? referralLink : "",
         hasDeposited,
         sponsorId: user.sponsorId,
-        directReferralsCount: directUsers.length,
+        directReferralsCount: activeDirectCount,
+        totalRegisteredDirects: directUsers.length,
         totalTeamCount: user.totalReferrals || directUsers.length,
         directTeamVolume: directInvestedTotal,
         totalTeamVolume: user.teamTurnover || directInvestedTotal,
@@ -78,7 +83,13 @@ exports.getReferralOverview = async (req, res) => {
           referralRoiShareEnabled: adminSettings.referralRoiShareEnabled !== false,
           referralSystemEnabled: adminSettings.referralSystemEnabled !== false,
         },
-        directMembers: directUsers,
+        directMembers: directUsers.map((u) => {
+          const hasDeposit = Boolean(u.hasDeposited) || Number(u.totalInvested || 0) > 0 || Number(u.depositWallet || 0) > 0;
+          return {
+            ...u.toObject(),
+            status: u.status === "Blocked" || u.status === "Suspended" ? u.status : (hasDeposit ? "Active" : "Inactive"),
+          };
+        }),
       },
     });
   } catch (error) {
@@ -192,17 +203,25 @@ exports.getReferralNetwork = async (req, res) => {
       adminSettings = await AdminSettings.create({});
     }
 
-    // Load tiers from DB for exact rates
+    // Load tiers from DB for exact rates (Levels 1 to 10 for downline network)
     let tiers = await ReferralSetting.find().sort({ levelNumber: 1 });
     if (!tiers || tiers.length === 0) {
       tiers = [
-        { level: "L1", levelNumber: 1, investCommissionRate: 5 },
-        { level: "L2", levelNumber: 2, investCommissionRate: 4 },
-        { level: "L3", levelNumber: 3, investCommissionRate: 3 },
-        { level: "L4", levelNumber: 4, investCommissionRate: 2 },
-        { level: "L5", levelNumber: 5, investCommissionRate: 1 },
+        { level: "L1", levelNumber: 1, name: "Direct Referrals (Level 1)", investCommissionRate: 5 },
+        { level: "L2", levelNumber: 2, name: "Sub-Referrals (Level 2)", investCommissionRate: 4 },
+        { level: "L3", levelNumber: 3, name: "Network Tier (Level 3)", investCommissionRate: 3 },
+        { level: "L4", levelNumber: 4, name: "Network Tier (Level 4)", investCommissionRate: 2 },
+        { level: "L5", levelNumber: 5, name: "Global Depth (Level 5)", investCommissionRate: 1.5 },
+        { level: "L6", levelNumber: 6, name: "Expansion Tier (Level 6)", investCommissionRate: 1 },
+        { level: "L7", levelNumber: 7, name: "Regional Depth (Level 7)", investCommissionRate: 0.8 },
+        { level: "L8", levelNumber: 8, name: "Executive Tier (Level 8)", investCommissionRate: 0.6 },
+        { level: "L9", levelNumber: 9, name: "Leadership Tier (Level 9)", investCommissionRate: 0.5 },
+        { level: "L10", levelNumber: 10, name: "Ambassador Tier (Level 10)", investCommissionRate: 0.4 },
       ];
     }
+
+    // Downline tiers: strictly Level 1 to Level 10 (Level 0 is Self)
+    const downlineTiers = tiers.filter((t) => t.levelNumber >= 1 && t.levelNumber <= 10);
 
     const isDepositCommEnabled = adminSettings.referralDepositCommissionEnabled !== false && adminSettings.referralSystemEnabled !== false;
 
@@ -213,14 +232,50 @@ exports.getReferralNetwork = async (req, res) => {
       status: "Approved",
     });
 
-    const getRateForLevel = (lvl) => {
-      const found = tiers.find((t) => t.levelNumber === lvl);
-      return found?.investCommissionRate ?? Math.max(1, 6 - lvl);
+    // Fetch all user ObjectIds that have approved or completed Deposit transactions
+    const depositTxnUsers = await Transaction.distinct("user", {
+      type: "Deposit",
+      status: { $in: ["Approved", "Completed"] },
+    });
+    const depositedUserIdSet = new Set(depositTxnUsers.map((id) => String(id)));
+
+    // Helper: Downline referral status is ONLY "Active" if user has made a deposit, otherwise "Inactive"
+    const getDownlineStatus = (u) => {
+      if (!u) return "Inactive";
+      if (u.status === "Blocked" || u.status === "Suspended") return u.status;
+      const hasDeposit =
+        Boolean(u.hasDeposited) ||
+        Number(u.totalInvested || 0) > 0 ||
+        Number(u.depositWallet || 0) > 0 ||
+        Number(u.firstInvestmentAmount || 0) > 0 ||
+        depositedUserIdSet.has(String(u._id));
+      return hasDeposit ? "Active" : "Inactive";
     };
 
-    // Load all users to dynamically construct multi-tier downline tree for every partner
+    const getRateForLevel = (lvl) => {
+      const found = tiers.find((t) => t.levelNumber === lvl);
+      if (found?.investCommissionRate !== undefined) return Number(found.investCommissionRate);
+      if (lvl === 1) return 5;
+      if (lvl === 2) return 4;
+      if (lvl === 3) return 3;
+      if (lvl === 4) return 2;
+      if (lvl === 5) return 1.5;
+      if (lvl === 6) return 1;
+      if (lvl === 7) return 0.8;
+      if (lvl === 8) return 0.6;
+      if (lvl === 9) return 0.5;
+      if (lvl === 10) return 0.4;
+      return 0;
+    };
+
+    const getTierNameForLevel = (lvl) => {
+      const found = tiers.find((t) => t.levelNumber === lvl);
+      return found?.name || `Tier Level ${lvl}`;
+    };
+
+    // Load all users to dynamically construct multi-tier downline tree
     const allUsers = await User.find().select(
-      "customId sponsorId name email phone country totalInvested firstInvestmentAmount hasReceivedReferralBonus createdAt status"
+      "_id customId sponsorId name email phone country avatar currentRank rankLevel totalInvested depositWallet firstInvestmentAmount hasReceivedReferralBonus createdAt status"
     );
 
     const childrenMap = new Map();
@@ -238,7 +293,7 @@ exports.getReferralNetwork = async (req, res) => {
       let totalTeamVolume = 0;
       let totalTeamCount = 0;
 
-      for (const tier of tiers) {
+      for (const tier of downlineTiers) {
         const lvl = tier.levelNumber;
         const count = currentUsers.length;
         const volume = currentUsers.reduce((sum, ch) => sum + (ch.totalInvested || 0), 0);
@@ -257,7 +312,7 @@ exports.getReferralNetwork = async (req, res) => {
             email: m.email,
             phone: m.phone || "—",
             invested: m.totalInvested || 0,
-            status: m.status || "Active",
+            status: getDownlineStatus(m),
             joined: m.createdAt ? m.createdAt.toISOString().split("T")[0] : "",
           })),
         });
@@ -280,10 +335,13 @@ exports.getReferralNetwork = async (req, res) => {
 
     const formattedNetwork = [];
     const levelCounts = {};
+    for (let i = 1; i <= 10; i++) {
+      levelCounts[`level${i}`] = 0;
+    }
 
     let currentParentIds = [user.customId, String(user._id)].filter(Boolean);
 
-    for (const tier of tiers) {
+    for (const tier of downlineTiers) {
       const lvl = tier.levelNumber;
       levelCounts[`level${lvl}`] = 0;
 
@@ -291,27 +349,26 @@ exports.getReferralNetwork = async (req, res) => {
 
       const downlines = await User.find({
         sponsorId: { $in: currentParentIds },
-      }).select("customId name email phone totalInvested firstInvestmentAmount hasReceivedReferralBonus sponsorId createdAt status");
+      }).select("_id customId name email phone country avatar currentRank rankLevel totalInvested depositWallet firstInvestmentAmount hasReceivedReferralBonus sponsorId createdAt status");
 
       levelCounts[`level${lvl}`] = downlines.length;
-
       const rate = getRateForLevel(lvl);
 
       downlines.forEach((u) => {
         const invested = u.totalInvested || 0;
-        const eligibleBaseAmount = u.firstInvestmentAmount || (u.hasReceivedReferralBonus ? u.firstInvestmentAmount || invested : (invested > 0 ? invested : 0));
+        const depositW = u.depositWallet || 0;
+        const eligibleBaseAmount = u.firstInvestmentAmount || (u.hasReceivedReferralBonus ? u.firstInvestmentAmount || invested : (invested > 0 ? invested : depositW));
 
-        // When toggle is OFF or no referral bonus was distributed, commission is $0.00
         let comm = 0;
         if (isDepositCommEnabled) {
           const matchedTxns = bonusTxns.filter((t) =>
-            (t.note && t.note.includes(u.customId)) ||
+            (t.note && (t.note.includes(u.customId) || (u.name && t.note.includes(u.name)))) ||
             (t.referenceNo && t.referenceNo.includes(u.customId))
           );
           if (matchedTxns.length > 0) {
             comm = matchedTxns.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-          } else if (u.hasReceivedReferralBonus) {
-            comm = (eligibleBaseAmount * rate) / 100;
+          } else if (eligibleBaseAmount > 0) {
+            comm = parseFloat(((eligibleBaseAmount * rate) / 100).toFixed(2));
           }
         }
 
@@ -323,8 +380,11 @@ exports.getReferralNetwork = async (req, res) => {
           email: u.email,
           phone: u.phone || "—",
           level: lvl,
+          tierName: getTierNameForLevel(lvl),
           sponsor: u.sponsorId,
           invested,
+          depositWallet: depositW,
+          rate,
           teamVolume: partnerStats.teamVolume,
           directRefs: partnerStats.directRefs,
           totalTeamCount: partnerStats.totalTeamCount,
@@ -333,19 +393,103 @@ exports.getReferralNetwork = async (req, res) => {
           directComm: lvl === 1 ? comm : 0,
           multiTierComm: lvl > 1 ? comm : 0,
           totalComm: comm,
+          commissionEarned: comm,
           joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "",
-          status: u.status || "Active",
+          status: getDownlineStatus(u),
+          avatar: u.avatar || "",
+          rank: u.currentRank || "Associate",
         });
       });
 
       currentParentIds = downlines.map((u) => u.customId).filter(Boolean);
     }
 
+    // Build the complete hierarchical referral tree (Root is Level 0, children down to Tier 10)
+    let totalTreeCommissionsEarned = 0;
+    formattedNetwork.forEach((m) => {
+      totalTreeCommissionsEarned += Number(m.totalComm || 0);
+    });
+
+    const buildTreeNodes = (parentId, currentLevel, visited) => {
+      if (currentLevel > 10) return [];
+      const kids = childrenMap.get(parentId) || [];
+      const rate = getRateForLevel(currentLevel);
+
+      return kids.map((kid) => {
+        if (visited.has(kid.customId)) return null;
+        visited.add(kid.customId);
+
+        const invested = kid.totalInvested || 0;
+        const depositW = kid.depositWallet || 0;
+        const eligibleBaseAmount = kid.firstInvestmentAmount || (kid.hasReceivedReferralBonus ? kid.firstInvestmentAmount || invested : (invested > 0 ? invested : depositW));
+
+        let comm = 0;
+        if (isDepositCommEnabled) {
+          const matchedTxns = bonusTxns.filter((t) =>
+            (t.note && (t.note.includes(kid.customId) || (kid.name && t.note.includes(kid.name)))) ||
+            (t.referenceNo && t.referenceNo.includes(kid.customId))
+          );
+          if (matchedTxns.length > 0) {
+            comm = matchedTxns.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+          } else if (eligibleBaseAmount > 0) {
+            comm = parseFloat(((eligibleBaseAmount * rate) / 100).toFixed(2));
+          }
+        }
+
+        const childNodes = buildTreeNodes(kid.customId, currentLevel + 1, visited);
+
+        return {
+          id: kid.customId,
+          name: kid.name,
+          email: kid.email,
+          phone: kid.phone || "—",
+          avatar: kid.avatar || "",
+          rank: kid.currentRank || "Associate",
+          rankLevel: kid.rankLevel || 1,
+          sponsorId: kid.sponsorId || parentId,
+          level: currentLevel,
+          tierName: getTierNameForLevel(currentLevel),
+          commissionRate: rate,
+          commissionEarned: comm,
+          invested,
+          depositWallet: depositW,
+          status: getDownlineStatus(kid),
+          joined: kid.createdAt ? kid.createdAt.toISOString().split("T")[0] : "",
+          directCount: (childrenMap.get(kid.customId) || []).length,
+          children: childNodes,
+        };
+      }).filter(Boolean);
+    };
+
+    const tree = {
+      id: user.customId,
+      name: user.name,
+      email: user.email,
+      phone: user.phone || "—",
+      avatar: user.avatar || "",
+      rank: user.currentRank || "Associate",
+      rankLevel: user.rankLevel || 1,
+      sponsorId: user.sponsorId || "HORIZON-HQ",
+      level: 0,
+      tierName: "Level 0 (Self)",
+      commissionRate: 0,
+      commissionEarned: 0,
+      invested: user.totalInvested || 0,
+      depositWallet: user.depositWallet || 0,
+      status: getDownlineStatus(user),
+      totalEarnedCommission: parseFloat(totalTreeCommissionsEarned.toFixed(2)),
+      directCount: (childrenMap.get(user.customId) || []).length,
+      totalTeamCount: formattedNetwork.length,
+      children: buildTreeNodes(user.customId, 1, new Set([user.customId])),
+    };
+
     res.status(200).json({
       success: true,
       levelCounts,
       count: formattedNetwork.length,
       network: formattedNetwork,
+      tree,
+      tiers: downlineTiers,
       toggles: {
         referralDepositCommissionEnabled: adminSettings.referralDepositCommissionEnabled !== false,
         referralRoiShareEnabled: adminSettings.referralRoiShareEnabled !== false,
@@ -400,17 +544,53 @@ exports.getMyRankStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found." });
     }
 
-    const currentLevel = user.rankLevel || 1;
     let ranks = await Rank.find({ status: "Active" }).sort({ level: 1 });
     if (!ranks || ranks.length === 0) {
       ranks = defaultLadderRanks;
     }
 
-    const currentRank = ranks.find((r) => r.level === currentLevel) || ranks[0];
-    const nextRank = ranks.find((r) => r.level === currentLevel + 1) || currentRank;
+    // Direct referrals (Level 1)
+    const directUsers = await User.find({ sponsorId: user.customId }).select(
+      "customId name email totalInvested depositWallet hasDeposited status rankLevel teamTurnover"
+    );
 
-    const turnover = user.teamTurnover || user.totalInvested || 0;
-    const ownInvested = user.totalInvested || user.wallet || 0;
+    const activeDirectCount = directUsers.filter(
+      (u) => Boolean(u.hasDeposited) || Number(u.totalInvested || 0) > 0 || Number(u.depositWallet || 0) > 0
+    ).length;
+
+    const legsCount = directUsers.length;
+
+    const turnover = Number(user.teamTurnover || 0);
+    const ownInvested = Number(user.totalInvested || 0);
+
+    // Evaluate qualification for each rank
+    // Rank qualification strictly requires:
+    // 1. Own deposit >= rank.ownDeposit
+    // 2. Client turnover >= rank.totalClientDeposit
+    // 3. Condition (at least 2 legs and required active direct clients)
+    let qualifiedLevel = 0;
+    for (const r of ranks) {
+      const ownTarget = Number(r.ownDeposit || 0);
+      const turnoverTarget = Number(r.totalClientDeposit || r.minInvest || 0);
+      const reqDirectsMatch = (r.downlineStructureRequired || '').match(/\d+/);
+      const reqDirects = reqDirectsMatch ? parseInt(reqDirectsMatch[0], 10) : 2;
+
+      const ownMet = ownInvested >= ownTarget;
+      const turnoverMet = turnover >= turnoverTarget;
+      const condMet = (legsCount >= 2 || activeDirectCount >= 2) && activeDirectCount >= reqDirects;
+
+      if (ownMet && turnoverMet && condMet) {
+        qualifiedLevel = r.level;
+      } else {
+        break; // Tiers are progressive
+      }
+    }
+
+    const isQualified = qualifiedLevel > 0;
+    const currentRank = isQualified ? ranks.find((r) => r.level === qualifiedLevel) || ranks[0] : null;
+    const targetLevel = qualifiedLevel + 1;
+    const nextRank = ranks.find((r) => r.level === targetLevel) || ranks[ranks.length - 1];
+
     const turnoverTarget = nextRank.totalClientDeposit || nextRank.minInvest || 5000;
     const ownDepositTarget = nextRank.ownDeposit || 50;
     const progressPercent = Math.min(100, Math.round((turnover / turnoverTarget) * 100));
@@ -418,12 +598,16 @@ exports.getMyRankStatus = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        currentLevel,
-        currentRankName: user.currentRank || currentRank.name,
-        rewardUnlocked: currentRank.reward || 0,
+        qualifiedLevel,
+        currentLevel: qualifiedLevel,
+        isQualified,
+        currentRankName: isQualified ? (currentRank.name) : "Unranked (Associate in Progress)",
+        rewardUnlocked: isQualified ? (currentRank.reward || 0) : 0,
         teamTurnover: turnover,
         ownInvested,
-        currentRank,
+        activeDirectCount,
+        legsCount,
+        currentRank: currentRank || ranks[0],
         nextRank: {
           level: nextRank.level,
           name: nextRank.name,

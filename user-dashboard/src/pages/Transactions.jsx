@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getTransactions } from '../api/transactionsApi';
 import { getReferralOverview } from '../api/referralsApi';
+import { getMyRankStatus } from '../api/ranksApi';
 import {
   RiDownloadLine, RiEyeLine, RiArrowUpCircleLine,
   RiArrowDownCircleLine, RiFlashlightLine, RiGiftLine,
@@ -20,6 +21,7 @@ export default function Transactions() {
   const { user } = useAuth();
   const [txnList, setTxnList] = useState([]);
   const [referralStats, setReferralStats] = useState(null);
+  const [rankData, setRankData] = useState(null);
   const [filterType, setFilterType] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedTxn, setSelectedTxn] = useState(null);
@@ -37,10 +39,21 @@ export default function Transactions() {
     }
   }, []);
 
+  const fetchRankData = useCallback(async () => {
+    try {
+      const res = await getMyRankStatus();
+      if (res?.success && res.data) {
+        setRankData(res.data);
+      }
+    } catch (err) {
+      console.warn('Error fetching rank status in transactions:', err.message);
+    }
+  }, []);
+
   const fetchTxns = useCallback(async () => {
     try {
       const res = await getTransactions({
-        type: filterType !== 'all' && filterType !== 'Level Income' && filterType !== 'Affiliate Level Income' ? filterType : undefined,
+        type: filterType !== 'all' && filterType !== 'Level Income' && filterType !== 'Salary Income' ? filterType : undefined,
         search: search.trim() || undefined,
         limit: 100,
       });
@@ -84,31 +97,36 @@ export default function Transactions() {
   useEffect(() => {
     fetchTxns();
     fetchReferralStats();
-  }, [fetchTxns, fetchReferralStats]);
+    fetchRankData();
+  }, [fetchTxns, fetchReferralStats, fetchRankData]);
 
-  // Real-time synchronization with Super Admin approvals/rejections, new deposits, and referrals
+  // Real-time synchronization with Super Admin approvals/rejections, new deposits, referrals, and ranks
   useEffect(() => {
     const handleSync = () => {
       fetchTxns();
       fetchReferralStats();
+      fetchRankData();
     };
     window.addEventListener('horizon-transactions-change', handleSync);
     window.addEventListener('horizon-referrals-change', handleSync);
+    window.addEventListener('horizon-ranks-change', handleSync);
     window.addEventListener('storage', handleSync);
     return () => {
       window.removeEventListener('horizon-transactions-change', handleSync);
       window.removeEventListener('horizon-referrals-change', handleSync);
+      window.removeEventListener('horizon-ranks-change', handleSync);
       window.removeEventListener('storage', handleSync);
     };
-  }, [fetchTxns, fetchReferralStats]);
+  }, [fetchTxns, fetchReferralStats, fetchRankData]);
 
-  const types = ['all', 'Deposit', 'Withdrawal', 'ROI Earning', 'Level Income', 'Affiliate Level Income', 'Rank Bonus'];
+  const types = ['all', 'Deposit', 'Withdrawal', 'ROI Earning', 'Level Income', 'Salary Income', 'Rank Bonus', 'Company Bonus'];
 
   const typeIcon = (type) => {
     if (type === 'Deposit') return <RiArrowDownCircleLine className="text-emerald-600 flex-shrink-0" size={18} />;
     if (type === 'Withdrawal') return <RiArrowUpCircleLine className="text-amber-500 flex-shrink-0" size={18} />;
     if (type === 'ROI Earning' || type === 'ROI Return' || type === 'Level Income') return <RiFlashlightLine className="text-gold-500 flex-shrink-0" size={18} />;
-    if (type === 'Referral Bonus' || type === 'Affiliate Level Income') return <RiGiftLine className="text-purple-600 flex-shrink-0" size={18} />;
+    if (type === 'Referral Bonus' || type === 'Salary Income') return <RiGiftLine className="text-purple-600 flex-shrink-0" size={18} />;
+    if (type === 'Company Bonus' || type?.toLowerCase().includes('company')) return <RiFlashlightLine className="text-emerald-500 flex-shrink-0" size={18} />;
     return <RiTrophyLine className="text-gold-600 flex-shrink-0" size={18} />;
   };
 
@@ -140,7 +158,7 @@ export default function Transactions() {
   // Dynamic Level Income (Streaming ROI / Multi-tier daily yield)
   const totalLevelIncome = totalRoiEarned > 0 ? totalRoiEarned : Number(user?.totalProfit || user?.dailyEarning || 0);
 
-  // Dynamic Affiliate Level Income (Direct & downline referral commission)
+  // Dynamic Salary Income (Direct & downline referral commission)
   const totalReferralTxns = txnList
     .filter(t => (t.type === 'Referral Bonus' || t.type?.toLowerCase().includes('referral')) && (t.status === 'Completed' || t.status === 'Approved'))
     .reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
@@ -158,8 +176,10 @@ export default function Transactions() {
     if (!matchType) {
       if (filterType === 'Level Income') {
         matchType = txn.type === 'ROI Earning' || txn.type === 'ROI Return' || txn.type === 'Level Income';
-      } else if (filterType === 'Affiliate Level Income') {
-        matchType = txn.type === 'Referral Bonus' || txn.type === 'Affiliate Level Income';
+      } else if (filterType === 'Salary Income') {
+        matchType = txn.type === 'Referral Bonus' || txn.type === 'Salary Income';
+      } else if (filterType === 'Company Bonus') {
+        matchType = txn.type === 'Company Bonus' || txn.type?.toLowerCase().includes('company') || txn.clientNote?.toLowerCase().includes('company');
       } else {
         matchType = txn.type === filterType;
       }
@@ -171,6 +191,36 @@ export default function Transactions() {
       String(txn.amount).includes(search);
     return matchType && matchSearch;
   });
+
+  // Dynamic Company Profit %ge (from current leadership rank or company profit sharing pool)
+  const rawProfitShareStr = rankData?.currentRank?.companyProfitSharing || user?.companyProfitSharing || '';
+  const userRankLevel = Number(rankData?.currentLevel || user?.rank?.level || user?.rankLevel || 1);
+  const userRankName = rankData?.currentRankName || user?.rank?.name || user?.currentRank || 'Associate';
+
+  const getCompanyProfitPercentage = (str, level) => {
+    if (typeof str === 'number') return str;
+    if (str && typeof str === 'string' && str.trim() !== '0' && str.trim() !== '') {
+      const match = str.match(/([0-9.]+)\s*%/);
+      if (match) return parseFloat(match[1]);
+    }
+    // Horizon 12-Rank Ladder Rule:
+    // L1-L5: 0%, L6: 0.20%, L7: 0.50%, L8: 0.75%, L9: 1.00%, L10: 1.25%, L11: 1.50%, L12: 2.00%
+    if (level >= 12) return 2.0;
+    if (level === 11) return 1.5;
+    if (level === 10) return 1.25;
+    if (level === 9) return 1.0;
+    if (level === 8) return 0.75;
+    if (level === 7) return 0.5;
+    if (level === 6) return 0.2;
+    return 0.0;
+  };
+
+  const companyProfitPct = getCompanyProfitPercentage(rawProfitShareStr, userRankLevel);
+
+  // Dynamic Company Bonus Income payouts from transactions (if any)
+  const totalCompanyBonusTxns = txnList
+    .filter(t => (t.type === 'Company Bonus' || t.type?.toLowerCase().includes('company') || t.clientNote?.toLowerCase().includes('company')) && (t.status === 'Completed' || t.status === 'Approved'))
+    .reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
 
   // Export CSV
   const handleExportCSV = () => {
@@ -265,8 +315,8 @@ export default function Transactions() {
         }
       />
 
-      {/* ──────── KPI SUMMARY ROW (3x2 GRID) ──────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 xl:gap-5">
+      {/* ──────── KPI SUMMARY ROW (RESPONSIVE GRID) ──────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Total Gross Deposits"
           numericValue={totalDeposits || 0}
@@ -288,7 +338,7 @@ export default function Transactions() {
           delay={50}
         />
         <KPICard
-          title="ROI Yield Distributed"
+          title="ROI Yield"
           numericValue={Math.round(totalRoiEarned || 0)}
           prefix="$"
           icon="revenue"
@@ -308,7 +358,7 @@ export default function Transactions() {
           delay={150}
         />
         <KPICard
-          title="Affiliate Level Income"
+          title="Salary Income"
           numericValue={Math.round(affiliateLevelIncome || 0)}
           prefix="$"
           icon="users"
@@ -318,7 +368,7 @@ export default function Transactions() {
           delay={200}
         />
         <KPICard
-          title="Affiliate & Rank Bonuses"
+          title="Rank One Time Commission"
           numericValue={Math.round(totalReferralBonus || 0)}
           prefix="$"
           icon="trophy"
@@ -326,6 +376,17 @@ export default function Transactions() {
           change="Instant"
           subtitle="Direct & multi-tier bonus"
           delay={250}
+        />
+        <KPICard
+          title="Company Bonus Income"
+          numericValue={companyProfitPct > 0 ? (companyProfitPct % 1 === 0 ? companyProfitPct.toFixed(1) : companyProfitPct.toFixed(2)) : '0.00'}
+          prefix=""
+          suffix="%"
+          icon="bolt"
+          positive={true}
+          change="Company Profit %ge"
+          subtitle={userRankName ? `${userRankName} Pool Share` : "Rank Profit Share"}
+          delay={300}
         />
       </div>
 

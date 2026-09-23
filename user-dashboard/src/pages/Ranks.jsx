@@ -264,34 +264,63 @@ export default function Ranks() {
     };
   }, []);
 
-  // Safe extraction of currentLevel
-  let currentLevel = myRankData?.currentLevel || (user?.rank?.level ? Number(user.rank.level) : 1);
-  if (user?.rank) {
-    if (typeof user.rank === 'object' && user.rank !== null && user.rank.level) {
-      currentLevel = Number(user.rank.level) || currentLevel;
-    } else if (typeof user.rank === 'number') {
-      currentLevel = user.rank;
-    } else if (typeof user.rank === 'string') {
-      const match = user.rank.match(/\d+/);
-      currentLevel = match ? parseInt(match[0], 10) : currentLevel;
+  // User dynamic turnover & deposits
+  const userTurnover = Number(myRankData?.teamTurnover ?? user?.teamTurnover ?? user?.groupVolume ?? user?.totalInvested ?? 0);
+  const userOwnDeposit = Number(myRankData?.ownInvested ?? user?.totalInvested ?? user?.depositWallet ?? 0);
+  const userDirects = Number(myRankData?.activeDirectCount ?? user?.directReferrals ?? user?.totalReferrals ?? 0);
+  const userLegs = Number(myRankData?.legsCount ?? user?.directReferrals ?? 0);
+
+  // Helper to test if a rank tier's conditions are fulfilled
+  const checkTierQualification = (r) => {
+    const ownDep = Number(r.ownDeposit !== undefined ? r.ownDeposit : 0);
+    const clientDep = Number(r.totalClientDeposit !== undefined ? r.totalClientDeposit : (r.minInvest || 0));
+    const reqDirectsMatch = (r.downlineStructureRequired || '').match(/\d+/);
+    const reqDirects = reqDirectsMatch ? parseInt(reqDirectsMatch[0], 10) : 2;
+
+    const isOwnDepositMet = userOwnDeposit >= ownDep;
+    const isClientDepositMet = userTurnover >= clientDep;
+    // Condition: Atleast 2 Legs and required active direct clients
+    const isConditionMet = (userLegs >= 2 || userDirects >= 2) && userDirects >= reqDirects;
+
+    const isTierFulfilled = isOwnDepositMet && isClientDepositMet && isConditionMet;
+
+    return {
+      isOwnDepositMet,
+      isClientDepositMet,
+      isConditionMet,
+      isTierFulfilled,
+      ownDep,
+      clientDep,
+      reqDirects,
+    };
+  };
+
+  // Determine highest qualified level
+  let qualifiedLevel = typeof myRankData?.qualifiedLevel === 'number'
+    ? myRankData.qualifiedLevel
+    : 0;
+
+  if (myRankData?.qualifiedLevel === undefined) {
+    for (const r of ranks) {
+      const q = checkTierQualification(r);
+      if (q.isTierFulfilled) {
+        qualifiedLevel = r.level;
+      } else {
+        break;
+      }
     }
   }
-  currentLevel = Math.max(1, Math.min(ranks.length || 9, currentLevel));
 
-  const currentRankObj = ranks.find(r => r.level === currentLevel) || ranks[0] || defaultRanksList[0];
-  const nextRankObj = ranks.find(r => r.level === currentLevel + 1) || currentRankObj || ranks[ranks.length - 1] || currentRankObj;
+  const hasFulfilledTier1 = qualifiedLevel >= 1;
+  const currentRankObj = ranks.find(r => r.level === (qualifiedLevel > 0 ? qualifiedLevel : 1)) || ranks[0] || defaultRanksList[0];
+  const targetRankObj = ranks.find(r => r.level === (qualifiedLevel + 1)) || currentRankObj;
 
-  const currentRankReward = Number(currentRankObj?.reward ?? currentRankObj?.rewardUnlocked ?? 0);
-  const nextRankReward = Number(nextRankObj?.reward ?? myRankData?.nextRank?.rewardOnUnlock ?? nextRankObj?.rewardOnUnlock ?? 0);
-  const nextRankMinInvest = Number(nextRankObj?.totalClientDeposit ?? nextRankObj?.minInvest ?? myRankData?.nextRank?.minInvestRequired ?? nextRankObj?.minInvestRequired ?? 10000);
-  const nextRankOwnDeposit = Number(nextRankObj?.ownDeposit ?? 50);
+  const currentRankReward = hasFulfilledTier1 ? Number(currentRankObj?.reward || 0) : 0;
+  const targetRankReward = Number(targetRankObj?.reward || 100);
+  const targetRankMinInvest = Number(targetRankObj?.totalClientDeposit ?? targetRankObj?.minInvest ?? 5000);
+  const targetRankOwnDeposit = Number(targetRankObj?.ownDeposit ?? 50);
 
-  // User dynamic turnover
-  const userTurnover = Number(myRankData?.teamTurnover ?? user?.teamTurnover ?? user?.totalInvested ?? 0);
-  const userOwnDeposit = Number(user?.totalInvested ?? user?.wallet ?? 0);
-  const progressPercent = myRankData?.nextRank?.progressPercent !== undefined
-    ? myRankData.nextRank.progressPercent
-    : Math.min(100, Math.round((userTurnover / Math.max(1, nextRankMinInvest)) * 100));
+  const progressPercent = Math.min(100, Math.round((userTurnover / Math.max(1, targetRankMinInvest)) * 100));
 
   // Helper to extract monthly rank salary from rank object or profit sharing string
   const extractRankSalary = (rankObj) => {
@@ -312,8 +341,8 @@ export default function Ranks() {
     return 0;
   };
 
-  const userRankBonus = Number(myRankData?.rewardUnlocked ?? currentRankReward ?? user?.rankBonus ?? 0);
-  const userRankSalary = Number(myRankData?.salary ?? user?.rankSalary ?? user?.salary ?? extractRankSalary(currentRankObj));
+  const userRankBonus = hasFulfilledTier1 ? Number(myRankData?.rewardUnlocked ?? currentRankReward) : 0;
+  const userRankSalary = hasFulfilledTier1 ? Number(myRankData?.salary ?? user?.rankSalary ?? extractRankSalary(currentRankObj)) : 0;
 
   const getRankIcon = (lvl) => {
     if (lvl >= 10) return <RiVipCrownLine size={24} className="text-amber-500" />;
@@ -393,10 +422,10 @@ export default function Ranks() {
           numericValue={userRankBonus}
           prefix="$"
           decimals={0}
-          change={userRankBonus > 0 ? "Instant Cash" : "Active"}
-          positive={true}
+          change={hasFulfilledTier1 ? "Instant Cash" : "Locked"}
+          positive={hasFulfilledTier1}
           icon="trophy"
-          subtitle="One-time milestone reward"
+          subtitle={hasFulfilledTier1 ? "One-time milestone reward" : "Requires Tier 1 Qualification"}
           delay={150}
         />
         <KPICard
@@ -429,22 +458,30 @@ export default function Ranks() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
           <div className="flex items-center gap-3.5 sm:gap-4">
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 flex items-center justify-center text-slate-950 shadow-gold ring-2 ring-gold-200/80 flex-shrink-0">
-              {getRankIcon(currentLevel)}
+              {getRankIcon(qualifiedLevel > 0 ? qualifiedLevel : 1)}
             </div>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-gold-900/70 font-poppins">
                 YOUR CURRENT LEADERSHIP RANK
               </p>
               <h3 className="text-xl sm:text-2xl md:text-3xl font-black font-display text-slate-950 leading-tight">
-                {currentRankObj?.name || 'Associate'}
+                {hasFulfilledTier1 ? (currentRankObj?.name || 'Associate') : 'Associate (Qualification Pending)'}
               </h3>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span className="px-2.5 py-0.5 rounded-full bg-slate-950 text-gold-400 font-extrabold text-[11px] shadow-xs">
-                  Level {currentLevel} of {ranks.length}
+                  {hasFulfilledTier1 ? `Level ${qualifiedLevel} of ${ranks.length}` : `Candidate (0/${ranks.length} Qualified)`}
                 </span>
-                <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  +${currentRankReward.toLocaleString()}.00 Cash Bonus Claimed
-                </span>
+                {hasFulfilledTier1 ? (
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                    <RiCheckLine size={13} className="text-emerald-600" />
+                    +${userRankBonus.toLocaleString()}.00 Cash Bonus Claimed
+                  </span>
+                ) : (
+                  <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200 flex items-center gap-1 shadow-2xs">
+                    <RiLockLine size={13} className="text-rose-500" />
+                    +$0.00 Claimed (+${(ranks[0]?.reward || 100).toLocaleString()}.00 Pending Qualification)
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -462,25 +499,25 @@ export default function Ranks() {
 
             <div className="p-3 sm:p-3.5 bg-white/80 backdrop-blur-sm rounded-2xl border border-gold-200 shadow-2xs text-center min-w-[120px]">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                Next Rank Bonus
+                Target Rank Bonus
               </span>
-              <span className="text-sm sm:text-base font-extrabold text-emerald-600 font-mono mt-0.5 block">
-                +${nextRankReward.toLocaleString()}.00
+              <span className={`text-sm sm:text-base font-extrabold font-mono mt-0.5 block ${hasFulfilledTier1 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                +${targetRankReward.toLocaleString()}.00
               </span>
             </div>
           </div>
         </div>
 
-        {/* Progress Bar to Next Level */}
-        {currentLevel < ranks.length && (
+        {/* Progress Bar to Target Level */}
+        {qualifiedLevel < ranks.length && (
           <div className="mt-5 pt-4 border-t border-gold-300/60 relative z-10 space-y-2">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs font-poppins">
               <span className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
                 <RiProgress3Line size={16} className="text-gold-800" />
-                <span>Progress towards <strong>{nextRankObj?.name || 'Next Rank'} (Level {nextRankObj?.level || currentLevel + 1})</strong>:</span>
+                <span>Progress towards <strong>{targetRankObj?.name || 'Next Rank'} (Level {targetRankObj?.level || 1})</strong>:</span>
               </span>
               <span className="font-extrabold font-mono text-gold-950 bg-gold-100/90 px-2.5 py-0.5 rounded-full border border-gold-300 shadow-2xs w-fit">
-                ${userTurnover.toLocaleString()} / ${nextRankMinInvest.toLocaleString()} ({progressPercent}%)
+                ${userTurnover.toLocaleString()} / ${targetRankMinInvest.toLocaleString()} ({progressPercent}%)
               </span>
             </div>
 
@@ -492,9 +529,9 @@ export default function Ranks() {
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-[11px] text-slate-800 pt-1 font-medium gap-1.5">
-              <span className="font-semibold text-slate-700">Required Downline: <strong className="text-slate-900">{nextRankObj?.downlineStructureRequired || 'Direct active clients'}</strong></span>
-              <span className="text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/80 w-fit">
-                ${Math.max(0, nextRankMinInvest - userTurnover).toLocaleString()} turnover needed to unlock +${nextRankReward.toLocaleString()}.00
+              <span className="font-semibold text-slate-700">Required Downline: <strong className="text-slate-900">{targetRankObj?.downlineStructureRequired || 'Direct active clients'}</strong></span>
+              <span className="text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200/80 w-fit">
+                ${Math.max(0, targetRankMinInvest - userTurnover).toLocaleString()} turnover needed to unlock +${targetRankReward.toLocaleString()}.00
               </span>
             </div>
           </div>
@@ -578,32 +615,46 @@ export default function Ranks() {
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-xs text-slate-700">
                   {ranks.map((r, i) => {
-                    const ownDep = Number(r.ownDeposit !== undefined ? r.ownDeposit : 0);
-                    const clientDep = Number(r.totalClientDeposit !== undefined ? r.totalClientDeposit : (r.minInvest || 0));
+                    const {
+                      isOwnDepositMet,
+                      isClientDepositMet,
+                      isConditionMet,
+                      isTierFulfilled,
+                      ownDep,
+                      clientDep,
+                    } = checkTierQualification(r);
+
                     const rewardAmt = Number(r.reward || 0);
                     const condText = r.condition || '1 Leg should not be more than 40% of the GV';
                     const profitShare = r.companyProfitSharing !== undefined ? String(r.companyProfitSharing) : '0';
                     const downlineReq = r.downlineStructureRequired || '-';
 
-                    const isCurrent = r.level === currentLevel;
-                    const isUnlocked = r.level <= currentLevel;
+                    const isCurrentQualified = qualifiedLevel > 0 && r.level === qualifiedLevel;
+                    const isClaimed = qualifiedLevel > 0 && r.level <= qualifiedLevel && isTierFulfilled;
+                    const isTarget = r.level === (qualifiedLevel + 1);
 
                     return (
                       <tr
                         key={r._id || r.level}
-                        className={`hover:bg-amber-50/40 transition-colors ${isCurrent
+                        className={`hover:bg-amber-50/40 transition-colors ${
+                          isCurrentQualified
                             ? 'bg-amber-50/80 font-medium'
-                            : i % 2 === 0
-                              ? 'bg-white'
-                              : 'bg-slate-50/50'
-                          }`}
+                            : isTarget
+                              ? 'bg-amber-50/30'
+                              : i % 2 === 0
+                                ? 'bg-white'
+                                : 'bg-slate-50/50'
+                        }`}
                       >
                         {/* Level Index */}
                         <td className="py-3 px-3 text-center font-bold text-slate-900 font-mono text-xs border-r border-slate-200 bg-gold-50/30">
-                          <span className={`w-7 h-7 rounded-full font-bold border inline-flex items-center justify-center shadow-2xs ${isCurrent
+                          <span className={`w-7 h-7 rounded-full font-bold border inline-flex items-center justify-center shadow-2xs ${
+                            isCurrentQualified
                               ? 'bg-gold-400 text-slate-950 border-gold-500 font-black'
-                              : 'bg-gold-100/90 text-gold-950 border-gold-300'
-                            }`}>
+                              : isTarget
+                                ? 'bg-amber-200/90 text-amber-950 border-amber-400 font-bold'
+                                : 'bg-gold-100/90 text-gold-950 border-gold-300'
+                          }`}>
                             {r.level}
                           </span>
                         </td>
@@ -611,10 +662,13 @@ export default function Ranks() {
                         {/* Rank Name */}
                         <td className="py-3 px-3.5 border-r border-slate-200">
                           <div className="flex items-center gap-2.5">
-                            <div className={`w-9 h-9 rounded-full border shadow-2xs flex items-center justify-center flex-shrink-0 ${isCurrent
+                            <div className={`w-9 h-9 rounded-full border shadow-2xs flex items-center justify-center flex-shrink-0 ${
+                              isCurrentQualified
                                 ? 'bg-gold-400/30 border-gold-400'
-                                : 'bg-gold-50/90 border-gold-300'
-                              }`}>
+                                : isTarget
+                                  ? 'bg-amber-100 border-amber-300'
+                                  : 'bg-gold-50/90 border-gold-300'
+                            }`}>
                               {getRankIcon(r.level)}
                             </div>
                             <div>
@@ -622,9 +676,14 @@ export default function Ranks() {
                                 <span className="font-bold text-slate-900 text-xs block font-poppins leading-tight">
                                   {r.name}
                                 </span>
-                                {isCurrent && (
+                                {isCurrentQualified && (
                                   <span className="text-[9px] font-black bg-slate-950 text-gold-300 px-2 py-0.5 rounded-full uppercase tracking-wider">
                                     You
+                                  </span>
+                                )}
+                                {isTarget && (
+                                  <span className="text-[9px] font-bold bg-amber-200/80 text-amber-950 border border-amber-300 px-1.5 py-0.2 rounded-full uppercase tracking-wider">
+                                    Target
                                   </span>
                                 )}
                               </div>
@@ -636,27 +695,73 @@ export default function Ranks() {
                         </td>
 
                         {/* Own Deposit */}
-                        <td className="py-3 px-3 text-center font-mono font-bold text-slate-800 text-xs border-r border-slate-200">
-                          ${ownDep.toLocaleString()}
+                        <td className="py-3 px-3 text-center font-mono font-bold text-xs border-r border-slate-200">
+                          <div className="flex flex-col items-center justify-center">
+                            <span className={isOwnDepositMet ? 'text-emerald-700' : 'text-slate-800'}>
+                              ${ownDep.toLocaleString()}
+                            </span>
+                            {isTarget && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full mt-0.5 ${
+                                isOwnDepositMet 
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                  : 'bg-rose-50 text-rose-700 border border-rose-200'
+                              }`}>
+                                {isOwnDepositMet ? '✔ Met' : `Pending ($${Math.max(0, ownDep - userOwnDeposit)})`}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Total Client Deposit */}
-                        <td className="py-3 px-3 text-center font-mono font-black text-slate-950 text-xs border-r border-slate-200">
-                          ${clientDep.toLocaleString()}
+                        <td className="py-3 px-3 text-center font-mono font-bold text-xs border-r border-slate-200">
+                          <div className="flex flex-col items-center justify-center">
+                            <span className={isClientDepositMet ? 'text-emerald-700 font-black' : 'text-slate-950 font-black'}>
+                              ${clientDep.toLocaleString()}
+                            </span>
+                            {isTarget && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full mt-0.5 ${
+                                isClientDepositMet 
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                  : 'bg-rose-50 text-rose-700 border border-rose-200'
+                              }`}>
+                                {isClientDepositMet ? '✔ Met' : `Pending ($${Math.max(0, clientDep - userTurnover).toLocaleString()})`}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Condition */}
                         <td className="py-3 px-3.5 border-r border-slate-200">
-                          <span className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-mono text-[11px] leading-snug">
+                          <span className={`inline-block px-3 py-1 rounded-full border font-mono text-[11px] leading-snug ${
+                            isConditionMet 
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              : 'bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}>
                             {condText}
                           </span>
                         </td>
 
-                        {/* One Time Cash Reward */}
-                        <td className="py-3 px-3 text-center border-r border-slate-200 bg-emerald-50/20">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono font-bold text-xs">
-                            +${rewardAmt.toLocaleString()}
-                          </span>
+                        {/* One Time Cash Reward ($) - DANGER RED when not fulfilled, GREEN when fulfilled */}
+                        <td className={`py-3 px-3 text-center border-r border-slate-200 ${
+                          isTierFulfilled ? 'bg-emerald-50/20' : 'bg-rose-50/25'
+                        }`}>
+                          {isTierFulfilled ? (
+                            <span
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300 font-mono font-bold text-xs shadow-2xs"
+                              title="All conditions fulfilled: +${rewardAmt} Cash Reward Unlocked"
+                            >
+                              <RiCheckLine size={13} className="text-emerald-600" />
+                              +${rewardAmt.toLocaleString()}
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-mono font-bold text-xs shadow-2xs"
+                              title="Locked: Own Deposit, Total Client Deposit & Condition must be fulfilled to unlock"
+                            >
+                              <RiLockLine size={13} className="text-rose-500" />
+                              +${rewardAmt.toLocaleString()}
+                            </span>
+                          )}
                         </td>
 
                         {/* Company Profit %ge */}
@@ -674,26 +779,40 @@ export default function Ranks() {
 
                         {/* Downline Structure required */}
                         <td className="py-3 px-3.5 border-r border-slate-200">
-                          <span className="inline-block px-3 py-1 rounded-full bg-amber-50 text-amber-950 font-medium border border-amber-200 text-[11px] leading-tight">
+                          <span className={`inline-block px-3 py-1 rounded-full font-medium text-[11px] leading-tight border ${
+                            isConditionMet
+                              ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                              : 'bg-amber-50 text-amber-950 border-amber-200'
+                          }`}>
                             {downlineReq}
                           </span>
                         </td>
 
                         {/* Status */}
                         <td className="py-3 px-3 text-center">
-                          {isCurrent ? (
+                          {isCurrentQualified ? (
                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gold-400 text-slate-950 text-xs font-black shadow-2xs border border-gold-500">
                               <RiStarLine size={12} /> Current
                             </span>
-                          ) : isUnlocked ? (
+                          ) : isClaimed ? (
                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
                               <RiCheckLine size={12} /> Claimed
                             </span>
+                          ) : isTarget ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedRankDrawer(r)}
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                              title="Click to view criteria checklist"
+                            >
+                              <RiProgress3Line size={12} className="text-amber-600" /> In Progress
+                            </button>
                           ) : (
                             <button
                               type="button"
                               onClick={() => setSelectedRankDrawer(r)}
                               className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-slate-950 border border-slate-200 text-xs font-bold transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
+                              title="Click to view criteria"
                             >
                               <RiLockLine size={12} /> View Audit
                             </button>
@@ -869,94 +988,128 @@ export default function Ranks() {
           </button>
         }
       >
-        {selectedRankDrawer && (
-          <div className="space-y-5 font-poppins">
-            {/* Header Card */}
-            <div className="p-4 bg-gradient-to-r from-gold-50/80 via-white to-slate-50 rounded-2xl border border-gold-200 flex items-center justify-between shadow-xs">
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-white border border-gold-300 shadow-xs flex items-center justify-center">
-                  {getRankIcon(selectedRankDrawer.level)}
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-gold-700 uppercase tracking-wider">
-                    Leadership Tier L{selectedRankDrawer.level}
-                  </span>
-                  <h4 className="text-lg font-bold text-slate-900 font-display leading-tight">
-                    {selectedRankDrawer.name}
-                  </h4>
-                </div>
-              </div>
-
-              <div className="text-right">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                  Cash Bonus
-                </span>
-                <span className="text-lg font-extrabold text-emerald-600 font-mono">
-                  +${(selectedRankDrawer.reward || 0).toLocaleString()}.00
-                </span>
-              </div>
-            </div>
-
-            {/* Turnover Gap & Estimation Calculation */}
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 text-xs">
-              <h5 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                <RiCalculatorLine size={15} className="text-gold-700" />
-                Personal Milestone Qualification
-              </h5>
-
-              <div className="space-y-2">
-                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-500 font-medium">Your Own Deposit:</span>
-                  <span className="font-mono font-bold text-slate-900">${userOwnDeposit.toLocaleString()}.00 / ${Number(selectedRankDrawer.ownDeposit || 0).toLocaleString()}.00</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-500 font-medium">Your Current Client Turnover:</span>
-                  <span className="font-mono font-bold text-slate-900">${userTurnover.toLocaleString()}.00</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-500 font-medium">Target Client Deposit Required:</span>
-                  <span className="font-mono font-bold text-slate-900">${Number(selectedRankDrawer.totalClientDeposit || selectedRankDrawer.minInvest || 0).toLocaleString()}.00</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-500 font-medium">Required Downline:</span>
-                  <span className="font-bold text-amber-800">{selectedRankDrawer.downlineStructureRequired || '-'}</span>
-                </div>
-                {selectedRankDrawer.companyProfitSharing && selectedRankDrawer.companyProfitSharing !== '0' && (
-                  <div className="flex justify-between py-1 border-b border-slate-200/60">
-                    <span className="text-slate-500 font-medium">Company Profit Sharing & Salary:</span>
-                    <span className="font-bold text-purple-700 text-[11px]">{selectedRankDrawer.companyProfitSharing}</span>
+        {selectedRankDrawer && (() => {
+          const drawerCriteria = checkTierQualification(selectedRankDrawer);
+          return (
+            <div className="space-y-4 font-poppins">
+              {/* Header Card */}
+              <div className="p-4 bg-gradient-to-r from-gold-50/80 via-white to-slate-50 rounded-2xl border border-gold-200 flex items-center justify-between shadow-xs">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-white border border-gold-300 shadow-xs flex items-center justify-center">
+                    {getRankIcon(selectedRankDrawer.level)}
                   </div>
-                )}
-                <div className="flex justify-between py-1">
-                  <span className="text-slate-500 font-medium">Auto-Credit Destination:</span>
-                  <span className="font-bold text-slate-900">Earning Wallet (Instant Withdrawal)</span>
+                  <div>
+                    <span className="text-[10px] font-bold text-gold-700 uppercase tracking-wider">
+                      Leadership Tier L{selectedRankDrawer.level}
+                    </span>
+                    <h4 className="text-lg font-bold text-slate-900 font-display leading-tight">
+                      {selectedRankDrawer.name}
+                    </h4>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                    Cash Bonus
+                  </span>
+                  <span className={`text-lg font-extrabold font-mono ${
+                    drawerCriteria.isTierFulfilled ? 'text-emerald-600' : 'text-rose-600'
+                  }`}>
+                    +${(selectedRankDrawer.reward || 0).toLocaleString()}.00
+                  </span>
                 </div>
               </div>
-            </div>
 
-            {/* 3-Step Unlock Instructions */}
-            <div className="p-4 bg-gold-50/60 rounded-2xl border border-gold-200 space-y-2 text-xs">
-              <h5 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                <RiShieldCheckLine size={15} className="text-gold-700" />
-                How to Unlock This Milestone:
-              </h5>
-              <ul className="space-y-1.5 text-slate-700">
-                <li className="flex items-start gap-2">
-                  <span className="w-4 h-4 rounded-full bg-gold-400 text-slate-950 font-extrabold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
-                  <span>Maintain an active personal deposit of min. ${Number(selectedRankDrawer.ownDeposit || 0).toLocaleString()}.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-4 h-4 rounded-full bg-gold-400 text-slate-950 font-extrabold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                  <span>Build downline structure ({selectedRankDrawer.downlineStructureRequired}) with min. ${Number(selectedRankDrawer.totalClientDeposit || selectedRankDrawer.minInvest || 0).toLocaleString()} volume ({selectedRankDrawer.condition || 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )'}).</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="w-4 h-4 rounded-full bg-gold-400 text-slate-950 font-extrabold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
-                  <span>When conditions are met, +${Number(selectedRankDrawer.reward || 0).toLocaleString()}.00 cash reward is auto-credited to your wallet.</span>
-                </li>
-              </ul>
+              {/* Reward Status Banner */}
+              {drawerCriteria.isTierFulfilled ? (
+                <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-800 flex items-center gap-2 font-medium">
+                  <RiCheckLine size={18} className="text-emerald-600 shrink-0" />
+                  <span><strong>All Conditions Fulfilled!</strong> You are qualified for this +${(selectedRankDrawer.reward || 0).toLocaleString()}.00 One Time Cash Reward.</span>
+                </div>
+              ) : (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2 font-medium">
+                  <RiLockLine size={18} className="text-rose-600 shrink-0" />
+                  <span><strong>One Time Cash Reward Locked:</strong> Jab tak Own Deposit ($), Total Client Deposit ($), aur Condition teeno poori nahi hoti, tab tak +${(selectedRankDrawer.reward || 0).toLocaleString()}.00 cash reward claim nahi hoga.</span>
+                </div>
+              )}
+
+              {/* 3 Conditions Verification Grid */}
+              <div className="space-y-2.5">
+                <h5 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                  <RiCalculatorLine size={15} className="text-gold-700" />
+                  3 Qualification Requirements Checklist
+                </h5>
+
+                {/* 1. Own Deposit */}
+                <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                  drawerCriteria.isOwnDepositMet
+                    ? 'bg-emerald-50/60 border-emerald-300 text-emerald-950'
+                    : 'bg-rose-50/60 border-rose-200 text-rose-950'
+                }`}>
+                  <div>
+                    <span className="font-bold block">1. Own Deposit ($)</span>
+                    <span className="text-[11px] opacity-80">Required: ${drawerCriteria.ownDep.toLocaleString()} | Your: ${userOwnDeposit.toLocaleString()}</span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                    drawerCriteria.isOwnDepositMet
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-rose-100 text-rose-800 border border-rose-300'
+                  }`}>
+                    {drawerCriteria.isOwnDepositMet ? '✔ Met' : `❌ Needs $${Math.max(0, drawerCriteria.ownDep - userOwnDeposit)}`}
+                  </span>
+                </div>
+
+                {/* 2. Total Client Deposit */}
+                <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                  drawerCriteria.isClientDepositMet
+                    ? 'bg-emerald-50/60 border-emerald-300 text-emerald-950'
+                    : 'bg-rose-50/60 border-rose-200 text-rose-950'
+                }`}>
+                  <div>
+                    <span className="font-bold block">2. Total Client Deposit ($)</span>
+                    <span className="text-[11px] opacity-80">Required: ${drawerCriteria.clientDep.toLocaleString()} | Your: ${userTurnover.toLocaleString()}</span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                    drawerCriteria.isClientDepositMet
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-rose-100 text-rose-800 border border-rose-300'
+                  }`}>
+                    {drawerCriteria.isClientDepositMet ? '✔ Met' : `❌ Needs $${Math.max(0, drawerCriteria.clientDep - userTurnover).toLocaleString()}`}
+                  </span>
+                </div>
+
+                {/* 3. Condition (Legs & Downline) */}
+                <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                  drawerCriteria.isConditionMet
+                    ? 'bg-emerald-50/60 border-emerald-300 text-emerald-950'
+                    : 'bg-rose-50/60 border-rose-200 text-rose-950'
+                }`}>
+                  <div>
+                    <span className="font-bold block">3. Condition (Legs & Downline)</span>
+                    <span className="text-[11px] opacity-80">
+                      {selectedRankDrawer.downlineStructureRequired} • Atleast 2 Legs (Your: {userLegs} Legs, {userDirects} Active)
+                    </span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                    drawerCriteria.isConditionMet
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-rose-100 text-rose-800 border border-rose-300'
+                  }`}>
+                    {drawerCriteria.isConditionMet ? '✔ Met' : '❌ Pending'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Profit share if any */}
+              {selectedRankDrawer.companyProfitSharing && selectedRankDrawer.companyProfitSharing !== '0' && (
+                <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-xs flex justify-between items-center">
+                  <span className="font-bold text-purple-950">Company Profit Sharing & Salary:</span>
+                  <span className="font-extrabold text-purple-800 text-[11px]">{selectedRankDrawer.companyProfitSharing}</span>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
       </Modal>
     </div>
   );

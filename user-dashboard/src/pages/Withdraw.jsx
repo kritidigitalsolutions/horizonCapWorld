@@ -19,8 +19,9 @@ import PageHeader from '../components/ui/PageHeader';
 import Modal from '../components/ui/Modal';
 
 const baseWithdrawMethods = [
-  { id: 'usdt-trc20', name: 'USDT (TRC20)', type: 'crypto' },
-  { id: 'btc', name: 'Bitcoin (BTC)', type: 'crypto' },
+  { id: 'usdt-bep20', name: 'USDT (BEP20)', type: 'crypto' },
+  // { id: 'usdt-trc20', name: 'USDT (TRC20)', type: 'crypto' },
+  // { id: 'btc', name: 'Bitcoin (BTC)', type: 'crypto' },
   // { id: 'bank', name: 'Bank Wire Transfer', type: 'bank' },
 ];
 
