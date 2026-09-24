@@ -95,6 +95,7 @@ const {
 const {
   getSupportTickets,
   getTicketById,
+  createTicket,
   replyTicket,
   updateTicketStatus,
   deleteTicket,
@@ -187,6 +188,7 @@ router.delete("/news/:id", protectAdmin, deleteArticle);
 
 // ──────── 10. SUPPORT TICKETS & CHANNELS ────────
 router.get("/support/tickets", protectAdmin, getSupportTickets);
+router.post("/support/tickets", protectAdmin, createTicket);
 router.get("/support/tickets/:id", protectAdmin, getTicketById);
 router.post("/support/tickets/:id/reply", protectAdmin, replyTicket);
 router.put("/support/tickets/:id/status", protectAdmin, updateTicketStatus);

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { sendRegisterOtp } from '../api/authApi';
 import {
   RiUser3Line, RiMailLine, RiLockPasswordLine,
   RiPhoneLine, RiGlobalLine, RiTeamLine,
   RiArrowRightLine, RiEyeLine, RiEyeOffLine,
-  RiShieldCheckLine, RiCheckLine,
+  RiShieldCheckLine, RiCheckLine, RiMailSendLine,
+  RiRefreshLine, RiArrowLeftLine, RiCloseLine
 } from 'react-icons/ri';
 
 import PhoneInput, { getCountries, getCountryCallingCode } from 'react-phone-number-input';
@@ -95,6 +97,23 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // 2FA Email OTP Verification State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [otpSuccess, setOtpSuccess] = useState('');
+  const [countdown, setCountdown] = useState(0);
+
+  // Countdown timer effect
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setInterval(() => setCountdown(c => c - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [countdown]);
+
   // Helper to update phone field country code and flag
   const updatePhoneForCountry = (countryObj) => {
     setSelectedCountry(countryObj.code);
@@ -114,7 +133,7 @@ export default function Register() {
       return {
         ...p,
         countryCode: countryObj.code,
-        phone: updatedPhone,
+        phone: updatedPhone.slice(0, 16),
       };
     });
     setError('');
@@ -125,7 +144,6 @@ export default function Register() {
     const val = e.target.value;
     setForm(p => ({ ...p, country: val }));
 
-    // Automatically detect and change phone country code when user types country
     const matched = findCountryMatch(val);
     if (matched) {
       updatePhoneForCountry(matched);
@@ -158,6 +176,7 @@ export default function Register() {
     setError('');
   };
 
+  // Step 1: Submit Details & Request 2FA Email OTP
   const handleSubmit = async (e) => {
     e.preventDefault();
     const uname = (form.userName || form.fullName || '').trim();
@@ -173,19 +192,107 @@ export default function Register() {
       setError('Passwords do not match');
       return;
     }
+
+    const digitsOnly = form.phone.replace(/[^\d]/g, '');
+    if (digitsOnly.length < 7) {
+      setError('Please enter a valid mobile number with country code (min 7 digits).');
+      return;
+    }
+    if (digitsOnly.length > 15) {
+      setError('Phone number cannot exceed 15 digits according to international standard.');
+      return;
+    }
+
     setError('');
     setLoading(true);
+
+    try {
+      const res = await sendRegisterOtp({
+        name: uname,
+        fullName: uname,
+        userName: uname,
+        email: form.email.trim(),
+        phone: form.phone.trim().slice(0, 16),
+        password: form.password,
+        country: form.country,
+        sponsorId: form.sponsorId,
+      });
+
+      if (res?.success) {
+        setShowOtpModal(true);
+        setCountdown(60);
+        setOtp('');
+        setOtpError('');
+        setOtpSuccess(`A 6-digit verification code has been dispatched to ${form.email}.`);
+      } else {
+        setError(res?.message || 'Failed to dispatch verification code. Please check your email.');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to send verification code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2: Verify 2FA Registration OTP & Finalize Account Creation
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (otp.trim().length !== 6) {
+      setOtpError('Please enter the 6-digit code received on your email.');
+      return;
+    }
+
+    setOtpError('');
+    setOtpSuccess('');
+    setOtpLoading(true);
+
+    const uname = (form.userName || form.fullName || '').trim();
     const res = await register({
       ...form,
       name: uname,
       fullName: uname,
       userName: uname,
+      otp: otp.trim(),
     });
-    setLoading(false);
+
+    setOtpLoading(false);
     if (res?.success) {
       navigate('/');
     } else {
-      setError(res?.message || 'Registration failed. Please try again.');
+      setOtpError(res?.message || 'Invalid or expired 6-digit code. Please try again.');
+    }
+  };
+
+  // Resend Registration 2FA OTP
+  const handleResendOtp = async () => {
+    if (countdown > 0) return;
+    setOtpError('');
+    setOtpSuccess('');
+    setOtpLoading(true);
+
+    try {
+      const uname = (form.userName || form.fullName || '').trim();
+      const res = await sendRegisterOtp({
+        name: uname,
+        fullName: uname,
+        userName: uname,
+        email: form.email.trim(),
+        phone: form.phone.trim().slice(0, 16),
+        password: form.password,
+        country: form.country,
+        sponsorId: form.sponsorId,
+      });
+
+      if (res?.success) {
+        setCountdown(60);
+        setOtpSuccess(`A fresh verification code has been sent to ${form.email}.`);
+      } else {
+        setOtpError(res?.message || 'Failed to resend verification code.');
+      }
+    } catch (err) {
+      setOtpError(err.response?.data?.message || err.message || 'Error resending code.');
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -216,7 +323,7 @@ export default function Register() {
             <span className="text-gradient-gold">Horizon Cap Worlds.</span>
           </h2>
           <p className="text-slate-600 text-base leading-relaxed max-w-md font-poppins">
-            Horizon Cap Worlds members earn daily profit from real solar power plants across four continents. Login to see your live dashboard.
+            Horizon Cap Worlds members earn daily profit from real solar power plants across four continents. Register and complete 2-step verification to access your live dashboard.
           </p>
 
           {/* Stats */}
@@ -251,7 +358,7 @@ export default function Register() {
           </div>
 
           <h2 className="text-2xl font-bold font-display text-slate-900 mb-1">Create your account</h2>
-          <p className="text-sm text-slate-500 mb-6 font-poppins">Register to start investing and earning. It takes under a minute.</p>
+          <p className="text-sm text-slate-500 mb-6 font-poppins">Register to start investing and earning. A 6-digit email OTP will verify your account.</p>
 
           {error && (
             <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-poppins">
@@ -322,19 +429,29 @@ export default function Register() {
               
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 mb-1.5 block font-poppins">Mobile Number</label>
+                  <label className="text-xs font-semibold text-slate-700 mb-1.5 block font-poppins">
+                    Mobile Number <span className="text-[10px] text-slate-400">(Max 15 digits)</span>
+                  </label>
                   <div className="relative">
                     <PhoneInput
                       international
                       country={selectedCountry}
                       value={form.phone}
                       onChange={(val) => {
-                        setForm(p => ({ ...p, phone: val || '' }));
+                        // Max 16 characters (+ dial code and up to 15 digits ITU-T standard)
+                        const cleanVal = (val || '').slice(0, 16);
+                        setForm(p => ({ ...p, phone: cleanVal }));
                         setError('');
                       }}
                       onCountryChange={handlePhoneCountryChange}
                       placeholder="+91"
                       className="custom-phone-input font-poppins"
+                      limitMaxLength={true}
+                      maxLength={16}
+                      numberInputProps={{
+                        maxLength: 16,
+                        className: "font-poppins text-sm",
+                      }}
                     />
                   </div>
                 </div>
@@ -383,15 +500,17 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn btn-primary text-base py-3.5 rounded-xl font-bold"
+              className="w-full btn btn-primary text-base py-3.5 rounded-xl font-bold cursor-pointer transition-all"
             >
               {loading ? (
-                <span className="flex items-center gap-2">
+                <span className="flex items-center justify-center gap-2">
                   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  Creating Account...
+                  Sending Verification OTP...
                 </span>
               ) : (
-                <>Register <RiArrowRightLine size={18} /></>
+                <span className="flex items-center justify-center gap-2">
+                  Create Account <RiArrowRightLine size={18} />
+                </span>
               )}
             </button>
           </form>
@@ -405,10 +524,111 @@ export default function Register() {
           {/* Security footer */}
           <div className="flex items-center justify-center gap-2 mt-4 text-[11px] text-slate-400 font-poppins">
             <RiShieldCheckLine size={14} className="text-emerald-500" />
-            <span>256-bit transport · cold isolated · audited weekly</span>
+            <span>256-bit SSL encrypted · Gmail 2FA protected</span>
           </div>
         </div>
       </div>
+
+      {/* ──────── 2FA OTP MODAL ──────── */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative">
+            <button
+              onClick={() => setShowOtpModal(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+            >
+              <RiCloseLine size={20} />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 rounded-full bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                <RiMailSendLine size={28} />
+              </div>
+              <h3 className="text-xl font-bold font-display text-slate-900">
+                Verify Your Email
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 font-poppins">
+                We sent a 6-digit verification code to
+              </p>
+              <p className="text-sm font-semibold text-slate-800 mt-0.5 font-poppins">
+                {form.email}
+              </p>
+            </div>
+
+            {otpSuccess && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-poppins">
+                {otpSuccess}
+              </div>
+            )}
+
+            {otpError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-poppins">
+                {otpError}
+              </div>
+            )}
+
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 mb-2 block font-poppins text-center">
+                  Enter 6-Digit Passcode
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setOtp(clean);
+                    setOtpError('');
+                  }}
+                  placeholder="000000"
+                  autoFocus
+                  className="w-full text-center text-3xl font-mono font-bold tracking-[0.4em] py-3 px-4 rounded-xl border-2 border-slate-200 focus:border-gold-500 focus:ring-4 focus:ring-gold-500/10 outline-none transition-all"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={otpLoading || otp.length !== 6}
+                className="w-full btn btn-primary text-base py-3.5 rounded-xl font-bold disabled:opacity-50 cursor-pointer transition-all"
+              >
+                {otpLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                    Verifying & Creating Account...
+                  </span>
+                ) : (
+                  <span>Verify & Complete Registration</span>
+                )}
+              </button>
+
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowOtpModal(false)}
+                  className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 font-poppins"
+                >
+                  <RiArrowLeftLine size={14} /> Back to details
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={countdown > 0 || otpLoading}
+                  className={`text-xs font-semibold font-poppins flex items-center gap-1 ${
+                    countdown > 0
+                      ? 'text-slate-400 cursor-not-allowed'
+                      : 'text-gold-600 hover:text-gold-700 cursor-pointer'
+                  }`}
+                >
+                  <RiRefreshLine size={14} className={otpLoading ? 'animate-spin' : ''} />
+                  {countdown > 0 ? `Resend Code in ${countdown}s` : 'Resend Code'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

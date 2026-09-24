@@ -1,16 +1,17 @@
 const bcrypt = require("bcrypt");
 const User = require("../../models/User");
+const PendingRegistration = require("../../models/PendingRegistration");
 const { generateToken } = require("../../utils/jwt");
 const { syncUserStreamingEarnings } = require("../../utils/yieldAndAffiliateEngine");
-const { sendOtpEmail, sendPasswordResetConfirmation } = require("../../utils/emailService");
+const { sendOtpEmail, sendWelcomeEmail, sendPasswordResetConfirmation } = require("../../utils/emailService");
 const { notifyUser } = require("../../utils/notificationService");
 
-// @desc    Register a new User
-// @route   POST /api/user/auth/register
-exports.register = async (req, res) => {
+// @desc    Send OTP for User Registration (2FA Verification)
+// @route   POST /api/user/auth/send-register-otp
+exports.sendRegisterOtp = async (req, res) => {
   try {
-    const { name: rawName, fullName, email, phone, password, country, sponsorId } = req.body;
-    const name = (rawName || fullName || "").trim();
+    const { name: rawName, fullName, userName, email, phone, password, country, sponsorId } = req.body;
+    const name = (rawName || fullName || userName || "").trim();
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -19,12 +20,132 @@ exports.register = async (req, res) => {
       });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters long.",
+      });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: "An account with this email address already exists.",
+        message: "An account with this email address already exists. Please log in.",
       });
+    }
+
+    // Hash Password for safe pending storage
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    // Store in PendingRegistration
+    await PendingRegistration.findOneAndUpdate(
+      { email: cleanEmail },
+      {
+        name,
+        email: cleanEmail,
+        phone: phone ? phone.trim().slice(0, 16) : "",
+        password: hashedPassword,
+        country: country || "United States",
+        sponsorId: sponsorId ? sponsorId.trim() : "HORIZON-HQ",
+        otp,
+        otpExpires,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    // Send 6-digit verification code to the email the user provided
+    await sendOtpEmail({
+      to: cleanEmail,
+      name,
+      otp,
+      purpose: "Account Registration & Email Verification",
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `A 6-digit verification code has been dispatched to ${cleanEmail}.`,
+      email: cleanEmail,
+    });
+  } catch (error) {
+    console.error("[sendRegisterOtp Error]:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Register a new User (Verifies OTP from PendingRegistration or creates user)
+// @route   POST /api/user/auth/register
+exports.register = async (req, res) => {
+  try {
+    const { name: rawName, fullName, userName, email, phone, password, country, sponsorId, otp } = req.body;
+    const cleanEmail = (email || "").toLowerCase().trim();
+
+    if (!cleanEmail) {
+      return res.status(400).json({ success: false, message: "Email is required." });
+    }
+
+    const existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "An account with this email address already exists. Please log in.",
+      });
+    }
+
+    let finalName = (rawName || fullName || userName || "").trim();
+    let finalPhone = phone ? phone.trim().slice(0, 16) : "";
+    let finalHashedPassword = "";
+    let finalCountry = country || "United States";
+    let finalSponsorId = sponsorId ? sponsorId.trim() : "HORIZON-HQ";
+
+    // If OTP is provided, check PendingRegistration
+    if (otp) {
+      const pending = await PendingRegistration.findOne({ email: cleanEmail });
+      if (!pending) {
+        return res.status(400).json({
+          success: false,
+          message: "Registration session expired or not found. Please request a new OTP.",
+        });
+      }
+
+      if (pending.otp !== otp.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid 6-digit verification code. Please check your email inbox.",
+        });
+      }
+
+      if (pending.otpExpires && new Date() > pending.otpExpires) {
+        return res.status(400).json({
+          success: false,
+          message: "Verification code has expired. Please request a new code.",
+        });
+      }
+
+      finalName = pending.name || finalName;
+      finalPhone = pending.phone || finalPhone;
+      finalHashedPassword = pending.password;
+      finalCountry = pending.country || finalCountry;
+      finalSponsorId = pending.sponsorId || finalSponsorId;
+
+      // Delete pending record
+      await PendingRegistration.deleteOne({ _id: pending._id });
+    } else {
+      // If no OTP provided, require password and create hash
+      if (!finalName || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Please complete the verification step with your 6-digit code.",
+        });
+      }
+      const salt = await bcrypt.genSalt(10);
+      finalHashedPassword = await bcrypt.hash(password, salt);
     }
 
     // Auto-generate Unique Custom ID (e.g. HORIZON-USR-428)
@@ -33,9 +154,9 @@ exports.register = async (req, res) => {
     const customId = `HORIZON-USR-${String(count + 1).padStart(2, "0")}${randomSuffix}`;
 
     // Verify or default sponsor
-    let finalSponsorId = "HORIZON-HQ";
-    if (sponsorId && sponsorId.trim()) {
-      const cleanSponsor = sponsorId.trim();
+    let verifiedSponsorId = "HORIZON-HQ";
+    if (finalSponsorId && finalSponsorId.trim()) {
+      const cleanSponsor = finalSponsorId.trim();
       const sponsor = await User.findOne({
         $or: [
           { customId: { $regex: `^${cleanSponsor}$`, $options: "i" } },
@@ -44,38 +165,34 @@ exports.register = async (req, res) => {
         ],
       });
       if (sponsor) {
-        finalSponsorId = sponsor.customId;
+        verifiedSponsorId = sponsor.customId;
         sponsor.totalReferrals = (sponsor.totalReferrals || 0) + 1;
         sponsor.directReferrals = (sponsor.directReferrals || 0) + 1;
         await sponsor.save();
 
         // Automated downline join alert to sponsor
-        await notifyUser({
+        notifyUser({
           userId: sponsor._id,
           title: "New Downline Partner Joined",
-          message: `Investor ${name.trim()} (${email.toLowerCase().trim()}) has joined your direct affiliate team!`,
+          message: `Investor ${finalName} (${cleanEmail}) has joined your direct affiliate team!`,
           category: "REFERRAL",
           type: "downline_join",
           priority: "NORMAL",
           actionUrl: "/referrals",
-          metadata: { newUserName: name.trim(), newUserCustomId: customId },
+          metadata: { newUserName: finalName, newUserCustomId: customId },
           settingKey: "autoDownlineJoins",
-        });
+        }).catch((err) => console.warn("[Notify Sponsor Warning]:", err.message));
       }
     }
 
-    // Hash Password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
     const newUser = await User.create({
       customId,
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      phone: phone ? phone.trim() : "",
-      password: hashedPassword,
-      country: country || "United States",
-      sponsorId: finalSponsorId,
+      name: finalName,
+      email: cleanEmail,
+      phone: finalPhone,
+      password: finalHashedPassword,
+      country: finalCountry,
+      sponsorId: verifiedSponsorId,
       currentRank: "Starter",
       rankLevel: 1,
       depositWallet: 0,
@@ -89,11 +206,12 @@ exports.register = async (req, res) => {
       dailyEarning: 0,
       perSecondRate: 0,
       payoutType: "Per Second (Live)",
+      is2FAEnabled: true,
       status: "Active",
     });
 
     // Welcome notification to new user
-    await notifyUser({
+    notifyUser({
       userId: newUser._id,
       title: "Welcome to Horizon Capital Worlds",
       message: "Your investor portfolio has been initialized. Fund your wallet or activate an investment plan to start streaming live returns.",
@@ -101,7 +219,15 @@ exports.register = async (req, res) => {
       type: "welcome_notice",
       priority: "HIGH",
       actionUrl: "/plans",
-    });
+    }).catch((err) => console.warn("[Notify User Warning]:", err.message));
+
+    // Send Welcome Email via Nodemailer SMTP
+    sendWelcomeEmail({
+      to: newUser.email,
+      name: newUser.name,
+      customId: newUser.customId,
+      sponsorId: newUser.sponsorId,
+    }).catch((err) => console.warn("[Welcome Email Warning]:", err.message));
 
     const token = generateToken(newUser._id, "USER");
 
@@ -134,11 +260,12 @@ exports.register = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("[register Error]:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    User Login
+// @desc    User Login (Mandatory 2FA Email OTP Verification)
 // @route   POST /api/user/auth/login
 exports.login = async (req, res) => {
   try {
@@ -181,49 +308,49 @@ exports.login = async (req, res) => {
       });
     }
 
-    // ──────── 2FA CHECK ────────
-    if (user.is2FAEnabled) {
-      if (!otp) {
-        // Generate and dispatch OTP
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        user.otp = code;
-        user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
-        user.otpPurpose = "2FA_LOGIN";
-        await user.save();
+    // ──────── 2FA CHECK (MANDATORY FOR ALL USERS) ────────
+    if (!otp) {
+      // Generate and dispatch OTP to user's registered email
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      user.otp = code;
+      user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+      user.otpPurpose = "2FA_LOGIN";
+      user.is2FAEnabled = true;
+      await user.save();
 
-        await sendOtpEmail({
-          to: user.email,
-          name: user.name,
-          otp: code,
-          purpose: "Investor Portal 2-Step Login Verification",
+      await sendOtpEmail({
+        to: user.email,
+        name: user.name,
+        otp: code,
+        purpose: "Investor Portal 2-Step Login Verification",
+      });
+
+      return res.status(200).json({
+        success: true,
+        require2FA: true,
+        message: `A 6-digit security code has been sent to ${user.email}.`,
+        email: user.email,
+      });
+    } else {
+      // Validate OTP
+      if (!user.otp || user.otp !== otp.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid 6-digit 2FA code entered. Please check your email.",
         });
-
-        return res.status(200).json({
-          success: true,
-          require2FA: true,
-          message: `A 6-digit security code has been sent to ${user.email}.`,
-          email: user.email,
-        });
-      } else {
-        // Validate OTP
-        if (!user.otp || user.otp !== otp.trim()) {
-          return res.status(400).json({
-            success: false,
-            message: "Invalid 6-digit 2FA code entered. Please check your email.",
-          });
-        }
-        if (user.otpExpires && new Date() > user.otpExpires) {
-          return res.status(400).json({
-            success: false,
-            message: "2FA code has expired. Please request a new code.",
-          });
-        }
-
-        user.otp = null;
-        user.otpExpires = null;
-        user.otpPurpose = null;
-        await user.save();
       }
+      if (user.otpExpires && new Date() > user.otpExpires) {
+        return res.status(400).json({
+          success: false,
+          message: "2FA code has expired. Please request a new code.",
+        });
+      }
+
+      user.otp = null;
+      user.otpExpires = null;
+      user.otpPurpose = null;
+      user.is2FAEnabled = true;
+      await user.save();
     }
 
     // Synchronize latest per-second streaming ROI earnings upon login

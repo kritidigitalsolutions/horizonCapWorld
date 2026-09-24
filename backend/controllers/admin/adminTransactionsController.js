@@ -2,6 +2,7 @@ const Transaction = require("../../models/Transaction");
 const User = require("../../models/User");
 const UserInvestment = require("../../models/UserInvestment");
 const { notifyUser, notifyAdmin } = require("../../utils/notificationService");
+const { sendDepositEmail, sendWithdrawalEmail } = require("../../utils/emailService");
 
 // @desc    Get All Transactions with filters (Tab, Search, Date Range, Pagination)
 // @route   GET /api/admin/transactions
@@ -135,9 +136,11 @@ exports.approveTransaction = async (req, res) => {
 
     // If Deposit, credit user depositWallet & trigger automated notification asynchronously
     if (transaction.type === "Deposit" && transaction.user) {
-      await User.findByIdAndUpdate(transaction.user, {
-        $inc: { depositWallet: transaction.amount },
-      });
+      const depositUser = await User.findByIdAndUpdate(
+        transaction.user,
+        { $inc: { depositWallet: transaction.amount } },
+        { new: true }
+      );
       notifyUser({
         userId: transaction.user,
         title: "Deposit Approved & Vault Credited",
@@ -149,6 +152,17 @@ exports.approveTransaction = async (req, res) => {
         metadata: { amount: transaction.amount, transactionId: transaction.customId },
         settingKey: "autoDepositApproval",
       }).catch((err) => console.warn("[Notification] Deposit approved notice warning:", err.message));
+
+      if (depositUser) {
+        sendDepositEmail({
+          to: depositUser.email,
+          name: depositUser.name,
+          amount: transaction.amount,
+          gateway: transaction.gateway || "Vault",
+          transactionId: transaction.customId,
+          status: "Approved",
+        }).catch((err) => console.warn("[Deposit Approved Email Warning]:", err.message));
+      }
     }
 
     // If Withdrawal, ensure 3X Cap blocking logic is checked & trigger automated notification asynchronously
@@ -199,6 +213,18 @@ exports.approveTransaction = async (req, res) => {
         metadata: { amount: transaction.amount, transactionId: transaction.customId },
         settingKey: "autoWithdrawalBroadcast",
       }).catch((err) => console.warn("[Notification] Withdrawal approved notice warning:", err.message));
+
+      sendWithdrawalEmail({
+        to: user.email,
+        name: user.name,
+        amount: transaction.amount,
+        netAmount: transaction.netAmount,
+        fee: transaction.fee,
+        gateway: transaction.gateway || "Blockchain",
+        destination: transaction.referenceNo || "Designated Destination",
+        transactionId: transaction.customId,
+        status: "Approved",
+      }).catch((err) => console.warn("[Withdrawal Approved Email Warning]:", err.message));
     }
 
     res.status(200).json({

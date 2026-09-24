@@ -1,6 +1,8 @@
 const SupportTicket = require("../../models/SupportTicket");
 const SupportChannel = require("../../models/SupportChannel");
+const User = require("../../models/User");
 const { notifyUser } = require("../../utils/notificationService");
+const { sendTicketEmail } = require("../../utils/emailService");
 
 // @desc    Get All Support Tickets
 // @route   GET /api/admin/support/tickets
@@ -24,7 +26,7 @@ exports.getSupportTickets = async (req, res) => {
     }
 
     const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 20;
+    const limitNum = parseInt(limit, 10) || 500;
     const skip = (pageNum - 1) * limitNum;
 
     const total = await SupportTicket.countDocuments(query);
@@ -33,9 +35,51 @@ exports.getSupportTickets = async (req, res) => {
       .skip(skip)
       .limit(limitNum);
 
+    const totalAll = await SupportTicket.countDocuments();
     const openCount = await SupportTicket.countDocuments({ status: "Open" });
     const inProgressCount = await SupportTicket.countDocuments({ status: "In Progress" });
     const resolvedCount = await SupportTicket.countDocuments({ status: { $in: ["Resolved", "Closed"] } });
+    const resolutionRate = totalAll > 0 ? Number(((resolvedCount / totalAll) * 100).toFixed(1)) : 100;
+
+    // Calculate real dynamic first response time from replied tickets
+    const ticketsWithReplies = await SupportTicket.find({
+      "messages.sender": { $in: ["admin", "support"] },
+    }).select("createdAt messages").limit(50);
+
+    let avgResponseTimeMinutes = 12;
+    if (ticketsWithReplies.length > 0) {
+      let totalMinutes = 0;
+      let countWithReplies = 0;
+      for (const t of ticketsWithReplies) {
+        const adminMsg = t.messages.find((m) => m.sender === "admin" || m.sender === "support");
+        if (adminMsg && adminMsg.createdAt && t.createdAt) {
+          const diffMs = new Date(adminMsg.createdAt) - new Date(t.createdAt);
+          if (diffMs > 0) {
+            totalMinutes += diffMs / (1000 * 60);
+            countWithReplies++;
+          }
+        }
+      }
+      if (countWithReplies > 0) {
+        avgResponseTimeMinutes = Math.max(1, Math.round(totalMinutes / countWithReplies));
+      }
+    } else if (totalAll === 0) {
+      avgResponseTimeMinutes = 0;
+    }
+
+    // Dynamic weekly trend
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const ticketsLast7Days = await SupportTicket.countDocuments({ createdAt: { $gte: sevenDaysAgo } });
+    const ticketsPrev7Days = await SupportTicket.countDocuments({ createdAt: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo } });
+    let ticketTrend = "0%";
+    if (ticketsPrev7Days > 0) {
+      const diff = (((ticketsLast7Days - ticketsPrev7Days) / ticketsPrev7Days) * 100).toFixed(1);
+      ticketTrend = `${diff >= 0 ? "+" : ""}${diff}%`;
+    } else if (ticketsLast7Days > 0) {
+      ticketTrend = `+${ticketsLast7Days} this week`;
+    }
 
     res.status(200).json({
       success: true,
@@ -46,6 +90,16 @@ exports.getSupportTickets = async (req, res) => {
       page: pageNum,
       totalPages: Math.ceil(total / limitNum) || 1,
       tickets,
+      stats: {
+        total: totalAll,
+        open: openCount,
+        inProgress: inProgressCount,
+        pending: openCount + inProgressCount,
+        resolved: resolvedCount,
+        resolutionRate,
+        avgResponseTimeMinutes,
+        trend: ticketTrend,
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -126,6 +180,21 @@ exports.replyTicket = async (req, res) => {
         metadata: { ticketId: ticket.customId, subject: ticket.subject },
         settingKey: "autoTicketReplies",
       });
+
+      const recipientEmail = ticket.userEmail || (await User.findById(ticket.user))?.email;
+      if (recipientEmail) {
+        sendTicketEmail({
+          to: recipientEmail,
+          name: ticket.userName || "Investor",
+          ticketId: ticket.ticketId || ticket.customId || ticket._id,
+          subject: ticket.subject,
+          category: ticket.category,
+          message: ticket.messages[0]?.text || "",
+          status: ticket.status,
+          isReply: true,
+          replyText: text.trim(),
+        }).catch((err) => console.warn("[Support Reply Email Warning]:", err.message));
+      }
     }
 
     res.status(200).json({
@@ -213,6 +282,82 @@ exports.deleteTicket = async (req, res) => {
   }
 };
 
+// @desc    Admin Create Support Ticket on Behalf of User
+// @route   POST /api/admin/support/tickets
+exports.createTicket = async (req, res) => {
+  try {
+    const { userId, subject, category, priority, message, attachments } = req.body;
+
+    if (!subject || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Subject and message description are required.",
+      });
+    }
+
+    const User = require("../../models/User");
+    let targetUser = null;
+    if (userId) {
+      targetUser = await User.findOne({
+        $or: [
+          { _id: /^[0-9a-fA-F]{24}$/.test(userId) ? userId : null },
+          { customId: userId },
+          { email: userId },
+        ].filter(Boolean),
+      });
+    }
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+
+    const newTicket = await SupportTicket.create({
+      ticketId: `TCK-${randomNum}`,
+      user: targetUser?._id || null,
+      userName: targetUser?.name || "Investor",
+      customId: targetUser?.customId || "HORIZON-USR-01",
+      userEmail: targetUser?.email || "",
+      subject: subject.trim(),
+      category: category || "General Support",
+      priority: priority || "Medium",
+      status: "Open",
+      messages: [
+        {
+          sender: "admin",
+          senderName: "Helpdesk Admin",
+          text: message.trim(),
+          attachments: Array.isArray(attachments) ? attachments : [],
+          time: timeStr,
+          createdAt: now,
+        },
+      ],
+      lastUpdated: "Just now",
+    });
+
+    if (targetUser) {
+      try {
+        await notifyUser({
+          userId: targetUser._id,
+          title: "New Support Ticket Created",
+          message: `Admin opened support ticket #${newTicket.ticketId}: "${subject}"`,
+          type: "Support",
+          referenceId: newTicket._id,
+        });
+      } catch (err) {
+        console.warn("Failed to notify user on admin ticket creation:", err.message);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Support ticket #${newTicket.ticketId} created successfully.`,
+      ticket: newTicket,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // ──────── SUPPORT CHANNELS MANAGEMENT ────────
 
 // @desc    Get All Support Channels
@@ -220,7 +365,28 @@ exports.deleteTicket = async (req, res) => {
 exports.getChannels = async (req, res) => {
   try {
     const channels = await SupportChannel.find().sort({ createdAt: -1 });
-    res.status(200).json({ success: true, count: channels.length, channels });
+    const User = require("../../models/User");
+    const totalUsers = await User.countDocuments();
+    const activeChannelsCount = channels.filter(c => c.status === "Active").length;
+    const instantChatCount = channels.filter(c => 
+      c.category === "Instant Chat" || 
+      c.category === "Telegram" || 
+      (c.hours && c.hours.includes("24/7"))
+    ).length;
+    const distinctPlatforms = new Set(channels.map(c => c.platform)).size;
+
+    res.status(200).json({ 
+      success: true, 
+      count: channels.length, 
+      channels,
+      stats: {
+        totalChannels: channels.length,
+        activeChannels: activeChannelsCount,
+        liveChatCoverage: instantChatCount,
+        distinctPlatforms,
+        totalCommunityMembers: totalUsers,
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

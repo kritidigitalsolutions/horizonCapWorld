@@ -5,6 +5,7 @@ const { protectUser, optionalUserAuth } = require("../middlewares/auth");
 
 // Controllers
 const {
+  sendRegisterOtp,
   register,
   login,
   sendLogin2FAOtp,
@@ -63,6 +64,7 @@ const {
 } = require("../controllers/user/userContentController");
 
 // ──────── 1. AUTHENTICATION & PROFILE ────────
+router.post("/auth/send-register-otp", sendRegisterOtp);
 router.post("/auth/register", register);
 router.post("/auth/login", login);
 router.post("/auth/login-2fa-otp", sendLogin2FAOtp);

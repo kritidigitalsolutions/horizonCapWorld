@@ -4,6 +4,7 @@ const WithdrawalVideo = require("../../models/WithdrawalVideo");
 const SupportChannel = require("../../models/SupportChannel");
 const SupportTicket = require("../../models/SupportTicket");
 const User = require("../../models/User");
+const { sendTicketEmail } = require("../../utils/emailService");
 
 // @desc    Get Published News & Media Articles
 // @route   GET /api/user/news
@@ -136,6 +137,18 @@ exports.createSupportTicket = async (req, res) => {
       ],
       lastUpdated: "Just now",
     });
+
+    // Send Ticket Creation Email to User
+    sendTicketEmail({
+      to: user.email,
+      name: user.name,
+      ticketId: newTicket.ticketId,
+      subject: newTicket.subject,
+      category: newTicket.category,
+      message,
+      status: "Open",
+      isReply: false,
+    }).catch((err) => console.warn("[Ticket Email Warning]:", err.message));
 
     res.status(201).json({
       success: true,

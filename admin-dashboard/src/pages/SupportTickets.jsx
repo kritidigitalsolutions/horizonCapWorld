@@ -20,6 +20,7 @@ import PageHeader from '../components/ui/PageHeader';
 import MediaViewerModal, { getMediaType } from '../components/ui/MediaViewerModal';
 import {
   getSupportTickets,
+  createSupportTicket,
   replyTicket,
   updateTicketStatus,
   deleteTicket
@@ -32,6 +33,7 @@ export default function SupportTickets() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
+  const [ticketStats, setTicketStats] = useState(null);
   const [usersList, setUsersList] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -73,32 +75,39 @@ export default function SupportTickets() {
         search: search.trim() || undefined,
       });
 
-      if (res?.success && Array.isArray(res.tickets)) {
-        const formatted = res.tickets.map(t => ({
-          _id: t._id,
-          id: t.customId || t._id,
-          customId: t.userCustomId || '',
-          userName: t.userName || t.user?.name || 'Investor',
-          userEmail: t.userEmail || t.user?.email || '',
-          userPhone: t.userPhone || '',
-          userRank: t.userRank || 'Starter',
-          userAvatar: (t.userName || 'Investor').split(' ').map(n => n[0]).join(''),
-          subject: t.subject,
-          category: t.category || 'General Support',
-          priority: t.priority || 'Medium',
-          status: t.status || 'Open',
-          createdAt: t.createdAt ? t.createdAt.split('T')[0] : 'Just now',
-          lastActivity: t.lastUpdated || 'Just now',
-          messages: Array.isArray(t.messages) ? t.messages.map(m => ({
-            id: m._id || `msg-${Date.now()}`,
-            sender: m.sender || 'user',
-            senderName: m.senderName || 'Investor',
-            time: m.time || 'Just now',
-            text: m.text || '',
-            attachments: m.attachments || []
-          })) : []
-        }));
-        setTickets(formatted);
+      if (res?.success) {
+        if (res.stats) {
+          setTicketStats(res.stats);
+        }
+        if (Array.isArray(res.tickets)) {
+          const formatted = res.tickets.map(t => ({
+            _id: t._id,
+            id: t.customId || t._id,
+            customId: t.userCustomId || '',
+            userName: t.userName || t.user?.name || 'Investor',
+            userEmail: t.userEmail || t.user?.email || '',
+            userPhone: t.userPhone || '',
+            userRank: t.userRank || 'Starter',
+            userAvatar: (t.userName || 'Investor').split(' ').map(n => n[0]).join(''),
+            subject: t.subject,
+            category: t.category || 'General Support',
+            priority: t.priority || 'Medium',
+            status: t.status || 'Open',
+            createdAt: t.createdAt ? t.createdAt.split('T')[0] : 'Just now',
+            lastActivity: t.lastUpdated || 'Just now',
+            messages: Array.isArray(t.messages) ? t.messages.map(m => ({
+              id: m._id || `msg-${Date.now()}`,
+              sender: m.sender || 'user',
+              senderName: m.senderName || 'Investor',
+              time: m.time || 'Just now',
+              text: m.text || '',
+              attachments: m.attachments || []
+            })) : []
+          }));
+          setTickets(formatted);
+        } else {
+          setTickets([]);
+        }
       } else {
         setTickets([]);
       }
@@ -233,53 +242,42 @@ export default function SupportTickets() {
     return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
   });
 
-  // KPI Calculations
-  const totalCount = tickets.length;
-  const openCount = tickets.filter(t => t.status === 'Open').length;
-  const inProgressCount = tickets.filter(t => t.status === 'In Progress').length;
-  const resolvedCount = tickets.filter(t => t.status === 'Resolved' || t.status === 'Closed').length;
+  // Real-time dynamic KPI Calculations
+  const totalCount = ticketStats?.total ?? tickets.length;
+  const openCount = ticketStats?.open ?? tickets.filter(t => t.status === 'Open').length;
+  const inProgressCount = ticketStats?.inProgress ?? tickets.filter(t => t.status === 'In Progress').length;
+  const resolvedCount = ticketStats?.resolved ?? tickets.filter(t => t.status === 'Resolved' || t.status === 'Closed').length;
+  const resolutionRate = ticketStats?.resolutionRate ?? (totalCount > 0 ? Number(((resolvedCount / totalCount) * 100).toFixed(1)) : 100);
+  const avgResponseMins = ticketStats?.avgResponseTimeMinutes ?? 12;
+  const inquiryTrend = ticketStats?.trend || `${totalCount > 0 ? `${openCount} Open • ${resolvedCount} Resolved` : 'No active inquiries'}`;
 
-  // Create New Ticket
-  const handleCreateTicket = (e) => {
+  // Create New Ticket (Persisted directly to MongoDB)
+  const handleCreateTicket = async (e) => {
     e.preventDefault();
     if (!newTicketSubject.trim() || !newTicketMessage.trim()) return;
 
-    const selectedUserObj = usersList.find(u => (u._id === newTicketUser || u.customId === newTicketUser || String(u.id) === String(newTicketUser))) || usersList[0] || {
-      name: 'Investor',
-      email: 'investor@example.com',
-      phone: '',
-      currentRank: 'Starter',
-      customId: 'HORIZON-USR-01'
-    };
+    const selectedUserObj = usersList.find(u => (u._id === newTicketUser || u.customId === newTicketUser || String(u.id) === String(newTicketUser))) || usersList[0];
 
-    const newTicketObj = {
-      id: `TCK-${Math.floor(1000 + Math.random() * 9000)}`,
-      customId: selectedUserObj.customId || `HORIZON-USR-0${selectedUserObj.id || 1}`,
-      userName: selectedUserObj.name || selectedUserObj.fullName || 'Investor',
-      userEmail: selectedUserObj.email || '',
-      userPhone: selectedUserObj.phone || '',
-      userRank: selectedUserObj.currentRank || 'Level 1 (Starter)',
-      userAvatar: (selectedUserObj.name || selectedUserObj.fullName || 'Investor').split(' ').map(n => n[0]).join(''),
-      subject: newTicketSubject.trim(),
-      category: newTicketCategory,
-      priority: newTicketPriority,
-      status: 'Open',
-      createdAt: 'Just now',
-      lastActivity: 'Just now',
-      messages: [
-        {
-          id: `msg-${Date.now()}`,
-          sender: 'admin',
-          senderName: 'Helpdesk Admin',
-          time: 'Just now',
-          text: newTicketMessage.trim(),
-          attachments: []
-        }
-      ]
-    };
+    try {
+      const res = await createSupportTicket({
+        userId: selectedUserObj?._id || selectedUserObj?.customId || selectedUserObj?.id,
+        subject: newTicketSubject.trim(),
+        category: newTicketCategory,
+        priority: newTicketPriority,
+        message: newTicketMessage.trim(),
+      });
 
-    setTickets([newTicketObj, ...tickets]);
-    toast.success(`Support ticket ${newTicketObj.id} created successfully!`, 'Ticket Created');
+      if (res?.success && res.ticket) {
+        toast.success(`Support ticket ${res.ticket.ticketId || res.ticket._id} created successfully!`, 'Ticket Created');
+      } else {
+        toast.success('Support ticket created successfully!', 'Ticket Created');
+      }
+    } catch (err) {
+      console.warn('API create ticket error:', err.message);
+      toast.error(err.response?.data?.message || err.message || 'Failed to create ticket', 'Error');
+    }
+
+    fetchTickets();
     setIsNewTicketOpen(false);
     setNewTicketSubject('');
     setNewTicketMessage('');
@@ -347,7 +345,7 @@ export default function SupportTickets() {
           numericValue={totalCount}
           prefix=""
           decimals={0}
-          change="+18.2%"
+          change={inquiryTrend}
           positive={true}
           icon="chart"
         />
@@ -356,28 +354,28 @@ export default function SupportTickets() {
           numericValue={openCount + inProgressCount}
           prefix=""
           decimals={0}
-          change="-4.5%"
-          positive={true}
+          change={`${openCount} Open • ${inProgressCount} In Progress`}
+          positive={openCount + inProgressCount === 0}
           icon="money"
         />
         <KPICard
           title="Avg. First Response Time"
-          numericValue={14}
+          numericValue={avgResponseMins}
           prefix=""
           suffix=" Mins"
           decimals={0}
-          change="Real-time"
-          positive={true}
+          change={totalCount > 0 ? `${resolvedCount} Closed / Resolved` : "Queue Idle"}
+          positive={avgResponseMins <= 30}
           icon="wallet"
         />
         <KPICard
           title="Client Resolution Rate"
-          numericValue={98.4}
+          numericValue={resolutionRate}
           prefix=""
           suffix="%"
           decimals={1}
-          change="+1.2%"
-          positive={true}
+          change={`${resolvedCount} of ${totalCount} Resolved`}
+          positive={resolutionRate >= 75}
           icon="users"
         />
       </div>

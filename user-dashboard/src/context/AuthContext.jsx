@@ -163,6 +163,7 @@ export function AuthProvider({ children }) {
         password: formData.password,
         country: formData.country || 'United States',
         sponsorId: formData.sponsorId || 'HORIZON-HQ',
+        otp: formData.otp || '',
       };
       const res = await registerUser(payload);
       if (res?.success && res.token) {

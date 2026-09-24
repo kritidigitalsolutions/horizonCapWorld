@@ -65,7 +65,7 @@ exports.getReferralOverview = async (req, res) => {
       success: true,
       data: {
         referralCode: user.customId,
-        referralLink: hasDeposited ? referralLink : "",
+        referralLink,
         hasDeposited,
         sponsorId: user.sponsorId,
         directReferralsCount: activeDirectCount,

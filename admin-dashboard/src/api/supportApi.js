@@ -14,6 +14,12 @@ export const getTicketById = async (id) => {
   return response.data;
 };
 
+// Create support ticket (Admin)
+export const createSupportTicket = async (ticketData) => {
+  const response = await API.post("/admin/support/tickets", ticketData);
+  return response.data;
+};
+
 // Reply to support ticket
 export const replyTicket = async (id, replyData) => {
   const response = await API.post(`/admin/support/tickets/${id}/reply`, replyData);

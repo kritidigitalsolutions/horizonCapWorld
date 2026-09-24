@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   RiCustomerService2Line, RiWhatsappLine, RiTelegramLine, RiMailSendLine,
   RiPhoneLine, RiDiscordLine, RiTwitterXLine, RiYoutubeLine, RiInstagramLine,
@@ -25,6 +25,7 @@ export default function SupportChannels() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [channels, setChannels] = useState([]);
+  const [channelStats, setChannelStats] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [search, setSearch] = useState('');
 
@@ -50,8 +51,14 @@ export default function SupportChannels() {
   const fetchChannels = useCallback(async () => {
     try {
       const res = await getChannels();
-      if (res?.success && Array.isArray(res.channels)) {
-        setChannels(res.channels);
+      if (res?.success) {
+        if (res.stats) {
+          setChannelStats(res.stats);
+        }
+        if (Array.isArray(res.channels)) {
+          setChannels(res.channels);
+          localStorage.setItem('horizon_support_channels', JSON.stringify(res.channels));
+        }
       } else {
         setChannels([]);
       }
@@ -99,24 +106,11 @@ export default function SupportChannels() {
       } else {
         await createChannel(formData);
       }
+      fetchChannels();
     } catch (err) {
       console.warn('API channels offline:', err.message);
     }
 
-    let updated;
-    if (editingChannel) {
-      updated = channels.map(c => c.id === editingChannel.id ? { ...formData, id: editingChannel.id } : c);
-    } else {
-      const newChan = {
-        ...formData,
-        id: `chan-${Date.now()}`,
-        icon: formData.platform.toLowerCase().replace(/[^a-z0-9]/g, '')
-      };
-      updated = [newChan, ...channels];
-    }
-    setChannels(updated);
-    localStorage.setItem('horizon_support_channels', JSON.stringify(updated));
-    window.dispatchEvent(new CustomEvent('horizon-support-channels-change', { detail: updated }));
     setIsModalOpen(false);
     toast.success(
       editingChannel
@@ -133,14 +127,11 @@ export default function SupportChannels() {
       if (deletingChannel._id || deletingChannel.id) {
         await deleteChannel(deletingChannel._id || deletingChannel.id);
       }
+      fetchChannels();
     } catch (err) {
       console.warn('API delete channel offline:', err.message);
     }
 
-    const updated = channels.filter(c => c.id !== deletingChannel.id && c._id !== deletingChannel._id);
-    setChannels(updated);
-    localStorage.setItem('horizon_support_channels', JSON.stringify(updated));
-    window.dispatchEvent(new CustomEvent('horizon-support-channels-change', { detail: updated }));
     toast.info(`Support channel "${deletingChannel.title}" deleted.`, 'Channel Deleted');
     setDeletingChannel(null);
   };
@@ -183,13 +174,53 @@ export default function SupportChannels() {
       c.platform.toLowerCase().includes(search.toLowerCase());
 
     const matchesCategory = categoryFilter === 'all' ||
-      (categoryFilter === 'chat' && (c.category === 'Instant Chat' || c.category === 'Telegram')) ||
-      (categoryFilter === 'email' && c.category === 'Email Desk') ||
-      (categoryFilter === 'phone' && c.category === 'Telephone') ||
-      (categoryFilter === 'social' && (c.category === 'Community' || c.category === 'Social Media'));
+      (categoryFilter === 'chat' && (c.category === 'Instant Chat' || c.category === 'Telegram' || c.platform === 'WhatsApp' || c.platform === 'Telegram')) ||
+      (categoryFilter === 'email' && (c.category === 'Email Desk' || c.category === 'Email Support' || c.platform === 'Email')) ||
+      (categoryFilter === 'phone' && (c.category === 'Telephone' || c.category === 'Phone' || c.platform === 'Phone')) ||
+      (categoryFilter === 'social' && (c.category === 'Community' || c.category === 'Social Media' || ['Discord', 'Twitter', 'YouTube', 'Instagram'].some(p => (c.platform || '').includes(p))));
 
     return matchesSearch && matchesCategory;
   });
+
+  // Dynamic KPI calculations
+  const activeCount = channels.filter(c => c.status === 'Active').length;
+
+  const liveCoverageCount = channels.filter(c => 
+    (c.hours && c.hours.toLowerCase().includes('24/7')) || 
+    c.category === 'Instant Chat' || 
+    c.category === 'Telegram' ||
+    c.platform === 'WhatsApp' ||
+    c.platform === 'Telegram'
+  ).length;
+
+  const liveActiveCount = channels.filter(c => 
+    c.status === 'Active' && 
+    ((c.hours && c.hours.toLowerCase().includes('24/7')) || 
+     c.category === 'Instant Chat' || 
+     c.category === 'Telegram' ||
+     c.platform === 'WhatsApp' ||
+     c.platform === 'Telegram')
+  ).length;
+
+  const avgResponseSpeed = useMemo(() => {
+    const minsList = channels
+      .map(c => {
+        const text = (c.stats || '').toLowerCase();
+        if (text.includes('hour')) {
+          const match = text.match(/(\d+)/);
+          return match ? parseInt(match[1], 10) * 60 : 60;
+        }
+        const match = text.match(/(\d+)/);
+        return match ? parseInt(match[1], 10) : null;
+      })
+      .filter(n => n !== null);
+
+    if (minsList.length === 0) return 2;
+    const avg = Math.round(minsList.reduce((a, b) => a + b, 0) / minsList.length);
+    return Math.max(1, avg);
+  }, [channels]);
+
+  const communityMembersCount = channelStats?.totalCommunityMembers ?? 0;
 
   if (loading) {
     return (
@@ -224,41 +255,41 @@ export default function SupportChannels() {
       <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
         <KPICard
           title="Active Support Desks"
-          numericValue={channels.filter(c => c.status === 'Active').length}
+          numericValue={activeCount}
           prefix=""
-          suffix=" Desks"
+          suffix={activeCount === 1 ? " Desk" : " Desks"}
           decimals={0}
-          change="+2 Live"
-          positive={true}
+          change={`${activeCount} Active / ${channels.length} Total`}
+          positive={activeCount > 0}
           icon="wallet"
         />
         <KPICard
           title="24/7 Live Chat Coverage"
-          numericValue={4}
+          numericValue={liveCoverageCount}
           prefix=""
           suffix=" Channels"
           decimals={0}
-          change="Instant Dispatch"
-          positive={true}
+          change={liveActiveCount > 0 ? `${liveActiveCount} Online Now` : "Queue Monitored"}
+          positive={liveCoverageCount > 0}
           icon="users"
         />
         <KPICard
           title="Avg. Response Speed"
-          numericValue={2}
+          numericValue={avgResponseSpeed}
           prefix="< "
           suffix=" Mins"
           decimals={0}
-          change="⚡ High-Speed"
+          change={activeCount > 0 ? `${activeCount} Verified Desks` : "Live Monitored"}
           positive={true}
           icon="chart"
         />
         <KPICard
           title="Global Community Reach"
-          numericValue={48500}
+          numericValue={communityMembersCount}
           prefix=""
           suffix=" Members"
           decimals={0}
-          change="+14.5%"
+          change={`${channels.length} Official Channels`}
           positive={true}
           icon="money"
         />
@@ -282,10 +313,10 @@ export default function SupportChannels() {
         <div className="flex items-center gap-2 pt-2 border-t border-slate-100 overflow-x-auto">
           {[
             { id: 'all', label: 'All Channels', count: channels.length },
-            { id: 'chat', label: 'Instant Chat & Telegram', count: channels.filter(c => c.category === 'Instant Chat' || c.category === 'Telegram').length },
-            { id: 'email', label: 'Email Desks', count: channels.filter(c => c.category === 'Email Desk').length },
-            { id: 'phone', label: 'Telephone Hotlines', count: channels.filter(c => c.category === 'Telephone').length },
-            { id: 'social', label: 'Community & Social', count: channels.filter(c => c.category === 'Community' || c.category === 'Social Media').length },
+            { id: 'chat', label: 'Instant Chat & Telegram', count: channels.filter(c => c.category === 'Instant Chat' || c.category === 'Telegram' || c.platform === 'WhatsApp' || c.platform === 'Telegram').length },
+            { id: 'email', label: 'Email Desks', count: channels.filter(c => c.category === 'Email Desk' || c.category === 'Email Support' || c.platform === 'Email').length },
+            { id: 'phone', label: 'Telephone Hotlines', count: channels.filter(c => c.category === 'Telephone' || c.category === 'Phone' || c.platform === 'Phone').length },
+            { id: 'social', label: 'Community & Social', count: channels.filter(c => c.category === 'Community' || c.category === 'Social Media' || ['Discord', 'Twitter', 'YouTube', 'Instagram'].some(p => (c.platform || '').includes(p))).length },
           ].map(tab => (
             <button
               key={tab.id}

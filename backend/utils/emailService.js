@@ -1,21 +1,18 @@
 const nodemailer = require("nodemailer");
 
+const SENDER_EMAIL = process.env.EMAIL_USER || "tradex615@gmail.com";
+const SENDER_PASS = process.env.EMAIL_PASS || "wyqxlbtyeucqorle";
+
 /**
- * High-deliverability Nodemailer transporter configuration for Gmail SMTP
+ * Standard Gmail transporter configuration
+ * Uses Nodemailer's built-in 'gmail' service to ensure standard, trusted TLS/SSL settings
+ * and prevents custom header anomalies that trigger spam filters.
  */
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // SSL
-  pool: true,
-  maxConnections: 5,
-  maxMessages: 100,
+  service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER || "catchandwatch007@gmail.com",
-    pass: process.env.EMAIL_PASS || "kclufinuwxsmtpkh",
-  },
-  tls: {
-    rejectUnauthorized: false,
+    user: SENDER_EMAIL,
+    pass: SENDER_PASS,
   },
 });
 
@@ -24,204 +21,51 @@ const transporter = nodemailer.createTransport({
  */
 transporter.verify((error) => {
   if (error) {
-    console.error("[Email Service] SMTP verification failed:", error.message);
+    console.error("[Email Service] Gmail SMTP verification failed:", error.message);
   } else {
-    console.log("[Email Service] Gmail SMTP ready & optimized for primary inbox deliverability.");
+    console.log(`[Email Service] Gmail SMTP connected as ${SENDER_EMAIL} (Inbox Optimized)`);
   }
 });
 
 /**
- * Generate Inbox-Optimized Plaintext Fallback
+ * Clean, lightweight, spam-free HTML email wrapper
+ * - No zero-contrast or hidden 1px font divs (which trigger SpamAssassin FONT_SIZE_TINY / COLOR_SAME_AS_BG)
+ * - Standard web typography and clean CSS
+ * - High text-to-code ratio
+ * - Fully mobile responsive
  */
-const generateOtpText = ({ name, otp, purposeText, expiryMinutes = 10 }) => {
-  return `Horizon Capital - Security Verification Code
-
-Hello ${name || "Investor"},
-
-Your one-time verification code (OTP) for ${purposeText} is:
-
-====================
-${otp}
-====================
-
-This code will expire in ${expiryMinutes} minutes.
-
-Security Notice:
-Never share this OTP with anyone. Horizon Capital staff will never ask for your verification code.
-
-If you did not request this code, please secure your account immediately or contact our support team.
-
-Best regards,
-Horizon Capital Security Team
-https://horizoncapworlds.com
-`;
-};
-
-/**
- * Generate Clean, Inbox-Optimized HTML Email Template (Light background, high text-to-code ratio, zero spam heuristics)
- */
-const generateOtpEmailHtml = ({ name, otp, purposeText, expiryMinutes = 10 }) => {
-  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Your Verification Code: ${otp}</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; -webkit-font-smoothing: antialiased;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f1f5f9; padding: 30px 15px;">
-    <tr>
-      <td align="center">
-        <!-- Main Email Container -->
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 560px; width: 100%; background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-          
-          <!-- Top Gold Header Strip -->
-          <tr>
-            <td style="height: 5px; background: linear-gradient(90deg, #d97706, #ffd70d, #b45309);"></td>
-          </tr>
-
-          <!-- Header / Logo -->
-          <tr>
-            <td style="padding: 28px 32px 20px; text-align: left; border-bottom: 1px solid #f1f5f9;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                <tr>
-                  <td valign="middle">
-                    <div style="font-size: 20px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; text-transform: uppercase;">
-                      HORIZON <span style="color: #d97706;">CAPITAL</span>
-                    </div>
-                    <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px;">
-                      Secure Verification System
-                    </div>
-                  </td>
-                  <td align="right" valign="middle">
-                    <span style="display: inline-block; padding: 4px 10px; background-color: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; border-radius: 20px;">
-                      Confidential
-                    </span>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Body Content -->
-          <tr>
-            <td style="padding: 32px 32px 24px;">
-              <h1 style="margin: 0 0 16px; font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.3;">
-                Your Verification Code
-              </h1>
-              
-              <p style="margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: #334155;">
-                Hello <strong>${name || "Investor"}</strong>,
-              </p>
-              
-              <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: #475569;">
-                Use the following 6-digit one-time code to complete your <strong>${purposeText}</strong>:
-              </p>
-
-              <!-- OTP Code Display Box -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 20px 0 24px;">
-                <tr>
-                  <td align="center" style="background-color: #fffbeb; border: 2px solid #fde68a; border-radius: 10px; padding: 20px 15px;">
-                    <div style="font-size: 11px; font-weight: 700; color: #92400e; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px;">
-                      One-Time Security Passcode
-                    </div>
-                    <div style="font-family: Consolas, 'Courier New', Courier, monospace; font-size: 38px; font-weight: 800; letter-spacing: 8px; color: #78350f; line-height: 1.2;">
-                      ${otp}
-                    </div>
-                    <div style="font-size: 12px; color: #a16207; font-weight: 600; margin-top: 6px;">
-                      Expires in ${expiryMinutes} minutes
-                    </div>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Security Advice -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f8fafc; border-left: 4px solid #d97706; border-radius: 0 6px 6px 0; padding: 12px 16px; margin-bottom: 24px;">
-                <tr>
-                  <td style="font-size: 12px; line-height: 1.5; color: #475569;">
-                    <strong style="color: #0f172a;">Security Reminder:</strong> Horizon Capital employees will never ask you for this code. If you did not make this request, please change your password immediately.
-                  </td>
-                </tr>
-              </table>
-
-              <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #64748b;">
-                Thank you for choosing Horizon Capital Worlds.
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 20px 32px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
-              <p style="margin: 0 0 4px; font-size: 12px; color: #64748b; font-weight: 500;">
-                &copy; ${new Date().getFullYear()} Horizon Capital Worlds. All rights reserved.
-              </p>
-              <p style="margin: 0; font-size: 11px; color: #94a3b8;">
-                This is an automated transactional security alert. Replies to this email are not monitored.
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
-};
-
-/**
- * Generate Password Reset Success Plaintext
- */
-const generatePasswordResetSuccessText = ({ name }) => {
-  return `Horizon Capital - Password Changed Successfully
-
-Hello ${name || "Investor"},
-
-Your account password for Horizon Capital Worlds has been updated successfully.
-
-If you performed this action, you can safely ignore this notification.
-If you did not authorize this change, please contact our support team immediately.
-
-Horizon Capital Security Team
-`;
-};
-
-/**
- * Generate Password Reset Confirmation HTML
- */
-const generatePasswordResetSuccessHtml = ({ name }) => {
+const wrapCleanHtml = ({ title, bodyHtml }) => {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Password Updated</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding: 30px 15px;">
+<body style="margin: 0; padding: 24px 12px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.5;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" style="max-width: 560px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 540px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; padding: 32px 28px;">
+          <!-- Brand Header -->
           <tr>
-            <td style="height: 5px; background: #10b981;"></td>
-          </tr>
-          <tr>
-            <td style="padding: 32px; text-align: center;">
-              <div style="width: 48px; height: 48px; border-radius: 50%; background-color: #d1fae5; color: #059669; font-size: 24px; line-height: 48px; margin: 0 auto 16px; font-weight: bold;">
-                &#10003;
-              </div>
-              <h2 style="margin: 0 0 8px; font-size: 18px; font-weight: 700; color: #0f172a;">Password Updated Successfully</h2>
-              <p style="margin: 0 0 16px; font-size: 14px; color: #475569; line-height: 1.5;">
-                Hello <strong>${name || "Investor"}</strong>, your Horizon Capital password was changed successfully.
-              </p>
-              <p style="margin: 0; font-size: 12px; color: #64748b;">
-                If you made this change, no further action is needed. If you did not make this change, please contact our security team immediately.
-              </p>
+            <td style="padding-bottom: 24px; border-bottom: 1px solid #f1f5f9;">
+              <span style="font-size: 18px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px; text-transform: uppercase;">
+                HORIZON <span style="color: #d97706;">CAP</span>
+              </span>
             </td>
           </tr>
+          <!-- Body Content -->
           <tr>
-            <td style="padding: 16px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8;">
-              &copy; ${new Date().getFullYear()} Horizon Capital Worlds
+            <td style="padding-top: 24px;">
+              ${bodyHtml}
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding-top: 28px; border-top: 1px solid #f1f5f9; text-align: center; font-size: 12px; color: #94a3b8;">
+              <p style="margin: 0 0 6px;">Horizon &bull; Automated Notification</p>
+              <p style="margin: 0;">If you did not request this email, please contact our support desk.</p>
             </td>
           </tr>
         </table>
@@ -232,79 +76,434 @@ const generatePasswordResetSuccessHtml = ({ name }) => {
 </html>`;
 };
 
-/**
- * Send OTP Email with Strict Inbox Optimization Headers & Plaintext Fallback
- */
-const sendOtpEmail = async ({ to, name, otp, purpose = "Security Verification" }) => {
-  try {
-    const senderEmail = process.env.EMAIL_USER || "catchandwatch007@gmail.com";
-    const subject = `Horizon Capital: Your verification code is ${otp}`;
-    const text = generateOtpText({ name, otp, purposeText: purpose, expiryMinutes: 10 });
-    const html = generateOtpEmailHtml({ name, otp, purposeText: purpose, expiryMinutes: 10 });
+// ==========================================
+// 1. OTP EMAIL (LOGIN, SIGNUP, 2FA)
+// Standard subject: "<code > is your verification code"
+// This pattern is recognized by Google/Apple/Yahoo as high-priority primary inbox mail.
+// ==========================================
 
-    const mailOptions = {
-      from: `"Horizon Capital" <${senderEmail}>`,
-      to: to.trim(),
-      sender: senderEmail,
-      replyTo: senderEmail,
-      envelope: {
-        from: senderEmail,
-        to: [to.trim()],
-      },
+const sendOtpEmail = async ({ to, name, otp, purpose = "verification" }) => {
+  try {
+    const sender = process.env.EMAIL_USER || SENDER_EMAIL;
+    const recipient = to.trim();
+    const subject = `${otp} is your verification code`;
+
+    const text = `Hi ${name || "there"},
+
+Your verification code is:
+
+${otp}
+
+This code will expire in 10 minutes. Please do not share this code with anyone.
+
+If you did not make this request, you can safely ignore this email.
+
+Thanks,
+Horizon Team
+`;
+
+    const bodyHtml = `
+      <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: #0f172a;">
+        Verification Code
+      </h2>
+      <p style="margin: 0 0 16px; font-size: 14px; color: #475569;">
+        Hi ${name || "there"},
+      </p>
+      <p style="margin: 0 0 20px; font-size: 14px; color: #475569;">
+        Please enter the following 6-digit code to complete your ${purpose}:
+      </p>
+
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; text-align: center; margin: 20px 0;">
+        <span style="font-family: Consolas, 'Courier New', Courier, monospace; font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #0f172a;">
+          ${otp}
+        </span>
+      </div>
+
+      <p style="margin: 0 0 12px; font-size: 13px; color: #64748b;">
+        This code is valid for 10 minutes. Never share this code with anyone.
+      </p>
+      <p style="margin: 0; font-size: 13px; color: #94a3b8;">
+        If you didn't request this code, no action is needed.
+      </p>
+    `;
+
+    const html = wrapCleanHtml({ title: subject, bodyHtml });
+
+    const info = await transporter.sendMail({
+      from: `"Horizon" <${sender}>`,
+      to: recipient,
       subject,
       text,
       html,
-      headers: {
-        "X-Priority": "1 (Highest)",
-        "X-MSMail-Priority": "High",
-        "Importance": "High",
-        "X-Mailer": "HorizonCapital SecurityMailer v1.0",
-        "Auto-Submitted": "auto-generated",
-        "X-Auto-Response-Suppress": "All",
-        "X-Entity-Ref-ID": `horizon-${Date.now()}-${otp}`,
-      },
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[Email Service] OTP successfully sent to ${to} (Message ID: ${info.messageId})`);
+    console.log(`[Email Service] OTP email delivered to ${recipient} (Message ID: ${info.messageId})`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error(`[Email Service] Failed to send OTP email to ${to}:`, error.message);
+    console.error(`[Email Service] Failed to send OTP to ${to}:`, error.message);
     throw error;
   }
 };
 
-/**
- * Send Password Reset Confirmation Email
- */
-const sendPasswordResetConfirmation = async ({ to, name }) => {
-  try {
-    const senderEmail = process.env.EMAIL_USER || "catchandwatch007@gmail.com";
-    const subject = `Horizon Capital: Password Changed Successfully`;
-    const text = generatePasswordResetSuccessText({ name });
-    const html = generatePasswordResetSuccessHtml({ name });
+// ==========================================
+// 2. USER REGISTRATION WELCOME EMAIL
+// ==========================================
 
-    const mailOptions = {
-      from: `"Horizon Capital" <${senderEmail}>`,
-      to: to.trim(),
-      sender: senderEmail,
-      replyTo: senderEmail,
-      envelope: {
-        from: senderEmail,
-        to: [to.trim()],
-      },
+const sendWelcomeEmail = async ({ to, name, customId, sponsorId }) => {
+  try {
+    const sender = process.env.EMAIL_USER || SENDER_EMAIL;
+    const recipient = to.trim();
+    const subject = `Welcome to Horizon, ${name || "Investor"}`;
+
+    const text = `Hi ${name || "Investor"},
+
+Welcome to Horizon! Your account is now active and verified.
+
+Account Summary:
+- Account ID: ${customId}
+- Email: ${recipient}
+- Sponsor ID: ${sponsorId || "HORIZON-HQ"}
+
+Sign in to your account:
+https://horizoncapworlds.com/login
+
+If you have any questions or need assistance, feel free to reply to our support desk.
+
+Thanks,
+Horizon Team
+`;
+
+    const bodyHtml = `
+      <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: #0f172a;">
+        Welcome to Horizon!
+      </h2>
+      <p style="margin: 0 0 16px; font-size: 14px; color: #475569;">
+        Hi ${name || "Investor"}, your account has been successfully verified and activated.
+      </p>
+
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; margin: 18px 0; font-size: 13px;">
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Account ID:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 700; color: #0f172a; font-family: monospace;">${customId}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Email:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 600; color: #0f172a;">${recipient}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Sponsor:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 600; color: #d97706;">${sponsorId || "HORIZON-HQ"}</td>
+        </tr>
+      </table>
+
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="https://horizoncapworlds.com/login" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 24px; border-radius: 6px;">
+          Go to Dashboard &rarr;
+        </a>
+      </div>
+    `;
+
+    const html = wrapCleanHtml({ title: subject, bodyHtml });
+
+    const info = await transporter.sendMail({
+      from: `"Horizon" <${sender}>`,
+      to: recipient,
       subject,
       text,
       html,
-      headers: {
-        "X-Priority": "1 (Highest)",
-        "Importance": "High",
-        "X-Mailer": "HorizonCapital SecurityMailer v1.0",
-        "Auto-Submitted": "auto-generated",
-      },
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
+    console.log(`[Email Service] Welcome email delivered to ${recipient} (Message ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[Email Service] Failed to send welcome email to ${to}:`, error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+// ==========================================
+// 3. DEPOSIT NOTIFICATION EMAIL (SUBMITTED / APPROVED)
+// ==========================================
+
+const sendDepositEmail = async ({ to, name, amount, gateway, transactionId, status = "Pending" }) => {
+  try {
+    const sender = process.env.EMAIL_USER || SENDER_EMAIL;
+    const recipient = to.trim();
+    const isApproved = status === "Approved" || status === "Completed";
+    const statusText = isApproved ? "Completed" : "Received";
+    const subject = `Deposit confirmation: #${transactionId}`;
+
+    const text = `Hi ${name || "Investor"},
+
+Your deposit of $${Number(amount).toLocaleString()} USD has been ${isApproved ? "approved and credited to your balance" : "received and is currently under review"}.
+
+Details:
+- Amount: $${Number(amount).toLocaleString()} USD
+- Channel: ${gateway || "Transfer"}
+- Transaction ID: ${transactionId}
+- Status: ${statusText}
+
+View your account:
+https://horizoncapworlds.com/transactions
+
+Thanks,
+Horizon Team
+`;
+
+    const bodyHtml = `
+      <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: #0f172a;">
+        Deposit ${isApproved ? "Approved" : "Received"}
+      </h2>
+      <p style="margin: 0 0 16px; font-size: 14px; color: #475569;">
+        Hi ${name || "Investor"}, your deposit of $${Number(amount).toLocaleString()} USD is ${statusText.toLowerCase()}.
+      </p>
+
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; margin: 18px 0; font-size: 13px;">
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Amount:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 800; color: #059669;">$${Number(amount).toLocaleString()} USD</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Method:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 600; color: #0f172a;">${gateway || "Transfer"}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Reference:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 600; color: #0f172a; font-family: monospace;">${transactionId}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Status:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 700; color: ${isApproved ? "#059669" : "#d97706"};">${statusText}</td>
+        </tr>
+      </table>
+    `;
+
+    const html = wrapCleanHtml({ title: subject, bodyHtml });
+
+    const info = await transporter.sendMail({
+      from: `"Horizon" <${sender}>`,
+      to: recipient,
+      subject,
+      text,
+      html,
+    });
+
+    console.log(`[Email Service] Deposit email delivered to ${recipient} (Message ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[Email Service] Failed to send deposit email to ${to}:`, error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+// ==========================================
+// 4. WITHDRAWAL NOTIFICATION EMAIL (SUBMITTED / APPROVED)
+// ==========================================
+
+const sendWithdrawalEmail = async ({
+  to,
+  name,
+  amount,
+  netAmount,
+  fee = 0,
+  gateway,
+  destination,
+  transactionId,
+  status = "Pending",
+}) => {
+  try {
+    const sender = process.env.EMAIL_USER || SENDER_EMAIL;
+    const recipient = to.trim();
+    const isApproved = status === "Approved" || status === "Completed";
+    const statusText = isApproved ? "Completed" : "Submitted";
+    const subject = `Withdrawal confirmation: #${transactionId}`;
+
+    const text = `Hi ${name || "Investor"},
+
+Your withdrawal request for $${Number(amount).toLocaleString()} USD has been ${isApproved ? "approved and processed" : "received and is in queue for processing"}.
+
+Details:
+- Amount: $${Number(amount).toLocaleString()} USD
+- Net: $${Number(netAmount || amount).toLocaleString()} USD
+- Destination: ${destination || "On File"}
+- Transaction ID: ${transactionId}
+- Status: ${statusText}
+
+If you did not initiate this withdrawal, please contact our support team immediately.
+
+Thanks,
+Horizon Team
+`;
+
+    const bodyHtml = `
+      <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: #0f172a;">
+        Withdrawal ${isApproved ? "Approved" : "Request Submitted"}
+      </h2>
+      <p style="margin: 0 0 16px; font-size: 14px; color: #475569;">
+        Hi ${name || "Investor"}, your withdrawal of $${Number(amount).toLocaleString()} USD has been ${statusText.toLowerCase()}.
+      </p>
+
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; margin: 18px 0; font-size: 13px;">
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Requested Amount:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 700; color: #0f172a;">$${Number(amount).toLocaleString()} USD</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Net Amount:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 800; color: #059669;">$${Number(netAmount || amount).toLocaleString()} USD</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Destination:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 600; color: #0f172a; font-family: monospace;">${destination || "On File"}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Reference:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 600; color: #0f172a; font-family: monospace;">${transactionId}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #64748b;">Status:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 700; color: ${isApproved ? "#059669" : "#d97706"};">${statusText}</td>
+        </tr>
+      </table>
+    `;
+
+    const html = wrapCleanHtml({ title: subject, bodyHtml });
+
+    const info = await transporter.sendMail({
+      from: `"Horizon" <${sender}>`,
+      to: recipient,
+      subject,
+      text,
+      html,
+    });
+
+    console.log(`[Email Service] Withdrawal email delivered to ${recipient} (Message ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[Email Service] Failed to send withdrawal email to ${to}:`, error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+// ==========================================
+// 5. SUPPORT TICKET NOTIFICATION EMAIL (RAISED / REPLIED)
+// ==========================================
+
+const sendTicketEmail = async ({
+  to,
+  name,
+  ticketId,
+  subject: ticketSubject,
+  category,
+  message,
+  status = "Open",
+  isReply = false,
+  replyText,
+}) => {
+  try {
+    const sender = process.env.EMAIL_USER || SENDER_EMAIL;
+    const recipient = to.trim();
+    const emailSubject = isReply
+      ? `Update on ticket #${ticketId}: ${ticketSubject}`
+      : `Ticket #${ticketId} created: ${ticketSubject}`;
+
+    const text = `Hi ${name || "there"},
+
+${
+  isReply
+    ? `A response was added to your support ticket #${ticketId}:`
+    : `Your support ticket #${ticketId} has been created:`
+}
+
+Subject: ${ticketSubject}
+
+${isReply ? replyText : message}
+
+View ticket details:
+https://horizoncapworlds.com/support
+
+Thanks,
+Horizon Support
+`;
+
+    const bodyHtml = `
+      <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: #0f172a;">
+        ${isReply ? "Support Response" : "Ticket Created"}
+      </h2>
+      <p style="margin: 0 0 14px; font-size: 14px; color: #475569;">
+        Hi ${name || "there"}, ${isReply ? "here is an update on your support ticket:" : "your support ticket has been received:"}
+      </p>
+
+      <div style="background-color: #f8fafc; border-left: 3px solid #d97706; padding: 14px 16px; margin: 16px 0; font-size: 13px; color: #1e293b; white-space: pre-wrap;">
+        ${isReply ? replyText : message}
+      </div>
+
+      <p style="margin: 14px 0 0; font-size: 12px; color: #64748b;">
+        Ticket ID: <strong>#${ticketId}</strong> &bull; Subject: <strong>${ticketSubject}</strong>
+      </p>
+    `;
+
+    const html = wrapCleanHtml({ title: emailSubject, bodyHtml });
+
+    const info = await transporter.sendMail({
+      from: `"Horizon" <${sender}>`,
+      to: recipient,
+      subject: emailSubject,
+      text,
+      html,
+    });
+
+    console.log(`[Email Service] Support ticket email delivered to ${recipient} (Message ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[Email Service] Failed to send ticket email to ${to}:`, error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+// ==========================================
+// 6. PASSWORD RESET CONFIRMATION
+// ==========================================
+
+const sendPasswordResetConfirmation = async ({ to, name }) => {
+  try {
+    const sender = process.env.EMAIL_USER || SENDER_EMAIL;
+    const recipient = to.trim();
+    const subject = `Your password was updated`;
+
+    const text = `Hi ${name || "there"},
+
+Your Horizon account password was updated successfully.
+
+If you made this change, you can safely ignore this notification.
+If you did not authorize this change, please contact our support team immediately.
+
+Thanks,
+Horizon Security
+`;
+
+    const bodyHtml = `
+      <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: #0f172a;">
+        Password Updated
+      </h2>
+      <p style="margin: 0 0 14px; font-size: 14px; color: #475569;">
+        Hi ${name || "there"}, your account password was changed successfully.
+      </p>
+      <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+        If you did not authorize this change, please contact our support team immediately.
+      </p>
+    `;
+
+    const html = wrapCleanHtml({ title: subject, bodyHtml });
+
+    const info = await transporter.sendMail({
+      from: `"Horizon" <${sender}>`,
+      to: recipient,
+      subject,
+      text,
+      html,
+    });
+
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error(`[Email Service] Failed to send password reset confirmation to ${to}:`, error.message);
@@ -314,5 +513,9 @@ const sendPasswordResetConfirmation = async ({ to, name }) => {
 
 module.exports = {
   sendOtpEmail,
+  sendWelcomeEmail,
+  sendDepositEmail,
+  sendWithdrawalEmail,
+  sendTicketEmail,
   sendPasswordResetConfirmation,
 };

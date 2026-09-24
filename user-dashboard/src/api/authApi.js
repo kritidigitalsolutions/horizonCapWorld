@@ -1,5 +1,10 @@
 import API from "./api";
 
+export const sendRegisterOtp = async (userData) => {
+  const response = await API.post("/user/auth/send-register-otp", userData);
+  return response.data;
+};
+
 export const registerUser = async (userData) => {
   const response = await API.post("/user/auth/register", userData);
   return response.data;

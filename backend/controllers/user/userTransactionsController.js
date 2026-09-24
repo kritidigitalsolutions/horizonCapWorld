@@ -5,6 +5,7 @@ const AdminSettings = require("../../models/AdminSettings");
 const User = require("../../models/User");
 const UserInvestment = require("../../models/UserInvestment");
 const { notifyUser, notifyAdmin } = require("../../utils/notificationService");
+const { sendDepositEmail, sendWithdrawalEmail } = require("../../utils/emailService");
 
 // @desc    Get Active Deposit Gateways (Fiat, Bank, Crypto)
 // @route   GET /api/user/deposits/gateways
@@ -168,6 +169,16 @@ exports.createDeposit = async (req, res) => {
       priority: "NORMAL",
       actionUrl: "/transactions",
     });
+
+    // Send Deposit Request Received Email
+    sendDepositEmail({
+      to: user.email,
+      name: user.name,
+      amount: depositAmount,
+      gateway: gateway || "Manual Transfer",
+      transactionId: userEnteredTid || assignedCustomId,
+      status: "Pending",
+    }).catch((err) => console.warn("[Deposit Email Warning]:", err.message));
 
     res.status(201).json({
       success: true,
@@ -391,6 +402,19 @@ exports.createWithdrawal = async (req, res) => {
       priority: "NORMAL",
       actionUrl: "/transactions",
     });
+
+    // Send Withdrawal Request Submitted Email
+    sendWithdrawalEmail({
+      to: user.email,
+      name: user.name,
+      amount: withdrawAmount,
+      netAmount,
+      fee,
+      gateway: gateway || "Crypto Wallet",
+      destination: userEnteredDest || "Designated Destination",
+      transactionId: assignedCustomId,
+      status: "Pending",
+    }).catch((err) => console.warn("[Withdrawal Email Warning]:", err.message));
 
     res.status(201).json({
       success: true,

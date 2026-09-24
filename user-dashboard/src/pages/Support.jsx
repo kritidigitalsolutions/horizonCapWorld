@@ -174,7 +174,13 @@ export default function Support() {
   };
 
   const filteredChannels = channels.filter(c => {
-    const matchCategory = channelCategory === 'all' || c.category === channelCategory || c.platform.toLowerCase() === channelCategory.toLowerCase();
+    const matchCategory = channelCategory === 'all' || 
+      c.category === channelCategory || 
+      (channelCategory === 'Instant Chat' && (c.category === 'Instant Chat' || (c.platform || '').toLowerCase() === 'whatsapp')) ||
+      (channelCategory === 'Telegram' && (c.category === 'Telegram' || (c.platform || '').toLowerCase() === 'telegram')) ||
+      (channelCategory === 'Email Desk' && (c.category === 'Email Desk' || c.category === 'Email Support' || (c.platform || '').toLowerCase() === 'email')) ||
+      (channelCategory === 'Telephone' && (c.category === 'Telephone' || c.category === 'Phone' || (c.platform || '').toLowerCase() === 'phone')) ||
+      (channelCategory === 'Community' && (c.category === 'Community' || c.category === 'Social Media' || ['discord', 'twitter', 'youtube', 'instagram'].some(p => (c.platform || '').toLowerCase().includes(p))));
     const q = channelSearch.trim().toLowerCase();
     const matchSearch = !q ||
       c.title.toLowerCase().includes(q) ||
@@ -238,12 +244,12 @@ export default function Support() {
   };
 
   const channelCategories = [
-    { key: 'all', label: 'All Channels' },
-    { key: 'Instant Chat', label: 'WhatsApp VIP' },
-    { key: 'Telegram', label: 'Telegram Desk' },
-    { key: 'Email Desk', label: 'Email Helpdesk' },
-    { key: 'Telephone', label: 'Phone Hotline' },
-    { key: 'Community', label: 'Community Hub' },
+    { key: 'all', label: 'All Channels', count: channels.length },
+    { key: 'Instant Chat', label: 'WhatsApp VIP', count: channels.filter(c => c.category === 'Instant Chat' || (c.platform || '').toLowerCase() === 'whatsapp').length },
+    { key: 'Telegram', label: 'Telegram Desk', count: channels.filter(c => c.category === 'Telegram' || (c.platform || '').toLowerCase() === 'telegram').length },
+    { key: 'Email Desk', label: 'Email Helpdesk', count: channels.filter(c => c.category === 'Email Desk' || c.category === 'Email Support' || (c.platform || '').toLowerCase() === 'email').length },
+    { key: 'Telephone', label: 'Phone Hotline', count: channels.filter(c => c.category === 'Telephone' || c.category === 'Phone' || (c.platform || '').toLowerCase() === 'phone').length },
+    { key: 'Community', label: 'Community Hub', count: channels.filter(c => c.category === 'Community' || c.category === 'Social Media' || ['discord', 'twitter', 'youtube', 'instagram'].some(p => (c.platform || '').toLowerCase().includes(p))).length },
   ];
 
   const mainTabs = [
@@ -307,13 +313,18 @@ export default function Support() {
                     key={cat.key}
                     type="button"
                     onClick={() => setChannelCategory(cat.key)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                       channelCategory === cat.key
                         ? 'bg-gold-400 text-slate-950 font-bold shadow-2xs'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
-                    {cat.label}
+                    <span>{cat.label}</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      channelCategory === cat.key ? 'bg-slate-950 text-white' : 'bg-slate-200 text-slate-700'
+                    }`}>
+                      {cat.count}
+                    </span>
                   </button>
                 ))}
               </div>
