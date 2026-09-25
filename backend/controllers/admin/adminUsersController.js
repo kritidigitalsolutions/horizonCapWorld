@@ -3,12 +3,13 @@ const Transaction = require("../../models/Transaction");
 const UserInvestment = require("../../models/UserInvestment");
 const SupportTicket = require("../../models/SupportTicket");
 const Notification = require("../../models/Notification");
+const bcrypt = require("bcrypt");
 
 // @desc    Get All Users (Search, Status Filter, Pagination)
 // @route   GET /api/admin/users
 exports.getAllUsers = async (req, res) => {
   try {
-    const { search, status, page = 1, limit = 20 } = req.query;
+    const { search, status, page, limit } = req.query;
     let query = {};
 
     if (status && status !== "all") {
@@ -26,19 +27,23 @@ exports.getAllUsers = async (req, res) => {
     }
 
     const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 20;
-    const skip = (pageNum - 1) * limitNum;
+    // If limit is 'all', '0', 0, or not passed, default to no limit (0) to fetch all users for management table
+    let limitNum = 0;
+    if (limit && limit !== "all" && limit !== "0") {
+      limitNum = parseInt(limit, 10) || 0;
+    }
+
+    let userQuery = User.find(query).select("-password").sort({ createdAt: -1 });
+    if (limitNum > 0) {
+      const skip = (pageNum - 1) * limitNum;
+      userQuery = userQuery.skip(skip).limit(limitNum);
+    }
 
     const [total, activeCount, unseenCount, users] = await Promise.all([
       User.countDocuments(query),
       User.countDocuments({ status: "Active" }),
       User.countDocuments({ isSeenByAdmin: false }),
-      User.find(query)
-        .select("-password")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limitNum)
-        .lean(),
+      userQuery.lean(),
     ]);
 
     // Enhance users with active investment count
@@ -338,3 +343,172 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Shift / Reassign User Sponsor (Internal hierarchy adjustment without client notification)
+// @route   PUT /api/admin/users/:id/shift-sponsor
+exports.shiftUserSponsor = async (req, res) => {
+  try {
+    const { newSponsorId } = req.body;
+    if (!newSponsorId || typeof newSponsorId !== "string") {
+      return res.status(400).json({ success: false, message: "Valid new sponsor ID is required." });
+    }
+
+    const cleanNewSponsor = newSponsorId.trim();
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    // Cannot shift under self
+    if (user.customId === cleanNewSponsor || String(user._id) === cleanNewSponsor) {
+      return res.status(400).json({ success: false, message: "A user cannot be assigned as their own sponsor." });
+    }
+
+    let targetSponsorCustomId = "HORIZON-HQ";
+    let targetSponsorUser = null;
+
+    if (cleanNewSponsor !== "HORIZON-HQ") {
+      targetSponsorUser = await User.findOne({
+        $or: [
+          { customId: cleanNewSponsor },
+          ...(/^[0-9a-fA-F]{24}$/.test(cleanNewSponsor) ? [{ _id: cleanNewSponsor }] : []),
+        ],
+      });
+
+      if (!targetSponsorUser) {
+        return res.status(404).json({ success: false, message: `Target sponsor "${cleanNewSponsor}" not found.` });
+      }
+
+      targetSponsorCustomId = targetSponsorUser.customId;
+
+      // Prevent circular hierarchy: Check if targetSponsorUser is currently in user's downline!
+      const allUsers = await User.find({}).select("customId sponsorId");
+      const childrenMap = new Map();
+      allUsers.forEach((u) => {
+        if (u.sponsorId) {
+          if (!childrenMap.has(u.sponsorId)) childrenMap.set(u.sponsorId, []);
+          childrenMap.get(u.sponsorId).push(u.customId);
+        }
+      });
+
+      // BFS to check if targetSponsorCustomId is downstream of user.customId
+      const queue = [user.customId];
+      const visited = new Set([user.customId]);
+      let isCircular = false;
+
+      while (queue.length > 0) {
+        const curr = queue.shift();
+        if (curr === targetSponsorCustomId) {
+          isCircular = true;
+          break;
+        }
+        const children = childrenMap.get(curr) || [];
+        for (const ch of children) {
+          if (!visited.has(ch)) {
+            visited.add(ch);
+            queue.push(ch);
+          }
+        }
+      }
+
+      if (isCircular) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot shift user under ${targetSponsorCustomId} because ${targetSponsorCustomId} is already in this user's downline (circular hierarchy error).`,
+        });
+      }
+    }
+
+    const oldSponsorId = user.sponsorId;
+    user.sponsorId = targetSponsorCustomId;
+    await user.save();
+
+    // Recalculate direct referral counts for sponsors
+    if (oldSponsorId && oldSponsorId !== "HORIZON-HQ" && oldSponsorId !== targetSponsorCustomId) {
+      const oldSponsor = await User.findOne({
+        $or: [
+          { customId: oldSponsorId },
+          ...(/^[0-9a-fA-F]{24}$/.test(oldSponsorId) ? [{ _id: oldSponsorId }] : []),
+        ],
+      });
+      if (oldSponsor) {
+        const count = await User.countDocuments({ sponsorId: oldSponsor.customId });
+        oldSponsor.directReferrals = count;
+        await oldSponsor.save();
+      }
+    }
+
+    if (targetSponsorUser) {
+      const count = await User.countDocuments({ sponsorId: targetSponsorUser.customId });
+      targetSponsorUser.directReferrals = count;
+      await targetSponsorUser.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `User ${user.name} (${user.customId}) successfully shifted under ${targetSponsorCustomId}.`,
+      user: {
+        id: user._id,
+        customId: user.customId,
+        name: user.name,
+        sponsorId: user.sponsorId,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Admin Reset Client Password (Set new password or temporary credentials)
+// @route   PUT /api/admin/users/:id/reset-password
+exports.resetUserPassword = async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword || typeof newPassword !== "string" || newPassword.trim().length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters long.",
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword.trim(), salt);
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Password for ${user.name} (${user.customId}) has been successfully updated.`,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Admin Toggle User 2FA Security
+// @route   PUT /api/admin/users/:id/2fa
+exports.toggleUser2FAByAdmin = async (req, res) => {
+  try {
+    const { is2FAEnabled } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    user.is2FAEnabled = typeof is2FAEnabled === "boolean" ? is2FAEnabled : !user.is2FAEnabled;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `2FA Security for ${user.name} (${user.customId}) is now ${user.is2FAEnabled ? "Enabled" : "Disabled"}.`,
+      is2FAEnabled: user.is2FAEnabled,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

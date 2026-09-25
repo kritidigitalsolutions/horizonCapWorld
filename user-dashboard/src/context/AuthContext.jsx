@@ -181,6 +181,8 @@ export function AuthProvider({ children }) {
       return {
         success: false,
         message: err.response?.data?.message || err.message || 'Registration failed.',
+        errors: err.response?.data?.errors,
+        duplicates: err.response?.data?.duplicates,
       };
     }
   };

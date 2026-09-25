@@ -332,7 +332,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
       isOpen={isOpen}
       onClose={onClose}
       title="Yield & Profit Calculator"
-      subtitle="Simulate dynamic returns across institutional Amount-Wise Daily ROI Slabs"
+      subtitle="Simulate dynamic returns across institutional Daily ROI Slabs"
       size="lg"
       footer={
         <div className="flex items-center justify-between w-full">

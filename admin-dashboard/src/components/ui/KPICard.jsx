@@ -1,11 +1,24 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { RiArrowUpSFill, RiArrowDownSFill, RiGroupLine, RiFundsLine, RiExchangeDollarLine, RiMoneyDollarCircleLine } from 'react-icons/ri';
+import {
+  RiArrowUpSFill,
+  RiArrowDownSFill,
+  RiGroupLine,
+  RiFundsLine,
+  RiExchangeDollarLine,
+  RiMoneyDollarCircleLine,
+  RiWallet3Line,
+  RiCoinsLine
+} from 'react-icons/ri';
 
 const iconMap = {
   users: RiGroupLine,
   investment: RiFundsLine,
   withdrawal: RiExchangeDollarLine,
   revenue: RiMoneyDollarCircleLine,
+  money: RiMoneyDollarCircleLine,
+  wallet: RiWallet3Line,
+  coins: RiCoinsLine,
+  chart: RiFundsLine,
 };
 
 const bgMap = {
@@ -13,6 +26,10 @@ const bgMap = {
   investment: 'bg-emerald-50 text-emerald-500',
   withdrawal: 'bg-orange-50 text-orange-500',
   revenue: 'bg-purple-50 text-purple-500',
+  money: 'bg-gold-50 text-gold-600',
+  wallet: 'bg-amber-50 text-amber-600',
+  coins: 'bg-emerald-50 text-emerald-600',
+  chart: 'bg-purple-50 text-purple-600',
 };
 
 /* ───────────── Helper: Auto Magnitude Calculator ───────────── */

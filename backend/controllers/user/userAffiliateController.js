@@ -629,11 +629,55 @@ exports.getMyRankStatus = async (req, res) => {
   }
 };
 
-// @desc    Get Achievers Global Leaderboard
+// @desc    Get Downline Achievers Leaderboard (Strictly User's Downline Team Only)
 // @route   GET /api/user/ranks/leaderboard
 exports.getLeaderboard = async (req, res) => {
   try {
-    const topUsers = await User.find({ status: "Active" })
+    const user = req.user;
+    if (!user) {
+      return res.status(200).json({ success: true, count: 0, leaderboard: [] });
+    }
+
+    // Har client ko sirf apne niche ke hi log dikhe bas:
+    // 1. Build adjacency map to trace all downline members of req.user
+    const allUsers = await User.find({}).select("customId sponsorId");
+    const childrenMap = new Map();
+    allUsers.forEach((u) => {
+      if (u.sponsorId) {
+        if (!childrenMap.has(u.sponsorId)) childrenMap.set(u.sponsorId, []);
+        childrenMap.get(u.sponsorId).push(u.customId);
+      }
+    });
+
+    // BFS to find all downstream downline customIds
+    const downlineCustomIds = [];
+    const queue = [user.customId, String(user._id)].filter(Boolean);
+    const seen = new Set(queue);
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      const kids = childrenMap.get(current) || [];
+      for (const kid of kids) {
+        if (!seen.has(kid)) {
+          seen.add(kid);
+          downlineCustomIds.push(kid);
+          queue.push(kid);
+        }
+      }
+    }
+
+    if (downlineCustomIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        count: 0,
+        leaderboard: [],
+      });
+    }
+
+    const topUsers = await User.find({
+      customId: { $in: downlineCustomIds },
+      status: "Active",
+    })
       .sort({ teamTurnover: -1, totalInvested: -1 })
       .limit(10)
       .select("customId name email phone currentRank rankLevel totalReferrals teamTurnover createdAt");
@@ -644,8 +688,8 @@ exports.getLeaderboard = async (req, res) => {
       name: u.name,
       email: u.email,
       phone: u.phone,
-      rank: u.currentRank || "Gold Sovereign",
-      level: u.rankLevel || 3,
+      rank: u.currentRank || "Associate",
+      level: u.rankLevel || 1,
       directRefs: u.totalReferrals || 0,
       turnover: u.teamTurnover || 0,
       joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "2026-01-01",

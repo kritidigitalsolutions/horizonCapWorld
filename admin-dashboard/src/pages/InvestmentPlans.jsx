@@ -501,7 +501,7 @@ export default function InvestmentPlans() {
       {/* Header */}
       <PageHeader
         title="Investment Plans"
-        subtitle="Configure Amount-Wise Daily ROI Slabs, Durations & Live Streaming Engine"
+        subtitle="Configure Daily ROI Slabs, Durations & Live Streaming Engine"
         badge="Asset Engine"
         actions={
           <Button variant="primary" icon={<RiAddLine />} onClick={openAdd}>
@@ -973,7 +973,7 @@ export default function InvestmentPlans() {
                 }`}
               >
                 <RiFundsLine size={16} />
-                <span>Amount-Wise Daily ROI Slabs</span>
+                <span>Daily ROI Slabs</span>
               </button>
 
               <button

@@ -119,9 +119,9 @@ function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilte
 
         {/* Financial Metrics Row */}
         <div className="grid grid-cols-2 gap-2 pt-2.5 pb-1 border-t border-slate-100 text-xs">
-          {/* Total Invested */}
+          {/* Personal Volume */}
           <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Invested</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Personal Volume</span>
             <span className="text-xs sm:text-sm font-bold font-mono text-slate-900 truncate block">
               ${Number(node.invested || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </span>

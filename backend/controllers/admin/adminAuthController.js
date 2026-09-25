@@ -1,5 +1,6 @@
 const Admin = require("../../models/Admin");
 const AdminSettings = require("../../models/AdminSettings");
+const User = require("../../models/User");
 const { generateToken } = require("../../utils/jwt");
 const { sendOtpEmail, sendPasswordResetConfirmation } = require("../../utils/emailService");
 const bcrypt = require("bcrypt");
@@ -466,7 +467,7 @@ exports.getAdminSettings = async (req, res) => {
 // @route   PUT /api/admin/auth/settings
 exports.updateAdminSettings = async (req, res) => {
   try {
-    const { automatedAlerts, platformName, supportEmail } = req.body;
+    const { automatedAlerts, platformName, supportEmail, userSecurity } = req.body;
     let settings = await AdminSettings.findOne();
 
     if (!settings) {
@@ -476,6 +477,12 @@ exports.updateAdminSettings = async (req, res) => {
     if (automatedAlerts) settings.automatedAlerts = { ...settings.automatedAlerts, ...automatedAlerts };
     if (platformName) settings.platformName = platformName;
     if (supportEmail) settings.supportEmail = supportEmail;
+    if (userSecurity) {
+      settings.userSecurity = { ...settings.userSecurity, ...userSecurity };
+      if (userSecurity.require2FAForAllUsers !== undefined) {
+        await User.updateMany({}, { $set: { is2FAEnabled: userSecurity.require2FAForAllUsers } });
+      }
+    }
 
     await settings.save();
 

@@ -5,7 +5,9 @@ import {
   RiMoneyDollarCircleLine, RiFlashlightLine, RiShieldFlashLine,
   RiLeafLine, RiCoinsLine, RiWallet3Line, RiArrowUpCircleLine,
   RiArrowDownCircleLine, RiExchangeDollarLine, RiPercentLine, RiTimeLine,
-  RiCalendarCheckLine, RiGroupLine, RiCheckLine, RiCloseLine
+  RiCalendarCheckLine, RiGroupLine, RiCheckLine, RiCloseLine,
+  RiKeyLine, RiNodeTree, RiFileCopyLine, RiShieldCheckLine, RiShieldLine,
+  RiExchangeLine, RiEyeOffLine, RiLockPasswordLine, RiSparklingLine
 } from 'react-icons/ri';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -21,7 +23,8 @@ import {
   updateUserStatus,
   adjustUserWallet,
   deleteUser,
-  markUsersSeen
+  markUsersSeen,
+  shiftUserSponsor
 } from '../api/usersApi';
 
 export default function Users() {
@@ -34,13 +37,23 @@ export default function Users() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 20;
+  const [pageSize, setPageSize] = useState(10);
+
+  // Shift Sponsor Modal State
+  const [shiftModalUser, setShiftModalUser] = useState(null);
+  const [targetSponsorInput, setTargetSponsorInput] = useState('');
+  const [shifting, setShifting] = useState(false);
+
+  // View Password State
+  const [showPasswordMap, setShowPasswordMap] = useState({});
+  const [passwordModalUser, setPasswordModalUser] = useState(null);
+  const [modalShowPassword, setModalShowPassword] = useState(false);
+  const [drawerShowPassword, setDrawerShowPassword] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
       const res = await getAllUsers({
-        search: search.trim() || undefined,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
+        limit: 'all',
       });
 
       if (res?.success && Array.isArray(res.users)) {
@@ -70,6 +83,7 @@ export default function Users() {
             name: u.currentRank || 'Starter',
           },
           is2FAEnabled: !!u.is2FAEnabled,
+          plainPassword: u.plainPassword || '',
           recentTransactions: [],
         }));
         setUserList(formatted);
@@ -88,16 +102,16 @@ export default function Users() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter]);
+  }, []);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
-  // Reset page to 1 on filter/search change
+  // Reset page to 1 on filter, search, or pageSize change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, pageSize]);
 
   const statusVariant = (status) =>
     status === 'Active' ? 'success' : status === 'Blocked' ? 'danger' : 'warning';
@@ -133,6 +147,32 @@ export default function Users() {
     toast.success(`User ${user.name} status updated to ${nextStatus}.`, 'Status Updated');
     if (selectedUser?.id === user.id) {
       setSelectedUser(prev => ({ ...prev, status: nextStatus }));
+    }
+  };
+
+  // Shift user sponsor internally (Silent hierarchy adjustment)
+  const handleShiftSponsor = async (e) => {
+    e?.preventDefault();
+    if (!shiftModalUser || !targetSponsorInput.trim()) return;
+    setShifting(true);
+    try {
+      const res = await shiftUserSponsor(shiftModalUser._id || shiftModalUser.id, targetSponsorInput.trim());
+      if (res?.success) {
+        toast.success(`User ${shiftModalUser.name} successfully shifted under ${targetSponsorInput.trim()} internally without notifying client.`, 'Hierarchy Reassigned');
+        const newSponsor = targetSponsorInput.trim();
+        setUserList(prev => prev.map(u => (u._id === shiftModalUser._id || u.id === shiftModalUser.id ? { ...u, referredBy: newSponsor } : u)));
+        if (selectedUser && (selectedUser._id === shiftModalUser._id || selectedUser.id === shiftModalUser.id)) {
+          setSelectedUser(prev => ({ ...prev, referredBy: newSponsor }));
+        }
+        setShiftModalUser(null);
+        setTargetSponsorInput('');
+      } else {
+        toast.error(res?.message || 'Failed to shift sponsor.', 'Shift Failed');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Error shifting sponsor hierarchy.', 'Shift Failed');
+    } finally {
+      setShifting(false);
     }
   };
 
@@ -221,19 +261,25 @@ export default function Users() {
             className="flex-1 font-poppins text-xs"
           />
           <div className="flex gap-2 overflow-x-auto font-poppins scrollbar-none pb-0.5">
-            {['all', 'Active', 'Blocked', 'Inactive'].map(st => (
-              <button
-                key={st}
-                onClick={() => setStatusFilter(st)}
-                className={`px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                  statusFilter === st
-                    ? 'bg-gold-400 text-slate-900 shadow-gold font-bold'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {st === 'all' ? 'All Users' : `${st} Users`}
-              </button>
-            ))}
+            {['all', 'Active', 'Blocked', 'Inactive'].map(st => {
+              const count = st === 'all'
+                ? userList.length
+                : userList.filter(u => (u.status || '').toLowerCase() === st.toLowerCase()).length;
+
+              return (
+                <button
+                  key={st}
+                  onClick={() => setStatusFilter(st)}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                    statusFilter === st
+                      ? 'bg-gold-400 text-slate-900 shadow-gold font-bold'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {st === 'all' ? `All Users (${count})` : `${st} (${count})`}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -244,15 +290,14 @@ export default function Users() {
           <table className="data-table font-poppins">
             <thead>
               <tr className="text-slate-400 font-medium text-xs tracking-wider">
-                <th className="font-medium text-slate-500">User Details</th>
-                <th className="font-medium text-slate-500">Email</th>
-                <th className="font-medium text-slate-500">Mobile Number</th>
+                <th className="font-medium text-slate-500">Investor Details</th>
+                <th className="font-medium text-slate-500">User ID & Email</th>
+                <th className="font-medium text-slate-500">Contact Phone</th>
                 <th className="font-medium text-slate-500">Referred By (Sponsor)</th>
-                <th className="font-medium text-slate-500">Date of Join</th>
+                <th className="font-medium text-slate-500">Password</th>
                 <th className="font-medium text-slate-500">Country</th>
-                <th className="font-medium text-slate-500">Payout Mode</th>
                 <th className="font-medium text-slate-500">Status</th>
-                <th className="text-right pr-6 font-medium text-slate-500">Action</th>
+                <th className="text-right pr-6 font-medium text-slate-500">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -285,46 +330,103 @@ export default function Users() {
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] font-medium text-gold-600 font-poppins tracking-tight mt-0.5">
-                            {userCustomId}
+                          <p className="text-[11px] text-slate-400 font-normal font-poppins mt-0.5">
+                            Joined {user.joined}
                           </p>
                         </div>
                       </div>
                     </td>
 
-                    {/* Email */}
-                    <td className="text-xs font-normal text-slate-500 font-poppins">
-                      {user.email}
+                    {/* User ID & Email */}
+                    <td>
+                      <div className="space-y-1 font-poppins">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-gold-700 text-xs tracking-tight bg-gold-50/80 px-2 py-0.5 rounded-md border border-gold-200/80">
+                            {userCustomId}
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard?.writeText(userCustomId);
+                              toast.info(`Copied ID: ${userCustomId}`, 'Copied');
+                            }}
+                            className="text-slate-400 hover:text-slate-700 p-0.5 transition-colors"
+                            title="Copy User ID"
+                          >
+                            <RiFileCopyLine size={13} />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                          <span className="truncate max-w-[180px]">{user.email}</span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard?.writeText(user.email);
+                              toast.info(`Copied Email: ${user.email}`, 'Copied');
+                            }}
+                            className="text-slate-400 hover:text-slate-700 p-0.5 transition-colors"
+                            title="Copy Email"
+                          >
+                            <RiFileCopyLine size={12} />
+                          </button>
+                        </div>
+                      </div>
                     </td>
 
                     {/* Mobile Number */}
                     <td className="text-xs font-medium text-slate-600 font-poppins whitespace-nowrap">
-                      {user.phone}
+                      {user.phone || '—'}
                     </td>
 
-                    {/* Referred By / Sponsor */}
+                    {/* Referred By / Sponsor with quick Shift trigger */}
                     <td>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold-50/80 text-slate-700 text-xs font-semibold border border-gold-200/80 whitespace-nowrap font-poppins">
-                        <RiGroupLine size={13} className="text-gold-600" />
-                        {user.referredBy || 'Direct Platform'}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold-50/80 text-slate-700 text-xs font-semibold border border-gold-200/80 whitespace-nowrap font-poppins">
+                          <RiGroupLine size={13} className="text-gold-600" />
+                          {user.referredBy || 'Direct Platform'}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setShiftModalUser(user);
+                            setTargetSponsorInput(user.referredBy || 'HORIZON-HQ');
+                          }}
+                          className="p-1 rounded-md text-slate-400 hover:text-gold-700 hover:bg-gold-50 transition-colors border border-transparent hover:border-gold-200"
+                          title="Shift user downline hierarchy position internally"
+                        >
+                          <RiExchangeLine size={14} />
+                        </button>
+                      </div>
                     </td>
 
-                    {/* Date of Join */}
-                    <td className="text-xs text-slate-500 font-normal font-poppins whitespace-nowrap">
-                      {user.joined}
+                    {/* Password View with Eye Toggle & Copy */}
+                    <td>
+                      <div className="flex items-center gap-1.5 font-poppins">
+                        <span className="font-mono text-xs font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 select-all tracking-wider min-w-[70px] text-center">
+                          {showPasswordMap[user._id || user.id] ? (user.plainPassword || '••••••••') : '••••••••'}
+                        </span>
+                        <button
+                          onClick={() => setShowPasswordMap(prev => ({ ...prev, [user._id || user.id]: !prev[user._id || user.id] }))}
+                          className="p-1 rounded-md text-slate-400 hover:text-gold-700 hover:bg-gold-50 transition-colors cursor-pointer border border-transparent hover:border-gold-200"
+                          title={showPasswordMap[user._id || user.id] ? "Hide password" : "Show password"}
+                        >
+                          {showPasswordMap[user._id || user.id] ? <RiEyeOffLine size={14} /> : <RiEyeLine size={14} />}
+                        </button>
+                        {user.plainPassword && (
+                          <button
+                            onClick={() => {
+                              navigator.clipboard?.writeText(user.plainPassword);
+                              toast.info(`Copied password for ${user.name}`, 'Copied');
+                            }}
+                            className="p-1 rounded-md text-slate-400 hover:text-gold-700 hover:bg-gold-50 transition-colors cursor-pointer border border-transparent hover:border-gold-200"
+                            title="Copy password"
+                          >
+                            <RiFileCopyLine size={13} />
+                          </button>
+                        )}
+                      </div>
                     </td>
 
                     {/* Country */}
                     <td className="text-xs font-medium text-slate-600 font-poppins whitespace-nowrap">
                       {user.country}
-                    </td>
-
-                    {/* Active Payout Mode */}
-                    <td>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100/90 text-slate-700 text-xs font-semibold border border-slate-200/80 whitespace-nowrap font-poppins">
-                        {user.payoutType || 'None'}
-                      </span>
                     </td>
 
                     {/* Status */}
@@ -334,27 +436,52 @@ export default function Users() {
                       </Badge>
                     </td>
 
-                    {/* Actions: View & Delete */}
+                    {/* Actions: View, Shift, Password Reset & Delete */}
                     <td className="text-right pr-6 whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2 font-poppins">
+                      <div className="flex items-center justify-end gap-1.5 font-poppins">
                         {/* View Button */}
                         <button
                           onClick={() => handleViewUser(user)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-gold-800 text-xs font-semibold transition-all border border-slate-200/80 hover:border-gold-300 active:scale-95 shadow-2xs"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-gold-800 text-xs font-semibold transition-all border border-slate-200/80 hover:border-gold-300 active:scale-95 shadow-2xs"
                           title="View user details & investment portfolio"
                         >
                           <RiEyeLine size={14} />
                           <span>View</span>
                         </button>
 
+                        {/* Shift Hierarchy Button */}
+                        <button
+                          onClick={() => {
+                            setShiftModalUser(user);
+                            setTargetSponsorInput(user.referredBy || 'HORIZON-HQ');
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold transition-all border border-amber-200 hover:border-amber-300 active:scale-95 shadow-2xs"
+                          title="Shift user hierarchy position internally"
+                        >
+                          <RiNodeTree size={14} />
+                          <span>Shift</span>
+                        </button>
+
+                        {/* View Password & Credentials Button */}
+                        <button
+                          onClick={() => {
+                            setPasswordModalUser(user);
+                            setModalShowPassword(false);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition-all border border-indigo-200 hover:border-indigo-300 active:scale-95 shadow-2xs cursor-pointer"
+                          title="View user login password and account credentials"
+                        >
+                          <RiKeyLine size={14} />
+                          <span>Password</span>
+                        </button>
+
                         {/* Delete Button */}
                         <button
                           onClick={() => setUserToDelete(user)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-semibold transition-all border border-red-200/70 hover:border-red-300 active:scale-95 shadow-2xs"
+                          className="inline-flex items-center p-1.5 rounded-full bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-semibold transition-all border border-red-200/70 hover:border-red-300 active:scale-95 shadow-2xs"
                           title="Delete user"
                         >
                           <RiDeleteBinLine size={14} />
-                          <span>Delete</span>
                         </button>
                       </div>
                     </td>
@@ -365,12 +492,20 @@ export default function Users() {
           </table>
         </div>
 
-        {/* ──────────────── 20 ITEMS PER PAGE PAGINATION BAR ──────────────── */}
+        {/* ──────────────── 10 ITEMS PER PAGE PAGINATION BAR ──────────────── */}
         <Pagination
           currentPage={currentPage}
           totalItems={filtered.length}
           pageSize={pageSize}
-          onPageChange={setCurrentPage}
+          onPageChange={(page) => {
+            setCurrentPage(page);
+            window.scrollTo({ top: 120, behavior: 'smooth' });
+          }}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[10, 20, 50, 100]}
         />
 
         {filtered.length === 0 && (
@@ -458,6 +593,138 @@ export default function Users() {
                 <div className="pt-2 border-t border-gold-200/50">
                   <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Sponsor / Referred By</p>
                   <p className="text-xs font-semibold text-gold-800 font-poppins mt-0.5">{selectedUser.referredBy || 'Direct Platform'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* ──────────────── SECURITY, CREDENTIALS & HIERARCHY GOVERNANCE CARD ──────────────── */}
+            <div className="p-4 sm:p-5 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border border-gold-400/30 text-white shadow-md space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-700/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-gold-400/10 text-gold-400 flex items-center justify-center border border-gold-400/30">
+                    <RiShieldCheckLine size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-100 uppercase tracking-wider">
+                      Credentials & Security Governance
+                    </h4>
+                    <p className="text-[11px] text-slate-400">
+                      Client ID, Email, Password management, 2FA security & Hierarchy position
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-gold-400/15 text-gold-300 border border-gold-400/30 uppercase tracking-wider">
+                  Super Admin Exclusive
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs font-poppins">
+                {/* 1. Client ID & Registered Email */}
+                <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700/80 space-y-2">
+                  <p className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+                    Login Identity
+                  </p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between bg-slate-900/90 px-2.5 py-1.5 rounded-lg border border-slate-700">
+                      <span className="text-slate-400 text-[11px]">User ID:</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-gold-400">{selectedUser.customId || `HORIZON-USR-0${selectedUser.id}`}</span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard?.writeText(selectedUser.customId || `HORIZON-USR-0${selectedUser.id}`);
+                            toast.info('Copied User ID', 'Copied');
+                          }}
+                          className="text-slate-400 hover:text-white transition-colors"
+                          title="Copy User ID"
+                        >
+                          <RiFileCopyLine size={12} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between bg-slate-900/90 px-2.5 py-1.5 rounded-lg border border-slate-700">
+                      <span className="text-slate-400 text-[11px]">Email:</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-medium text-slate-200 truncate max-w-[130px]">{selectedUser.email}</span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard?.writeText(selectedUser.email);
+                            toast.info('Copied Email', 'Copied');
+                          }}
+                          className="text-slate-400 hover:text-white transition-colors"
+                          title="Copy Email"
+                        >
+                          <RiFileCopyLine size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Client Account Password (Eye View) */}
+                <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+                      User Login Password
+                    </p>
+                    <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30">
+                      EYE VIEW
+                    </span>
+                  </div>
+                  <div className="bg-slate-900/90 p-2.5 rounded-lg border border-slate-700 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold text-gold-300 tracking-wider select-all">
+                        {drawerShowPassword ? (selectedUser.plainPassword || '••••••••') : '••••••••••••'}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setDrawerShowPassword(!drawerShowPassword)}
+                          className="p-1 rounded text-slate-400 hover:text-white transition-colors cursor-pointer"
+                          title={drawerShowPassword ? "Hide password" : "Show password"}
+                        >
+                          {drawerShowPassword ? <RiEyeOffLine size={14} /> : <RiEyeLine size={14} />}
+                        </button>
+                        {selectedUser.plainPassword && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard?.writeText(selectedUser.plainPassword);
+                              toast.info('Copied user password', 'Copied');
+                            }}
+                            className="p-1 rounded text-slate-400 hover:text-gold-300 transition-colors cursor-pointer"
+                            title="Copy password"
+                          >
+                            <RiFileCopyLine size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Hierarchy / Sponsor Position */}
+                <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700/80 space-y-2">
+                  <p className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+                    Downline Hierarchy
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between bg-slate-900/90 px-2.5 py-1.5 rounded-lg border border-slate-700">
+                      <span className="text-slate-400 text-[11px]">Sponsor:</span>
+                      <span className="font-semibold text-gold-400">{selectedUser.referredBy || 'Direct Platform'}</span>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setShiftModalUser(selectedUser);
+                        setTargetSponsorInput(selectedUser.referredBy || 'HORIZON-HQ');
+                      }}
+                      className="w-full inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold text-[11px] transition-colors cursor-pointer"
+                      title="Reassign sponsor / downline hierarchy internally"
+                    >
+                      <RiNodeTree size={13} />
+                      <span>Shift Hierarchy Position</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -684,6 +951,219 @@ export default function Users() {
               <p className="text-sm text-slate-500 mt-1 font-normal font-poppins">
                 User <strong className="text-slate-700 font-medium">{userToDelete.name}</strong> ({userToDelete.email}) with ID <strong className="text-gold-700 font-medium">{userToDelete.customId || `HORIZON-USR-0${userToDelete.id}`}</strong> will be permanently removed from the system.
               </p>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ──────────────── Shift Sponsor Hierarchy Modal (Silent Internal Move) ──────────────── */}
+      <Modal
+        isOpen={!!shiftModalUser}
+        onClose={() => setShiftModalUser(null)}
+        title="Shift Downline Sponsor Hierarchy"
+        subtitle="Internal reassignment — Client is NOT notified"
+        size="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShiftModalUser(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              icon={<RiNodeTree />}
+              onClick={handleShiftSponsor}
+              disabled={shifting || !targetSponsorInput.trim()}
+              className="bg-gold-400 hover:bg-gold-500 text-slate-900 font-bold"
+            >
+              {shifting ? 'Shifting...' : 'Confirm Hierarchy Shift'}
+            </Button>
+          </>
+        }
+      >
+        {shiftModalUser && (
+          <div className="space-y-4 font-poppins text-xs">
+            <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200/80 text-amber-900 flex items-start gap-2.5">
+              <RiAlertLine className="text-amber-600 shrink-0 mt-0.5" size={16} />
+              <p className="text-[11px] leading-relaxed">
+                <strong>Silent Internal Move:</strong> This shifts the investor under a new sponsor in the MLM / referral hierarchy tree.
+              </p>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                <span className="text-slate-500">Investor:</span>
+                <span className="font-semibold text-slate-800">{shiftModalUser.name} ({shiftModalUser.customId || `HORIZON-USR-0${shiftModalUser.id}`})</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                <span className="text-slate-500">Current Sponsor:</span>
+                <span className="font-bold text-gold-700 bg-gold-50 px-2 py-0.5 rounded border border-gold-200">
+                  {shiftModalUser.referredBy || 'Direct Platform (HORIZON-HQ)'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-slate-500">Registered Email:</span>
+                <span className="text-slate-700 font-medium">{shiftModalUser.email}</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleShiftSponsor} className="space-y-3">
+              <div>
+                <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1 text-[11px]">
+                  New Target Sponsor ID *
+                </label>
+                <input
+                  type="text"
+                  value={targetSponsorInput}
+                  onChange={(e) => setTargetSponsorInput(e.target.value)}
+                  placeholder="Enter Sponsor Custom ID (e.g. HORIZON-HQ, HORIZON-USR-01)"
+                  className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 text-xs font-semibold text-slate-800 outline-none focus:border-gold-500 shadow-2xs"
+                  required
+                />
+              </div>
+
+              {/* Quick Select Buttons */}
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-[11px] text-slate-400">Quick suggestions:</span>
+                <button
+                  type="button"
+                  onClick={() => setTargetSponsorInput('HORIZON-HQ')}
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-gold-800 rounded-lg border border-slate-200 text-[11px] font-medium transition-colors"
+                >
+                  Direct Platform (HORIZON-HQ)
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </Modal>
+
+      {/* ──────────────── View Client Credentials & Password Modal ──────────────── */}
+      <Modal
+        isOpen={!!passwordModalUser}
+        onClose={() => setPasswordModalUser(null)}
+        title="Client Account Credentials & Password"
+        subtitle={passwordModalUser ? `${passwordModalUser.name} • ${passwordModalUser.customId || `HORIZON-USR-0${passwordModalUser.id}`}` : ''}
+        size="md"
+        footer={
+          <Button variant="secondary" onClick={() => setPasswordModalUser(null)}>
+            Close
+          </Button>
+        }
+      >
+        {passwordModalUser && (
+          <div className="space-y-4 font-poppins text-xs">
+            <div className="p-3.5 bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl border border-gold-400/30 text-white space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-gold-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <RiKeyLine size={15} />
+                  Investor Login Credentials
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-gold-400/20 text-gold-300 text-[10px] font-bold border border-gold-400/30">
+                  Super Admin View
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 leading-relaxed font-normal">
+                Super Admin can view registered client login credentials and user password below.
+              </p>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+              {/* Name */}
+              <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                <span className="text-slate-500 font-medium">Investor Name:</span>
+                <span className="font-bold text-slate-800 text-sm">{passwordModalUser.name}</span>
+              </div>
+
+              {/* User ID */}
+              <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                <span className="text-slate-500 font-medium">Client User ID:</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-gold-700 font-mono text-xs bg-gold-50 px-2 py-0.5 rounded border border-gold-200">
+                    {passwordModalUser.customId || `HORIZON-USR-0${passwordModalUser.id}`}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const cid = passwordModalUser.customId || `HORIZON-USR-0${passwordModalUser.id}`;
+                      navigator.clipboard?.writeText(cid);
+                      toast.info(`Copied User ID: ${cid}`, 'Copied');
+                    }}
+                    className="p-1 text-slate-400 hover:text-gold-700 transition-colors cursor-pointer"
+                    title="Copy User ID"
+                  >
+                    <RiFileCopyLine size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Email Address */}
+              <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                <span className="text-slate-500 font-medium">Registered Email:</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-800 font-semibold">{passwordModalUser.email}</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(passwordModalUser.email);
+                      toast.info(`Copied Email: ${passwordModalUser.email}`, 'Copied');
+                    }}
+                    className="p-1 text-slate-400 hover:text-gold-700 transition-colors cursor-pointer"
+                    title="Copy Email"
+                  >
+                    <RiFileCopyLine size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Contact Phone */}
+              <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                <span className="text-slate-500 font-medium">Contact Phone:</span>
+                <span className="text-slate-700 font-medium">{passwordModalUser.phone || '—'}</span>
+              </div>
+
+              {/* Password Section with Eye Toggle */}
+              <div className="pt-1">
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                  User Account Password (Eye View)
+                </label>
+                <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-gold-300 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-bold text-slate-900 tracking-wider">
+                      {modalShowPassword ? (passwordModalUser.plainPassword || '••••••••') : '••••••••••••'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      modalShowPassword ? 'bg-amber-100 text-amber-900' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {modalShowPassword ? 'REVEALED' : 'HIDDEN'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setModalShowPassword(!modalShowPassword)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gold-50 hover:bg-gold-100 text-gold-800 font-semibold text-xs border border-gold-200 transition-colors cursor-pointer"
+                      title={modalShowPassword ? "Hide Password" : "Show Password"}
+                    >
+                      {modalShowPassword ? <RiEyeOffLine size={15} /> : <RiEyeLine size={15} />}
+                      <span>{modalShowPassword ? 'Hide' : 'Show Password'}</span>
+                    </button>
+
+                    {passwordModalUser.plainPassword && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(passwordModalUser.plainPassword);
+                          toast.info('Copied password to clipboard', 'Password Copied');
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-colors cursor-pointer"
+                        title="Copy Password"
+                      >
+                        <RiFileCopyLine size={13} />
+                        <span>Copy</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

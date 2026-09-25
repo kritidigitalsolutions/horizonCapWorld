@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { RiPieChartLine } from 'react-icons/ri';
 
-const DEFAULT_COLORS = ['#10B981', '#F59E0B', '#C8A200', '#3B82F6'];
+const DEFAULT_COLORS = ['#10B981', '#F59E0B', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#C8A200', '#6366F1'];
 
 // Custom Tooltip with matching slice color theme
 const CustomTooltip = ({ active, payload }) => {
@@ -43,12 +44,21 @@ const CustomTooltip = ({ active, payload }) => {
 export default function DonutChart({ data }) {
   const [activeIndex, setActiveIndex] = useState(null);
 
-  const chartData = data && data.length > 0 ? data : [
-    { name: 'Renewable Energy', value: 42, color: '#10B981', amount: '$35.4M' },
-    { name: 'Precious Metals Vault', value: 28, color: '#F59E0B', amount: '$23.6M' },
-    { name: 'Platform Reserves', value: 18, color: '#C8A200', amount: '$15.2M' },
-    { name: 'Liquidity Pools', value: 12, color: '#3B82F6', amount: '$10.1M' },
-  ];
+  const chartData = Array.isArray(data) ? data : [];
+
+  if (chartData.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 px-4 text-center font-poppins min-h-[220px]">
+        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2.5">
+          <RiPieChartLine size={24} />
+        </div>
+        <p className="text-xs font-bold text-slate-700">No Portfolio Allocations Yet</p>
+        <p className="text-[11px] text-slate-400 mt-1 max-w-xs leading-relaxed">
+          Sector asset breakdown will automatically analyze and appear dynamically once investors activate portfolio plans.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-6 font-poppins">

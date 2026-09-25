@@ -1,22 +1,155 @@
 const bcrypt = require("bcrypt");
 const User = require("../../models/User");
 const PendingRegistration = require("../../models/PendingRegistration");
+const AdminSettings = require("../../models/AdminSettings");
 const { generateToken } = require("../../utils/jwt");
 const { syncUserStreamingEarnings } = require("../../utils/yieldAndAffiliateEngine");
 const { sendOtpEmail, sendWelcomeEmail, sendPasswordResetConfirmation } = require("../../utils/emailService");
 const { notifyUser } = require("../../utils/notificationService");
+
+// Helper to escape regex special characters
+const escapeRegex = (str) => {
+  return (str || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
+
+// Helper to build flexible phone query matching formatted or unformatted phone numbers
+const buildPhoneQuery = (phone) => {
+  if (!phone || typeof phone !== "string") return null;
+  const digits = phone.replace(/[^\d]/g, "");
+  if (!digits || digits.length < 7) return null;
+
+  const exactDigitsPattern = digits
+    .split("")
+    .map((d) => escapeRegex(d))
+    .join("[\\s\\-\\(\\)\\.]*");
+
+  const conditions = [
+    { phone: { $regex: exactDigitsPattern, $options: "i" } },
+  ];
+
+  if (digits.length >= 10) {
+    const last10 = digits.slice(-10);
+    const last10Pattern =
+      last10
+        .split("")
+        .map((d) => escapeRegex(d))
+        .join("[\\s\\-\\(\\)\\.]*") + "$";
+    conditions.push({ phone: { $regex: last10Pattern, $options: "i" } });
+  }
+
+  return { $or: conditions };
+};
+
+// Comprehensive duplicate checker for username, email, and phone number
+const checkUserDuplicates = async ({ userName, email, phone, excludeUserId = null }) => {
+  const duplicates = {
+    userName: false,
+    email: false,
+    phone: false,
+    hasDuplicates: false,
+    messages: [],
+    details: {},
+  };
+
+  const baseQuery = excludeUserId ? { _id: { $ne: excludeUserId } } : {};
+
+  // 1. Check Username (against both 'name' and 'userName')
+  const cleanUserName = (userName || "").trim().replace(/\s+/g, " ");
+  if (cleanUserName && cleanUserName.length >= 2) {
+    const escapedName = escapeRegex(cleanUserName);
+    const existingName = await User.findOne({
+      ...baseQuery,
+      $or: [
+        { name: { $regex: `^${escapedName}$`, $options: "i" } },
+        { userName: { $regex: `^${escapedName}$`, $options: "i" } },
+      ],
+    });
+    if (existingName) {
+      duplicates.userName = true;
+      const msg = "This username is already taken. Please choose another username.";
+      duplicates.messages.push(msg);
+      duplicates.details.userName = msg;
+    }
+  }
+
+  // 2. Check Email Address
+  const cleanEmail = (email || "").toLowerCase().trim();
+  if (cleanEmail && cleanEmail.includes("@")) {
+    const existingEmail = await User.findOne({
+      ...baseQuery,
+      email: cleanEmail,
+    });
+    if (existingEmail) {
+      duplicates.email = true;
+      const msg = "An account with this email address already exists. Please log in or use a different email.";
+      duplicates.messages.push(msg);
+      duplicates.details.email = msg;
+    }
+  }
+
+  // 3. Check Mobile / Phone Number
+  const cleanPhone = (phone || "").trim();
+  const phoneQuery = buildPhoneQuery(cleanPhone);
+  if (phoneQuery) {
+    const existingPhone = await User.findOne({
+      ...baseQuery,
+      ...phoneQuery,
+    });
+    if (existingPhone) {
+      duplicates.phone = true;
+      const msg = "This mobile number is already registered with another account.";
+      duplicates.messages.push(msg);
+      duplicates.details.phone = msg;
+    }
+  }
+
+  duplicates.hasDuplicates = duplicates.userName || duplicates.email || duplicates.phone;
+  return duplicates;
+};
+
+// @desc    Check if username, email, or phone is already taken
+// @route   POST /api/user/auth/check-availability
+exports.checkAvailability = async (req, res) => {
+  try {
+    const { userName, name, fullName, email, phone } = req.body;
+    const checkName = (userName || name || fullName || "").trim();
+
+    const duplicateCheck = await checkUserDuplicates({
+      userName: checkName,
+      email,
+      phone,
+    });
+
+    return res.status(200).json({
+      success: true,
+      available: !duplicateCheck.hasDuplicates,
+      duplicates: {
+        userName: duplicateCheck.userName,
+        email: duplicateCheck.email,
+        phone: duplicateCheck.phone,
+      },
+      errors: duplicateCheck.details,
+      message: duplicateCheck.hasDuplicates
+        ? duplicateCheck.messages.join(" ")
+        : "All fields available.",
+    });
+  } catch (error) {
+    console.error("[checkAvailability Error]:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 // @desc    Send OTP for User Registration (2FA Verification)
 // @route   POST /api/user/auth/send-register-otp
 exports.sendRegisterOtp = async (req, res) => {
   try {
     const { name: rawName, fullName, userName, email, phone, password, country, sponsorId } = req.body;
-    const name = (rawName || fullName || userName || "").trim();
+    const name = (userName || rawName || fullName || "").trim();
 
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Please provide your full name, email, and password.",
+        message: "Please provide your username / full name, email, and password.",
       });
     }
 
@@ -28,11 +161,24 @@ exports.sendRegisterOtp = async (req, res) => {
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    const existingUser = await User.findOne({ email: cleanEmail });
-    if (existingUser) {
+
+    // Check for duplicate username, email, phone
+    const duplicateCheck = await checkUserDuplicates({
+      userName: name,
+      email: cleanEmail,
+      phone,
+    });
+
+    if (duplicateCheck.hasDuplicates) {
       return res.status(400).json({
         success: false,
-        message: "An account with this email address already exists. Please log in.",
+        message: duplicateCheck.messages.join(" "),
+        errors: duplicateCheck.details,
+        duplicates: {
+          userName: duplicateCheck.userName,
+          email: duplicateCheck.email,
+          phone: duplicateCheck.phone,
+        },
       });
     }
 
@@ -49,9 +195,11 @@ exports.sendRegisterOtp = async (req, res) => {
       { email: cleanEmail },
       {
         name,
+        userName: name,
         email: cleanEmail,
         phone: phone ? phone.trim().slice(0, 16) : "",
         password: hashedPassword,
+        plainPassword: password,
         country: country || "United States",
         sponsorId: sponsorId ? sponsorId.trim() : "HORIZON-HQ",
         otp,
@@ -90,19 +238,15 @@ exports.register = async (req, res) => {
       return res.status(400).json({ success: false, message: "Email is required." });
     }
 
-    const existingUser = await User.findOne({ email: cleanEmail });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "An account with this email address already exists. Please log in.",
-      });
-    }
-
-    let finalName = (rawName || fullName || userName || "").trim();
+    let finalName = (userName || rawName || fullName || "").trim();
     let finalPhone = phone ? phone.trim().slice(0, 16) : "";
     let finalHashedPassword = "";
+    let finalPlainPassword = "";
     let finalCountry = country || "United States";
     let finalSponsorId = sponsorId ? sponsorId.trim() : "HORIZON-HQ";
+
+    const adminSettings = await AdminSettings.findOne();
+    const signupOtpRequired = adminSettings?.userSecurity?.signupOtpRequired === true;
 
     // If OTP is provided, check PendingRegistration
     if (otp) {
@@ -128,24 +272,59 @@ exports.register = async (req, res) => {
         });
       }
 
-      finalName = pending.name || finalName;
+      finalName = pending.userName || pending.name || finalName;
       finalPhone = pending.phone || finalPhone;
       finalHashedPassword = pending.password;
+      finalPlainPassword = pending.plainPassword || "";
       finalCountry = pending.country || finalCountry;
       finalSponsorId = pending.sponsorId || finalSponsorId;
 
       // Delete pending record
       await PendingRegistration.deleteOne({ _id: pending._id });
     } else {
-      // If no OTP provided, require password and create hash
+      // If no OTP provided, check if Admin requires Email OTP
+      if (signupOtpRequired) {
+        return res.status(400).json({
+          success: false,
+          message: "Email OTP verification is required to complete registration. Please verify the code sent to your email.",
+        });
+      }
+
       if (!finalName || !password) {
         return res.status(400).json({
           success: false,
-          message: "Please complete the verification step with your 6-digit code.",
+          message: "Please provide all required registration details including password.",
+        });
+      }
+      if (password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 6 characters long.",
         });
       }
       const salt = await bcrypt.genSalt(10);
       finalHashedPassword = await bcrypt.hash(password, salt);
+      finalPlainPassword = password;
+    }
+
+    // Comprehensive Duplicate Check (Username, Email, Phone)
+    const duplicateCheck = await checkUserDuplicates({
+      userName: finalName,
+      email: cleanEmail,
+      phone: finalPhone,
+    });
+
+    if (duplicateCheck.hasDuplicates) {
+      return res.status(400).json({
+        success: false,
+        message: duplicateCheck.messages.join(" "),
+        errors: duplicateCheck.details,
+        duplicates: {
+          userName: duplicateCheck.userName,
+          email: duplicateCheck.email,
+          phone: duplicateCheck.phone,
+        },
+      });
     }
 
     // Auto-generate Unique Custom ID (e.g. HORIZON-USR-428)
@@ -185,12 +364,16 @@ exports.register = async (req, res) => {
       }
     }
 
+    const initial2FA = adminSettings?.userSecurity?.require2FAForAllUsers ?? false;
+
     const newUser = await User.create({
       customId,
       name: finalName,
+      userName: finalName,
       email: cleanEmail,
       phone: finalPhone,
       password: finalHashedPassword,
+      plainPassword: finalPlainPassword,
       country: finalCountry,
       sponsorId: verifiedSponsorId,
       currentRank: "Starter",
@@ -206,7 +389,7 @@ exports.register = async (req, res) => {
       dailyEarning: 0,
       perSecondRate: 0,
       payoutType: "Per Second (Live)",
-      is2FAEnabled: true,
+      is2FAEnabled: initial2FA,
       status: "Active",
     });
 
@@ -294,6 +477,12 @@ exports.login = async (req, res) => {
       });
     }
 
+    // Auto-capture plaintext password if not already recorded
+    if (!user.plainPassword) {
+      user.plainPassword = password;
+      await user.save();
+    }
+
     if (user.status === "Suspended") {
       return res.status(403).json({
         success: false,
@@ -308,49 +497,53 @@ exports.login = async (req, res) => {
       });
     }
 
-    // ──────── 2FA CHECK (MANDATORY FOR ALL USERS) ────────
-    if (!otp) {
-      // Generate and dispatch OTP to user's registered email
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      user.otp = code;
-      user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
-      user.otpPurpose = "2FA_LOGIN";
-      user.is2FAEnabled = true;
-      await user.save();
+    // ──────── 2FA CHECK (CONFIGURED GLOBALLY BY ADMIN IN SETTINGS) ────────
+    const adminSettings = await AdminSettings.findOne();
+    const isGlobal2FAEnforced = adminSettings?.userSecurity?.require2FAForAllUsers === true;
+    const is2FARequired = isGlobal2FAEnforced;
 
-      await sendOtpEmail({
-        to: user.email,
-        name: user.name,
-        otp: code,
-        purpose: "Investor Portal 2-Step Login Verification",
-      });
+    if (is2FARequired) {
+      if (!otp) {
+        // Generate and dispatch OTP to user's registered email
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        user.otp = code;
+        user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+        user.otpPurpose = "2FA_LOGIN";
+        await user.save();
 
-      return res.status(200).json({
-        success: true,
-        require2FA: true,
-        message: `A 6-digit security code has been sent to ${user.email}.`,
-        email: user.email,
-      });
-    } else {
-      // Validate OTP
-      if (!user.otp || user.otp !== otp.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid 6-digit 2FA code entered. Please check your email.",
+        await sendOtpEmail({
+          to: user.email,
+          name: user.name,
+          otp: code,
+          purpose: "Investor Portal 2-Step Login Verification",
         });
-      }
-      if (user.otpExpires && new Date() > user.otpExpires) {
-        return res.status(400).json({
-          success: false,
-          message: "2FA code has expired. Please request a new code.",
-        });
-      }
 
-      user.otp = null;
-      user.otpExpires = null;
-      user.otpPurpose = null;
-      user.is2FAEnabled = true;
-      await user.save();
+        return res.status(200).json({
+          success: true,
+          require2FA: true,
+          message: `A 6-digit security code has been sent to ${user.email}.`,
+          email: user.email,
+        });
+      } else {
+        // Validate OTP
+        if (!user.otp || user.otp !== otp.trim()) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid 6-digit 2FA code entered. Please check your email.",
+          });
+        }
+        if (user.otpExpires && new Date() > user.otpExpires) {
+          return res.status(400).json({
+            success: false,
+            message: "2FA code has expired. Please request a new code.",
+          });
+        }
+
+        user.otp = null;
+        user.otpExpires = null;
+        user.otpPurpose = null;
+        await user.save();
+      }
     }
 
     // Synchronize latest per-second streaming ROI earnings upon login
@@ -469,7 +662,7 @@ const {
 // @route   PUT /api/user/profile
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, phone, country, city, address, dob, timezone, avatar } = req.body;
+    const { name, email, phone, country, city, address, dob, timezone, avatar } = req.body;
 
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -477,6 +670,23 @@ exports.updateProfile = async (req, res) => {
     }
 
     if (name) user.name = name.trim();
+    if (email && typeof email === "string" && email.trim()) {
+      const cleanEmail = email.toLowerCase().trim();
+      if (cleanEmail !== user.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(cleanEmail)) {
+          return res.status(400).json({ success: false, message: "Please provide a valid email address." });
+        }
+        const existing = await User.findOne({ email: cleanEmail, _id: { $ne: user._id } });
+        if (existing) {
+          return res.status(400).json({
+            success: false,
+            message: "This email address is already in use by another investor account.",
+          });
+        }
+        user.email = cleanEmail;
+      }
+    }
     if (phone !== undefined) user.phone = phone.trim();
     if (country) user.country = country;
     if (city !== undefined) user.city = city;
@@ -585,6 +795,7 @@ exports.changePassword = async (req, res) => {
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
+    user.plainPassword = newPassword;
     user.otp = "";
     user.otpExpires = null;
     user.otpPurpose = null;
@@ -800,6 +1011,7 @@ exports.userForgotPasswordReset = async (req, res) => {
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
+    user.plainPassword = newPassword;
     user.otp = "";
     user.otpExpires = null;
     user.otpPurpose = null;
@@ -813,6 +1025,24 @@ exports.userForgotPasswordReset = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Your password has been reset successfully. You can now login with your new credentials.",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get public security and registration settings (whether 2FA or Signup OTP is required)
+// @route   GET /api/user/auth/security-settings
+exports.getPublicSecuritySettings = async (req, res) => {
+  try {
+    const adminSettings = await AdminSettings.findOne();
+    const require2FAForAllUsers = adminSettings?.userSecurity?.require2FAForAllUsers === true;
+    const signupOtpRequired = adminSettings?.userSecurity?.signupOtpRequired === true;
+
+    res.status(200).json({
+      success: true,
+      require2FAForAllUsers,
+      signupOtpRequired,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

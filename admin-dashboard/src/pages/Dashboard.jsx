@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RiArrowRightUpLine, RiTimeLine, RiExchangeDollarLine, RiUserAddLine, RiPieChartLine, RiFundsLine, RiCoinsLine, RiShieldCheckLine } from 'react-icons/ri';
+import { RiArrowRightUpLine, RiTimeLine, RiExchangeDollarLine, RiUserAddLine, RiPieChartLine, RiFundsLine } from 'react-icons/ri';
 import KPICard from '../components/ui/KPICard';
 import { SkeletonCard, SkeletonChart } from '../components/ui/SkeletonLoader';
 import AreaChartComponent from '../components/charts/AreaChart';
@@ -18,20 +18,15 @@ const activityIcons = {
 
 const initialKpis = [
   { id: 'total_aum', title: 'Total Platform AUM', value: '$0', numericValue: 0, prefix: '$', change: 'Liquidity', positive: true, icon: 'money', delay: 0 },
-  { id: 'active_investors', title: 'Active Investors', value: '0', numericValue: 0, prefix: '', change: 'Verified', positive: true, icon: 'users', delay: 80 },
-  { id: 'yield_distributed', title: 'Total Yield Distributed', value: '$0', numericValue: 0, prefix: '$', change: 'Per Second', positive: true, icon: 'chart', delay: 160 },
-  { id: 'platform_reserve', title: 'Platform Reserve Liquidity', value: '$0', numericValue: 0, prefix: '$', change: 'Reserve', positive: true, icon: 'wallet', delay: 240 },
+  { id: 'registered_clients', title: 'Registered Clients', value: '0', numericValue: 0, prefix: '', change: 'Total Users', positive: true, icon: 'users', delay: 80 },
+  { id: 'money_deposited_clients', title: 'Money Deposited Clients', value: '0', numericValue: 0, prefix: '', change: 'Funded', positive: true, icon: 'coins', delay: 160 },
+  { id: 'yield_distributed', title: 'Total ROI', value: '$0', numericValue: 0, prefix: '$', change: 'Per Second', positive: true, icon: 'chart', delay: 240 },
 ];
 
 const initialCharts = {
   investment: [],
   userGrowth: [],
-  categoryDistribution: [
-    { name: 'Renewable Energy', percentage: 40, color: '#38A169' },
-    { name: 'Precious Metals', percentage: 30, color: '#ECC94B' },
-    { name: 'Real Estate', percentage: 20, color: '#4299E1' },
-    { name: 'Venture Capital', percentage: 10, color: '#9F7AEA' },
-  ],
+  assetDistribution: [],
 };
 
 export default function Dashboard() {
@@ -64,55 +59,63 @@ export default function Dashboard() {
               delay: 0,
             },
             {
-              id: 'active_investors',
-              title: 'Active Investors',
-              value: Number(raw.activeInvestors || raw.totalUsers || 0).toLocaleString(),
-              numericValue: Number(raw.activeInvestors || raw.totalUsers || 0),
+              id: 'registered_clients',
+              title: 'Registered Clients',
+              value: Number(raw.registeredClients || raw.totalUsers || 0).toLocaleString(),
+              numericValue: Number(raw.registeredClients || raw.totalUsers || 0),
               prefix: '',
-              change: (raw.activeInvestors || raw.totalUsers || 0) > 0 ? 'Active' : 'No Users',
+              change: (raw.registeredClients || raw.totalUsers || 0) > 0 ? 'Total Users' : 'No Users',
               positive: true,
               icon: 'users',
               delay: 80,
             },
             {
+              id: 'money_deposited_clients',
+              title: 'Money Deposited Clients',
+              value: Number(raw.moneyDepositedClients ?? 0).toLocaleString(),
+              numericValue: Number(raw.moneyDepositedClients ?? 0),
+              prefix: '',
+              change: (raw.moneyDepositedClients || 0) > 0 ? 'Funded Clients' : 'Pending Deposits',
+              positive: true,
+              icon: 'coins',
+              delay: 160,
+            },
+            {
               id: 'yield_distributed',
-              title: 'Total Yield Distributed',
+              title: 'Total ROI',
               value: `$${Number(raw.totalYieldDistributed || 0).toLocaleString()}`,
               numericValue: Number(raw.totalYieldDistributed || 0),
               prefix: '$',
               change: raw.totalYieldDistributed > 0 ? 'Live Stream' : 'Ready',
               positive: true,
               icon: 'chart',
-              delay: 160,
-            },
-            {
-              id: 'platform_reserve',
-              title: 'Platform Reserve Liquidity',
-              value: `$${Number(raw.platformReserve || 0).toLocaleString()}`,
-              numericValue: Number(raw.platformReserve || 0),
-              prefix: '$',
-              change: raw.platformReserve > 0 ? 'Liquid Reserve' : 'Available',
-              positive: true,
-              icon: 'wallet',
               delay: 240,
             },
           ]);
         }
 
-        if (chartRes.status === 'fulfilled' && chartRes.value?.success && Array.isArray(chartRes.value.charts)) {
-          const investmentSeries = chartRes.value.charts.map(c => ({
-            month: c.month,
-            amount: Number(c.deposits || c.amount || 0),
-          }));
-          const userGrowthSeries = chartRes.value.charts.map(c => ({
-            month: c.month,
-            users: Number(c.newUsers || c.users || 0),
-          }));
-          setCharts(prev => ({
-            ...prev,
+        if (chartRes.status === 'fulfilled' && chartRes.value?.success) {
+          const investmentSeries = Array.isArray(chartRes.value.charts)
+            ? chartRes.value.charts.map(c => ({
+                month: c.month,
+                amount: Number(c.deposits || c.amount || 0),
+              }))
+            : [];
+          const userGrowthSeries = Array.isArray(chartRes.value.charts)
+            ? chartRes.value.charts.map(c => ({
+                month: c.month,
+                users: Number(c.newUsers || c.users || 0),
+              }))
+            : [];
+          const assetDistribution = Array.isArray(chartRes.value.assetDistribution)
+            ? chartRes.value.assetDistribution
+            : [];
+
+          setCharts({
             investment: investmentSeries,
             userGrowth: userGrowthSeries,
-          }));
+            assetDistribution,
+          });
         }
 
         if (actRes.status === 'fulfilled' && actRes.value?.success) {

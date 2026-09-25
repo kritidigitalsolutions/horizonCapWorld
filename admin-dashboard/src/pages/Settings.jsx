@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import {
   RiLockPasswordLine, RiMailLine, RiShieldCheckLine, RiUser3Line,
   RiSaveLine, RiKey2Line, RiCheckLine,
   RiNotification3Line, RiDeleteBinLine,
   RiEyeLine, RiEyeOffLine, RiCoinsLine, RiTrophyLine,
   RiCustomerService2Line, RiSmartphoneLine,
-  RiUpload2Line
+  RiUpload2Line, RiArrowRightLine, RiGroupLine
 } from 'react-icons/ri';
 import Button from '../components/ui/Button';
 import OTPInput from '../components/ui/OTPInput';
@@ -28,6 +29,11 @@ export default function Settings() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('profile');
+
+  // Investor 2FA & Security Governance State
+  const [require2FAForAllUsers, setRequire2FAForAllUsers] = useState(false);
+  const [signupOtpRequired, setSignupOtpRequired] = useState(false);
+  const [savingUserSecurity, setSavingUserSecurity] = useState(false);
 
   // Profile Form & Avatar State (Synced with Header)
   const [adminAvatar, setAdminAvatar] = useState(() => localStorage.getItem('horizon_admin_avatar') || '');
@@ -105,6 +111,12 @@ export default function Settings() {
         if (setRes.status === 'fulfilled' && setRes.value?.success && setRes.value.settings) {
           if (setRes.value.settings.automatedAlerts) {
             setAutomatedAlerts(prev => ({ ...prev, ...setRes.value.settings.automatedAlerts }));
+          }
+          if (setRes.value.settings.userSecurity?.require2FAForAllUsers !== undefined) {
+            setRequire2FAForAllUsers(Boolean(setRes.value.settings.userSecurity.require2FAForAllUsers));
+          }
+          if (setRes.value.settings.userSecurity?.signupOtpRequired !== undefined) {
+            setSignupOtpRequired(Boolean(setRes.value.settings.userSecurity.signupOtpRequired));
           }
         }
       } catch (err) {
@@ -349,6 +361,7 @@ export default function Settings() {
   };
 
   // Handle Save Alerts
+  // Handle Save Alerts
   const handleSaveAlerts = async () => {
     try {
       await updateAdminSettings({
@@ -361,6 +374,31 @@ export default function Settings() {
     }
     setAlertsSaved(true);
     setTimeout(() => setAlertsSaved(false), 3000);
+  };
+
+  // Handle Save User Security Governance
+  const handleSaveUserSecurity = async () => {
+    setSavingUserSecurity(true);
+    try {
+      const res = await updateAdminSettings({
+        userSecurity: {
+          require2FAForAllUsers,
+          signupOtpRequired,
+        },
+      });
+      if (res?.success) {
+        toast.success(
+          `Platform security policies updated: Login 2FA (${require2FAForAllUsers ? 'Enforced for All Users' : 'Disabled for All Users'}), Signup OTP (${signupOtpRequired ? 'Enforced' : 'Direct Registration'}).`,
+          'Security Policies Saved'
+        );
+      } else {
+        toast.error(res?.message || 'Failed to update user security settings.', 'Error');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Error saving user security settings.', 'Error');
+    } finally {
+      setSavingUserSecurity(false);
+    }
   };
 
   // Password Strength Calculation
@@ -382,6 +420,7 @@ export default function Settings() {
     { key: 'profile', label: 'Admin Profile', icon: RiUser3Line },
     { key: 'credentials', label: 'Change Email & Password (OTP)', icon: RiLockPasswordLine },
     { key: 'preferences', label: 'Automated User Alerts & Notifications', icon: RiNotification3Line },
+    { key: 'user-security', label: 'Investor 2FA Security Governance', icon: RiShieldCheckLine },
   ];
 
   if (loading) {
@@ -1191,6 +1230,153 @@ export default function Settings() {
             <Button variant="primary" icon={<RiSaveLine />} onClick={handleSaveAlerts}>
               Save Automated Alert Preferences
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────── TAB 4: INVESTOR 2FA & SECURITY GOVERNANCE ──────────────── */}
+      {activeSection === 'user-security' && (
+        <div className="space-y-6 animate-fade-in font-poppins">
+          {/* Top Banner Card */}
+          <div className="p-6 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl border border-gold-400/30 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gold-400/10 text-gold-400 flex items-center justify-center border border-gold-400/30 shadow-gold">
+                <RiShieldCheckLine size={28} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-100">
+                    Investor Authentication & 2FA Governance
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-gold-400/20 text-gold-300 border border-gold-400/30">
+                    Admin Managed
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
+                  Super Admin solely controls whether clients must verify Email OTP codes during Login and Signup / Registration. Clients cannot self-configure or bypass these policies.
+                </p>
+              </div>
+            </div>
+
+            <Button
+              variant="primary"
+              icon={<RiSaveLine />}
+              onClick={handleSaveUserSecurity}
+              disabled={savingUserSecurity}
+              className="bg-gold-400 hover:bg-gold-500 text-slate-900 font-bold shrink-0 shadow-gold"
+            >
+              {savingUserSecurity ? 'Saving Policies...' : 'Save Security Policies'}
+            </Button>
+          </div>
+
+          {/* Master Global Policies Card */}
+          <div className="card p-6 border border-slate-200 shadow-xs space-y-6">
+            <div>
+              <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <RiLockPasswordLine className="text-gold-600" size={18} />
+                Global Platform Security Protocols
+              </h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Configure mandatory 2-Factor Email OTP enforcement for user sign-in and new account registrations
+              </p>
+            </div>
+
+            {/* Policy 1: Login 2FA Enforcement */}
+            <div className="p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-800">
+                    1. Enforce 2-Factor Authentication (Email OTP) for User Login
+                  </p>
+                  <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
+                    require2FAForAllUsers
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-slate-200 text-slate-600 border border-slate-300'
+                  }`}>
+                    {require2FAForAllUsers ? 'Mandatory for All Users' : 'Disabled for All Users'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 max-w-2xl leading-relaxed">
+                  When enabled, 2-Factor Email OTP verification is universally enforced for all platform users upon login. When disabled, login is direct with email & password for all users.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setRequire2FAForAllUsers(!require2FAForAllUsers)}
+                className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  require2FAForAllUsers ? 'bg-gold-500 shadow-gold' : 'bg-slate-300'
+                }`}
+                aria-pressed={require2FAForAllUsers}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    require2FAForAllUsers ? 'translate-x-7' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Policy 2: Signup / Registration Email OTP Enforcement */}
+            <div className="p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-800">
+                    2. Enforce Email OTP Verification for User Signup / Registration
+                  </p>
+                  <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
+                    signupOtpRequired
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-blue-100 text-blue-800 border border-blue-300'
+                  }`}>
+                    {signupOtpRequired ? 'OTP Verification Enforced' : 'Direct Instant Registration'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 max-w-2xl leading-relaxed">
+                  When enabled, prospective investors must verify their email address with a 6-digit verification code before their account is created. When disabled, clients can register and login directly in 1 click without waiting for an OTP email.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSignupOtpRequired(!signupOtpRequired)}
+                className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  signupOtpRequired ? 'bg-gold-500 shadow-gold' : 'bg-slate-300'
+                }`}
+                aria-pressed={signupOtpRequired}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    signupOtpRequired ? 'translate-x-7' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Individual Client Governance Info Card */}
+            {/* <div className="p-5 bg-gradient-to-r from-amber-50/60 to-gold-50/40 rounded-2xl border border-gold-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-gold-400 text-slate-900 flex items-center justify-center font-bold shadow-xs shrink-0">
+                  <RiGroupLine size={20} />
+                </div>
+                <div>
+                  <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Individual Client Security Overrides
+                  </h5>
+                  <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                    You can also toggle 2FA Security ON or OFF for any individual client account directly in the Users Management directory.
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                to="/users"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-colors shrink-0 shadow-xs"
+              >
+                <span>Manage Users 2FA</span>
+                <RiArrowRightLine size={14} />
+              </Link>
+            </div> */}
           </div>
         </div>
       )}

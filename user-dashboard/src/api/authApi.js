@@ -5,8 +5,18 @@ export const sendRegisterOtp = async (userData) => {
   return response.data;
 };
 
+export const checkAvailability = async (userData) => {
+  const response = await API.post("/user/auth/check-availability", userData);
+  return response.data;
+};
+
 export const registerUser = async (userData) => {
   const response = await API.post("/user/auth/register", userData);
+  return response.data;
+};
+
+export const getPublicSecuritySettings = async () => {
+  const response = await API.get("/user/auth/security-settings");
   return response.data;
 };
 

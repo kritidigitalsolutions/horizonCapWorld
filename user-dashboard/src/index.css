@@ -355,6 +355,16 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.15);
 }
 
+.custom-phone-input.has-error {
+  border-color: #fb7185 !important;
+  background-color: rgba(254, 242, 242, 0.3) !important;
+}
+
+.custom-phone-input.has-error:focus-within {
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15) !important;
+}
+
 .custom-phone-input .PhoneInputCountry {
   display: flex;
   align-items: center;

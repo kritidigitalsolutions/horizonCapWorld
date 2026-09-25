@@ -63,6 +63,9 @@ const {
   adjustUserWallet,
   deleteUser,
   markUsersSeen,
+  shiftUserSponsor,
+  resetUserPassword,
+  toggleUser2FAByAdmin,
 } = require("../controllers/admin/adminUsersController");
 
 const {
@@ -161,6 +164,9 @@ router.get("/users/:id", protectAdmin, getUserById);
 router.put("/users/:id/status", protectAdmin, updateUserStatus);
 router.put("/users/:id/adjust-wallet", protectAdmin, adjustUserWallet);
 router.delete("/users/:id", protectAdmin, deleteUser);
+router.put("/users/:id/shift-sponsor", protectAdmin, shiftUserSponsor);
+router.put("/users/:id/reset-password", protectAdmin, resetUserPassword);
+router.put("/users/:id/2fa", protectAdmin, toggleUser2FAByAdmin);
 
 // ──────── 7. Level Plans & PROMOTERS ────────
 router.get("/referrals/settings", protectAdmin, getReferralSettings);

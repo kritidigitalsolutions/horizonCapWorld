@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { sendRegisterOtp } from '../api/authApi';
+import { sendRegisterOtp, checkAvailability, getPublicSecuritySettings } from '../api/authApi';
 import {
   RiUser3Line, RiMailLine, RiLockPasswordLine,
   RiPhoneLine, RiGlobalLine, RiTeamLine,
   RiArrowRightLine, RiEyeLine, RiEyeOffLine,
   RiShieldCheckLine, RiCheckLine, RiMailSendLine,
-  RiRefreshLine, RiArrowLeftLine, RiCloseLine
+  RiRefreshLine, RiArrowLeftLine, RiCloseLine,
+  RiAlertLine, RiLoader4Line
 } from 'react-icons/ri';
 
 import PhoneInput, { getCountries, getCountryCallingCode } from 'react-phone-number-input';
@@ -97,6 +98,18 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Field-level duplicate error and live checking states
+  const [fieldErrors, setFieldErrors] = useState({
+    userName: '',
+    email: '',
+    phone: '',
+  });
+  const [checkingFields, setCheckingFields] = useState({
+    userName: false,
+    email: false,
+    phone: false,
+  });
+
   // 2FA Email OTP Verification State
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otp, setOtp] = useState('');
@@ -104,6 +117,19 @@ export default function Register() {
   const [otpError, setOtpError] = useState('');
   const [otpSuccess, setOtpSuccess] = useState('');
   const [countdown, setCountdown] = useState(0);
+
+  // Admin-governed Signup Email OTP Policy
+  const [signupOtpRequired, setSignupOtpRequired] = useState(false);
+
+  useEffect(() => {
+    getPublicSecuritySettings()
+      .then(res => {
+        if (res?.success) {
+          setSignupOtpRequired(Boolean(res.signupOtpRequired));
+        }
+      })
+      .catch(() => null);
+  }, []);
 
   // Countdown timer effect
   useEffect(() => {
@@ -113,6 +139,55 @@ export default function Register() {
     }
     return () => clearInterval(timer);
   }, [countdown]);
+
+  // Live debounced availability checking for Username, Email, and Phone Number
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const uname = (form.userName || form.fullName || '').trim();
+      const email = (form.email || '').trim();
+      const phoneDigits = (form.phone || '').replace(/[^\d]/g, '');
+
+      const payload = {};
+      if (uname && uname.length >= 2) payload.userName = uname;
+      if (email && email.includes('@') && email.length >= 5) payload.email = email;
+      if (phoneDigits && phoneDigits.length >= 7) payload.phone = form.phone.trim();
+
+      if (Object.keys(payload).length === 0) {
+        setFieldErrors({ userName: '', email: '', phone: '' });
+        return;
+      }
+
+      setCheckingFields({
+        userName: !!payload.userName,
+        email: !!payload.email,
+        phone: !!payload.phone,
+      });
+
+      try {
+        const res = await checkAvailability(payload);
+        if (res?.success) {
+          setFieldErrors(prev => ({
+            ...prev,
+            userName: payload.userName
+              ? (res.duplicates?.userName ? res.errors?.userName || 'This username is already taken.' : '')
+              : '',
+            email: payload.email
+              ? (res.duplicates?.email ? res.errors?.email || 'An account with this email already exists.' : '')
+              : '',
+            phone: payload.phone
+              ? (res.duplicates?.phone ? res.errors?.phone || 'This mobile number is already registered.' : '')
+              : '',
+          }));
+        }
+      } catch (err) {
+        // Suppress background validation network errors
+      } finally {
+        setCheckingFields({ userName: false, email: false, phone: false });
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [form.userName, form.email, form.phone]);
 
   // Helper to update phone field country code and flag
   const updatePhoneForCountry = (countryObj) => {
@@ -137,6 +212,7 @@ export default function Register() {
       };
     });
     setError('');
+    setFieldErrors(p => ({ ...p, phone: '' }));
   };
 
   // Normal typeable Country field change handler - automatically changes phone field country code
@@ -174,6 +250,8 @@ export default function Register() {
       ...(name === 'fullName' ? { userName: value } : {}),
     }));
     setError('');
+    if (name === 'userName') setFieldErrors(p => ({ ...p, userName: '' }));
+    if (name === 'email') setFieldErrors(p => ({ ...p, email: '' }));
   };
 
   // Step 1: Submit Details & Request 2FA Email OTP
@@ -203,34 +281,93 @@ export default function Register() {
       return;
     }
 
+    // Check if any duplicate warning is currently flagged
+    if (fieldErrors.userName || fieldErrors.email || fieldErrors.phone) {
+      const activeWarnings = [
+        fieldErrors.userName,
+        fieldErrors.email,
+        fieldErrors.phone,
+      ].filter(Boolean);
+      setError(activeWarnings.join(' ') || 'Please resolve duplicate credentials before continuing.');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
-    try {
-      const res = await sendRegisterOtp({
-        name: uname,
-        fullName: uname,
-        userName: uname,
-        email: form.email.trim(),
-        phone: form.phone.trim().slice(0, 16),
-        password: form.password,
-        country: form.country,
-        sponsorId: form.sponsorId,
-      });
+    if (signupOtpRequired) {
+      // Flow A: Admin requires Email OTP before registration
+      try {
+        const res = await sendRegisterOtp({
+          name: uname,
+          fullName: uname,
+          userName: uname,
+          email: form.email.trim(),
+          phone: form.phone.trim().slice(0, 16),
+          password: form.password,
+          country: form.country,
+          sponsorId: form.sponsorId,
+        });
 
-      if (res?.success) {
-        setShowOtpModal(true);
-        setCountdown(60);
-        setOtp('');
-        setOtpError('');
-        setOtpSuccess(`A 6-digit verification code has been dispatched to ${form.email}.`);
-      } else {
-        setError(res?.message || 'Failed to dispatch verification code. Please check your email.');
+        if (res?.success) {
+          setShowOtpModal(true);
+          setCountdown(60);
+          setOtp('');
+          setOtpError('');
+          setOtpSuccess(`A 6-digit verification code has been dispatched to ${form.email}.`);
+        } else {
+          setError(res?.message || 'Failed to dispatch verification code. Please check your email.');
+        }
+      } catch (err) {
+        const errMsg = err.response?.data?.message || err.message || 'Failed to send verification code.';
+        const backendErrors = err.response?.data?.errors;
+        if (backendErrors) {
+          setFieldErrors(prev => ({
+            ...prev,
+            userName: backendErrors.userName || prev.userName,
+            email: backendErrors.email || prev.email,
+            phone: backendErrors.phone || prev.phone,
+          }));
+        }
+        setError(errMsg);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to send verification code.');
-    } finally {
-      setLoading(false);
+    } else {
+      // Flow B: Admin allows Direct Registration without OTP
+      try {
+        const res = await register({
+          ...form,
+          name: uname,
+          fullName: uname,
+          userName: uname,
+          email: form.email.trim(),
+          phone: form.phone.trim().slice(0, 16),
+          password: form.password,
+          country: form.country,
+          sponsorId: form.sponsorId,
+        });
+
+        if (res?.success) {
+          navigate('/dashboard', { replace: true });
+        } else {
+          setError(res?.message || 'Registration failed. Please check your credentials.');
+        }
+      } catch (err) {
+        const errMsg = err.response?.data?.message || err.message || 'Registration failed.';
+        const backendErrors = err.response?.data?.errors;
+        if (backendErrors) {
+          setFieldErrors(prev => ({
+            ...prev,
+            userName: backendErrors.userName || prev.userName,
+            email: backendErrors.email || prev.email,
+            phone: backendErrors.phone || prev.phone,
+          }));
+        }
+        setError(errMsg);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -259,6 +396,14 @@ export default function Register() {
     if (res?.success) {
       navigate('/');
     } else {
+      if (res?.errors) {
+        setFieldErrors(prev => ({
+          ...prev,
+          userName: res.errors.userName || prev.userName,
+          email: res.errors.email || prev.email,
+          phone: res.errors.phone || prev.phone,
+        }));
+      }
       setOtpError(res?.message || 'Invalid or expired 6-digit code. Please try again.');
     }
   };
@@ -361,8 +506,12 @@ export default function Register() {
           <p className="text-sm text-slate-500 mb-6 font-poppins">Register to start investing and earning. A 6-digit email OTP will verify your account.</p>
 
           {error && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-poppins">
-              {error}
+            <div className="mb-4 p-3.5 rounded-xl bg-amber-50/95 border border-amber-300 text-amber-900 text-sm font-poppins flex items-start gap-3 shadow-sm">
+              <RiAlertLine size={20} className="text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-bold text-amber-950 text-xs uppercase tracking-wide">Warning / Attention</p>
+                <p className="text-amber-900 text-xs mt-0.5 leading-relaxed">{error}</p>
+              </div>
             </div>
           )}
 
@@ -372,7 +521,18 @@ export default function Register() {
               <legend className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 font-poppins mb-1">Identity</legend>
               
               <div>
-                <label className="text-xs font-semibold text-slate-700 mb-1.5 block font-poppins">User Name</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-700 block font-poppins">User Name *</label>
+                  {checkingFields.userName ? (
+                    <span className="text-[10px] text-slate-400 font-poppins flex items-center gap-1">
+                      <RiLoader4Line className="animate-spin text-slate-400" size={12} /> Checking...
+                    </span>
+                  ) : !fieldErrors.userName && form.userName.trim().length >= 2 ? (
+                    <span className="text-[10px] text-emerald-600 font-semibold font-poppins flex items-center gap-1">
+                      <RiCheckLine size={13} /> Available
+                    </span>
+                  ) : null}
+                </div>
                 <div className="relative">
                   <RiUser3Line size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   <input
@@ -380,18 +540,56 @@ export default function Register() {
                     value={form.userName}
                     onChange={handleChange}
                     placeholder="User Name"
-                    className="input input-icon-left"
+                    className={`input input-icon-left transition-all ${
+                      fieldErrors.userName
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-200 bg-rose-50/30 text-rose-900'
+                        : ''
+                    }`}
                     autoComplete="username"
                   />
                 </div>
+                {fieldErrors.userName && (
+                  <p className="mt-1.5 text-xs text-rose-600 font-medium flex items-center gap-1.5 font-poppins">
+                    <RiAlertLine size={14} className="flex-shrink-0 text-rose-500" />
+                    {fieldErrors.userName}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 mb-1.5 block font-poppins">Email</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-700 block font-poppins">Email Address *</label>
+                  {checkingFields.email ? (
+                    <span className="text-[10px] text-slate-400 font-poppins flex items-center gap-1">
+                      <RiLoader4Line className="animate-spin text-slate-400" size={12} /> Checking...
+                    </span>
+                  ) : !fieldErrors.email && form.email.includes('@') && form.email.trim().length >= 5 ? (
+                    <span className="text-[10px] text-emerald-600 font-semibold font-poppins flex items-center gap-1">
+                      <RiCheckLine size={13} /> Available
+                    </span>
+                  ) : null}
+                </div>
                 <div className="relative">
                   <RiMailLine size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="yourname@email.com" className="input input-icon-left" />
+                  <input
+                    name="email"
+                    type="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    placeholder="yourname@email.com"
+                    className={`input input-icon-left transition-all ${
+                      fieldErrors.email
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-200 bg-rose-50/30 text-rose-900'
+                        : ''
+                    }`}
+                  />
                 </div>
+                {fieldErrors.email && (
+                  <p className="mt-1.5 text-xs text-rose-600 font-medium flex items-center gap-1.5 font-poppins">
+                    <RiAlertLine size={14} className="flex-shrink-0 text-rose-500" />
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
             </fieldset>
 
@@ -429,9 +627,20 @@ export default function Register() {
               
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 mb-1.5 block font-poppins">
-                    Mobile Number <span className="text-[10px] text-slate-400">(Max 15 digits)</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-700 block font-poppins">
+                      Mobile Number * <span className="text-[10px] text-slate-400">(Max 15 digits)</span>
+                    </label>
+                    {checkingFields.phone ? (
+                      <span className="text-[10px] text-slate-400 font-poppins flex items-center gap-1">
+                        <RiLoader4Line className="animate-spin text-slate-400" size={12} /> Checking...
+                      </span>
+                    ) : !fieldErrors.phone && (form.phone || '').replace(/[^\d]/g, '').length >= 7 ? (
+                      <span className="text-[10px] text-emerald-600 font-semibold font-poppins flex items-center gap-1">
+                        <RiCheckLine size={13} /> Available
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="relative">
                     <PhoneInput
                       international
@@ -442,10 +651,11 @@ export default function Register() {
                         const cleanVal = (val || '').slice(0, 16);
                         setForm(p => ({ ...p, phone: cleanVal }));
                         setError('');
+                        setFieldErrors(p => ({ ...p, phone: '' }));
                       }}
                       onCountryChange={handlePhoneCountryChange}
                       placeholder="+91"
-                      className="custom-phone-input font-poppins"
+                      className={`custom-phone-input font-poppins ${fieldErrors.phone ? 'has-error' : ''}`}
                       limitMaxLength={true}
                       maxLength={16}
                       numberInputProps={{
@@ -454,6 +664,12 @@ export default function Register() {
                       }}
                     />
                   </div>
+                  {fieldErrors.phone && (
+                    <p className="mt-1.5 text-xs text-rose-600 font-medium flex items-center gap-1.5 font-poppins">
+                      <RiAlertLine size={14} className="flex-shrink-0 text-rose-500" />
+                      {fieldErrors.phone}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-700 mb-1.5 block font-poppins">Country</label>
@@ -505,11 +721,11 @@ export default function Register() {
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  Sending Verification OTP...
+                  {signupOtpRequired ? 'Sending Verification OTP...' : 'Creating Account...'}
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  Create Account <RiArrowRightLine size={18} />
+                  {signupOtpRequired ? 'Verify Email & Create Account' : 'Create Investor Account'} <RiArrowRightLine size={18} />
                 </span>
               )}
             </button>

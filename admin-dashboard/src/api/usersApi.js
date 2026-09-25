@@ -35,3 +35,21 @@ export const markUsersSeen = async (userIds = []) => {
   const response = await API.put("/admin/users/mark-seen", { userIds });
   return response.data;
 };
+
+// Shift user sponsor internally without notifying client
+export const shiftUserSponsor = async (id, newSponsorId) => {
+  const response = await API.put(`/admin/users/${id}/shift-sponsor`, { newSponsorId });
+  return response.data;
+};
+
+// Admin reset client password
+export const resetUserPassword = async (id, newPassword) => {
+  const response = await API.put(`/admin/users/${id}/reset-password`, { newPassword });
+  return response.data;
+};
+
+// Admin toggle user 2FA security
+export const toggleUser2FAByAdmin = async (id, is2FAEnabled) => {
+  const response = await API.put(`/admin/users/${id}/2fa`, { is2FAEnabled });
+  return response.data;
+};

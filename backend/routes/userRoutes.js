@@ -7,6 +7,7 @@ const { protectUser, optionalUserAuth } = require("../middlewares/auth");
 const {
   sendRegisterOtp,
   register,
+  checkAvailability,
   login,
   sendLogin2FAOtp,
   userForgotPasswordSendOtp,
@@ -18,6 +19,7 @@ const {
   sendOtp,
   verifyOtp,
   toggle2FA,
+  getPublicSecuritySettings,
 } = require("../controllers/user/userAuthController");
 
 const {
@@ -66,11 +68,13 @@ const {
 // ──────── 1. AUTHENTICATION & PROFILE ────────
 router.post("/auth/send-register-otp", sendRegisterOtp);
 router.post("/auth/register", register);
+router.post("/auth/check-availability", checkAvailability);
 router.post("/auth/login", login);
 router.post("/auth/login-2fa-otp", sendLogin2FAOtp);
 router.post("/auth/forgot-password/send-otp", userForgotPasswordSendOtp);
 router.post("/auth/forgot-password/verify-otp", userForgotPasswordVerifyOtp);
 router.post("/auth/forgot-password/reset", userForgotPasswordReset);
+router.get("/auth/security-settings", getPublicSecuritySettings);
 
 router.get("/auth/me", protectUser, getProfile);
 router.get("/profile", protectUser, getProfile);
@@ -107,7 +111,7 @@ router.get("/referrals/commissions", optionalUserAuth, getReferralCommissions);
 router.get("/referrals/network", protectUser, getReferralNetwork);
 router.get("/ranks/ladder", getRankLadder);
 router.get("/ranks/my-rank", protectUser, getMyRankStatus);
-router.get("/ranks/leaderboard", getLeaderboard);
+router.get("/ranks/leaderboard", protectUser, getLeaderboard);
 
 // ──────── 6. NEWS & MEDIA ────────
 router.get("/news", getNews);

@@ -1,6 +1,7 @@
 const User = require("../../models/User");
 const Transaction = require("../../models/Transaction");
 const InvestmentPlan = require("../../models/InvestmentPlan");
+const UserInvestment = require("../../models/UserInvestment");
 const SupportTicket = require("../../models/SupportTicket");
 const Notification = require("../../models/Notification");
 
@@ -40,6 +41,8 @@ exports.getDashboardKPIs = async (req, res) => {
       approvedWithdrawals,
       totalRoiAgg,
       totalReferralAgg,
+      depositedTxUsers,
+      usersWithInvestOrWallet,
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ status: "Active" }),
@@ -59,6 +62,14 @@ exports.getDashboardKPIs = async (req, res) => {
         { $match: { type: { $in: ["Referral Bonus", "Rank Bonus"] } } },
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ]),
+      Transaction.distinct("user", { type: "Deposit", status: "Approved" }),
+      User.find({
+        $or: [
+          { totalInvested: { $gt: 0 } },
+          { depositWallet: { $gt: 0 } },
+          { hasDeposited: true },
+        ],
+      }).select("_id"),
     ]);
 
     const grossDeposits = approvedDeposits[0]?.total || 0;
@@ -66,16 +77,25 @@ exports.getDashboardKPIs = async (req, res) => {
     const totalYieldDistributed = totalRoiAgg[0]?.total || 0;
     const totalReferralPaid = totalReferralAgg[0]?.total || 0;
 
-    // Platform Total AUM & Reserve
+    // Platform Total AUM
     const totalAUM = grossDeposits;
     const platformReserve = Math.max(0, grossDeposits - totalWithdrawals);
+
+    // Calculate unique Money Deposited Clients
+    const depositedUserIdSet = new Set([
+      ...depositedTxUsers.filter(Boolean).map((id) => String(id)),
+      ...usersWithInvestOrWallet.map((u) => String(u._id)),
+    ]);
+    const moneyDepositedClients = depositedUserIdSet.size;
 
     res.status(200).json({
       success: true,
       kpis: {
         totalAUM: Math.round(totalAUM),
-        activeInvestors,
+        registeredClients: totalUsers,
         totalUsers,
+        moneyDepositedClients,
+        activeInvestors,
         totalYieldDistributed: Math.round(totalYieldDistributed),
         platformReserve: Math.round(platformReserve),
         grossDeposits: Math.round(grossDeposits),
@@ -103,8 +123,8 @@ exports.getDashboardCharts = async (req, res) => {
       monthRanges.push({ d, nextD, monthLabel });
     }
 
-    // Run all monthly aggregations in parallel
-    const monthlyData = await Promise.all(
+    // 1. Monthly Trends & User Growth
+    const monthlyDataPromise = Promise.all(
       monthRanges.map(async ({ d, nextD, monthLabel }) => {
         const [depositsAgg, yieldAgg, usersCount] = await Promise.all([
           Transaction.aggregate([
@@ -129,7 +149,45 @@ exports.getDashboardCharts = async (req, res) => {
       })
     );
 
-    res.status(200).json({ success: true, charts: monthlyData });
+    // 2. Dynamic Portfolio Asset Allocation by Investment Sector
+    const sectorAggPromise = UserInvestment.aggregate([
+      { $match: { status: { $ne: "Cancelled" } } },
+      {
+        $group: {
+          _id: { $ifNull: ["$planCategory", "$planName"] },
+          totalAmount: { $sum: "$amount" },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { totalAmount: -1 } },
+    ]);
+
+    const [monthlyData, sectorAgg] = await Promise.all([
+      monthlyDataPromise,
+      sectorAggPromise,
+    ]);
+
+    const palette = ['#10B981', '#F59E0B', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#C8A200', '#6366F1'];
+    const totalSectorVolume = sectorAgg.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
+
+    const assetDistribution = sectorAgg.map((s, idx) => {
+      const percentage = totalSectorVolume > 0 ? Math.round((s.totalAmount / totalSectorVolume) * 100) : 0;
+      return {
+        name: s._id || 'Diversified Assets',
+        value: percentage,
+        amount: `$${Number(s.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        rawAmount: s.totalAmount || 0,
+        color: palette[idx % palette.length],
+        count: s.count || 0,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      charts: monthlyData,
+      assetDistribution,
+      totalSectorVolume,
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

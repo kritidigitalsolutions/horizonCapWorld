@@ -38,6 +38,16 @@ const adminSettingsSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    userSecurity: {
+      require2FAForAllUsers: {
+        type: Boolean,
+        default: false,
+      },
+      signupOtpRequired: {
+        type: Boolean,
+        default: false,
+      },
+    },
     withdrawalSettings: {
       feeType: {
         type: String,

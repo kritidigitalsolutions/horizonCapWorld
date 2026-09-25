@@ -494,7 +494,7 @@ export default function Plans() {
         isOpen={investDrawerOpen}
         onClose={() => setInvestDrawerOpen(false)}
         title={`Invest in ${selectedPlan?.name || 'Plan'}`}
-        subtitle="Amount-Wise Daily ROI Slabs"
+        subtitle="Daily ROI Slabs"
         size="lg"
         footer={
           <div className="flex items-center justify-between w-full">

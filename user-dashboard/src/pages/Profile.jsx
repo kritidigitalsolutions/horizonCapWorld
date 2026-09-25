@@ -4,21 +4,20 @@ import {
   updateProfile as apiUpdateProfile,
   changePassword as apiChangePassword,
   sendOtp as apiSendOtp,
-  toggle2FA as apiToggle2FA
 } from '../api/authApi';
 import { uploadFileToCloudinary, deleteFileFromCloudinary } from '../api/uploadApi';
 import {
   RiUser3Line, RiMailLine,
   RiUpload2Line, RiDeleteBin7Line, RiCameraLine,
   RiCheckLine, RiLockPasswordLine, RiEyeLine, RiEyeOffLine, RiAlertLine,
-  RiCheckboxCircleFill, RiAwardLine, RiMailSendLine, RiMailCheckLine,
-  RiRefreshLine, RiSaveLine, RiShieldCheckLine, RiShieldFlashLine, RiKey2Line,
+  RiCheckboxCircleFill, RiAwardLine, RiMailSendLine,
+  RiRefreshLine, RiSaveLine,
 } from 'react-icons/ri';
 import PageHeader from '../components/ui/PageHeader';
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
-  const [activeSection, setActiveSection] = useState('profile'); // 'profile' | 'security' | 'password'
+  const [activeSection, setActiveSection] = useState('profile'); // 'profile' | 'password'
   const [avatar, setAvatar] = useState(() => user?.avatar || localStorage.getItem('horizon_user_avatar') || '');
   const [toastMsg, setToastMsg] = useState({ show: false, text: '', type: 'success' });
   const fileInputRef = useRef(null);
@@ -36,9 +35,6 @@ export default function Profile() {
   });
   const [profileSaved, setProfileSaved] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
-
-  // ──────── EMAIL 2FA STATE ────────
-  const [is2FAEnabled, setIs2FAEnabled] = useState(() => !!user?.is2FAEnabled);
 
   // ──────── CHANGE PASSWORD STATE ────────
   const [currentPassword, setCurrentPassword] = useState('');
@@ -71,7 +67,6 @@ export default function Profile() {
         dob: user.dob || prev.dob,
         timezone: user.timezone || prev.timezone,
       }));
-      setIs2FAEnabled(!!user.is2FAEnabled);
       if (user.avatar) setAvatar(user.avatar);
     }
   }, [user]);
@@ -162,6 +157,7 @@ export default function Profile() {
     try {
       const res = await apiUpdateProfile({
         name: form.fullName,
+        email: form.email,
         phone: form.phone,
         country: form.country,
         city: form.city,
@@ -174,6 +170,7 @@ export default function Profile() {
       if (res?.success) {
         updateUser({
           fullName: form.fullName,
+          email: res.user?.email || form.email,
           phone: form.phone,
           country: form.country,
           city: form.city,
@@ -191,27 +188,6 @@ export default function Profile() {
       triggerToast(err.response?.data?.message || err.message || 'Profile update failed.', 'error');
     } finally {
       setSavingProfile(false);
-    }
-  };
-
-  // Direct Inline Toggle 2FA
-  const handleToggle2FA = async () => {
-    const nextState = !is2FAEnabled;
-    try {
-      const res = await apiToggle2FA(nextState);
-      const activeState = res?.is2FAEnabled !== undefined ? res.is2FAEnabled : nextState;
-      setIs2FAEnabled(activeState);
-      localStorage.setItem('horizon_email_2fa_enabled', String(activeState));
-      updateUser({ is2FAEnabled: activeState });
-      if (activeState) {
-        triggerToast('Email 2FA Activated! A 6-digit OTP will now be required on Login.');
-      } else {
-        triggerToast('Email 2FA Disabled.', 'warning');
-      }
-    } catch (err) {
-      setIs2FAEnabled(nextState);
-      localStorage.setItem('horizon_email_2fa_enabled', String(nextState));
-      triggerToast('2FA setting updated locally.', 'info');
     }
   };
 
@@ -305,7 +281,6 @@ export default function Profile() {
 
   const sections = [
     { key: 'profile', label: 'Personal Profile', icon: RiUser3Line },
-    { key: 'security', label: 'Security & 2-Factor Auth (2FA)', icon: RiShieldCheckLine },
     { key: 'password', label: 'Change Password (Email OTP)', icon: RiLockPasswordLine },
   ];
 
@@ -314,7 +289,7 @@ export default function Profile() {
       {/* ──────── PAGE HEADER ──────── */}
       <PageHeader
         title="Account Settings & Security"
-        subtitle="Manage personal profile details, Email 2-Factor Authentication (2FA), and secure password credentials"
+        subtitle="Manage personal profile details and secure password credentials"
         badge="Account Center"
       />
 
@@ -482,8 +457,9 @@ export default function Profile() {
                   <input
                     type="email"
                     value={form.email}
-                    readOnly
-                    className="w-full px-3.5 py-2.5 bg-slate-100 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 outline-none cursor-not-allowed shadow-2xs"
+                    onChange={e => setForm({ ...form, email: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+                    required
                   />
                 </div>
               </div>
@@ -578,113 +554,7 @@ export default function Profile() {
         </div>
       )}
 
-      {/* ──────────────── TAB 2: SECURITY & 2-FACTOR AUTH (2FA) ──────────────── */}
-      {activeSection === 'security' && (
-        <div className="space-y-6 max-w-4xl font-poppins animate-fade-in">
-          {/* Main 2FA Card */}
-          <div className="card p-4 sm:p-6 md:p-8 space-y-6 border border-slate-200 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-gold-50 text-gold-700 flex items-center justify-center flex-shrink-0 shadow-2xs border border-gold-200">
-                  <RiShieldCheckLine size={24} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Security & 2-Factor Authentication</h3>
-                  <p className="text-xs text-slate-400">Configure secondary login challenge and cryptographic account protections</p>
-                </div>
-              </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold self-start sm:self-center border shadow-2xs ${
-                is2FAEnabled
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                  : 'bg-slate-100 text-slate-600 border-slate-200'
-              }`}>
-                {is2FAEnabled ? '● 2FA Protected' : '○ 2FA Disabled'}
-              </span>
-            </div>
-
-            {/* Email 2FA Interactive Toggle Row */}
-            <div className="p-4 sm:p-5 bg-gradient-to-br from-gold-50/70 via-amber-50/30 to-white rounded-2xl border border-gold-300 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3.5 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-gold-100 text-gold-700 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                  <RiMailCheckLine size={22} />
-                </div>
-                <div className="min-w-0 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="text-sm font-bold text-slate-800">Email 2-Factor Authentication (2FA)</h4>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                      is2FAEnabled
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-slate-100 text-slate-500 border-slate-200'
-                    }`}>
-                      {is2FAEnabled ? 'Enabled' : 'Disabled'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    {is2FAEnabled
-                      ? `Active Protection: A 6-digit security OTP is dispatched to ${form.email} each time you sign in.`
-                      : `Require a secure 6-digit OTP dispatched to ${form.email} upon each sign in attempt.`}
-                  </p>
-                </div>
-              </div>
-
-              {/* Sliding Toggle Switch */}
-              <button
-                type="button"
-                role="switch"
-                aria-checked={is2FAEnabled}
-                onClick={handleToggle2FA}
-                className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none self-end sm:self-center shadow-xs ${
-                  is2FAEnabled ? 'bg-gold-500' : 'bg-slate-300'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                    is2FAEnabled ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-
-            {/* 3 Security Pillars Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-                <div className="flex items-center gap-2 text-gold-700 font-bold text-xs">
-                  <RiShieldFlashLine size={16} />
-                  <span>256-Bit SSL Encryption</span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Bank-grade TLS 1.3 socket encryption for all transactions and ledger records.
-                </p>
-                <span className="text-[10px] font-extrabold text-emerald-600 block pt-0.5">Verified Active</span>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-                <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
-                  <RiMailLine size={16} />
-                  <span>Email Verification OTP</span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  All withdrawals, password rotations, and profile edits require cryptographic codes.
-                </p>
-                <span className="text-[10px] font-extrabold text-emerald-600 block pt-0.5">Enforced</span>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-                <div className="flex items-center gap-2 text-purple-600 font-bold text-xs">
-                  <RiKey2Line size={16} />
-                  <span>Session Monitoring</span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Automated logout and token invalidation on unrecognized devices or IP switches.
-                </p>
-                <span className="text-[10px] font-extrabold text-emerald-600 block pt-0.5">Protected</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ──────────────── TAB 3: CHANGE PASSWORD (WITH EMAIL OTP VERIFICATION) ──────────────── */}
+      {/* ──────────────── TAB 2: CHANGE PASSWORD (WITH EMAIL OTP VERIFICATION) ──────────────── */}
       {activeSection === 'password' && (
         <div className="card p-4 sm:p-6 md:p-8 space-y-5 sm:space-y-6 max-w-2xl border border-slate-200 font-poppins shadow-sm animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-2">

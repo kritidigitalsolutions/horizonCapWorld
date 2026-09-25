@@ -4,8 +4,10 @@ import { RiArrowLeftSLine, RiArrowRightSLine } from 'react-icons/ri';
 export default function Pagination({
   currentPage = 1,
   totalItems = 0,
-  pageSize = 20,
-  onPageChange
+  pageSize = 10,
+  onPageChange,
+  onPageSizeChange,
+  pageSizeOptions = [10, 20, 50, 100]
 }) {
   const totalPages = Math.ceil(totalItems / pageSize) || 1;
 
@@ -35,20 +37,42 @@ export default function Pagination({
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 px-4 py-3.5 bg-white border-t border-slate-100 font-poppins">
-      {/* Entry Count Text */}
-      <p className="text-xs text-slate-500 font-medium">
-        Showing <span className="font-bold text-slate-800">{startItem}</span> to{' '}
-        <span className="font-bold text-slate-800">{endItem}</span> of{' '}
-        <span className="font-bold text-slate-900">{totalItems}</span> entries (20 per page)
-      </p>
+      {/* Entry Count & Page Size Selector */}
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-xs text-slate-500 font-medium">
+          Showing <span className="font-bold text-slate-800">{startItem}</span> to{' '}
+          <span className="font-bold text-slate-800">{endItem}</span> of{' '}
+          <span className="font-bold text-slate-900">{totalItems}</span> entries
+          {!onPageSizeChange && <span className="text-slate-400 font-normal"> ({pageSize} per page)</span>}
+        </p>
+
+        {onPageSizeChange && (
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 pl-3 border-l border-slate-200">
+            <span>Show</span>
+            <select
+              value={pageSize}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+              className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:border-gold-500 cursor-pointer shadow-2xs"
+            >
+              {pageSizeOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            <span>entries</span>
+          </div>
+        )}
+      </div>
 
       {/* Pagination Controls */}
       <div className="flex items-center gap-1 self-center sm:self-auto">
         {/* Previous Button */}
         <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 shadow-2xs"
+          type="button"
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage <= 1}
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 shadow-2xs cursor-pointer"
         >
           <RiArrowLeftSLine size={16} />
           <span>Prev</span>
@@ -68,9 +92,10 @@ export default function Pagination({
             const isCurrent = currentPage === p;
             return (
               <button
+                type="button"
                 key={`page-${p}`}
-                onClick={() => onPageChange(p)}
-                className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${
+                onClick={() => onPageChange(Number(p))}
+                className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   isCurrent
                     ? 'bg-gold-400 text-slate-900 shadow-gold ring-1 ring-gold-300'
                     : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
@@ -84,9 +109,10 @@ export default function Pagination({
 
         {/* Next Button */}
         <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 shadow-2xs"
+          type="button"
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage >= totalPages}
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 shadow-2xs cursor-pointer"
         >
           <span>Next</span>
           <RiArrowRightSLine size={16} />
