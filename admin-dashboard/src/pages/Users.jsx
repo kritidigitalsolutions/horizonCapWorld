@@ -7,7 +7,8 @@ import {
   RiArrowDownCircleLine, RiExchangeDollarLine, RiPercentLine, RiTimeLine,
   RiCalendarCheckLine, RiGroupLine, RiCheckLine, RiCloseLine,
   RiKeyLine, RiNodeTree, RiFileCopyLine, RiShieldCheckLine, RiShieldLine,
-  RiExchangeLine, RiEyeOffLine, RiLockPasswordLine, RiSparklingLine
+  RiExchangeLine, RiEyeOffLine, RiLockPasswordLine, RiSparklingLine,
+  RiEditLine
 } from 'react-icons/ri';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -20,6 +21,7 @@ import { useToast } from '../context/ToastContext';
 import {
   getAllUsers,
   getUserById,
+  updateUserDetails,
   updateUserStatus,
   adjustUserWallet,
   deleteUser,
@@ -49,6 +51,66 @@ export default function Users() {
   const [passwordModalUser, setPasswordModalUser] = useState(null);
   const [modalShowPassword, setModalShowPassword] = useState(false);
   const [drawerShowPassword, setDrawerShowPassword] = useState(false);
+
+  // Edit User Credentials (Email, Phone, Name, Country) State
+  const [editModalUser, setEditModalUser] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', country: '' });
+  const [savingUserEdit, setSavingUserEdit] = useState(false);
+
+  const handleOpenEditModal = (user) => {
+    setEditModalUser(user);
+    setEditForm({
+      name: user.name || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      country: user.country || '',
+    });
+  };
+
+  const handleSaveUserEdit = async (e) => {
+    e.preventDefault();
+    if (!editModalUser) return;
+    if (!editForm.email || !editForm.email.includes('@')) {
+      toast.error('Please enter a valid email address.', 'Validation Error');
+      return;
+    }
+
+    setSavingUserEdit(true);
+    try {
+      const res = await updateUserDetails(editModalUser._id || editModalUser.id, editForm);
+      if (res?.success) {
+        toast.success(`User ${editForm.name || editModalUser.name} credentials updated successfully!`, 'User Updated');
+        
+        // Update userList in table
+        setUserList(prev => prev.map(u => (u._id === editModalUser._id || u.id === editModalUser.id) ? {
+          ...u,
+          name: editForm.name,
+          email: editForm.email,
+          phone: editForm.phone,
+          country: editForm.country,
+        } : u));
+
+        // Update selectedUser if open in drawer
+        if (selectedUser && (selectedUser._id === editModalUser._id || selectedUser.id === editModalUser.id)) {
+          setSelectedUser(prev => ({
+            ...prev,
+            name: editForm.name,
+            email: editForm.email,
+            phone: editForm.phone,
+            country: editForm.country,
+          }));
+        }
+
+        setEditModalUser(null);
+      } else {
+        toast.error(res?.message || 'Failed to update user details.', 'Error');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Error updating user details.', 'Error');
+    } finally {
+      setSavingUserEdit(false);
+    }
+  };
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -449,6 +511,16 @@ export default function Users() {
                           <span>View</span>
                         </button>
 
+                        {/* Edit Contact Button */}
+                        <button
+                          onClick={() => handleOpenEditModal(user)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-all border border-blue-200 hover:border-blue-300 active:scale-95 shadow-2xs cursor-pointer"
+                          title="Edit user email, phone number, and name"
+                        >
+                          <RiEditLine size={13} />
+                          <span>Edit</span>
+                        </button>
+
                         {/* Shift Hierarchy Button */}
                         <button
                           onClick={() => {
@@ -524,6 +596,14 @@ export default function Users() {
         size="lg"
         footer={
           <>
+            <Button
+              variant="secondary"
+              icon={<RiEditLine />}
+              onClick={() => handleOpenEditModal(selectedUser)}
+              className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+            >
+              Edit Contact
+            </Button>
             {selectedUser && selectedUser.status === 'Blocked' ? (
               <Button
                 variant="secondary"
@@ -572,7 +652,16 @@ export default function Users() {
                   <p className="text-xs font-medium text-gold-700 font-poppins mt-0.5">
                     {selectedUser.customId || `HORIZON-USR-0${selectedUser.id}`}
                   </p>
-                  <p className="text-xs text-slate-500 font-poppins font-normal">{selectedUser.email}</p>
+                  <p className="text-xs text-slate-500 font-poppins font-normal flex items-center gap-1.5">
+                    <span>{selectedUser.email}</span>
+                    <button
+                      onClick={() => handleOpenEditModal(selectedUser)}
+                      className="text-gold-700 hover:text-gold-900 text-[11px] font-semibold flex items-center gap-0.5 underline cursor-pointer"
+                      title="Edit email or phone"
+                    >
+                      <RiEditLine size={12} /> Edit
+                    </button>
+                  </p>
                   <div className="flex flex-wrap items-center gap-2 mt-2 font-poppins">
                     <Badge variant={statusVariant(selectedUser.status)}>{selectedUser.status}</Badge>
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold bg-white text-slate-600 border border-slate-200 shadow-2xs">
@@ -587,8 +676,17 @@ export default function Users() {
 
               <div className="text-right sm:border-l sm:border-gold-200/70 sm:pl-6 space-y-2">
                 <div>
-                  <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Contact Phone</p>
-                  <p className="text-sm font-medium text-slate-700 font-poppins mt-0.5">{selectedUser.phone}</p>
+                  <div className="flex items-center justify-end gap-1.5">
+                    <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Contact Phone</p>
+                    <button
+                      onClick={() => handleOpenEditModal(selectedUser)}
+                      className="text-gold-700 hover:text-gold-900 text-[10px] font-semibold flex items-center gap-0.5 underline cursor-pointer"
+                      title="Edit phone"
+                    >
+                      <RiEditLine size={11} /> Edit
+                    </button>
+                  </div>
+                  <p className="text-sm font-medium text-slate-700 font-poppins mt-0.5">{selectedUser.phone || '—'}</p>
                 </div>
                 <div className="pt-2 border-t border-gold-200/50">
                   <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Sponsor / Referred By</p>
@@ -654,6 +752,13 @@ export default function Users() {
                           title="Copy Email"
                         >
                           <RiFileCopyLine size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleOpenEditModal(selectedUser)}
+                          className="text-gold-400 hover:text-gold-300 transition-colors ml-0.5"
+                          title="Edit user email, phone, name"
+                        >
+                          <RiEditLine size={13} />
                         </button>
                       </div>
                     </div>
@@ -1166,6 +1271,104 @@ export default function Users() {
               </div>
             </div>
           </div>
+        )}
+      </Modal>
+
+      {/* ──────────────── Edit User Details & Contact Modal ──────────────── */}
+      <Modal
+        isOpen={!!editModalUser}
+        onClose={() => setEditModalUser(null)}
+        title="Edit User Contact & Credentials"
+        subtitle={editModalUser ? `ID: ${editModalUser.customId || editModalUser.id} • Admin Control` : ''}
+        size="md"
+      >
+        {editModalUser && (
+          <form onSubmit={handleSaveUserEdit} className="space-y-4 font-poppins text-xs">
+            <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+              <RiShieldCheckLine size={18} className="text-amber-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-amber-950">Super Admin Contact Governance</p>
+                <p className="text-[11px] text-amber-800 mt-0.5">
+                  Investors cannot alter their own email or phone number. Only administrators can update these credentials.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={editForm.name}
+                onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+                placeholder="User Full Name"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Registered Email Address *
+              </label>
+              <input
+                type="email"
+                value={editForm.email}
+                onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs font-mono"
+                placeholder="investor@example.com"
+                required
+              />
+              <p className="text-[10px] text-slate-400 mt-1">Must be unique across the platform.</p>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Mobile Phone Number
+              </label>
+              <input
+                type="text"
+                value={editForm.phone}
+                onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs font-mono"
+                placeholder="+91 98765 43210 (Optional)"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">Include country dial code (e.g. +91, +1, +44). Leave blank if none.</p>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Country
+              </label>
+              <input
+                type="text"
+                value={editForm.country}
+                onChange={e => setEditForm({ ...editForm, country: e.target.value })}
+                className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+                placeholder="e.g. India, United States"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setEditModalUser(null)}
+                disabled={savingUserEdit}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={savingUserEdit}
+                className="bg-gold-500 hover:bg-gold-600 text-slate-900 font-semibold"
+              >
+                {savingUserEdit ? 'Saving Changes...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
         )}
       </Modal>
     </div>

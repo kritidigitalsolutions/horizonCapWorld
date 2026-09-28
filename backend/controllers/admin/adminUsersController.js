@@ -512,3 +512,86 @@ exports.toggleUser2FAByAdmin = async (req, res) => {
   }
 };
 
+// @desc    Admin Update User Details (Email, Phone Number, Name, Country)
+// @route   PUT /api/admin/users/:id
+exports.updateUserDetails = async (req, res) => {
+  try {
+    const { name, email, phone, country } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    // 1. Update Email
+    if (email !== undefined && typeof email === "string" && email.trim()) {
+      const cleanEmail = email.toLowerCase().trim();
+      if (cleanEmail !== user.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(cleanEmail)) {
+          return res.status(400).json({ success: false, message: "Please enter a valid email address." });
+        }
+        const existingEmail = await User.findOne({ email: cleanEmail, _id: { $ne: user._id } });
+        if (existingEmail) {
+          return res.status(400).json({
+            success: false,
+            message: "This email address is already assigned to another user account.",
+          });
+        }
+        user.email = cleanEmail;
+      }
+    }
+
+    // 2. Update Phone Number
+    if (phone !== undefined) {
+      const cleanPhone = (phone || "").trim().slice(0, 16);
+      if (cleanPhone !== (user.phone || "")) {
+        const phoneDigits = cleanPhone.replace(/[^\d]/g, "");
+        if (phoneDigits && phoneDigits.length >= 7) {
+          const last10 = phoneDigits.slice(-10);
+          const existingPhone = await User.findOne({
+            _id: { $ne: user._id },
+            phone: { $regex: last10, $options: "i" },
+          });
+          if (existingPhone) {
+            return res.status(400).json({
+              success: false,
+              message: "This mobile phone number is already registered with another user account.",
+            });
+          }
+        }
+        user.phone = cleanPhone;
+      }
+    }
+
+    // 3. Update Name
+    if (name && typeof name === "string" && name.trim()) {
+      user.name = name.trim();
+    }
+
+    // 4. Update Country
+    if (country && typeof country === "string" && country.trim()) {
+      user.country = country.trim();
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `User ${user.name} (${user.customId}) details updated successfully.`,
+      user: {
+        _id: user._id,
+        id: user.customId || user._id,
+        customId: user.customId,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        country: user.country,
+        status: user.status,
+      },
+    });
+  } catch (error) {
+    console.error("[Admin updateUserDetails Error]:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

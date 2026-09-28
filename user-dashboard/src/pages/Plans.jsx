@@ -385,9 +385,18 @@ export default function Plans() {
                     </div>
                   </div>
 
-                  <span className="badge badge-success text-[10px] font-bold">
-                    {plan.status}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      (plan.payoutInterval || '').toLowerCase().includes('daily')
+                        ? 'bg-blue-50 text-blue-800 border border-blue-200'
+                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    }`}>
+                      {(plan.payoutInterval || '').toLowerCase().includes('daily') ? '24h Daily Payout' : 'Live Per Second'}
+                    </span>
+                    <span className="badge badge-success text-[10px] font-bold">
+                      {plan.status}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Plan Title */}
@@ -848,7 +857,9 @@ export default function Plans() {
                       <p className="text-[11px] text-slate-500 font-medium">Standard 24h base return</p>
                     </div>
                     <p className="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-1.5 truncate">
-                      Real-time live streaming return
+                      {(selectedPlan?.payoutInterval || '').toLowerCase().includes('daily')
+                        ? 'Day-wise 24h payout settlement'
+                        : 'Real-time live streaming return'}
                     </p>
                   </div>
 

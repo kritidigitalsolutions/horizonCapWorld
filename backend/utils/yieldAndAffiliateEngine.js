@@ -95,19 +95,40 @@ const syncUserStreamingEarnings = async (user) => {
 
       inv.dailyRoi = dynamicDailyRoi;
       const invDaily = inv.amount * (dynamicDailyRoi / 100);
-      const invPerSec = invDaily / 86400;
-      inv.dailyEarning = invDaily;
-      inv.perSecondRate = invPerSec;
+      const isDailyPlan = (inv.payoutInterval || "").toLowerCase().includes("daily");
 
       currentDailyEarning += invDaily;
-      currentPerSecondRate += invPerSec;
+      inv.dailyEarning = invDaily;
 
-      // Calculate accrued yield for this contract using exact elapsed seconds
-      const contractYield = elapsedSeconds * invPerSec;
-      totalAccruedYield += contractYield;
+      if (isDailyPlan) {
+        // ── Daily Payout Mode: ROI is counted day-wise every 24 hours from investment start time (does NOT stream per-second) ──
+        inv.perSecondRate = 0;
 
-      inv.totalProfitEarned = Number(((inv.totalProfitEarned || 0) + contractYield).toFixed(8));
-      inv.lastSettlementAt = now;
+        const CYCLE_MS = 24 * 60 * 60 * 1000;
+        const refTime = inv.lastSettlementAt
+          ? new Date(inv.lastSettlementAt).getTime()
+          : new Date(inv.startDate || inv.createdAt || now).getTime();
+
+        const msElapsed = Math.max(0, now.getTime() - refTime);
+        const elapsedDays = Math.floor(msElapsed / CYCLE_MS);
+
+        if (elapsedDays >= 1) {
+          const dailyYield = Number((elapsedDays * invDaily).toFixed(8));
+          totalAccruedYield += dailyYield;
+          inv.totalProfitEarned = Number(((inv.totalProfitEarned || 0) + dailyYield).toFixed(8));
+          inv.lastSettlementAt = new Date(refTime + elapsedDays * CYCLE_MS);
+        }
+      } else {
+        // ── Real-Time Per Second Mode: ROI accrues and streams live per second ──
+        const invPerSec = invDaily / 86400;
+        inv.perSecondRate = invPerSec;
+        currentPerSecondRate += invPerSec;
+
+        const contractYield = elapsedSeconds * invPerSec;
+        totalAccruedYield += contractYield;
+        inv.totalProfitEarned = Number(((inv.totalProfitEarned || 0) + contractYield).toFixed(8));
+        inv.lastSettlementAt = now;
+      }
 
       // Check if 3X Cap contract has reached 300% profit
       if (isLocked) {
@@ -127,6 +148,17 @@ const syncUserStreamingEarnings = async (user) => {
     if (totalAccruedYield > 0) {
       userDoc.earningWallet = Number(((userDoc.earningWallet || 0) + totalAccruedYield).toFixed(8));
       userDoc.totalProfit = Number(((userDoc.totalProfit || 0) + totalAccruedYield).toFixed(8));
+    }
+
+    // Set user payoutType indicator
+    const hasPerSec = activeInvestments.some((inv) => !((inv.payoutInterval || "").toLowerCase().includes("daily")));
+    const hasDaily = activeInvestments.some((inv) => (inv.payoutInterval || "").toLowerCase().includes("daily"));
+    if (hasPerSec && hasDaily) {
+      userDoc.payoutType = "Hybrid (Per Second & Daily)";
+    } else if (hasDaily) {
+      userDoc.payoutType = "Daily Payout";
+    } else {
+      userDoc.payoutType = "Per Second (Live)";
     }
 
     userDoc.dailyEarning = Number(currentDailyEarning.toFixed(4));

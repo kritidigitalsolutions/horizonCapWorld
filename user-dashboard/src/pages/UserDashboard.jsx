@@ -9,7 +9,7 @@ import {
   RiUser3Line, RiCustomerService2Line,
   RiFileCopyLine, RiArrowRightLine,
   RiWallet3Line, RiSafeLine, RiSparklingLine,
-  RiAwardLine, RiCalendarLine, RiCameraLine
+  RiAwardLine, RiCalendarLine, RiCameraLine, RiTimeLine
 } from 'react-icons/ri';
 import ReferralTreeModal from '../components/referrals/ReferralTreeModal';
 import { UilBolt } from '@iconscout/react-unicons';
@@ -143,8 +143,12 @@ export default function UserDashboard() {
     Number(user?.depositWallet || 0) > 0
   );
 
-  const hasActiveStreaming = Number(user?.perSecondRate || 0) > 0 || Number(user?.activeInvestments || 0) > 0;
-  const activeRate = hasActiveStreaming ? Number(user?.perSecondRate || 0) : 0;
+  const hasPerSecStream = Number(user?.perSecondRate || 0) > 0;
+  const hasActiveInvestments = Number(user?.activeInvestments || 0) > 0;
+  const isDailyOnly = hasActiveInvestments && !hasPerSecStream;
+  const isHybrid = hasPerSecStream && (user?.hasDailyPlan || (user?.payoutType && user.payoutType.toLowerCase().includes('hybrid')));
+  const hasActivePlan = hasPerSecStream || hasActiveInvestments;
+  const activeRate = hasPerSecStream ? Number(user?.perSecondRate || 0) : 0;
 
   // Dynamic greeting based on time of day
   const getGreeting = () => {
@@ -325,7 +329,7 @@ export default function UserDashboard() {
 
   // Countdown to next daily settlement - 24 hours rolling from the time investment started
   useEffect(() => {
-    if (!hasActiveStreaming) {
+    if (!hasActivePlan) {
       setCountdown({ hours: '00', minutes: '00', seconds: '00' });
       return;
     }
@@ -338,6 +342,9 @@ export default function UserDashboard() {
       if (user?.nextSettlementTime) {
         let target = new Date(user.nextSettlementTime).getTime();
         if (!isNaN(target)) {
+          if (target <= now && refreshUser) {
+            refreshUser();
+          }
           while (target <= now) {
             target += CYCLE_MS;
           }
@@ -371,7 +378,7 @@ export default function UserDashboard() {
     tick();
     const iv = setInterval(tick, 1000);
     return () => clearInterval(iv);
-  }, [hasActiveStreaming, user?.nextSettlementTime, user?.settlementStartTime, user?.startDate, user?.createdAt]);
+  }, [hasActivePlan, user?.nextSettlementTime, user?.settlementStartTime, user?.startDate, user?.createdAt, refreshUser]);
 
   const copyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);
@@ -599,33 +606,105 @@ export default function UserDashboard() {
         </div>
       </div>
 
-      {/* ──────────────── REAL-TIME STREAMING DETAIL CARD ──────────────── */}
+      {/* ──────────────── REAL-TIME STREAMING OR DAILY 24H DETAIL CARD ──────────────── */}
       <div className="card-gold p-5 sm:p-7 relative overflow-hidden rounded-3xl shadow-card border border-gold-300">
         <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5 sm:gap-6 relative z-10">
-          {/* Left: Streaming counter */}
+          {/* Left: Streaming counter or Day-wise counter */}
           <div className="flex-1 space-y-2">
-            <div className="flex items-center gap-2">
-              <div className={hasActiveStreaming ? "live-dot" : "w-2.5 h-2.5 rounded-full bg-slate-400"}></div>
-              <span className={`text-xs font-extrabold uppercase tracking-[0.14em] font-poppins ${hasActiveStreaming ? 'text-emerald-800' : 'text-slate-700'}`}>
-                {hasActiveStreaming ? 'Live Real-Time Investment Profit Streaming' : 'Live Real-Time Investment Profit Streaming (Idle)'}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className={
+                isDailyOnly
+                  ? "w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"
+                  : hasPerSecStream
+                  ? "live-dot"
+                  : "w-2.5 h-2.5 rounded-full bg-slate-400"
+              }></div>
+              <span className={`text-xs font-extrabold uppercase tracking-[0.14em] font-poppins ${
+                isDailyOnly
+                  ? 'text-blue-900'
+                  : hasPerSecStream
+                  ? 'text-emerald-800'
+                  : 'text-slate-700'
+              }`}>
+                {isDailyOnly
+                  ? 'Daily 24-Hour Settlement Profit (Day-Wise Payout)'
+                  : isHybrid
+                  ? 'Live Real-Time Streaming & 24h Daily Payout Portfolio'
+                  : hasPerSecStream
+                  ? 'Live Real-Time Investment Profit Streaming'
+                  : 'Live Real-Time Investment Profit Streaming (Idle)'}
               </span>
+              {isDailyOnly && (
+                <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full border border-blue-200">
+                  24h Settlement
+                </span>
+              )}
+              {isHybrid && (
+                <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-300">
+                  Hybrid Mode
+                </span>
+              )}
             </div>
-            <div className="flex items-baseline gap-1 flex-wrap">
-              <UilBolt size={32} className={`${hasActiveStreaming ? 'text-gold-500' : 'text-slate-400'} flex-shrink-0`} />
-              <span className="streaming-value text-3xl sm:text-5xl 2xl:text-6xl font-black text-slate-950 font-poppins">
-                ${streamingValue.toFixed(7).split('.')[0]}
-              </span>
-              <span className="streaming-value text-3xl sm:text-5xl 2xl:text-6xl font-black text-slate-950">.</span>
-              <span className="streaming-value text-2xl sm:text-4xl 2xl:text-5xl font-black text-gold-600 font-poppins">
-                {streamingValue.toFixed(7).split('.')[1]}
-              </span>
-            </div>
+
+            {/* Value Display */}
+            {isDailyOnly ? (
+              /* Daily Payout: Day-Wise Static Settled Display (Does NOT tick per second) */
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <RiTimeLine size={32} className="text-blue-600 flex-shrink-0" />
+                <span className="streaming-value text-3xl sm:text-5xl 2xl:text-6xl font-black text-slate-950 font-poppins">
+                  ${Number(user?.totalProfit || user?.totalEarned || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-xs font-bold text-blue-700 font-poppins self-end mb-1 sm:mb-2 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg">
+                  Settled Day-Wise
+                </span>
+              </div>
+            ) : (
+              /* Real-time Streaming Ticker (Ticks Live Per Second) */
+              <div className="flex items-baseline gap-1 flex-wrap">
+                <UilBolt size={32} className={`${hasPerSecStream ? 'text-gold-500' : 'text-slate-400'} flex-shrink-0`} />
+                <span className="streaming-value text-3xl sm:text-5xl 2xl:text-6xl font-black text-slate-950 font-poppins">
+                  ${streamingValue.toFixed(7).split('.')[0]}
+                </span>
+                <span className="streaming-value text-3xl sm:text-5xl 2xl:text-6xl font-black text-slate-950">.</span>
+                <span className="streaming-value text-2xl sm:text-4xl 2xl:text-5xl font-black text-gold-600 font-poppins">
+                  {streamingValue.toFixed(7).split('.')[1]}
+                </span>
+              </div>
+            )}
+
+            {/* Subtext info */}
             <p className="text-xs sm:text-sm text-slate-700 font-poppins font-medium">
-              Streaming rate: <span className={`font-extrabold font-mono ${hasActiveStreaming ? 'text-emerald-700' : 'text-slate-600'}`}>+${activeRate.toFixed(7)}/sec</span>
-              {' · '}
-              <span className="text-slate-600">
-                Active Assets: {user?.activeAssetNames || (hasActiveStreaming ? 'Active Portfolio' : 'None (No Active Investments)')}
-              </span>
+              {isDailyOnly ? (
+                <>
+                  Daily Payout: <span className="font-extrabold font-mono text-blue-700">+${Number(user?.dailyEarning || 0).toFixed(2)}/day</span>
+                  {' · '}
+                  <span className="text-slate-600">
+                    Payout Mode: <strong>Day-Wise 24h Settlement</strong>
+                  </span>
+                  {' · '}
+                  <span className="text-slate-600">
+                    Active Assets: {user?.activeAssetNames || 'Active Portfolio'}
+                  </span>
+                </>
+              ) : isHybrid ? (
+                <>
+                  Streaming: <span className="font-extrabold font-mono text-emerald-700">+${activeRate.toFixed(7)}/sec</span>
+                  {' + Daily: '}
+                  <span className="font-extrabold font-mono text-blue-700">+${Number(user?.dailyEarning || 0).toFixed(2)}/day</span>
+                  {' · '}
+                  <span className="text-slate-600">
+                    Active Assets: {user?.activeAssetNames || 'Active Portfolio'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  Streaming rate: <span className={`font-extrabold font-mono ${hasPerSecStream ? 'text-emerald-700' : 'text-slate-600'}`}>+${activeRate.toFixed(7)}/sec</span>
+                  {' · '}
+                  <span className="text-slate-600">
+                    Active Assets: {user?.activeAssetNames || (hasPerSecStream ? 'Active Portfolio' : 'None (No Active Investments)')}
+                  </span>
+                </>
+              )}
             </p>
 
             <div className="flex items-center gap-2.5 sm:gap-3 pt-2 flex-wrap">
@@ -634,7 +713,7 @@ export default function UserDashboard() {
                 className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-gold-400 to-amber-500 hover:from-gold-500 hover:to-amber-600 text-slate-950 shadow-gold flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <UilBolt size={16} />
-                <span>{hasActiveStreaming ? 'Explore Yield Plans' : 'Start an Investment Plan'}</span>
+                <span>{hasActivePlan ? 'Explore Yield Plans' : 'Start an Investment Plan'}</span>
               </Link>
               <Link
                 to="/investments"
@@ -649,24 +728,31 @@ export default function UserDashboard() {
           {/* Right: Countdown to next settlement */}
           <div className="flex flex-col items-center gap-2 bg-white/90 p-4 sm:p-5 rounded-2xl border border-gold-200 shadow-sm flex-shrink-0 min-w-[200px] self-start xl:self-center">
             <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-600 font-poppins">
-              Next Daily Settlement
+              {isDailyOnly ? 'Next 24h Settlement' : 'Next Daily Settlement'}
             </span>
-            {hasActiveStreaming ? (
-              <div className="flex items-center gap-2.5">
-                <div className="text-center">
-                  <div className="countdown-digit text-xl font-bold font-mono">{countdown.hours}</div>
-                  <div className="countdown-label text-[10px]">HR</div>
+            {hasActivePlan ? (
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-2.5">
+                  <div className="text-center">
+                    <div className="countdown-digit text-xl font-bold font-mono">{countdown.hours}</div>
+                    <div className="countdown-label text-[10px]">HR</div>
+                  </div>
+                  <span className="text-xl font-bold text-slate-400 mb-4">:</span>
+                  <div className="text-center">
+                    <div className="countdown-digit text-xl font-bold font-mono">{countdown.minutes}</div>
+                    <div className="countdown-label text-[10px]">MIN</div>
+                  </div>
+                  <span className="text-xl font-bold text-slate-400 mb-4">:</span>
+                  <div className="text-center">
+                    <div className="countdown-digit text-xl font-bold font-mono">{countdown.seconds}</div>
+                    <div className="countdown-label text-[10px]">SEC</div>
+                  </div>
                 </div>
-                <span className="text-xl font-bold text-slate-400 mb-4">:</span>
-                <div className="text-center">
-                  <div className="countdown-digit text-xl font-bold font-mono">{countdown.minutes}</div>
-                  <div className="countdown-label text-[10px]">MIN</div>
-                </div>
-                <span className="text-xl font-bold text-slate-400 mb-4">:</span>
-                <div className="text-center">
-                  <div className="countdown-digit text-xl font-bold font-mono">{countdown.seconds}</div>
-                  <div className="countdown-label text-[10px]">SEC</div>
-                </div>
+                {isDailyOnly && (
+                  <span className="text-[10px] text-slate-500 font-medium text-center">
+                    Accrues every 24 hours
+                  </span>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-1">

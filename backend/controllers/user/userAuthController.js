@@ -162,11 +162,15 @@ exports.sendRegisterOtp = async (req, res) => {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    // Check for duplicate username, email, phone
+    // Clean phone number (optional: only if provided and contains at least 7 digits)
+    const phoneDigits = (phone || "").replace(/[^\d]/g, "");
+    const cleanPhone = (phoneDigits && phoneDigits.length >= 7) ? phone.trim().slice(0, 16) : "";
+
+    // Check for duplicate username, email, phone (phone only checked if provided)
     const duplicateCheck = await checkUserDuplicates({
       userName: name,
       email: cleanEmail,
-      phone,
+      phone: cleanPhone,
     });
 
     if (duplicateCheck.hasDuplicates) {
@@ -197,7 +201,7 @@ exports.sendRegisterOtp = async (req, res) => {
         name,
         userName: name,
         email: cleanEmail,
-        phone: phone ? phone.trim().slice(0, 16) : "",
+        phone: cleanPhone,
         password: hashedPassword,
         plainPassword: password,
         country: country || "United States",
@@ -239,7 +243,8 @@ exports.register = async (req, res) => {
     }
 
     let finalName = (userName || rawName || fullName || "").trim();
-    let finalPhone = phone ? phone.trim().slice(0, 16) : "";
+    const phoneDigits = (phone || "").replace(/[^\d]/g, "");
+    let finalPhone = (phoneDigits && phoneDigits.length >= 7) ? phone.trim().slice(0, 16) : "";
     let finalHashedPassword = "";
     let finalPlainPassword = "";
     let finalCountry = country || "United States";
@@ -670,24 +675,7 @@ exports.updateProfile = async (req, res) => {
     }
 
     if (name) user.name = name.trim();
-    if (email && typeof email === "string" && email.trim()) {
-      const cleanEmail = email.toLowerCase().trim();
-      if (cleanEmail !== user.email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(cleanEmail)) {
-          return res.status(400).json({ success: false, message: "Please provide a valid email address." });
-        }
-        const existing = await User.findOne({ email: cleanEmail, _id: { $ne: user._id } });
-        if (existing) {
-          return res.status(400).json({
-            success: false,
-            message: "This email address is already in use by another investor account.",
-          });
-        }
-        user.email = cleanEmail;
-      }
-    }
-    if (phone !== undefined) user.phone = phone.trim();
+    // Security Governance: Users cannot change their email or phone number. Email & phone changes are restricted to admin only.
     if (country) user.country = country;
     if (city !== undefined) user.city = city;
     if (address !== undefined) user.address = address;

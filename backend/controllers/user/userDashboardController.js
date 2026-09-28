@@ -27,18 +27,36 @@ exports.getDashboardOverview = async (req, res) => {
     // Calculate aggregated dynamic daily earnings & streaming per-sec rates from active contracts
     let totalDailyEarning = 0;
     let totalPerSecondRate = 0;
+    let hasDailyPlan = false;
+    let hasPerSecondPlan = false;
     const activeAssetNames = [];
 
     activeInvestments.forEach((inv) => {
       totalDailyEarning += inv.dailyEarning || 0;
-      totalPerSecondRate += inv.perSecondRate || 0;
+      const isDaily = (inv.payoutInterval || "").toLowerCase().includes("daily");
+      if (isDaily) {
+        hasDailyPlan = true;
+      } else {
+        hasPerSecondPlan = true;
+        totalPerSecondRate += inv.perSecondRate || 0;
+      }
       if (inv.planName) activeAssetNames.push(inv.planName);
     });
+
+    let derivedPayoutType = "Per Second (Live)";
+    if (hasDailyPlan && hasPerSecondPlan) {
+      derivedPayoutType = "Hybrid (Per Second & Daily)";
+    } else if (hasDailyPlan) {
+      derivedPayoutType = "Daily Payout";
+    } else if (hasPerSecondPlan) {
+      derivedPayoutType = "Per Second (Live)";
+    }
 
     // If user's stored rate differs, sync it
     if (activeContracts > 0) {
       user.dailyEarning = Number(totalDailyEarning.toFixed(4));
       user.perSecondRate = Number(totalPerSecondRate.toFixed(8));
+      user.payoutType = derivedPayoutType;
       await user.save();
     } else {
       if (user.dailyEarning !== 0 || user.perSecondRate !== 0) {
@@ -62,34 +80,48 @@ exports.getDashboardOverview = async (req, res) => {
     };
 
     // Live Yield Streaming details
-    // 3. Next Daily Settlement Timing: 24 hours rolling from the investment start time
+    // 3. Next Daily Settlement Timing: 24 hours rolling from each investment's start/settlement time
     const CYCLE_MS = 24 * 60 * 60 * 1000;
     let nextSettlementTime = null;
     let settlementStartTime = null;
     let settlementRemainingMs = 0;
 
     if (activeContracts > 0) {
+      const nowMs = Date.now();
+      const upcomingTimes = [];
+
+      activeInvestments.forEach((inv) => {
+        const refTime = new Date(inv.lastSettlementAt || inv.startDate || inv.createdAt || nowMs).getTime();
+        if (!isNaN(refTime) && refTime > 0) {
+          const elapsedMs = Math.max(0, nowMs - refTime);
+          const cycleIndex = Math.floor(elapsedMs / CYCLE_MS);
+          upcomingTimes.push(refTime + (cycleIndex + 1) * CYCLE_MS);
+        }
+      });
+
       const startDates = activeInvestments
         .map((inv) => new Date(inv.startDate || inv.createdAt).getTime())
         .filter((time) => !isNaN(time) && time > 0);
 
-      const referenceStartTime = startDates.length > 0 ? Math.min(...startDates) : Date.now();
+      const referenceStartTime = startDates.length > 0 ? Math.min(...startDates) : nowMs;
       settlementStartTime = new Date(referenceStartTime).toISOString();
 
-      const now = Date.now();
-      const elapsedMs = Math.max(0, now - referenceStartTime);
-      const currentCycleIndex = Math.floor(elapsedMs / CYCLE_MS);
-      const nextSettlementMs = referenceStartTime + (currentCycleIndex + 1) * CYCLE_MS;
-
-      nextSettlementTime = new Date(nextSettlementMs).toISOString();
-      settlementRemainingMs = Math.max(0, nextSettlementMs - now);
+      if (upcomingTimes.length > 0) {
+        const earliestNext = Math.min(...upcomingTimes);
+        nextSettlementTime = new Date(earliestNext).toISOString();
+        settlementRemainingMs = Math.max(0, earliestNext - nowMs);
+      }
     }
 
     const streaming = {
       perSecondRate: user.perSecondRate || 0,
       dailyEarning: user.dailyEarning || 0,
       streamingProfit: user.totalProfit || user.earningWallet || 0,
-      payoutType: user.payoutType || "Per Second (Live)",
+      earningWallet: user.earningWallet || 0,
+      payoutType: derivedPayoutType,
+      hasDailyPlan,
+      hasPerSecondPlan,
+      activeContracts,
       lastYieldSync: user.lastYieldSync || new Date(),
       serverTime: new Date().toISOString(),
       activeAssetNames: activeAssetNames.length > 0 ? activeAssetNames.join(" & ") : "",

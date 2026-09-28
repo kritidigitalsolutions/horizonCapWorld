@@ -147,12 +147,15 @@ exports.investInPlan = async (req, res) => {
       }
     }
 
-    // Dynamic daily & per second calculations based on matched slab ROI
+    // Dynamic daily & per second calculations based on matched slab ROI and payout mode
+    const isDailyPlan = (plan.payoutInterval || "").toLowerCase().includes("daily");
     const dailyEarning = investAmount * (effectiveDailyRoi / 100);
-    const perSecondRate = dailyEarning / 86400;
+    const perSecondRate = isDailyPlan ? 0 : dailyEarning / 86400;
 
     user.dailyEarning = parseFloat(((user.dailyEarning || 0) + dailyEarning).toFixed(4));
-    user.perSecondRate = parseFloat(((user.perSecondRate || 0) + perSecondRate).toFixed(8));
+    if (!isDailyPlan) {
+      user.perSecondRate = parseFloat(((user.perSecondRate || 0) + perSecondRate).toFixed(8));
+    }
 
     // Create User Investment Record
     const isInfinitePlan = Boolean(
@@ -199,14 +202,15 @@ exports.investInPlan = async (req, res) => {
       autoRenewal: false,
       autoRenewalIncentive: 0,
       isCompounding: false,
-      payoutInterval: plan.payoutInterval,
+      payoutInterval: isDailyPlan ? "Daily Payout" : "Per Second (Live)",
       duration: isInfinitePlan ? "Infinite / Lifetime" : isLockIn ? "3X Cap (~309 Days)" : (plan.duration || "12 Months"),
       durationDays: isInfinitePlan ? 0 : isLockIn ? 309 : (plan.durationDays || 365),
       isInfinite: isInfinitePlan,
       dailyEarning,
-      perSecondRate,
+      perSecondRate: isDailyPlan ? 0 : perSecondRate,
       status: "Active",
       startDate: new Date(),
+      lastSettlementAt: new Date(),
       endDate: isInfinitePlan ? null : isLockIn ? new Date(Date.now() + 309 * 86400000) : undefined,
     });
 
@@ -233,6 +237,19 @@ exports.investInPlan = async (req, res) => {
     // Increment plan investors count
     plan.investors = (plan.investors || 0) + 1;
     await plan.save();
+
+    // Dynamically derive user's active payout mode
+    const allUserActiveInvs = await UserInvestment.find({ user: user._id, status: "Active" });
+    const hasPerSec = allUserActiveInvs.some((inv) => !((inv.payoutInterval || "").toLowerCase().includes("daily")));
+    const hasDaily = allUserActiveInvs.some((inv) => (inv.payoutInterval || "").toLowerCase().includes("daily"));
+    if (hasPerSec && hasDaily) {
+      user.payoutType = "Hybrid (Per Second & Daily)";
+    } else if (hasDaily) {
+      user.payoutType = "Daily Payout";
+    } else {
+      user.payoutType = "Per Second (Live)";
+    }
+
     await user.save();
 
     // Trigger multi-tier referral deposit commissions ONLY for the 1st investment
@@ -257,6 +274,7 @@ exports.investInPlan = async (req, res) => {
         totalInvested: user.totalInvested,
         dailyEarning: user.dailyEarning,
         perSecondRate: user.perSecondRate,
+        payoutType: user.payoutType,
       },
     });
   } catch (error) {
@@ -363,8 +381,13 @@ exports.getMyInvestments = async (req, res) => {
         }
       }
 
+      const payoutInterval = inv.payoutInterval || "Per Second (Live)";
+      const isDailyPlan = (payoutInterval || "").toLowerCase().includes("daily");
+
       return {
         ...inv.toObject(),
+        payoutInterval,
+        isDailyPlan,
         isInfinite: isInf,
         daysRemaining,
         endDate: calculatedEndDate,

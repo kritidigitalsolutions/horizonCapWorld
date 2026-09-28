@@ -12,6 +12,12 @@ export const getUserById = async (id) => {
   return response.data;
 };
 
+// Admin update user credentials/details (email, phone, name, country)
+export const updateUserDetails = async (id, data) => {
+  const response = await API.put(`/admin/users/${id}`, data);
+  return response.data;
+};
+
 // Update user status (Active / Banned / Suspended)
 export const updateUserStatus = async (id, status) => {
   const response = await API.put(`/admin/users/${id}/status`, { status });

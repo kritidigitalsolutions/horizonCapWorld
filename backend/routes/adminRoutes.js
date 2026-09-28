@@ -59,6 +59,7 @@ const {
 const {
   getAllUsers,
   getUserById,
+  updateUserDetails,
   updateUserStatus,
   adjustUserWallet,
   deleteUser,
@@ -161,6 +162,7 @@ router.delete("/transactions/:id", protectAdmin, deleteTransaction);
 router.get("/users", protectAdmin, getAllUsers);
 router.put("/users/mark-seen", protectAdmin, markUsersSeen);
 router.get("/users/:id", protectAdmin, getUserById);
+router.put("/users/:id", protectAdmin, updateUserDetails);
 router.put("/users/:id/status", protectAdmin, updateUserStatus);
 router.put("/users/:id/adjust-wallet", protectAdmin, adjustUserWallet);
 router.delete("/users/:id", protectAdmin, deleteUser);

@@ -140,17 +140,29 @@ export default function Register() {
     return () => clearInterval(timer);
   }, [countdown]);
 
-  // Live debounced availability checking for Username, Email, and Phone Number
+  // Helper to extract clean phone number if provided by user (beyond just country calling code)
+  const getCleanPhone = (phoneStr) => {
+    if (!phoneStr) return '';
+    const digitsOnly = phoneStr.replace(/[^\d]/g, '');
+    const callingCodeDigits = (form.countryCode ? getCountryCallingCode(form.countryCode) : '91').replace(/[^\d]/g, '');
+    if (!digitsOnly || digitsOnly === callingCodeDigits || digitsOnly.length <= callingCodeDigits.length) {
+      return '';
+    }
+    return phoneStr.trim().slice(0, 16);
+  };
+
+  // Live debounced availability checking for Username, Email, and Phone Number (phone optional)
   useEffect(() => {
     const timer = setTimeout(async () => {
       const uname = (form.userName || form.fullName || '').trim();
       const email = (form.email || '').trim();
-      const phoneDigits = (form.phone || '').replace(/[^\d]/g, '');
+      const cleanPhone = getCleanPhone(form.phone);
+      const phoneDigits = cleanPhone.replace(/[^\d]/g, '');
 
       const payload = {};
       if (uname && uname.length >= 2) payload.userName = uname;
       if (email && email.includes('@') && email.length >= 5) payload.email = email;
-      if (phoneDigits && phoneDigits.length >= 7) payload.phone = form.phone.trim();
+      if (phoneDigits && phoneDigits.length >= 7) payload.phone = cleanPhone;
 
       if (Object.keys(payload).length === 0) {
         setFieldErrors({ userName: '', email: '', phone: '' });
@@ -187,7 +199,7 @@ export default function Register() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [form.userName, form.email, form.phone]);
+  }, [form.userName, form.email, form.phone, form.countryCode]);
 
   // Helper to update phone field country code and flag
   const updatePhoneForCountry = (countryObj) => {
@@ -258,7 +270,7 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const uname = (form.userName || form.fullName || '').trim();
-    if (!uname || !form.email || !form.password || !form.phone) {
+    if (!uname || !form.email || !form.password) {
       setError('Please fill all required fields');
       return;
     }
@@ -271,22 +283,25 @@ export default function Register() {
       return;
     }
 
-    const digitsOnly = form.phone.replace(/[^\d]/g, '');
-    if (digitsOnly.length < 7) {
-      setError('Please enter a valid mobile number with country code (min 7 digits).');
-      return;
-    }
-    if (digitsOnly.length > 15) {
-      setError('Phone number cannot exceed 15 digits according to international standard.');
-      return;
+    const cleanPhone = getCleanPhone(form.phone);
+    if (cleanPhone) {
+      const digitsOnly = cleanPhone.replace(/[^\d]/g, '');
+      if (digitsOnly.length < 7) {
+        setError('Please enter a valid mobile number with country code (min 7 digits).');
+        return;
+      }
+      if (digitsOnly.length > 15) {
+        setError('Phone number cannot exceed 15 digits according to international standard.');
+        return;
+      }
     }
 
     // Check if any duplicate warning is currently flagged
-    if (fieldErrors.userName || fieldErrors.email || fieldErrors.phone) {
+    if (fieldErrors.userName || fieldErrors.email || (cleanPhone && fieldErrors.phone)) {
       const activeWarnings = [
         fieldErrors.userName,
         fieldErrors.email,
-        fieldErrors.phone,
+        cleanPhone ? fieldErrors.phone : '',
       ].filter(Boolean);
       setError(activeWarnings.join(' ') || 'Please resolve duplicate credentials before continuing.');
       return;
@@ -303,7 +318,7 @@ export default function Register() {
           fullName: uname,
           userName: uname,
           email: form.email.trim(),
-          phone: form.phone.trim().slice(0, 16),
+          phone: cleanPhone,
           password: form.password,
           country: form.country,
           sponsorId: form.sponsorId,
@@ -342,7 +357,7 @@ export default function Register() {
           fullName: uname,
           userName: uname,
           email: form.email.trim(),
-          phone: form.phone.trim().slice(0, 16),
+          phone: cleanPhone,
           password: form.password,
           country: form.country,
           sponsorId: form.sponsorId,
@@ -384,11 +399,13 @@ export default function Register() {
     setOtpLoading(true);
 
     const uname = (form.userName || form.fullName || '').trim();
+    const cleanPhone = getCleanPhone(form.phone);
     const res = await register({
       ...form,
       name: uname,
       fullName: uname,
       userName: uname,
+      phone: cleanPhone,
       otp: otp.trim(),
     });
 
@@ -417,12 +434,13 @@ export default function Register() {
 
     try {
       const uname = (form.userName || form.fullName || '').trim();
+      const cleanPhone = getCleanPhone(form.phone);
       const res = await sendRegisterOtp({
         name: uname,
         fullName: uname,
         userName: uname,
         email: form.email.trim(),
-        phone: form.phone.trim().slice(0, 16),
+        phone: cleanPhone,
         password: form.password,
         country: form.country,
         sponsorId: form.sponsorId,
@@ -629,13 +647,13 @@ export default function Register() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-semibold text-slate-700 block font-poppins">
-                      Mobile Number * <span className="text-[10px] text-slate-400">(Max 15 digits)</span>
+                      Mobile Number <span className="text-[10px] text-slate-400 font-normal">(Optional, max 15 digits)</span>
                     </label>
                     {checkingFields.phone ? (
                       <span className="text-[10px] text-slate-400 font-poppins flex items-center gap-1">
                         <RiLoader4Line className="animate-spin text-slate-400" size={12} /> Checking...
                       </span>
-                    ) : !fieldErrors.phone && (form.phone || '').replace(/[^\d]/g, '').length >= 7 ? (
+                    ) : !fieldErrors.phone && getCleanPhone(form.phone).replace(/[^\d]/g, '').length >= 7 ? (
                       <span className="text-[10px] text-emerald-600 font-semibold font-poppins flex items-center gap-1">
                         <RiCheckLine size={13} /> Available
                       </span>

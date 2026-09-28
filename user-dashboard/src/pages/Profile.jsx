@@ -150,15 +150,13 @@ export default function Profile() {
     triggerToast('Profile photo removed.', 'info');
   };
 
-  // Save Profile Form
+  // Save Profile Form (Name, Country, City, Address, DOB, Timezone, Avatar - Email & Phone are locked)
   const handleSaveProfile = async (e) => {
     e?.preventDefault();
     setSavingProfile(true);
     try {
       const res = await apiUpdateProfile({
         name: form.fullName,
-        email: form.email,
-        phone: form.phone,
         country: form.country,
         city: form.city,
         address: form.address,
@@ -170,8 +168,8 @@ export default function Profile() {
       if (res?.success) {
         updateUser({
           fullName: form.fullName,
-          email: res.user?.email || form.email,
-          phone: form.phone,
+          email: user?.email || form.email,
+          phone: user?.phone || form.phone,
           country: form.country,
           city: form.city,
           address: form.address,
@@ -439,7 +437,7 @@ export default function Profile() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Full Legal Name *
+                    User Name *
                   </label>
                   <input
                     type="text"
@@ -451,31 +449,45 @@ export default function Profile() {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Registered Email Address *
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block font-semibold text-slate-700 uppercase tracking-wider">
+                      Registered Email Address
+                    </label>
+                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      Locked
+                    </span>
+                  </div>
                   <input
                     type="email"
                     value={form.email}
-                    onChange={e => setForm({ ...form, email: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
-                    required
+                    disabled
+                    readOnly
+                    className="w-full px-3.5 py-2.5 bg-slate-100/90 rounded-xl border border-slate-200 text-xs font-medium text-slate-500 cursor-not-allowed select-none shadow-2xs"
+                    title="Registered email address cannot be changed by user. Contact platform admin to update."
                   />
+                  <p className="text-[10px] text-slate-400 mt-1">Contact administrator to update registered email.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Mobile Phone Number *
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block font-semibold text-slate-700 uppercase tracking-wider">
+                      Mobile Phone Number
+                    </label>
+                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      Locked
+                    </span>
+                  </div>
                   <input
                     type="tel"
-                    value={form.phone}
-                    onChange={e => setForm({ ...form, phone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
-                    required
+                    value={form.phone || 'Not provided'}
+                    disabled
+                    readOnly
+                    className="w-full px-3.5 py-2.5 bg-slate-100/90 rounded-xl border border-slate-200 text-xs font-medium text-slate-500 cursor-not-allowed select-none shadow-2xs"
+                    title="Mobile phone number cannot be changed by user. Contact platform admin to update."
                   />
+                  <p className="text-[10px] text-slate-400 mt-1">Contact administrator to update mobile number.</p>
                 </div>
 
                 <div>
