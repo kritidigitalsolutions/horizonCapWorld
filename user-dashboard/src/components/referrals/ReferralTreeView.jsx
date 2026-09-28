@@ -3,8 +3,56 @@ import {
   RiNodeTree, RiUser3Line, RiCoinsLine, RiMoneyDollarCircleLine,
   RiArrowDownSLine, RiArrowRightSLine, RiSearchLine, RiSparklingLine,
   RiAwardLine, RiGroupLine, RiShareLine, RiFileCopyLine, RiCheckLine,
-  RiInformationLine, RiEyeLine
+  RiInformationLine, RiEyeLine, RiTrophyLine, RiMedalLine, RiVipCrownLine,
+  RiShieldStarLine
 } from 'react-icons/ri';
+
+// Rank Badge color & icon configuration based on rank tier
+export const getRankBadgeConfig = (rankName = '', rankLevel = 1) => {
+  const rLower = (rankName || '').toLowerCase();
+  const lvl = Number(rankLevel) || 1;
+
+  if (rLower.includes('titan') || lvl >= 10) {
+    return {
+      icon: <RiVipCrownLine size={12} className="text-amber-700" />,
+      style: 'bg-gradient-to-r from-amber-100 via-gold-200 to-amber-200 text-amber-950 border-amber-300 font-extrabold',
+    };
+  }
+  if (rLower.includes('ambassador') || lvl === 9) {
+    return {
+      icon: <RiVipCrownLine size={12} className="text-gold-700" />,
+      style: 'bg-gradient-to-r from-gold-100 to-amber-100 text-gold-950 border-gold-300 font-extrabold',
+    };
+  }
+  if (rLower.includes('diamond') || lvl >= 7) {
+    return {
+      icon: <RiShieldStarLine size={12} className="text-purple-700" />,
+      style: 'bg-purple-100 text-purple-950 border-purple-300 font-bold',
+    };
+  }
+  if (rLower.includes('director') || lvl >= 4) {
+    return {
+      icon: <RiSparklingLine size={12} className="text-blue-700" />,
+      style: 'bg-blue-100 text-blue-950 border-blue-300 font-bold',
+    };
+  }
+  if (rLower.includes('leader') || lvl === 3) {
+    return {
+      icon: <RiMedalLine size={12} className="text-gold-700" />,
+      style: 'bg-gold-100 text-gold-950 border-gold-300 font-bold',
+    };
+  }
+  if (rLower.includes('associate') || lvl >= 1) {
+    return {
+      icon: <RiTrophyLine size={12} className="text-emerald-700" />,
+      style: 'bg-emerald-50 text-emerald-950 border-emerald-200 font-bold',
+    };
+  }
+  return {
+    icon: <RiAwardLine size={12} className="text-slate-600" />,
+    style: 'bg-slate-100 text-slate-800 border-slate-200 font-medium',
+  };
+};
 
 // Color & styling tokens per tier level (L0 to L10)
 const TIER_THEMES = {
@@ -25,6 +73,7 @@ function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilte
   const isExpanded = expandedIds.has(node.id);
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
   const theme = TIER_THEMES[node.level] || TIER_THEMES[1];
+  const rankBadge = getRankBadgeConfig(node.rank, node.rankLevel);
 
   const matchesSearch = search && (
     (node.name || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -107,12 +156,24 @@ function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilte
           </div>
 
           <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-extrabold text-slate-900 truncate font-poppins">
+            <h4 className="text-sm font-extrabold text-slate-900 truncate font-poppins leading-tight">
               {node.name || 'Investor'}
             </h4>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono mt-0.5">
               <span className="text-gold-700 font-bold">{node.id}</span>
-              {node.rank && <span className="text-[10px] text-slate-400">· {node.rank}</span>}
+            </div>
+
+            {/* Prominent Rank Badge */}
+            <div className="mt-1.5 flex items-center">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider border shadow-2xs ${rankBadge.style}`}>
+                {rankBadge.icon}
+                <span>Rank: <strong className="font-black">{node.rank || 'Associate'}</strong></span>
+                {node.rankLevel && node.rankLevel > 0 && node.rank !== 'Starter' && (
+                  <span className="text-[9px] opacity-75 font-mono font-bold">
+                    (Tier {node.rankLevel})
+                  </span>
+                )}
+              </span>
             </div>
           </div>
         </div>
@@ -136,7 +197,7 @@ function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilte
               : 'bg-slate-50 border-slate-100 text-slate-500'
           }`}>
             <span className="text-[10px] font-bold uppercase tracking-wider block">
-              {isRoot ? 'Total Comm.' : 'Your Comm.'}
+              {isRoot ? 'Group Volume' : 'Group Volume'}
             </span>
             <span className={`text-xs sm:text-sm font-bold font-mono truncate block ${
               Number(node.commissionEarned || node.totalEarnedCommission || 0) > 0

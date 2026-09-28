@@ -120,10 +120,10 @@ exports.createPlan = async (req, res) => {
       type === "slab" && processedSlabs.length > 0
         ? processedSlabs[0].dailyRoi
         : dailyRoi !== undefined
-        ? Number(dailyRoi)
-        : roi !== undefined
-        ? Number(roi) / 30
-        : 0.3;
+          ? Number(dailyRoi)
+          : roi !== undefined
+            ? Number(roi) / 30
+            : 0.3;
 
     const numMonthlyRoi = Number((numDailyRoi * 30).toFixed(2));
 
@@ -150,7 +150,7 @@ exports.createPlan = async (req, res) => {
       lockInPeriodDays: Number(req.body.lockInPeriodDays) || 0,
       minDepositAmount: Number(req.body.minDepositAmount) || 10,
       minWithdrawalAmount: Number(req.body.minWithdrawalAmount) || 5,
-      singleIdMaxWithdrawal: req.body.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
+      singleIdMaxWithdrawal: req.body.singleIdMaxWithdrawal || "3X Maximum Withdrawal Allowed",
       singleIdMaxWithdrawalMultiplier: Number(req.body.singleIdMaxWithdrawalMultiplier) || 4,
       loyaltyBonusEnabled: loyaltyBonusEnabled !== undefined ? Boolean(loyaltyBonusEnabled) : true,
       loyaltyBonusTitle: loyaltyBonusTitle || "Reward ( Loyalty Bonus )",

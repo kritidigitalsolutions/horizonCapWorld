@@ -35,6 +35,10 @@ const rankSchema = new mongoose.Schema(
       type: String, // Company Profit %ge (e.g. "0" or "0.20% of the total company Profit + 500$ Per Month Salary")
       default: "0",
     },
+    salaryCondition: {
+      type: String, // Salary Condition shown on hover over (i) in Company Profit %ge
+      default: "",
+    },
     downlineStructureRequired: {
       type: String, // Downline Structure required (e.g. "2 Active Direct Client")
       default: "",

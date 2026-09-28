@@ -142,12 +142,12 @@ export default function PaymentSettings() {
     fixedFee: 0,
     minWithdrawal: 5,
     maxWithdrawal: 50000,
-    singleIdMaxWithdrawal: "3X + Capital Maximum Withdrawal Allowed",
+    singleIdMaxWithdrawal: "3X Maximum Withdrawal Allowed",
     singleIdMaxWithdrawalMultiplier: 4,
     processingTime: "12 - 24 Hours",
     feeEnabled: true,
     termsNotice:
-      "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission. Single ID maximum withdrawal allowed is 3X + Capital.",
+      "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission. Single ID maximum withdrawal allowed is 3X.",
   };
 
   const [withdrawalSettings, setWithdrawalSettings] = useState(defaultWithdrawalSettings);
@@ -263,73 +263,6 @@ export default function PaymentSettings() {
     updated[idx] = { ...updated[idx], [field]: value };
     setCryptoMinDeposits(updated);
   };
-
-  // const handleApplyCryptoPreset = (presetKey) => {
-  //   // Preset logic remains unchanged
-  //   if (presetKey === "bnb") {
-  //     setName("BNB Smart Chain Depository");
-  //     setNetwork("BNB Smart Chain (BEP-20)");
-  //     setNetworkCode("BSC");
-  //     setMinDeposit("$10 USD (0.004 BNB)");
-  //     setCryptoMinDeposits([
-  //       { token: "BNB", min: "0.004" },
-  //       { token: "USDT", min: "5" },
-  //       { token: "USDC", min: "5" },
-  //       { token: "FDUSD", min: "5" },
-  //     ]);
-  //   } else if (presetKey === "solana") {
-  //     setName("Solana High-Speed Treasury");
-  //     setNetwork("Solana Network (SPL)");
-  //     setNetworkCode("SOL");
-  //     setMinDeposit("$25 USD (0.02 SOL)");
-  //     setCryptoMinDeposits([
-  //       { token: "SOL", min: "0.02" },
-  //       { token: "USDC", min: "5" },
-  //       { token: "USDT", min: "5" },
-  //     ]);
-  //   } else if (presetKey === "tron") {
-  //     setName("TRON Primary Treasury");
-  //     setNetwork("TRON (TRC-20)");
-  //     setNetworkCode("TRC20");
-  //     setMinDeposit("$10 USD (20 TRX)");
-  //     setCryptoMinDeposits([
-  //       { token: "TRX", min: "20" },
-  //       { token: "USDT", min: "10" },
-  //       { token: "USDD", min: "10" },
-  //     ]);
-  //   } else if (presetKey === "eth") {
-  //     setName("Ethereum Institutional Vault");
-  //     setNetwork("Ethereum Mainnet (ERC-20)");
-  //     setNetworkCode("ERC20");
-  //     setMinDeposit("$50 USD (0.01 ETH)");
-  //     setCryptoMinDeposits([
-  //       { token: "ETH", min: "0.01" },
-  //       { token: "USDT", min: "50" },
-  //       { token: "USDC", min: "50" },
-  //       { token: "DAI", min: "50" },
-  //     ]);
-  //   } else if (presetKey === "polygon") {
-  //     setName("Polygon PoS Depository");
-  //     setNetwork("Polygon PoS (POL)");
-  //     setNetworkCode("POL");
-  //     setMinDeposit("$5 USD (10 POL)");
-  //     setCryptoMinDeposits([
-  //       { token: "POL", min: "10" },
-  //       { token: "USDT", min: "5" },
-  //       { token: "USDC", min: "5" },
-  //     ]);
-  //   } else if (presetKey === "opbnb") {
-  //     setName("opBNB Layer-2 Fast Hub");
-  //     setNetwork("opBNB Mainnet (L2)");
-  //     setNetworkCode("OPBNB");
-  //     setMinDeposit("$5 USD (0.005 BNB)");
-  //     setCryptoMinDeposits([
-  //       { token: "BNB", min: "0.005" },
-  //       { token: "USDT", min: "5" },
-  //       { token: "FDUSD", min: "5" },
-  //     ]);
-  //   }
-  // };
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -634,11 +567,11 @@ export default function PaymentSettings() {
     setName(w.name || "");
     setCurrency(
       w.currency ||
-        (w.category === "Mobile E-Wallet"
-          ? "PKR"
-          : w.category === "Indian Bank Account"
-            ? "INR"
-            : "USD"),
+      (w.category === "Mobile E-Wallet"
+        ? "PKR"
+        : w.category === "Indian Bank Account"
+          ? "INR"
+          : "USD"),
     );
     setNetwork(w.network || "");
     setNetworkCode(w.networkCode || "");
@@ -1125,11 +1058,10 @@ export default function PaymentSettings() {
                   Withdrawal Charges & Policy
                 </h3>
                 <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
-                    withdrawalSettings.feeEnabled
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${withdrawalSettings.feeEnabled
                       ? "bg-emerald-100 text-emerald-800 border-emerald-300"
                       : "bg-slate-100 text-slate-600 border-slate-300"
-                  }`}
+                    }`}
                 >
                   ● {withdrawalSettings.feeEnabled ? "Fee Active" : "Fee Waived (0%)"}
                 </span>
@@ -1254,11 +1186,10 @@ export default function PaymentSettings() {
               <button
                 key={cat.id}
                 onClick={() => setCategoryFilter(cat.id)}
-                className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                  categoryFilter === cat.id
+                className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${categoryFilter === cat.id
                     ? "bg-gold-400 text-slate-900 font-bold shadow-gold"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
+                  }`}
               >
                 {cat.label}
               </button>
@@ -1279,11 +1210,10 @@ export default function PaymentSettings() {
           return (
             <div
               key={wallet._id || wallet.id}
-              className={`card p-5 animate-slide-up hover:shadow-card-hover transition-all flex flex-col justify-between border ${
-                wallet.isDefault
+              className={`card p-5 animate-slide-up hover:shadow-card-hover transition-all flex flex-col justify-between border ${wallet.isDefault
                   ? "border-gold-300 bg-gradient-to-br from-gold-50/40 via-white to-white"
                   : "border-slate-200"
-              }`}
+                }`}
               style={{ animationDelay: `${i * 60}ms` }}
             >
               <div className="space-y-4">
@@ -1522,11 +1452,10 @@ export default function PaymentSettings() {
                       else setCurrency("USD");
                     }
                   }}
-                  className={`p-2.5 rounded-xl text-xs font-medium text-center border transition-all ${
-                    category === cat.id
+                  className={`p-2.5 rounded-xl text-xs font-medium text-center border transition-all ${category === cat.id
                       ? "bg-gold-50 border-gold-400 text-gold-900 font-semibold shadow-2xs ring-1 ring-gold-300"
                       : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                  }`}
+                    }`}
                 >
                   {cat.label}
                 </button>
@@ -3002,11 +2931,10 @@ export default function PaymentSettings() {
                     feeType: "percentage",
                   }))
                 }
-                className={`p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
-                  withdrawalForm.feeType === "percentage"
+                className={`p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${withdrawalForm.feeType === "percentage"
                     ? "card-gold border-gold-400 ring-2 ring-gold-200/80 shadow-gold"
                     : "bg-white hover:bg-slate-50 border-slate-200"
-                }`}
+                  }`}
               >
                 <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0 font-extrabold text-sm">
                   %
@@ -3029,11 +2957,10 @@ export default function PaymentSettings() {
                     feeType: "fixed",
                   }))
                 }
-                className={`p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
-                  withdrawalForm.feeType === "fixed"
+                className={`p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${withdrawalForm.feeType === "fixed"
                     ? "card-gold border-gold-400 ring-2 ring-gold-200/80 shadow-gold"
                     : "bg-white hover:bg-slate-50 border-slate-200"
-                }`}
+                  }`}
               >
                 <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 font-extrabold text-sm">
                   $
@@ -3202,7 +3129,7 @@ export default function PaymentSettings() {
             </label>
             <input
               type="text"
-              value={withdrawalForm.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}
+              value={withdrawalForm.singleIdMaxWithdrawal || "3X Maximum Withdrawal Allowed"}
               onChange={(e) =>
                 setWithdrawalForm((prev) => ({
                   ...prev,
@@ -3210,7 +3137,7 @@ export default function PaymentSettings() {
                 }))
               }
               className="input text-xs font-bold text-amber-950 bg-white"
-              placeholder="3X + Capital Maximum Withdrawal Allowed"
+              placeholder="3X Maximum Withdrawal Allowed"
             />
             <p className="text-[10px] text-amber-800 mt-1">
               Limits the maximum lifetime withdrawal on a single account ID to 3X returns + principal capital.

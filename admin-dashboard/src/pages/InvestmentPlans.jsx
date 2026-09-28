@@ -164,7 +164,7 @@ export default function InvestmentPlans() {
     roiSlabsTable: ROI_SLABS_TABLE,
     minDepositAmount: "10",
     minWithdrawalAmount: "5",
-    singleIdMaxWithdrawal: "3X + Capital Maximum Withdrawal Allowed",
+    singleIdMaxWithdrawal: "3X Maximum Withdrawal Allowed",
     hasLockInOption: true,
     lockInPeriodDays: 0,
     isInfinite: false,
@@ -222,7 +222,7 @@ export default function InvestmentPlans() {
       roiSlabsTable: ROI_SLABS_TABLE.map((s) => ({ ...s })),
       minDepositAmount: "10",
       minWithdrawalAmount: "5",
-      singleIdMaxWithdrawal: "3X + Capital Maximum Withdrawal Allowed",
+      singleIdMaxWithdrawal: "3X Maximum Withdrawal Allowed",
       hasLockInOption: true,
       lockInPeriodDays: 0,
       isInfinite: false,
@@ -256,22 +256,22 @@ export default function InvestmentPlans() {
     const slabs =
       Array.isArray(plan.roiSlabs) && plan.roiSlabs.length > 0
         ? plan.roiSlabs.map((s) => {
-            const d = Number(s.dailyRoi) || 0.3;
-            const lockInD = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null
-              ? Number(s.lockInDailyRoi)
-              : 0.8;
-            return {
-              minAmount: s.minAmount,
-              maxAmount: s.maxAmount || "",
-              noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
-              dailyRoi: d,
-              lockInDailyRoi: lockInD,
-              monthlyRoi: s.monthlyRoi || Number((d * 30).toFixed(2)),
-              lockInMonthlyRoi: s.lockInMonthlyRoi || Number((lockInD * 30).toFixed(2)),
-              annualRoi: s.annualRoi || Number((d * 360).toFixed(2)),
-              lockInAnnualRoi: s.lockInAnnualRoi || Number((lockInD * 360).toFixed(2)),
-            };
-          })
+          const d = Number(s.dailyRoi) || 0.3;
+          const lockInD = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null
+            ? Number(s.lockInDailyRoi)
+            : 0.8;
+          return {
+            minAmount: s.minAmount,
+            maxAmount: s.maxAmount || "",
+            noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
+            dailyRoi: d,
+            lockInDailyRoi: lockInD,
+            monthlyRoi: s.monthlyRoi || Number((d * 30).toFixed(2)),
+            lockInMonthlyRoi: s.lockInMonthlyRoi || Number((lockInD * 30).toFixed(2)),
+            annualRoi: s.annualRoi || Number((d * 360).toFixed(2)),
+            lockInAnnualRoi: s.lockInAnnualRoi || Number((lockInD * 360).toFixed(2)),
+          };
+        })
         : DEFAULT_ROI_SLABS.map((s) => ({ ...s }));
 
     const slabsTable =
@@ -289,13 +289,13 @@ export default function InvestmentPlans() {
         plan.dailyRoi !== undefined
           ? plan.dailyRoi.toString()
           : plan.roi !== undefined
-          ? (Number(plan.roi) / 30).toFixed(3)
-          : "0.3",
+            ? (Number(plan.roi) / 30).toFixed(3)
+            : "0.3",
       roiSlabs: slabs,
       roiSlabsTable: slabsTable,
       minDepositAmount: plan.minDepositAmount ? plan.minDepositAmount.toString() : "10",
       minWithdrawalAmount: plan.minWithdrawalAmount ? plan.minWithdrawalAmount.toString() : "5",
-      singleIdMaxWithdrawal: plan.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
+      singleIdMaxWithdrawal: plan.singleIdMaxWithdrawal || "3X Maximum Withdrawal Allowed",
       hasLockInOption: plan.hasLockInOption !== false,
       lockInPeriodDays: plan.lockInPeriodDays || 0,
       isInfinite: isInf,
@@ -366,22 +366,22 @@ export default function InvestmentPlans() {
     const isSlab = formData.roiType === "slab";
     const processedSlabs = isSlab
       ? formData.roiSlabs.map((s) => {
-          const d = Number(s.dailyRoi) || 0;
-          const lockInD = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null && s.lockInDailyRoi !== ""
-            ? Number(s.lockInDailyRoi)
-            : Number((d + 0.1).toFixed(3));
-          return {
-            minAmount: Number(s.minAmount) || 0,
-            maxAmount: s.noMaxLimit ? null : (s.maxAmount ? Number(s.maxAmount) : null),
-            noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
-            dailyRoi: d,
-            lockInDailyRoi: lockInD,
-            monthlyRoi: Number((d * 30).toFixed(2)),
-            lockInMonthlyRoi: Number((lockInD * 30).toFixed(2)),
-            annualRoi: Number((d * 360).toFixed(2)),
-            lockInAnnualRoi: Number((lockInD * 360).toFixed(2)),
-          };
-        })
+        const d = Number(s.dailyRoi) || 0;
+        const lockInD = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null && s.lockInDailyRoi !== ""
+          ? Number(s.lockInDailyRoi)
+          : Number((d + 0.1).toFixed(3));
+        return {
+          minAmount: Number(s.minAmount) || 0,
+          maxAmount: s.noMaxLimit ? null : (s.maxAmount ? Number(s.maxAmount) : null),
+          noMaxLimit: !!s.noMaxLimit || !s.maxAmount,
+          dailyRoi: d,
+          lockInDailyRoi: lockInD,
+          monthlyRoi: Number((d * 30).toFixed(2)),
+          lockInMonthlyRoi: Number((lockInD * 30).toFixed(2)),
+          annualRoi: Number((d * 360).toFixed(2)),
+          lockInAnnualRoi: Number((lockInD * 360).toFixed(2)),
+        };
+      })
       : [];
 
     const minVal = isSlab && processedSlabs.length > 0
@@ -393,8 +393,8 @@ export default function InvestmentPlans() {
         ? null
         : processedSlabs[processedSlabs.length - 1].maxAmount
       : formData.noMaxLimit
-      ? null
-      : parseFloat(formData.maxAmount) || 50000;
+        ? null
+        : parseFloat(formData.maxAmount) || 50000;
 
     const isNoMax = isSlab && processedSlabs.length > 0
       ? processedSlabs[processedSlabs.length - 1].noMaxLimit
@@ -411,17 +411,17 @@ export default function InvestmentPlans() {
     const finalDuration = formData.isInfinite
       ? "Infinite / Lifetime"
       : formatDurationString(
-          formData.durationDD,
-          formData.durationMM,
-          formData.durationYYYY,
-          false
-        );
+        formData.durationDD,
+        formData.durationMM,
+        formData.durationYYYY,
+        false
+      );
 
     const totalDays = formData.isInfinite
       ? 0
       : (parseInt(formData.durationYYYY, 10) || 0) * 365 +
-        (parseInt(formData.durationMM, 10) || 0) * 30 +
-        (parseInt(formData.durationDD, 10) || 0) || 365;
+      (parseInt(formData.durationMM, 10) || 0) * 30 +
+      (parseInt(formData.durationDD, 10) || 0) || 365;
 
     // Map frontend state to Backend Mongoose Schema
     const payload = {
@@ -434,7 +434,7 @@ export default function InvestmentPlans() {
       roiSlabsTable: formData.roiSlabsTable || ROI_SLABS_TABLE,
       minDepositAmount: parseFloat(formData.minDepositAmount) || 10,
       minWithdrawalAmount: parseFloat(formData.minWithdrawalAmount) || 5,
-      singleIdMaxWithdrawal: formData.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
+      singleIdMaxWithdrawal: formData.singleIdMaxWithdrawal || "3X Maximum Withdrawal Allowed",
       singleIdMaxWithdrawalMultiplier: 4,
       hasLockInOption: formData.hasLockInOption,
       lockInPeriodDays: Number(formData.lockInPeriodDays) || 0,
@@ -524,11 +524,10 @@ export default function InvestmentPlans() {
               <button
                 key={cat}
                 onClick={() => setFilterCategory(cat)}
-                className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold capitalize whitespace-nowrap transition-all ${
-                  filterCategory === cat
+                className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold capitalize whitespace-nowrap transition-all ${filterCategory === cat
                     ? "bg-gold-400 text-gray-900 shadow-gold"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+                  }`}
               >
                 {cat === "all" ? "All Categories" : cat}
               </button>
@@ -573,13 +572,12 @@ export default function InvestmentPlans() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-2.5">
                     <div
-                      className={`w-11 h-11 rounded-full flex items-center justify-center shadow-xs ${
-                        isRenewable
+                      className={`w-11 h-11 rounded-full flex items-center justify-center shadow-xs ${isRenewable
                           ? "bg-emerald-50 text-emerald-600"
                           : isMetal
-                          ? "bg-amber-50 text-amber-600"
-                          : "bg-blue-50 text-blue-600"
-                      }`}
+                            ? "bg-amber-50 text-amber-600"
+                            : "bg-blue-50 text-blue-600"
+                        }`}
                     >
                       {isRenewable ? (
                         <RiLeafLine size={22} />
@@ -591,13 +589,12 @@ export default function InvestmentPlans() {
                     </div>
                     <div>
                       <span
-                        className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                          isRenewable
+                        className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${isRenewable
                             ? "bg-emerald-100/70 text-emerald-800"
                             : isMetal
-                            ? "bg-amber-100/70 text-amber-800"
-                            : "bg-blue-100/70 text-blue-800"
-                        }`}
+                              ? "bg-amber-100/70 text-amber-800"
+                              : "bg-blue-100/70 text-blue-800"
+                          }`}
                       >
                         {plan.category || "Standard"}
                       </span>
@@ -655,7 +652,7 @@ export default function InvestmentPlans() {
                   <div className="flex items-center justify-between text-[10.5px] text-amber-900 bg-amber-100/80 px-2.5 py-1 rounded-full font-bold mt-2 border border-amber-300/70 shadow-2xs">
                     <span>Single ID Limit</span>
                     <span className="font-extrabold text-amber-950 font-mono text-[10px]">
-                      {plan.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}
+                      {plan.singleIdMaxWithdrawal || "3X Maximum Withdrawal Allowed"}
                     </span>
                   </div>
                 </div>
@@ -751,7 +748,7 @@ export default function InvestmentPlans() {
                           </div>
                           <div className="text-amber-800 font-bold text-[9.5px] border-t border-gray-200/60 pt-1 flex items-center justify-between">
                             <span>Single ID Limit:</span>
-                            <span className="text-amber-950 font-extrabold">{plan.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}</span>
+                            <span className="text-amber-950 font-extrabold">{plan.singleIdMaxWithdrawal || "3X Maximum Withdrawal Allowed"}</span>
                           </div>
                         </div>
                       </div>
@@ -868,11 +865,10 @@ export default function InvestmentPlans() {
                     onClick={() =>
                       setFormData({ ...formData, category: cat.id })
                     }
-                    className={`p-2.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
-                      isSelected
+                    className={`p-2.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${isSelected
                         ? "bg-gold-50 border-gold-400 text-gold-900 shadow-xs ring-1 ring-gold-300"
                         : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                    }`}
+                      }`}
                   >
                     <IconComp size={16} className={cat.color} />
                     <span className="truncate">{cat.label}</span>
@@ -943,16 +939,16 @@ export default function InvestmentPlans() {
               <div className="flex items-center rounded-lg border border-amber-300 bg-amber-50/70 px-2.5 py-1.5 focus-within:border-amber-500">
                 <input
                   type="text"
-                  value={formData.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}
+                  value={formData.singleIdMaxWithdrawal || "3X Maximum Withdrawal Allowed"}
                   onChange={(e) =>
                     setFormData({ ...formData, singleIdMaxWithdrawal: e.target.value })
                   }
                   className="w-full bg-transparent outline-none font-extrabold text-amber-950 text-xs"
-                  placeholder="3X + Capital Maximum Withdrawal Allowed"
+                  placeholder="3X Maximum Withdrawal Allowed"
                 />
               </div>
               <p className="text-[10px] text-gray-500 mt-1">
-                Single ID: 3X + Capital Maximum Withdrawal Allowed (Account maximum withdrawal cap is 4X total invested).
+                Single ID: 3X Maximum Withdrawal Allowed (Account maximum withdrawal cap is 4X total invested).
               </p>
             </div>
           </div>
@@ -966,11 +962,10 @@ export default function InvestmentPlans() {
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, roiType: "slab" })}
-                className={`py-2.5 px-3 rounded-full text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
-                  formData.roiType === "slab"
+                className={`py-2.5 px-3 rounded-full text-xs font-bold transition-all border flex items-center justify-center gap-2 ${formData.roiType === "slab"
                     ? "bg-gold-500 border-gold-500 text-gray-950 font-extrabold shadow-xs"
                     : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <RiFundsLine size={16} />
                 <span>Daily ROI Slabs</span>
@@ -979,11 +974,10 @@ export default function InvestmentPlans() {
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, roiType: "fixed" })}
-                className={`py-2.5 px-3 rounded-full text-xs font-bold transition-all border flex items-center justify-center gap-2 ${
-                  formData.roiType === "fixed"
+                className={`py-2.5 px-3 rounded-full text-xs font-bold transition-all border flex items-center justify-center gap-2 ${formData.roiType === "fixed"
                     ? "bg-gold-500 border-gold-500 text-gray-950 font-extrabold shadow-xs"
                     : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <RiPercentLine size={16} />
                 <span>Fixed ROI Percentage</span>
@@ -1121,9 +1115,8 @@ export default function InvestmentPlans() {
                     </label>
                   </div>
                   <div
-                    className={`flex items-center rounded-xl border border-gray-200 focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-100 overflow-hidden transition-all shadow-2xs ${
-                      formData.noMaxLimit ? "bg-gray-100" : "bg-white"
-                    }`}
+                    className={`flex items-center rounded-xl border border-gray-200 focus-within:border-gold-400 focus-within:ring-2 focus-within:ring-gold-100 overflow-hidden transition-all shadow-2xs ${formData.noMaxLimit ? "bg-gray-100" : "bg-white"
+                      }`}
                   >
                     <span className="pl-3.5 pr-1 text-gray-500 font-bold text-sm select-none">
                       $
@@ -1132,11 +1125,10 @@ export default function InvestmentPlans() {
                       type="text"
                       inputMode="numeric"
                       disabled={formData.noMaxLimit}
-                      className={`w-full py-2.5 pr-3 bg-transparent border-none outline-none font-semibold text-gray-800 text-sm ${
-                        formData.noMaxLimit
+                      className={`w-full py-2.5 pr-3 bg-transparent border-none outline-none font-semibold text-gray-800 text-sm ${formData.noMaxLimit
                           ? "text-gray-400 cursor-not-allowed"
                           : ""
-                      }`}
+                        }`}
                       placeholder={formData.noMaxLimit ? "Unlimited" : "50000"}
                       value={formData.noMaxLimit ? "" : formData.maxAmount}
                       onChange={(e) => {
@@ -1188,11 +1180,11 @@ export default function InvestmentPlans() {
                 {formData.isInfinite
                   ? "∞ Infinite / Lifetime"
                   : formatDurationString(
-                      formData.durationDD,
-                      formData.durationMM,
-                      formData.durationYYYY,
-                      false
-                    )}
+                    formData.durationDD,
+                    formData.durationMM,
+                    formData.durationYYYY,
+                    false
+                  )}
               </span>
             </div>
 
@@ -1201,11 +1193,10 @@ export default function InvestmentPlans() {
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, isInfinite: false })}
-                className={`py-2 px-3 rounded-full text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
-                  !formData.isInfinite
+                className={`py-2 px-3 rounded-full text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${!formData.isInfinite
                     ? "bg-white border-gold-400 text-gold-900 shadow-xs ring-1 ring-gold-300 font-extrabold"
                     : "bg-white/60 border-gray-200 text-gray-600 hover:bg-white"
-                }`}
+                  }`}
               >
                 <RiCalendarEventLine
                   size={15}
@@ -1217,11 +1208,10 @@ export default function InvestmentPlans() {
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, isInfinite: true })}
-                className={`py-2 px-3 rounded-full text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
-                  formData.isInfinite
+                className={`py-2 px-3 rounded-full text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${formData.isInfinite
                     ? "bg-gold-500 border-gold-500 text-gray-950 shadow-xs font-extrabold"
                     : "bg-white/60 border-gray-200 text-gray-600 hover:bg-white"
-                }`}
+                  }`}
               >
                 <span className="text-sm font-extrabold leading-none">∞</span>
                 <span>Infinite / Lifetime</span>
@@ -1318,11 +1308,10 @@ export default function InvestmentPlans() {
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <label
-                className={`p-3 rounded-2xl border cursor-pointer flex items-center gap-2.5 transition-all ${
-                  formData.payoutInterval === "per_second"
+                className={`p-3 rounded-2xl border cursor-pointer flex items-center gap-2.5 transition-all ${formData.payoutInterval === "per_second"
                     ? "border-gold-400 bg-gold-50/80 shadow-xs ring-1 ring-gold-400"
                     : "border-gray-200 bg-white hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <input
                   type="radio"
@@ -1346,11 +1335,10 @@ export default function InvestmentPlans() {
               </label>
 
               <label
-                className={`p-3 rounded-2xl border cursor-pointer flex items-center gap-2.5 transition-all ${
-                  formData.payoutInterval === "daily"
+                className={`p-3 rounded-2xl border cursor-pointer flex items-center gap-2.5 transition-all ${formData.payoutInterval === "daily"
                     ? "border-gold-400 bg-gold-50/80 shadow-xs ring-1 ring-gold-400"
                     : "border-gray-200 bg-white hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <input
                   type="radio"

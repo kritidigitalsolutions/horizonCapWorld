@@ -25,6 +25,7 @@ exports.createRank = async (req, res) => {
       reward,
       condition,
       companyProfitSharing,
+      salaryCondition,
       downlineStructureRequired,
       desc,
       badge
@@ -49,6 +50,7 @@ exports.createRank = async (req, res) => {
       reward: Number(reward),
       condition: condition || "1 Leg should not be more than 40% of the GV",
       companyProfitSharing: companyProfitSharing !== undefined ? String(companyProfitSharing) : "0",
+      salaryCondition: salaryCondition !== undefined ? String(salaryCondition).trim() : "",
       downlineStructureRequired: downlineStructureRequired || "",
       desc: desc || "Leadership milestone rank tier.",
       badge: badge || "",
@@ -89,6 +91,7 @@ exports.updateRank = async (req, res) => {
       reward,
       condition,
       companyProfitSharing,
+      salaryCondition,
       downlineStructureRequired,
       desc,
       badge,
@@ -107,6 +110,7 @@ exports.updateRank = async (req, res) => {
     if (reward !== undefined) rank.reward = Number(reward);
     if (condition !== undefined) rank.condition = condition;
     if (companyProfitSharing !== undefined) rank.companyProfitSharing = String(companyProfitSharing);
+    if (salaryCondition !== undefined) rank.salaryCondition = String(salaryCondition).trim();
     if (downlineStructureRequired !== undefined) rank.downlineStructureRequired = downlineStructureRequired;
     if (desc !== undefined) rank.desc = desc;
     if (badge !== undefined) rank.badge = badge;
@@ -144,6 +148,7 @@ exports.bulkUpdateRanks = async (req, res) => {
         reward: Number(r.reward || 0),
         condition: r.condition || "1 Leg should not be more than 40% of the GV",
         companyProfitSharing: r.companyProfitSharing !== undefined ? String(r.companyProfitSharing) : "0",
+        salaryCondition: r.salaryCondition !== undefined ? String(r.salaryCondition).trim() : "",
         downlineStructureRequired: r.downlineStructureRequired || "",
       };
 

@@ -101,20 +101,20 @@ export default function Plans() {
           const isInf = !!p.isInfinite || p.duration?.toLowerCase().includes("infinite") || p.duration?.toLowerCase().includes("lifetime");
           const slabs = Array.isArray(p.roiSlabs) && p.roiSlabs.length > 0
             ? p.roiSlabs.map(s => {
-                const d = Number(s.dailyRoi) || 0.3;
-                const lockInD = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null
-                  ? Number(s.lockInDailyRoi)
-                  : 0.8;
-                return {
-                  ...s,
-                  dailyRoi: d,
-                  lockInDailyRoi: lockInD,
-                  monthlyRoi: s.monthlyRoi || Number((d * 30).toFixed(2)),
-                  lockInMonthlyRoi: s.lockInMonthlyRoi || Number((lockInD * 30).toFixed(2)),
-                  annualRoi: s.annualRoi || Number((d * 360).toFixed(2)),
-                  lockInAnnualRoi: s.lockInAnnualRoi || Number((lockInD * 360).toFixed(2)),
-                };
-              })
+              const d = Number(s.dailyRoi) || 0.3;
+              const lockInD = s.lockInDailyRoi !== undefined && s.lockInDailyRoi !== null
+                ? Number(s.lockInDailyRoi)
+                : 0.8;
+              return {
+                ...s,
+                dailyRoi: d,
+                lockInDailyRoi: lockInD,
+                monthlyRoi: s.monthlyRoi || Number((d * 30).toFixed(2)),
+                lockInMonthlyRoi: s.lockInMonthlyRoi || Number((lockInD * 30).toFixed(2)),
+                annualRoi: s.annualRoi || Number((d * 360).toFixed(2)),
+                lockInAnnualRoi: s.lockInAnnualRoi || Number((lockInD * 360).toFixed(2)),
+              };
+            })
             : DEFAULT_ROI_SLABS;
 
           const loyaltySlabs = Array.isArray(p.loyaltyBonusSlabs) && p.loyaltyBonusSlabs.length > 0
@@ -141,7 +141,7 @@ export default function Plans() {
             maxLockInDaily,
             minDepositAmount: p.minDepositAmount || 10,
             minWithdrawalAmount: p.minWithdrawalAmount || 5,
-            singleIdMaxWithdrawal: p.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
+            singleIdMaxWithdrawal: p.singleIdMaxWithdrawal || "3X Maximum Withdrawal Allowed",
             loyaltyBonusEnabled: p.loyaltyBonusEnabled !== false,
             loyaltyBonusTitle: p.loyaltyBonusTitle || "Reward ( Loyalty Bonus )",
             loyaltyBonusDescription: p.loyaltyBonusDescription || "Based on Capital not Withdrawn from the Account One time benefit directly given to the wallet",
@@ -228,7 +228,7 @@ export default function Plans() {
     }
 
     setInvestError('');
-    
+
     // Check wallet balance
     if ((user?.depositWallet || 0) < numAmount) {
       const msg = `Insufficient Deposit Wallet balance ($${(user?.depositWallet || 0).toLocaleString()} USD). Please deposit funds first.`;
@@ -299,7 +299,7 @@ export default function Plans() {
       <div className="page-enter space-y-6">
         <div className="skeleton h-12 w-full rounded-2xl" />
         <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-5">
-          {[1,2,3,4,5].map(i => <div key={i} className="skeleton h-80 rounded-2xl" />)}
+          {[1, 2, 3, 4, 5].map(i => <div key={i} className="skeleton h-80 rounded-2xl" />)}
         </div>
       </div>
     );
@@ -337,11 +337,10 @@ export default function Plans() {
                 key={cat}
                 type="button"
                 onClick={() => setFilterCategory(cat)}
-                className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold capitalize whitespace-nowrap transition-all cursor-pointer ${
-                  filterCategory === cat
+                className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold capitalize whitespace-nowrap transition-all cursor-pointer ${filterCategory === cat
                     ? 'bg-gold-400 text-gray-900 shadow-gold font-bold'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 {cat === 'all' ? 'All Categories' : cat}
               </button>
@@ -368,29 +367,26 @@ export default function Plans() {
                 {/* Top: Category Icon & Badge */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-2.5">
-                    <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-xs border ${
-                      isRenewable ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                      isMetal ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-blue-50 text-blue-600 border-blue-100'
-                    }`}>
+                    <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-xs border ${isRenewable ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                        isMetal ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-blue-50 text-blue-600 border-blue-100'
+                      }`}>
                       {isRenewable ? <RiLeafLine size={22} /> :
-                       isMetal ? <RiCoinsLine size={22} /> : <RiShieldFlashLine size={22} />}
+                        isMetal ? <RiCoinsLine size={22} /> : <RiShieldFlashLine size={22} />}
                     </div>
                     <div>
-                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                        isRenewable ? 'bg-emerald-100/70 text-emerald-800' :
-                        isMetal ? 'bg-amber-100/70 text-amber-800' : 'bg-blue-100/70 text-blue-800'
-                      }`}>
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${isRenewable ? 'bg-emerald-100/70 text-emerald-800' :
+                          isMetal ? 'bg-amber-100/70 text-amber-800' : 'bg-blue-100/70 text-blue-800'
+                        }`}>
                         {plan.category || 'Standard'}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      (plan.payoutInterval || '').toLowerCase().includes('daily')
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${(plan.payoutInterval || '').toLowerCase().includes('daily')
                         ? 'bg-blue-50 text-blue-800 border border-blue-200'
                         : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                    }`}>
+                      }`}>
                       {(plan.payoutInterval || '').toLowerCase().includes('daily') ? '24h Daily Payout' : 'Live Per Second'}
                     </span>
                     <span className="badge badge-success text-[10px] font-bold">
@@ -445,7 +441,7 @@ export default function Plans() {
                   <div className="flex flex-wrap items-center justify-between gap-1 text-[10.5px] text-amber-900 bg-amber-100/80 px-2.5 py-1 rounded-full font-bold mt-2 border border-amber-300/70 shadow-2xs">
                     <span>Single ID Limit</span>
                     <span className="font-extrabold text-amber-950 font-mono text-[10px]">
-                      {plan.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}
+                      {plan.singleIdMaxWithdrawal || "3X Maximum Withdrawal Allowed"}
                     </span>
                   </div>
                 </div>
@@ -577,11 +573,10 @@ export default function Plans() {
               <button
                 type="button"
                 onClick={() => setLockInPeriod('None')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
-                  lockInPeriod === 'None'
+                className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${lockInPeriod === 'None'
                     ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 ring-1 ring-emerald-500'
                     : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-white/60'
-                }`}
+                  }`}
               >
                 <span className="text-sm">🔓</span>
                 <div className="text-left flex flex-col">
@@ -595,11 +590,10 @@ export default function Plans() {
               <button
                 type="button"
                 onClick={() => setLockInPeriod('3X Cap')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
-                  lockInPeriod === '3X Cap'
+                className={`py-2.5 px-3 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${lockInPeriod === '3X Cap'
                     ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/25 ring-1 ring-amber-400'
                     : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-white/60'
-                }`}
+                  }`}
               >
                 <span className="text-sm">🔒</span>
                 <div className="text-left flex flex-col">
@@ -646,11 +640,10 @@ export default function Plans() {
                       <tr
                         key={idx}
                         onClick={() => setSelectedSlabPeriod(row.periodDays)}
-                        className={`transition-colors cursor-pointer ${
-                          isSelected
+                        className={`transition-colors cursor-pointer ${isSelected
                             ? 'bg-yellow-100/90 font-bold text-slate-950 ring-1 ring-inset ring-yellow-400'
                             : 'hover:bg-amber-50/50'
-                        }`}
+                          }`}
                       >
                         <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-amber-100/60">
                           <div className="flex items-center gap-1.5">
@@ -728,11 +721,10 @@ export default function Plans() {
                   key={amt}
                   type="button"
                   onClick={() => setInvestAmount(amt)}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold font-poppins transition-all cursor-pointer ${
-                    Number(investAmount) === amt
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold font-poppins transition-all cursor-pointer ${Number(investAmount) === amt
                       ? 'bg-gold-400 text-gray-950 font-bold shadow-2xs border border-gold-400'
                       : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   ${amt?.toLocaleString()}
                 </button>
@@ -833,11 +825,10 @@ export default function Plans() {
                   {/* 1. Daily (24h) */}
                   <div
                     onClick={() => setSelectedSlabPeriod(0)}
-                    className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${
-                      selectedSlabPeriod === 0
+                    className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${selectedSlabPeriod === 0
                         ? 'border-2 border-gold-400 ring-2 ring-gold-300/60 bg-gradient-to-b from-white to-gold-50/40 shadow-sm'
                         : 'border border-slate-200 hover:border-gold-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                       <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Daily Yield</span>
@@ -893,11 +884,10 @@ export default function Plans() {
                   {/* 3. Monthly (331d Boost) */}
                   <div
                     onClick={() => setSelectedSlabPeriod(30)}
-                    className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${
-                      selectedSlabPeriod === 30
+                    className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${selectedSlabPeriod === 30
                         ? 'border-2 border-emerald-500 ring-2 ring-emerald-300/80 bg-emerald-50/30 shadow-sm'
                         : 'border border-emerald-200 bg-emerald-50/15 hover:border-emerald-400'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-emerald-100">
                       <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
@@ -931,11 +921,10 @@ export default function Plans() {
                   {/* 4. 60 Days (60d • 61d Max Boost) */}
                   <div
                     onClick={() => setSelectedSlabPeriod(60)}
-                    className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${
-                      selectedSlabPeriod === 60
+                    className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${selectedSlabPeriod === 60
                         ? 'border-2 border-amber-500 ring-2 ring-amber-300/80 bg-amber-50/30 shadow-sm'
                         : 'border border-amber-200 bg-amber-50/15 hover:border-amber-400'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-amber-100">
                       <span className="text-xs font-bold text-amber-950 uppercase tracking-wider">

@@ -5,7 +5,7 @@ import {
   RiUserLine, RiBold, RiItalic, RiUnderline, RiDoubleQuotesL,
   RiListUnordered, RiListOrdered, RiSeparator, RiLightbulbLine,
   RiAlertLine, RiCheckLine, RiCloseLine, RiImageAddLine, RiImageLine,
-  RiUploadCloud2Line
+  RiUploadCloud2Line, RiYoutubeFill, RiVideoLine, RiExternalLinkLine
 } from 'react-icons/ri';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -47,6 +47,7 @@ export default function NewsMedia() {
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
   const [category, setCategory] = useState('Company');
   const [authorName, setAuthorName] = useState('Super Admin');
   const [authorRole, setAuthorRole] = useState('Platform Editorial');
@@ -79,6 +80,7 @@ export default function NewsMedia() {
           title: a.title,
           subtitle: a.subtitle || '',
           bannerUrl: a.bannerUrl || a.image || '',
+          videoUrl: a.videoUrl || '',
           category: a.category || 'Company',
           author: typeof a.author === 'object' ? a.author : { name: a.author || 'Super Admin', role: 'Platform Editorial', avatar: 'SA' },
           content: a.content || '',
@@ -137,6 +139,7 @@ export default function NewsMedia() {
     setTitle('');
     setSubtitle('');
     setBannerUrl('');
+    setVideoUrl('');
     setCategory(categories[0] || 'Company');
     setAuthorName('Super Admin');
     setAuthorRole('Platform Editorial');
@@ -154,6 +157,7 @@ export default function NewsMedia() {
     setTitle(article.title || '');
     setSubtitle(article.subtitle || '');
     setBannerUrl(article.bannerUrl || article.coverImage || '');
+    setVideoUrl(article.videoUrl || '');
     setCategory(article.category || categories[0] || 'Company');
     setAuthorName(article.author?.name || 'Super Admin');
     setAuthorRole(article.author?.role || 'Platform Editorial');
@@ -195,6 +199,7 @@ export default function NewsMedia() {
       title: title || 'Untitled Article',
       subtitle,
       bannerUrl,
+      videoUrl: videoUrl ? videoUrl.trim() : '',
       category,
       author: { name: authorName, role: authorRole, avatar: authorName.split(' ').map(n => n[0]).join('') },
       content,
@@ -412,6 +417,19 @@ export default function NewsMedia() {
                   <Badge variant={article.status === 'Published' ? 'success' : 'warning'}>
                     {article.status}
                   </Badge>
+                  {article.videoUrl && (
+                    <a
+                      href={article.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold shadow-2xs transition-colors cursor-pointer"
+                      title="Watch on YouTube"
+                    >
+                      <RiYoutubeFill size={13} />
+                      <span>YouTube</span>
+                    </a>
+                  )}
                 </div>
 
                 <div className="absolute top-3 right-3 text-[11px] font-medium text-slate-700 bg-white/90 backdrop-blur-xs px-2.5 py-0.5 rounded-full border border-slate-200/80 shadow-2xs">
@@ -639,6 +657,40 @@ export default function NewsMedia() {
                 Sample 2
               </button>
             </div>
+          </div>
+
+          {/* ──────────────── YOUTUBE VIDEO URL FIELD ──────────────── */}
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <RiYoutubeFill className="text-red-600 text-base" /> YouTube Video URL (Optional)
+              </label>
+              {videoUrl && (
+                <a
+                  href={videoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-red-600 hover:text-red-700 font-semibold inline-flex items-center gap-1 hover:underline"
+                >
+                  <RiExternalLinkLine size={12} /> Test Link
+                </a>
+              )}
+            </div>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-red-500">
+                <RiVideoLine size={16} />
+              </div>
+              <input
+                type="url"
+                placeholder="e.g. https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                value={videoUrl}
+                onChange={e => setVideoUrl(e.target.value)}
+                className="w-full pl-10 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-xs text-slate-700 focus:border-red-400 focus:ring-1 focus:ring-red-200 outline-none font-mono placeholder:text-slate-400"
+              />
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Paste a YouTube video URL. Investors can click the video link to open and watch the video directly on YouTube.
+            </p>
           </div>
 
           {/* ──────────────── CATEGORY SELECTOR + DYNAMIC ADD CATEGORY FIELD ──────────────── */}
@@ -923,6 +975,26 @@ export default function NewsMedia() {
                 <p className="text-xs text-slate-600 font-medium leading-relaxed">
                   {readingArticle.subtitle}
                 </p>
+              )}
+
+              {readingArticle.videoUrl && (
+                <div className="p-3.5 bg-gradient-to-r from-red-50 to-rose-50/50 border border-red-200 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-2.5 text-xs text-red-700 font-semibold">
+                    <div className="w-7 h-7 rounded-lg bg-red-600 text-white flex items-center justify-center flex-shrink-0 shadow-2xs">
+                      <RiYoutubeFill size={18} />
+                    </div>
+                    <span>Includes YouTube Video Coverage</span>
+                  </div>
+                  <a
+                    href={readingArticle.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-2xs transition-colors"
+                  >
+                    <span>Watch on YouTube</span>
+                    <RiExternalLinkLine size={13} />
+                  </a>
+                </div>
               )}
 
               <div className="flex items-center gap-3 pt-3 border-t border-gold-200/60">

@@ -3,6 +3,11 @@ const nodemailer = require("nodemailer");
 const SENDER_EMAIL = process.env.EMAIL_USER || "tradex615@gmail.com";
 const SENDER_PASS = process.env.EMAIL_PASS || "wyqxlbtyeucqorle";
 
+const COMPANY_NAME = "Horizon Cap World";
+const COMPANY_LOGO_URL =
+  process.env.COMPANY_LOGO_URL ||
+  "https://res.cloudinary.com/pt6ikhli/image/upload/w_240,c_limit,q_auto,f_auto/v1790597889/horizoncap/branding/horizon_cap_world_logo.jpg";
+
 /**
  * Standard Gmail transporter configuration
  * Uses Nodemailer's built-in 'gmail' service to ensure standard, trusted TLS/SSL settings
@@ -29,7 +34,8 @@ transporter.verify((error) => {
 
 /**
  * Clean, lightweight, spam-free HTML email wrapper
- * - No zero-contrast or hidden 1px font divs (which trigger SpamAssassin FONT_SIZE_TINY / COLOR_SAME_AS_BG)
+ * - Prominent official logo with rounded luxury borders
+ * - Full company branding: "HORIZON CAP WORLD"
  * - Standard web typography and clean CSS
  * - High text-to-code ratio
  * - Fully mobile responsive
@@ -46,13 +52,31 @@ const wrapCleanHtml = ({ title, bodyHtml }) => {
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 540px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; padding: 32px 28px;">
-          <!-- Brand Header -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 540px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; padding: 32px 28px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);">
+          <!-- Brand Header with Logo -->
           <tr>
-            <td style="padding-bottom: 24px; border-bottom: 1px solid #f1f5f9;">
-              <span style="font-size: 18px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px; text-transform: uppercase;">
-                HORIZON <span style="color: #d97706;">CAP</span>
-              </span>
+            <td align="center" style="padding-bottom: 24px; border-bottom: 1px solid #f1f5f9; text-align: center;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto; text-align: center;">
+                <tr>
+                  <td align="center" style="padding-bottom: 12px;">
+                    <img src="${COMPANY_LOGO_URL}" alt="${COMPANY_NAME} Logo" width="88" height="88" style="display: block; width: 88px; height: 88px; border-radius: 18px; object-fit: cover; margin: 0 auto; box-shadow: 0 4px 16px rgba(0,0,0,0.14); border: 1px solid #e2e8f0;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <span style="font-size: 20px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; text-transform: uppercase; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                      HORIZON <span style="color: #d97706;">CAP WORLD</span>
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-top: 3px;">
+                    <span style="font-size: 11px; font-weight: 600; color: #94a3b8; letter-spacing: 1.5px; text-transform: uppercase;">
+                      Global Capital & Wealth Network
+                    </span>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           <!-- Body Content -->
@@ -64,7 +88,8 @@ const wrapCleanHtml = ({ title, bodyHtml }) => {
           <!-- Footer -->
           <tr>
             <td style="padding-top: 28px; border-top: 1px solid #f1f5f9; text-align: center; font-size: 12px; color: #94a3b8;">
-              <p style="margin: 0 0 6px;">Horizon &bull; Automated Notification</p>
+              <p style="margin: 0 0 6px; font-weight: 600; color: #64748b;">${COMPANY_NAME} &bull; Automated Notification</p>
+              <p style="margin: 0 0 4px;">&copy; 2026 ${COMPANY_NAME}. All rights reserved.</p>
               <p style="margin: 0;">If you did not request this email, please contact our support desk.</p>
             </td>
           </tr>
@@ -78,7 +103,7 @@ const wrapCleanHtml = ({ title, bodyHtml }) => {
 
 // ==========================================
 // 1. OTP EMAIL (LOGIN, SIGNUP, 2FA)
-// Standard subject: "<code > is your verification code"
+// Standard subject: "<code> is your verification code"
 // This pattern is recognized by Google/Apple/Yahoo as high-priority primary inbox mail.
 // ==========================================
 
@@ -99,7 +124,7 @@ This code will expire in 10 minutes. Please do not share this code with anyone.
 If you did not make this request, you can safely ignore this email.
 
 Thanks,
-Horizon Team
+${COMPANY_NAME} Team
 `;
 
     const bodyHtml = `
@@ -130,7 +155,7 @@ Horizon Team
     const html = wrapCleanHtml({ title: subject, bodyHtml });
 
     const info = await transporter.sendMail({
-      from: `"Horizon" <${sender}>`,
+      from: `"${COMPANY_NAME}" <${sender}>`,
       to: recipient,
       subject,
       text,
@@ -153,11 +178,11 @@ const sendWelcomeEmail = async ({ to, name, customId, sponsorId }) => {
   try {
     const sender = process.env.EMAIL_USER || SENDER_EMAIL;
     const recipient = to.trim();
-    const subject = `Welcome to Horizon, ${name || "Investor"}`;
+    const subject = `Welcome to ${COMPANY_NAME}, ${name || "Investor"}`;
 
     const text = `Hi ${name || "Investor"},
 
-Welcome to Horizon! Your account is now active and verified.
+Welcome to ${COMPANY_NAME}! Your account is now active and verified.
 
 Account Summary:
 - Account ID: ${customId}
@@ -170,12 +195,12 @@ https://horizoncapworlds.com/login
 If you have any questions or need assistance, feel free to reply to our support desk.
 
 Thanks,
-Horizon Team
+${COMPANY_NAME} Team
 `;
 
     const bodyHtml = `
       <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: #0f172a;">
-        Welcome to Horizon!
+        Welcome to ${COMPANY_NAME}!
       </h2>
       <p style="margin: 0 0 16px; font-size: 14px; color: #475569;">
         Hi ${name || "Investor"}, your account has been successfully verified and activated.
@@ -206,7 +231,7 @@ Horizon Team
     const html = wrapCleanHtml({ title: subject, bodyHtml });
 
     const info = await transporter.sendMail({
-      from: `"Horizon" <${sender}>`,
+      from: `"${COMPANY_NAME}" <${sender}>`,
       to: recipient,
       subject,
       text,
@@ -231,7 +256,7 @@ const sendDepositEmail = async ({ to, name, amount, gateway, transactionId, stat
     const recipient = to.trim();
     const isApproved = status === "Approved" || status === "Completed";
     const statusText = isApproved ? "Completed" : "Received";
-    const subject = `Deposit confirmation: #${transactionId}`;
+    const subject = `Deposit confirmation: #${transactionId} - ${COMPANY_NAME}`;
 
     const text = `Hi ${name || "Investor"},
 
@@ -247,7 +272,7 @@ View your account:
 https://horizoncapworlds.com/transactions
 
 Thanks,
-Horizon Team
+${COMPANY_NAME} Team
 `;
 
     const bodyHtml = `
@@ -281,7 +306,7 @@ Horizon Team
     const html = wrapCleanHtml({ title: subject, bodyHtml });
 
     const info = await transporter.sendMail({
-      from: `"Horizon" <${sender}>`,
+      from: `"${COMPANY_NAME}" <${sender}>`,
       to: recipient,
       subject,
       text,
@@ -316,7 +341,7 @@ const sendWithdrawalEmail = async ({
     const recipient = to.trim();
     const isApproved = status === "Approved" || status === "Completed";
     const statusText = isApproved ? "Completed" : "Submitted";
-    const subject = `Withdrawal confirmation: #${transactionId}`;
+    const subject = `Withdrawal confirmation: #${transactionId} - ${COMPANY_NAME}`;
 
     const text = `Hi ${name || "Investor"},
 
@@ -332,7 +357,7 @@ Details:
 If you did not initiate this withdrawal, please contact our support team immediately.
 
 Thanks,
-Horizon Team
+${COMPANY_NAME} Team
 `;
 
     const bodyHtml = `
@@ -370,7 +395,7 @@ Horizon Team
     const html = wrapCleanHtml({ title: subject, bodyHtml });
 
     const info = await transporter.sendMail({
-      from: `"Horizon" <${sender}>`,
+      from: `"${COMPANY_NAME}" <${sender}>`,
       to: recipient,
       subject,
       text,
@@ -404,8 +429,8 @@ const sendTicketEmail = async ({
     const sender = process.env.EMAIL_USER || SENDER_EMAIL;
     const recipient = to.trim();
     const emailSubject = isReply
-      ? `Update on ticket #${ticketId}: ${ticketSubject}`
-      : `Ticket #${ticketId} created: ${ticketSubject}`;
+      ? `Update on ticket #${ticketId}: ${ticketSubject} - ${COMPANY_NAME}`
+      : `Ticket #${ticketId} created: ${ticketSubject} - ${COMPANY_NAME}`;
 
     const text = `Hi ${name || "there"},
 
@@ -423,7 +448,7 @@ View ticket details:
 https://horizoncapworlds.com/support
 
 Thanks,
-Horizon Support
+${COMPANY_NAME} Support
 `;
 
     const bodyHtml = `
@@ -446,7 +471,7 @@ Horizon Support
     const html = wrapCleanHtml({ title: emailSubject, bodyHtml });
 
     const info = await transporter.sendMail({
-      from: `"Horizon" <${sender}>`,
+      from: `"${COMPANY_NAME}" <${sender}>`,
       to: recipient,
       subject: emailSubject,
       text,
@@ -469,17 +494,17 @@ const sendPasswordResetConfirmation = async ({ to, name }) => {
   try {
     const sender = process.env.EMAIL_USER || SENDER_EMAIL;
     const recipient = to.trim();
-    const subject = `Your password was updated`;
+    const subject = `Your password was updated - ${COMPANY_NAME}`;
 
     const text = `Hi ${name || "there"},
 
-Your Horizon account password was updated successfully.
+Your ${COMPANY_NAME} account password was updated successfully.
 
 If you made this change, you can safely ignore this notification.
 If you did not authorize this change, please contact our support team immediately.
 
 Thanks,
-Horizon Security
+${COMPANY_NAME} Security
 `;
 
     const bodyHtml = `
@@ -487,7 +512,7 @@ Horizon Security
         Password Updated
       </h2>
       <p style="margin: 0 0 14px; font-size: 14px; color: #475569;">
-        Hi ${name || "there"}, your account password was changed successfully.
+        Hi ${name || "there"}, your ${COMPANY_NAME} account password was changed successfully.
       </p>
       <p style="margin: 0; font-size: 12px; color: #94a3b8;">
         If you did not authorize this change, please contact our support team immediately.
@@ -497,7 +522,7 @@ Horizon Security
     const html = wrapCleanHtml({ title: subject, bodyHtml });
 
     const info = await transporter.sendMail({
-      from: `"Horizon" <${sender}>`,
+      from: `"${COMPANY_NAME}" <${sender}>`,
       to: recipient,
       subject,
       text,

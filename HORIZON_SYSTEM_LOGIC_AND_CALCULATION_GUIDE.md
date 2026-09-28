@@ -181,7 +181,7 @@ Agar investor apna original capital account se withdraw nahi karta, to system us
 ---
 
 ### Single ID Maximum Withdrawal Rule (4X Cap)
-- **Rule Definition**: `"3X + Capital Maximum Withdrawal Allowed"`
+- **Rule Definition**: `"3X Maximum Withdrawal Allowed"`
 - **Total Cap**: `1X Capital + 3X Profit = 4X of Total Deposited Capital`
 - **Kaise Kaam Karta Hai**:
   - Agar user ne total **$100** invest kiya hai, to us account se lifetime maximum withdrawal limit **$400** hogi.

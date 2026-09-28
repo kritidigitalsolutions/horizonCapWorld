@@ -15,6 +15,11 @@ const newsArticleSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    videoUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     category: {
       type: String,
       default: "Company",

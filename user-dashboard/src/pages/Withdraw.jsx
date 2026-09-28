@@ -61,7 +61,7 @@ export default function Withdraw() {
     maxWithdrawal: 50000,
     processingTime: '12 - 24 Hours',
     feeEnabled: true,
-    singleIdMaxWithdrawal: '3X + Capital Maximum Withdrawal Allowed',
+    singleIdMaxWithdrawal: '3X Maximum Withdrawal Allowed',
     singleIdMaxWithdrawalMultiplier: 4,
     termsNotice:
       'Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission.',
@@ -145,7 +145,7 @@ export default function Withdraw() {
   }
   const calculatedNet = Math.max(0, numAmount - calculatedFee);
 
-  // ──────── SINGLE ID CAPPING (3X + CAPITAL) QUOTA ────────
+  // ──────── SINGLE ID CAPPING (3X) QUOTA ────────
   const singleIdMultiplier = Number(settings.singleIdMaxWithdrawalMultiplier) || 4;
   const totalInvested = Number(user?.totalInvested) || 0;
   const lifetimeWithdrawalCap = totalInvested * singleIdMultiplier;
@@ -191,7 +191,7 @@ export default function Withdraw() {
 
     if (totalInvested > 0 && (totalWithdrawn + withdrawNum) > lifetimeWithdrawalCap) {
       setErrorMsg(
-        `Single ID Limit Exceeded: Maximum allowed withdrawal is 3X + Capital ($${lifetimeWithdrawalCap.toLocaleString()} USD). You have already withdrawn $${totalWithdrawn.toLocaleString()} USD (Remaining quota: $${remainingWithdrawalQuota.toLocaleString()} USD).`
+        `Single ID Limit Exceeded: Maximum allowed withdrawal is 3X ($${lifetimeWithdrawalCap.toLocaleString()} USD). You have already withdrawn $${totalWithdrawn.toLocaleString()} USD (Remaining quota: $${remainingWithdrawalQuota.toLocaleString()} USD).`
       );
       return;
     }
@@ -229,7 +229,7 @@ export default function Withdraw() {
 
         setSuccessMsg(
           res.message ||
-            `Withdrawal request for $${withdrawNum.toLocaleString()} USD submitted successfully. Net payout: $${calculatedNet.toFixed(2)}.`
+          `Withdrawal request for $${withdrawNum.toLocaleString()} USD submitted successfully. Net payout: $${calculatedNet.toFixed(2)}.`
         );
         setAmount('');
         setAddress('');
@@ -347,11 +347,10 @@ export default function Withdraw() {
               <button
                 key={m.id}
                 onClick={() => setMethod(m)}
-                className={`w-full p-3.5 rounded-xl flex items-center justify-between transition-all text-left text-sm font-poppins border cursor-pointer ${
-                  method.id === m.id
+                className={`w-full p-3.5 rounded-xl flex items-center justify-between transition-all text-left text-sm font-poppins border cursor-pointer ${method.id === m.id
                     ? 'card-gold border-gold-400 ring-2 ring-gold-200 text-slate-900 font-bold shadow-sm'
                     : 'border-slate-100 hover:border-slate-300 text-slate-600 bg-white'
-                }`}
+                  }`}
               >
                 <span className="font-semibold">{m.name}</span>
                 <span className="text-xs text-slate-400 font-normal">
@@ -389,11 +388,11 @@ export default function Withdraw() {
                 Single ID Capping
               </span>
               <span className="badge badge-gold text-[9px] font-black uppercase">
-                3X + Capital
+                3X
               </span>
             </div>
             <p className="text-[11px] font-semibold text-slate-800">
-              {settings.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed"}
+              {settings.singleIdMaxWithdrawal || "3X Maximum Withdrawal Allowed"}
             </p>
             <div className="space-y-1.5 pt-2 border-t border-amber-200/60 text-xs">
               <div className="flex justify-between text-slate-600">
@@ -401,7 +400,7 @@ export default function Withdraw() {
                 <span className="font-bold text-slate-900">${totalInvested.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-slate-600">
-                <span>Max Withdrawal (4X):</span>
+                <span>Max Withdrawal (3X):</span>
                 <span className="font-bold text-amber-900">${lifetimeWithdrawalCap.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-slate-600">
@@ -477,11 +476,10 @@ export default function Withdraw() {
                     Live Payout Calculation
                   </span>
                   <span
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold border uppercase ${
-                      settings.feeEnabled
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold border uppercase ${settings.feeEnabled
                         ? 'bg-amber-100 text-amber-900 border-amber-300'
                         : 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                    }`}
+                      }`}
                   >
                     {settings.feeEnabled
                       ? settings.feeType === 'percentage'
@@ -553,7 +551,7 @@ export default function Withdraw() {
                 <p>
                   • Single ID Capping:{' '}
                   <strong className="text-amber-800">
-                    {settings.singleIdMaxWithdrawal || '3X + Capital Maximum Withdrawal Allowed'}
+                    {settings.singleIdMaxWithdrawal || '3X Maximum Withdrawal Allowed'}
                   </strong>
                 </p>
                 {settings.termsNotice && (

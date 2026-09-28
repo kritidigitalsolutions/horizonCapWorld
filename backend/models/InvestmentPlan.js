@@ -171,7 +171,7 @@ const investmentPlanSchema = new mongoose.Schema(
     },
     singleIdMaxWithdrawal: {
       type: String,
-      default: "3X + Capital Maximum Withdrawal Allowed",
+      default: "3X Maximum Withdrawal Allowed",
     },
     singleIdMaxWithdrawalMultiplier: {
       type: Number,

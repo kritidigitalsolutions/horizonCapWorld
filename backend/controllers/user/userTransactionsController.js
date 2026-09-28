@@ -100,12 +100,12 @@ exports.createDeposit = async (req, res) => {
       }
     }
 
-    if (!slipUrl || !slipUrl.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Proof of payment / deposit slip document is mandatory required.",
-      });
-    }
+    // if (!slipUrl || !slipUrl.trim()) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Proof of payment / deposit slip document is mandatory required.",
+    //   });
+    // }
 
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -210,11 +210,11 @@ exports.getWithdrawalSettings = async (req, res) => {
         maxWithdrawal: ws.maxWithdrawal !== undefined ? ws.maxWithdrawal : 50000,
         processingTime: ws.processingTime || "12 - 24 Hours",
         feeEnabled: ws.feeEnabled !== undefined ? ws.feeEnabled : true,
-        singleIdMaxWithdrawal: ws.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
+        singleIdMaxWithdrawal: ws.singleIdMaxWithdrawal || "3X Maximum Withdrawal Allowed",
         singleIdMaxWithdrawalMultiplier: ws.singleIdMaxWithdrawalMultiplier || 4,
         termsNotice:
           ws.termsNotice ||
-          "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission. Single ID maximum withdrawal allowed is 3X + Capital.",
+          "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission. Single ID maximum withdrawal allowed is 3X.",
       },
     });
   } catch (error) {
@@ -262,7 +262,7 @@ exports.createWithdrawal = async (req, res) => {
       return res.status(404).json({ success: false, message: "Investor account not found." });
     }
 
-    // Check Single ID Maximum Withdrawal Allowed (3X + Capital = 4X total invested)
+    // Check Single ID Maximum Withdrawal Allowed (3X = 4X total invested)
     if (user.totalInvested && user.totalInvested > 0) {
       const maxAllowedTotalWithdrawal = user.totalInvested * singleIdMultiplier;
       const currentTotalWithdrawn = user.totalWithdrawn || 0;
@@ -270,7 +270,7 @@ exports.createWithdrawal = async (req, res) => {
         const remainingLimit = Math.max(0, maxAllowedTotalWithdrawal - currentTotalWithdrawn);
         return res.status(400).json({
           success: false,
-          message: `Withdrawal exceeds Single ID maximum limit: 3X + Capital ($${maxAllowedTotalWithdrawal.toLocaleString()} USD max allowed for $${user.totalInvested.toLocaleString()} USD invested). You have already withdrawn $${currentTotalWithdrawn.toLocaleString()} USD (Remaining allowed: $${remainingLimit.toLocaleString()} USD).`,
+          message: `Withdrawal exceeds Single ID maximum limit: 3X ($${maxAllowedTotalWithdrawal.toLocaleString()} USD max allowed for $${user.totalInvested.toLocaleString()} USD invested). You have already withdrawn $${currentTotalWithdrawn.toLocaleString()} USD (Remaining allowed: $${remainingLimit.toLocaleString()} USD).`,
         });
       }
     }

@@ -1332,7 +1332,7 @@ export default function Users() {
                 value={editForm.phone}
                 onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs font-mono"
-                placeholder="+91 98765 43210 (Optional)"
+                placeholder="Phone Number (Optional)"
               />
               <p className="text-[10px] text-slate-400 mt-1">Include country dial code (e.g. +91, +1, +44). Leave blank if none.</p>
             </div>

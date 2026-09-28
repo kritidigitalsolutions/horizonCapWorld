@@ -116,7 +116,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                 minWithdrawalAmount: p.minWithdrawalAmount ?? 5,
                 hasLockInOption: p.hasLockInOption !== false,
                 lockInPeriodDays: p.lockInPeriodDays || 333,
-                singleIdMaxWithdrawal: p.singleIdMaxWithdrawal || "3X + Capital Maximum Withdrawal Allowed",
+                singleIdMaxWithdrawal: p.singleIdMaxWithdrawal || "3X Maximum Withdrawal Allowed",
               };
             });
             setLoadedPlans(formatted);
@@ -219,7 +219,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
     }
 
     const isLockIn = lockInPeriod === '3x_cap' || lockInPeriod === '333_days' || lockInPeriod === '3X Cap' || lockInPeriod === 'lock_in';
-    
+
     // Determine dynamic base daily ROI based on Non-Withdrawal Bonus duration
     let baseDailyRoi = 0.3;
     if (isLockIn) {
@@ -369,11 +369,10 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                     const matching = cat.id === 'all' ? allPlans : allPlans.filter(p => p.category === cat.id);
                     if (matching.length > 0) setSelectedPlanId(matching[0].id || matching[0]._id);
                   }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    isActive
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isActive
                       ? 'bg-white text-slate-900 shadow-xs border border-gold-300 ring-1 ring-gold-200'
                       : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                    }`}
                 >
                   <Icon size={15} className={isActive ? 'text-gold-600' : 'text-slate-400'} />
                   <span>{cat.label}</span>
@@ -401,11 +400,10 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                       setAmount(plan.minAmountNumeric || 10);
                     }
                   }}
-                  className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
-                    isSelected
+                  className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${isSelected
                       ? 'card-gold border-gold-400 ring-2 ring-gold-300/60 shadow-sm'
                       : 'bg-white border-slate-200 hover:border-slate-300'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-900 truncate max-w-[150px]">{plan.name}</span>
@@ -457,11 +455,10 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                     <tr
                       key={idx}
                       onClick={() => setSelectedSlabPeriod(row.periodDays)}
-                      className={`transition-colors cursor-pointer ${
-                        isSelected
+                      className={`transition-colors cursor-pointer ${isSelected
                           ? 'bg-yellow-100/90 font-bold text-slate-950 ring-1 ring-inset ring-yellow-400'
                           : 'hover:bg-amber-50/50'
-                      }`}
+                        }`}
                     >
                       <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-amber-100/60">
                         <div className="flex items-center gap-1.5">
@@ -520,11 +517,10 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
             <button
               type="button"
               onClick={() => setLockInPeriod('none')}
-              className={`py-2 px-3 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
-                lockInPeriod === 'none'
+              className={`py-2 px-3 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${lockInPeriod === 'none'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 ring-1 ring-emerald-500'
                   : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <span className="text-sm">🔓</span>
               <div className="text-left flex flex-col">
@@ -538,11 +534,10 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
             <button
               type="button"
               onClick={() => setLockInPeriod('3x_cap')}
-              className={`py-2 px-3 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
-                lockInPeriod === '3x_cap' || lockInPeriod === '333_days' || lockInPeriod === '3X Cap'
+              className={`py-2 px-3 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${lockInPeriod === '3x_cap' || lockInPeriod === '333_days' || lockInPeriod === '3X Cap'
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/25 ring-1 ring-amber-400'
                   : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <span className="text-sm">🔒</span>
               <div className="text-left flex flex-col">
@@ -590,11 +585,10 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                 key={preset}
                 type="button"
                 onClick={() => setAmount(preset)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  Number(amount) === preset
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${Number(amount) === preset
                     ? 'bg-gold-400 text-gray-950 border border-gold-400 font-bold shadow-2xs'
                     : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'
-                }`}
+                  }`}
               >
                 ${preset.toLocaleString()}
               </button>
@@ -618,11 +612,10 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
             {/* 1. Daily (24h) */}
             <div
               onClick={() => setSelectedSlabPeriod(0)}
-              className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${
-                selectedSlabPeriod === 0
+              className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${selectedSlabPeriod === 0
                   ? 'border-2 border-gold-400 ring-2 ring-gold-300/60 bg-gradient-to-b from-white to-gold-50/40 shadow-sm'
                   : 'border border-slate-200 hover:border-gold-300'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Daily Yield</span>
@@ -676,11 +669,10 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
             {/* 3. Monthly (30d • 31d Boost) */}
             <div
               onClick={() => setSelectedSlabPeriod(30)}
-              className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${
-                selectedSlabPeriod === 30
+              className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${selectedSlabPeriod === 30
                   ? 'border-2 border-emerald-500 ring-2 ring-emerald-300/80 bg-emerald-50/30 shadow-sm'
                   : 'border border-emerald-200 bg-emerald-50/15 hover:border-emerald-400'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-emerald-100">
                 <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
@@ -714,11 +706,10 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
             {/* 4. 60 Days (60d • 61d Max Boost) */}
             <div
               onClick={() => setSelectedSlabPeriod(60)}
-              className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${
-                selectedSlabPeriod === 60
+              className={`p-3.5 bg-white rounded-2xl shadow-2xs transition-all cursor-pointer flex flex-col justify-between ${selectedSlabPeriod === 60
                   ? 'border-2 border-amber-500 ring-2 ring-amber-300/80 bg-amber-50/30 shadow-sm'
                   : 'border border-amber-200 bg-amber-50/15 hover:border-amber-400'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-amber-100">
                 <span className="text-xs font-bold text-amber-950 uppercase tracking-wider">

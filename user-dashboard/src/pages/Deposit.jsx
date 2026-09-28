@@ -286,12 +286,12 @@ export default function Deposit() {
       return;
     }
 
-    if (!paymentSlip) {
-      const msg = 'Please upload your proof of payment / deposit slip document.';
-      setErrorMsg(msg);
-      toast.warning(msg, 'Proof Required');
-      return;
-    }
+    // if (!paymentSlip) {
+    //   const msg = 'Please upload your proof of payment / deposit slip document.';
+    //   setErrorMsg(msg);
+    //   toast.warning(msg, 'Proof Required');
+    //   return;
+    // }
 
     setSubmitting(true);
     const numAmount = parseFloat(amount);

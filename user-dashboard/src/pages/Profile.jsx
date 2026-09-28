@@ -26,7 +26,7 @@ export default function Profile() {
   const [form, setForm] = useState({
     fullName: user?.fullName || user?.name || 'William Max',
     email: user?.email || 'william@horizoncap.com',
-    phone: user?.phone || '+91 98765 43210',
+    phone: user?.phone || 'Phone number',
     country: user?.country || 'India',
     city: user?.city || 'New Delhi',
     address: user?.address || '14 Connaught Place, Block B',

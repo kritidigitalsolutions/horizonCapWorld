@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getNews } from '../api/newsApi';
 import {
   RiNewspaperLine, RiCalendarLine, RiTimeLine, RiArrowRightLine,
-  RiSearchLine, RiUser3Line
+  RiSearchLine, RiUser3Line, RiYoutubeFill, RiExternalLinkLine
 } from 'react-icons/ri';
 import PageHeader from '../components/ui/PageHeader';
 
@@ -35,6 +35,7 @@ export default function NewsMedia() {
           readTime: art.readTime || '3 min read',
           image: art.bannerUrl || art.image || '',
           bannerUrl: art.bannerUrl || art.image || '',
+          videoUrl: art.videoUrl || '',
           tags: Array.isArray(art.tags) ? art.tags : (art.tags ? art.tags.split(',') : []),
         }));
         setArticles(formatted);
@@ -156,6 +157,18 @@ export default function NewsMedia() {
                 <span className="px-3 py-1 rounded-xl bg-slate-900/80 text-white backdrop-blur-md text-xs font-bold border border-white/20">
                   {featuredArticle.category}
                 </span>
+                {featuredArticle.videoUrl && (
+                  <a
+                    href={featuredArticle.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                    title="Watch YouTube Video"
+                  >
+                    <RiYoutubeFill size={15} />
+                    <span>Watch Video</span>
+                  </a>
+                )}
               </div>
             </div>
 
@@ -199,13 +212,26 @@ export default function NewsMedia() {
                   </div>
                 </div>
 
-                <Link
-                  to={`/news/${featuredArticle.id}`}
-                  className="btn btn-primary px-5 py-2.5 text-xs font-bold rounded-xl shadow-gold flex items-center gap-1.5 flex-shrink-0"
-                >
-                  <span>Read Article</span>
-                  <RiArrowRightLine size={15} />
-                </Link>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {featuredArticle.videoUrl && (
+                    <a
+                      href={featuredArticle.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2.5 text-xs font-bold rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-red-500/20 inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <RiYoutubeFill size={16} />
+                      <span>Watch Video</span>
+                    </a>
+                  )}
+                  <Link
+                    to={`/news/${featuredArticle.id}`}
+                    className="btn btn-primary px-5 py-2.5 text-xs font-bold rounded-xl shadow-gold flex items-center gap-1.5"
+                  >
+                    <span>Read Article</span>
+                    <RiArrowRightLine size={15} />
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -237,10 +263,23 @@ export default function NewsMedia() {
                   alt={article.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute top-3 left-3">
+                <div className="absolute top-3 left-3 flex items-center gap-2">
                   <span className="px-3 py-1 rounded-xl bg-slate-900/80 text-white backdrop-blur-md text-[11px] font-bold border border-white/20 shadow-xs">
                     {article.category}
                   </span>
+                  {article.videoUrl && (
+                    <a
+                      href={article.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-2.5 py-1 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold shadow-md inline-flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Watch Video on YouTube"
+                    >
+                      <RiYoutubeFill size={14} />
+                      <span>Video</span>
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -273,10 +312,25 @@ export default function NewsMedia() {
                     </span>
                   </span>
 
-                  <span className="flex items-center gap-1">
-                    <span>Full Story</span>
-                    <RiArrowRightLine size={14} className="group-hover:translate-x-1 transition-transform" />
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {article.videoUrl && (
+                      <a
+                        href={article.videoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-[11px] font-bold transition-colors cursor-pointer"
+                        title="Watch on YouTube"
+                      >
+                        <RiYoutubeFill size={14} />
+                        <span>Watch</span>
+                      </a>
+                    )}
+                    <span className="flex items-center gap-1">
+                      <span>Full Story</span>
+                      <RiArrowRightLine size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </div>
                 </div>
               </div>
             </Link>

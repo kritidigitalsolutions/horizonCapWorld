@@ -5,7 +5,7 @@ import {
   RiArrowLeftLine, RiCalendarLine, RiTimeLine, RiEyeLine, RiShareLine,
   RiFileCopyLine, RiPriceTag3Line,
   RiLightbulbLine, RiNewspaperLine, RiTelegramLine,
-  RiWhatsappLine, RiArrowRightLine
+  RiWhatsappLine, RiArrowRightLine, RiYoutubeFill, RiExternalLinkLine
 } from 'react-icons/ri';
 
 export default function NewsDetail() {
@@ -43,6 +43,7 @@ export default function NewsDetail() {
             readTime: art.readTime || '3 min read',
             image: art.bannerUrl || art.image || '',
             bannerUrl: art.bannerUrl || art.image || '',
+            videoUrl: art.videoUrl || '',
             tags: Array.isArray(art.tags) ? art.tags : (art.tags ? art.tags.split(',') : []),
           });
         } else {
@@ -213,6 +214,18 @@ export default function NewsDetail() {
               <span className="px-3 py-1.5 rounded-xl bg-slate-900/80 backdrop-blur-md text-slate-200 text-xs font-semibold border border-white/20">
                 ✓ Verified Release
               </span>
+              {article.videoUrl && (
+                <a
+                  href={article.videoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Watch on YouTube"
+                >
+                  <RiYoutubeFill size={16} />
+                  <span>Watch Video</span>
+                </a>
+              )}
             </div>
 
             <div className="flex items-center gap-3 text-xs text-slate-300 font-mono">
@@ -290,6 +303,39 @@ export default function NewsDetail() {
               </div>
             </div>
           </div>
+
+          {/* YouTube Video Coverage Broadcast Card */}
+          {article.videoUrl && (
+            <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-red-50 via-rose-50/40 to-white border border-red-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-red-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                  <RiYoutubeFill size={28} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-red-600 uppercase tracking-wider">Official Video Report</span>
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  </div>
+                  <h4 className="text-sm sm:text-base font-bold text-slate-900 mt-0.5">
+                    Watch Video Coverage on YouTube
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {/* Stream the full documentary and interview coverage directly on YouTube. */}
+                  </p>
+                </div>
+              </div>
+              <a
+                href={article.videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md hover:shadow-red-500/30 transition-all flex-shrink-0 cursor-pointer"
+              >
+                <RiYoutubeFill size={18} />
+                <span>Watch on YouTube</span>
+                <RiExternalLinkLine size={14} />
+              </a>
+            </div>
+          )}
 
           {/* Formatted Article Text */}
           <div className="prose prose-slate max-w-none text-slate-800">

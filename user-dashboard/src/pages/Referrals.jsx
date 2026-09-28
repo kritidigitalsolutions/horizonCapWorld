@@ -13,7 +13,7 @@ import KPICard from '../components/ui/KPICard';
 import Modal from '../components/ui/Modal';
 import SearchBar from '../components/ui/SearchBar';
 import Badge from '../components/ui/Badge';
-import ReferralTreeView from '../components/referrals/ReferralTreeView';
+import ReferralTreeView, { getRankBadgeConfig } from '../components/referrals/ReferralTreeView';
 
 const defaultTiers = [
   { level: 'L0', levelNumber: 0, name: 'Self Investment (Level 0)', depositAmount: 1000, profitAmount: 8, percentage: 0, eligibleConditions: 'NA', groupVolumeMin: 0, directClientsMin: 0, investCommission: '0%', earningsCommission: '0%' },
@@ -390,6 +390,7 @@ export default function Referrals() {
                 <thead>
                   <tr className="text-slate-400 font-medium text-xs tracking-wider">
                     <th className="font-medium text-slate-500">User Details</th>
+                    <th className="font-medium text-slate-500">Current Rank</th>
                     <th className="font-medium text-slate-500">Email</th>
                     <th className="font-medium text-slate-500">Mobile Number</th>
                     <th className="font-medium text-slate-500">Referred By (Sponsor)</th>
@@ -422,6 +423,19 @@ export default function Referrals() {
                             </p>
                           </div>
                         </div>
+                      </td>
+
+                      {/* Current Rank */}
+                      <td>
+                        {(() => {
+                          const rBadge = getRankBadgeConfig(u.rank, u.rankLevel);
+                          return (
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-2xs ${rBadge.style}`}>
+                              {rBadge.icon}
+                              <span>{u.rank || 'Associate'}</span>
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Email */}
@@ -802,14 +816,28 @@ export default function Referrals() {
                 </div>
               </div>
 
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Network Placement
-                </span>
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold shadow-2xs mt-0.5">
-                  <RiGroupLine size={13} />
-                  Tier Level {selectedPartner.level}
-                </span>
+              <div className="flex flex-col items-end gap-1.5">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-right">
+                    Current Rank
+                  </span>
+                  {(() => {
+                    const rBadge = getRankBadgeConfig(selectedPartner.rank, selectedPartner.rankLevel);
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold shadow-2xs border mt-0.5 ${rBadge.style}`}>
+                        {rBadge.icon}
+                        <span>Rank: {selectedPartner.rank || 'Associate'}</span>
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                <div>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold shadow-2xs">
+                    <RiGroupLine size={13} />
+                    Tier Level {selectedPartner.level}
+                  </span>
+                </div>
               </div>
             </div>
 

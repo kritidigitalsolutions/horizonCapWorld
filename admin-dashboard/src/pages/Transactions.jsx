@@ -866,7 +866,7 @@ export default function Transactions() {
                 <div className="space-y-1.5 sm:border-l sm:border-slate-100 sm:pl-4">
                   <div className="flex justify-between">
                     <span className="text-slate-400">Phone Number:</span>
-                    <span className="font-bold text-slate-800 font-mono">{selectedTxn.userPhone || '+91 9876543210'}</span>
+                    <span className="font-bold text-slate-800 font-mono">{selectedTxn.userPhone || 'Phone Number'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Country:</span>

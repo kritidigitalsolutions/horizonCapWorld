@@ -5,7 +5,7 @@ import {
   RiSparklingLine, RiShieldStarLine,
   RiCalculatorLine,
   RiCoinsLine, RiStarLine, RiProgress3Line, RiLockLine,
-  RiShieldCheckLine
+  RiShieldCheckLine, RiInformationLine
 } from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
 import { getRankLadder, getMyRankStatus, getLeaderboard } from '../api/ranksApi';
@@ -26,6 +26,7 @@ const defaultRanksList = [
     reward: 100,
     condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0',
+    salaryCondition: '',
     downlineStructureRequired: '2 Active Direct Client',
     achievers: 4890,
     desc: 'Entry leadership rank unlocked with active direct network.',
@@ -40,6 +41,7 @@ const defaultRanksList = [
     reward: 300,
     condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0',
+    salaryCondition: '',
     downlineStructureRequired: '3 Active Direct Clients',
     achievers: 2340,
     desc: 'Demonstrated network volume builder.',
@@ -54,6 +56,7 @@ const defaultRanksList = [
     reward: 875,
     condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0',
+    salaryCondition: '',
     downlineStructureRequired: '3 Active Direct Clients ( Min. 1 Associate )',
     achievers: 1210,
     desc: 'Regional leadership leader managing team turnover.',
@@ -68,6 +71,7 @@ const defaultRanksList = [
     reward: 2000,
     condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0',
+    salaryCondition: '',
     downlineStructureRequired: '4 Active Direct Clients ( Min 2 Sr. Associate )',
     achievers: 680,
     desc: 'Executive director supervising multi-tier syndicates.',
@@ -82,6 +86,7 @@ const defaultRanksList = [
     reward: 5000,
     condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0',
+    salaryCondition: '',
     downlineStructureRequired: '4 Active Direct Clients ( Min. 2 Team Leaders )',
     achievers: 340,
     desc: 'Senior regional executive commanding six-figure volume.',
@@ -96,6 +101,7 @@ const defaultRanksList = [
     reward: 10000,
     condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0.20% of the total company Profit + 500$ Per Month Salary',
+    salaryCondition: 'Monthly salary requires maintaining active direct clients and team turnover criteria each month.',
     downlineStructureRequired: '5 Active Direct Clients ( Min. 2 Directors )',
     achievers: 160,
     desc: 'Corporate syndicate leader receiving monthly salary and profit share.',
@@ -110,6 +116,7 @@ const defaultRanksList = [
     reward: 15000,
     condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0.50% of the Total Company Profit + 1000$ Per Month Salary',
+    salaryCondition: 'Monthly salary requires maintaining active direct clients and team turnover criteria each month.',
     downlineStructureRequired: '6 Active Direct Clients ( Min. 2 Regional Directors )',
     achievers: 72,
     desc: 'High-tier executive with expanded profit share and salary.',
@@ -124,6 +131,7 @@ const defaultRanksList = [
     reward: 30000,
     condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '0.75% of the Total Company Profit + 1500$ Per Month Salary',
+    salaryCondition: 'Monthly salary requires maintaining active direct clients and team turnover criteria each month.',
     downlineStructureRequired: '8 Active Direct Clients ( Min. 2 Executive Directors )',
     achievers: 28,
     desc: 'Elite summit council member with premier dividends.',
@@ -138,6 +146,7 @@ const defaultRanksList = [
     reward: 50000,
     condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '1% of the Total Company Profit + 3000$ Per Month Salary',
+    salaryCondition: 'Monthly salary requires maintaining active direct clients and team turnover criteria each month.',
     downlineStructureRequired: '10 Active Direct Clients ( Min. 2 Diamonds )',
     achievers: 11,
     desc: 'Apex global ambassador commanding global network volume.',
@@ -152,6 +161,7 @@ const defaultRanksList = [
     reward: 250000,
     condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '1.25% of the Total Company Profit + 5000$ Per Month Salary',
+    salaryCondition: 'Monthly salary requires maintaining active direct clients and team turnover criteria each month.',
     downlineStructureRequired: '15 Active Direct Clients ( Min. 2 Crown Diamond )',
     achievers: 5,
     desc: 'Titan council leader commanding multi-million network turnover.',
@@ -166,6 +176,7 @@ const defaultRanksList = [
     reward: 500000,
     condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '1.50% of the Total Company Profit + 7500$ Per Month Salary',
+    salaryCondition: 'Monthly salary requires maintaining active direct clients and team turnover criteria each month.',
     downlineStructureRequired: '20 Active Direct Clients ( Min. 2 Global Ambassador )',
     achievers: 2,
     desc: 'Crown titan executive with premier corporate profit share.',
@@ -180,6 +191,7 @@ const defaultRanksList = [
     reward: 1250000,
     condition: 'Atleast 2 Legs should be there , 1 Leg must be Power Leg ( 60% )',
     companyProfitSharing: '2% of the Total Company Profit + 10000$ Per Month Salary',
+    salaryCondition: 'Monthly salary requires maintaining active direct clients and team turnover criteria each month.',
     downlineStructureRequired: '25 Active Direct Clients ( Min. 2 Titan )',
     achievers: 1,
     desc: 'Pinnacle global titan summit leader commanding worldwide operations.',
@@ -627,6 +639,7 @@ export default function Ranks() {
                     const rewardAmt = Number(r.reward || 0);
                     const condText = r.condition || '1 Leg should not be more than 40% of the GV';
                     const profitShare = r.companyProfitSharing !== undefined ? String(r.companyProfitSharing) : '0';
+                    const salaryCondText = r.salaryCondition || (profitShare.toLowerCase().includes('salary') ? 'Monthly salary requires maintaining active direct clients and team turnover criteria each month.' : '');
                     const downlineReq = r.downlineStructureRequired || '-';
 
                     const isCurrentQualified = qualifiedLevel > 0 && r.level === qualifiedLevel;
@@ -766,15 +779,46 @@ export default function Ranks() {
 
                         {/* Company Profit %ge */}
                         <td className="py-3 px-3 text-center border-r border-slate-200">
-                          {profitShare === '0' || profitShare === 0 || !profitShare ? (
-                            <span className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-500 font-mono font-bold text-xs border border-slate-200">
-                              0
-                            </span>
-                          ) : (
-                            <span className="inline-block px-3 py-1 rounded-full bg-purple-50 text-purple-900 font-medium border border-purple-200 text-[11px] leading-tight text-left">
-                              {profitShare}
-                            </span>
-                          )}
+                          <div className="inline-flex items-center justify-center gap-1.5 max-w-full">
+                            {profitShare === '0' || profitShare === 0 || !profitShare ? (
+                              <span className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-500 font-mono font-bold text-xs border border-slate-200">
+                                0
+                              </span>
+                            ) : (
+                              <span className="inline-block px-3 py-1 rounded-full bg-purple-50 text-purple-900 font-medium border border-purple-200 text-[11px] leading-tight text-left">
+                                {profitShare}
+                              </span>
+                            )}
+
+                            {salaryCondText && (
+                              <div className="relative group/salary inline-flex items-center flex-shrink-0">
+                                <span
+                                  className="w-5 h-5 rounded-full bg-amber-100/90 text-amber-800 hover:bg-gold-400 hover:text-slate-950 flex items-center justify-center cursor-pointer border border-amber-300 transition-colors shadow-2xs"
+                                  title="Salary Condition"
+                                >
+                                  <RiInformationLine size={13} />
+                                </span>
+
+                                {/* Tooltip on hover */}
+                                <div className={`absolute ${
+                                  r.level <= 2 ? 'top-full mt-2' : 'bottom-full mb-2'
+                                } left-1/2 -translate-x-1/2 w-64 p-3 bg-slate-900 text-white rounded-xl shadow-2xl z-50 opacity-0 invisible group-hover/salary:opacity-100 group-hover/salary:visible transition-all duration-200 pointer-events-none border border-gold-400/40 text-left`}>
+                                  <div className="flex items-center gap-1.5 pb-1.5 mb-1.5 border-b border-slate-700 text-gold-400 font-bold text-xs">
+                                    <RiInformationLine size={14} className="text-gold-400" />
+                                    <span>Salary Condition</span>
+                                  </div>
+                                  <p className="text-[11px] font-normal text-slate-200 leading-relaxed font-sans whitespace-normal">
+                                    {salaryCondText}
+                                  </p>
+                                  <div className={`absolute ${
+                                    r.level <= 2
+                                      ? 'bottom-full -mb-1 border-b-slate-900 border-t-transparent'
+                                      : 'top-full -mt-1 border-t-slate-900 border-b-transparent'
+                                  } left-1/2 -translate-x-1/2 border-4 border-transparent`} />
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </td>
 
                         {/* Downline Structure required */}
@@ -1102,9 +1146,20 @@ export default function Ranks() {
 
               {/* Profit share if any */}
               {selectedRankDrawer.companyProfitSharing && selectedRankDrawer.companyProfitSharing !== '0' && (
-                <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-xs flex justify-between items-center">
-                  <span className="font-bold text-purple-950">Company Profit Sharing & Salary:</span>
-                  <span className="font-extrabold text-purple-800 text-[11px]">{selectedRankDrawer.companyProfitSharing}</span>
+                <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-xs space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-purple-950">Company Profit Sharing & Salary:</span>
+                    <span className="font-extrabold text-purple-800 text-[11px]">{selectedRankDrawer.companyProfitSharing}</span>
+                  </div>
+                  {(selectedRankDrawer.salaryCondition || selectedRankDrawer.companyProfitSharing.toLowerCase().includes('salary')) && (
+                    <div className="pt-1.5 border-t border-purple-200/80 flex items-start gap-1.5 text-amber-900">
+                      <RiInformationLine size={14} className="text-amber-700 flex-shrink-0 mt-0.5" />
+                      <span className="text-[11px] font-medium leading-relaxed">
+                        <strong className="text-amber-950 font-semibold">Salary Condition: </strong>
+                        {selectedRankDrawer.salaryCondition || 'Monthly salary requires maintaining active direct clients and team turnover criteria each month.'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
