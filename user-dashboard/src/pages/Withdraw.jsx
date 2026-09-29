@@ -11,10 +11,13 @@ import {
   RiPlayCircleLine,
   RiDownload2Line,
   RiMovieLine,
+  RiMailSendLine,
+  RiKeyLine,
+  RiLockPasswordLine,
 } from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { createWithdrawal, getWithdrawalSettings, getWithdrawalVideo } from '../api/withdrawalsApi';
+import { createWithdrawal, sendWithdrawalOtp, getWithdrawalSettings, getWithdrawalVideo } from '../api/withdrawalsApi';
 import PageHeader from '../components/ui/PageHeader';
 import Modal from '../components/ui/Modal';
 
@@ -34,6 +37,26 @@ export default function Withdraw() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // ──────── GMAIL OTP VERIFICATION STATE ────────
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [maskedEmail, setMaskedEmail] = useState('');
+  const [resendCountdown, setResendCountdown] = useState(0);
+
+  // Countdown timer for Resend OTP
+  useEffect(() => {
+    let timer;
+    if (resendCountdown > 0) {
+      timer = setInterval(() => {
+        setResendCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendCountdown]);
 
   // ──────── TUTORIAL VIDEO STATE ────────
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
@@ -201,15 +224,75 @@ export default function Withdraw() {
       return;
     }
 
-    setSubmitting(true);
+    // Dispatch Gmail OTP before submitting to admin
+    setSendingOtp(true);
+    try {
+      const res = await sendWithdrawalOtp({ amount: withdrawNum });
+      if (res?.success) {
+        setMaskedEmail(res.email || user?.email || 'your registered Gmail');
+        setOtp('');
+        setOtpError('');
+        setResendCountdown(60);
+        setIsOtpModalOpen(true);
+        toast.success(
+          res.message || 'A 6-digit authorization code has been dispatched to your Gmail.',
+          'Gmail OTP Dispatched'
+        );
+      } else {
+        setErrorMsg(res?.message || 'Failed to dispatch verification code.');
+      }
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || err.message || 'Failed to dispatch Gmail verification code.');
+      toast.error(err.response?.data?.message || 'Failed to dispatch Gmail verification code.');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  // Handle Resend OTP Code
+  const handleResendOtp = async () => {
+    if (resendCountdown > 0 || sendingOtp) return;
+    try {
+      setSendingOtp(true);
+      setOtpError('');
+      const withdrawNum = parseFloat(amount);
+      const res = await sendWithdrawalOtp({ amount: withdrawNum });
+      setResendCountdown(60);
+      toast.success(res?.message || 'New verification code sent to your Gmail.', 'Code Resent');
+    } catch (err) {
+      setOtpError(err.response?.data?.message || err.message || 'Failed to resend code.');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  // Verify OTP and Submit Withdrawal to Admin
+  const handleConfirmWithdrawalWithOtp = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    setOtpError('');
+
+    const cleanOtp = otp.trim();
+    if (!cleanOtp || cleanOtp.length < 6) {
+      setOtpError('Please enter the complete 6-digit code received on your Gmail.');
+      return;
+    }
+
+    const withdrawNum = parseFloat(amount);
+    setVerifyingOtp(true);
     try {
       const res = await createWithdrawal({
         amount: withdrawNum,
         gateway: method.name,
+        walletAddress: address.trim(),
         address: address.trim(),
+        otp: cleanOtp,
       });
 
       if (res?.success) {
+        setIsOtpModalOpen(false);
+        setOtp('');
+        setOtpError('');
+
         if (res.accountBlocked) {
           toast.warning(
             "Your account has been blocked after withdrawing your full capital under the 3X Cap plan. Please create a new account to continue.",
@@ -229,17 +312,21 @@ export default function Withdraw() {
 
         setSuccessMsg(
           res.message ||
-          `Withdrawal request for $${withdrawNum.toLocaleString()} USD submitted successfully. Net payout: $${calculatedNet.toFixed(2)}.`
+          `Withdrawal request for $${withdrawNum.toLocaleString()} USD submitted successfully. Request sent to Admin for review. Net payout: $${calculatedNet.toFixed(2)}.`
+        );
+        toast.success(
+          `Withdrawal request of $${withdrawNum.toLocaleString()} USD submitted to Admin for review.`,
+          'Withdrawal Submitted'
         );
         setAmount('');
         setAddress('');
         if (refreshUser) await refreshUser();
       } else {
-        setErrorMsg(res?.message || 'Withdrawal request failed.');
+        setOtpError(res?.message || 'Withdrawal request failed.');
       }
     } catch (err) {
       if (err.response?.status === 403 && err.response?.data?.message?.includes('blocked')) {
-        setErrorMsg(err.response.data.message);
+        setOtpError(err.response.data.message);
         setTimeout(() => {
           localStorage.removeItem('horizon_user_token');
           localStorage.removeItem('horizon_token');
@@ -247,10 +334,10 @@ export default function Withdraw() {
           window.location.href = '/login';
         }, 3000);
       } else {
-        setErrorMsg(err.response?.data?.message || err.message || 'Failed to submit withdrawal request.');
+        setOtpError(err.response?.data?.message || err.message || 'Failed to verify OTP and submit withdrawal.');
       }
     } finally {
-      setSubmitting(false);
+      setVerifyingOtp(false);
     }
   };
 
@@ -581,12 +668,12 @@ export default function Withdraw() {
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || sendingOtp}
                 className="w-full btn btn-primary py-3.5 text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
               >
-                {submitting ? (
+                {sendingOtp ? (
                   <>
-                    <RiRefreshLine size={18} className="animate-spin" /> Submitting request...
+                    <RiRefreshLine size={18} className="animate-spin" /> Sending Gmail verification code...
                   </>
                 ) : (
                   <>
@@ -670,6 +757,143 @@ export default function Withdraw() {
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ════════ GMAIL OTP VERIFICATION MODAL ════════ */}
+      <Modal
+        isOpen={isOtpModalOpen}
+        onClose={() => {
+          if (!verifyingOtp) {
+            setIsOtpModalOpen(false);
+            setOtp('');
+            setOtpError('');
+          }
+        }}
+        title="Authorize Withdrawal Security"
+        subtitle="Gmail OTP Verification Required"
+        size="md"
+      >
+        <div className="space-y-5 font-poppins py-1">
+          {/* Header Security Badge */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 via-gold-50/40 to-white border border-gold-200/80 flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-gold-400 text-slate-950 flex items-center justify-center flex-shrink-0 shadow-gold">
+              <RiMailSendLine size={24} />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-amber-900">
+                Security Authorization Code Sent
+              </h4>
+              <p className="text-xs text-slate-600 mt-0.5">
+                A 6-digit OTP code was sent to <strong className="text-slate-900 font-semibold">{maskedEmail || user?.email}</strong>. Please enter the code below to authorize this withdrawal.
+              </p>
+            </div>
+          </div>
+
+          {/* Withdrawal Summary Strip */}
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5 font-poppins">
+            <div className="flex justify-between text-slate-600">
+              <span>Withdrawal Amount:</span>
+              <strong className="text-slate-900">${numAmount.toFixed(2)} USD</strong>
+            </div>
+            <div className="flex justify-between text-slate-600">
+              <span>Net Payout ({method.name}):</span>
+              <strong className="text-emerald-700 font-bold">${calculatedNet.toFixed(2)} USD</strong>
+            </div>
+            <div className="flex justify-between text-slate-600 pt-1 border-t border-slate-200/60">
+              <span>Payout Coordinates:</span>
+              <span className="font-mono text-slate-800 truncate max-w-[210px]">{address}</span>
+            </div>
+          </div>
+
+          {/* Error Alert inside Modal */}
+          {otpError && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs flex items-center gap-2">
+              <RiAlertLine size={16} className="flex-shrink-0" />
+              <span>{otpError}</span>
+            </div>
+          )}
+
+          {/* OTP Input Field */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 text-center">
+              Enter 6-Digit Verification Code
+            </label>
+            <div className="relative max-w-[280px] mx-auto">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                autoFocus
+                value={otp}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setOtp(val);
+                  setOtpError('');
+                }}
+                placeholder="• • • • • •"
+                className="w-full py-3.5 px-4 text-center text-2xl font-bold tracking-[0.45em] bg-white border-2 border-gold-300 rounded-2xl shadow-xs text-slate-900 focus:outline-none focus:border-gold-500 focus:ring-4 focus:ring-gold-100 font-mono transition-all"
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 text-center mt-2">
+              Code expires in 10 minutes. Check your inbox and spam/junk folder.
+            </p>
+          </div>
+
+          {/* Resend Code Section */}
+          <div className="text-center pt-1 border-t border-slate-100">
+            {resendCountdown > 0 ? (
+              <span className="text-xs text-slate-400 font-medium inline-flex items-center gap-1.5">
+                <RiTimeLine size={14} /> Resend new code in <strong className="text-slate-700 font-mono">{resendCountdown}s</strong>
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={sendingOtp}
+                onClick={handleResendOtp}
+                className="text-xs font-bold text-gold-700 hover:text-gold-900 underline inline-flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <RiRefreshLine size={14} className={sendingOtp ? 'animate-spin' : ''} />
+                <span>{sendingOtp ? 'Sending New Code...' : 'Didn’t receive code? Resend OTP'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              disabled={verifyingOtp}
+              onClick={() => {
+                setIsOtpModalOpen(false);
+                setOtp('');
+                setOtpError('');
+              }}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              disabled={verifyingOtp || otp.length < 6}
+              onClick={handleConfirmWithdrawalWithOtp}
+              className="btn btn-primary px-6 py-2.5 text-xs font-bold rounded-xl shadow-gold flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {verifyingOtp ? (
+                <>
+                  <RiRefreshLine size={16} className="animate-spin" />
+                  <span>Verifying & Submitting...</span>
+                </>
+              ) : (
+                <>
+                  <RiCheckLine size={16} />
+                  <span>Verify & Submit Request</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
       </Modal>

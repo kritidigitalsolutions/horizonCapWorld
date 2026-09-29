@@ -5,7 +5,7 @@ const AdminSettings = require("../../models/AdminSettings");
 const User = require("../../models/User");
 const UserInvestment = require("../../models/UserInvestment");
 const { notifyUser, notifyAdmin } = require("../../utils/notificationService");
-const { sendDepositEmail, sendWithdrawalEmail } = require("../../utils/emailService");
+const { sendDepositEmail, sendWithdrawalEmail, sendOtpEmail } = require("../../utils/emailService");
 
 // @desc    Get Active Deposit Gateways (Fiat, Bank, Crypto)
 // @route   GET /api/user/deposits/gateways
@@ -222,11 +222,77 @@ exports.getWithdrawalSettings = async (req, res) => {
   }
 };
 
+// @desc    Send Email OTP for Withdrawal Authorization
+// @route   POST /api/user/withdrawals/send-otp
+exports.sendWithdrawalOtp = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Investor account not found." });
+    }
+
+    if (user.status === "Blocked" || user.status === "Suspended") {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is currently restricted from submitting withdrawal requests.",
+      });
+    }
+
+    const { amount } = req.body;
+    if (amount !== undefined && amount !== null && amount !== "") {
+      const withdrawAmount = Number(amount);
+      if (withdrawAmount > 0 && (user.earningWallet || 0) < withdrawAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient Earning Wallet balance ($${(user.earningWallet || 0).toLocaleString()} USD).`,
+        });
+      }
+    }
+
+    // Generate 6-digit cryptographic-style numeric OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.otp = otp;
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    user.otpPurpose = "WITHDRAWAL_REQUEST";
+    await user.save();
+
+    // Send email using emailService sendOtpEmail
+    await sendOtpEmail({
+      to: user.email,
+      name: user.name,
+      otp,
+      purpose: "Withdrawal Authorization",
+    });
+
+    // Mask user email for privacy (e.g. j***@gmail.com)
+    const maskEmail = (em) => {
+      if (!em) return "your registered Gmail";
+      const [namePart, domain] = em.split("@");
+      if (!domain) return em;
+      const visible = namePart.length > 2 ? namePart.slice(0, 2) : namePart.slice(0, 1);
+      return `${visible}***@${domain}`;
+    };
+
+    res.status(200).json({
+      success: true,
+      message: `A 6-digit withdrawal verification code has been dispatched to ${maskEmail(user.email)}.`,
+      email: maskEmail(user.email),
+      expiresIn: "10 minutes",
+    });
+  } catch (error) {
+    console.error("[Withdrawal OTP Error]:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to dispatch email verification code: " + error.message,
+    });
+  }
+};
+
 // @desc    Submit Withdrawal Request
 // @route   POST /api/user/withdrawals
 exports.createWithdrawal = async (req, res) => {
   try {
-    const { amount, gateway, walletAddress, bankDetails, note } = req.body;
+    const { amount, gateway, walletAddress, bankDetails, note, otp } = req.body;
     const withdrawAmount = Number(amount);
 
     // Fetch dynamic withdrawal charges from admin settings
@@ -261,6 +327,42 @@ exports.createWithdrawal = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "Investor account not found." });
     }
+
+    // ──────── MANDATORY EMAIL OTP VERIFICATION ────────
+    if (!otp || typeof otp !== "string" || !otp.trim()) {
+      return res.status(400).json({
+        success: false,
+        requireOtp: true,
+        message: "Email verification required. Please enter the 6-digit OTP sent to your registered Gmail.",
+      });
+    }
+
+    const cleanOtp = otp.trim();
+    if (!user.otp || user.otp !== cleanOtp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid verification code. Please enter the correct 6-digit OTP sent to your Gmail.",
+      });
+    }
+
+    if (user.otpExpires && new Date() > user.otpExpires) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification code has expired. Please request a new OTP to submit this withdrawal.",
+      });
+    }
+
+    if (user.otpPurpose && user.otpPurpose !== "WITHDRAWAL_REQUEST") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP authorization context. Please request a new code for withdrawal verification.",
+      });
+    }
+
+    // Reset OTP after successful verification
+    user.otp = "";
+    user.otpExpires = null;
+    user.otpPurpose = null;
 
     // Check Single ID Maximum Withdrawal Allowed (3X = 4X total invested)
     if (user.totalInvested && user.totalInvested > 0) {
@@ -347,6 +449,7 @@ exports.createWithdrawal = async (req, res) => {
 
     const userEnteredDest =
       (walletAddress && walletAddress.trim()) ||
+      (req.body.address && req.body.address.trim()) ||
       (bankDetails?.accountNumber && bankDetails.accountNumber.trim()) ||
       null;
     const assignedCustomId = `WD-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`;

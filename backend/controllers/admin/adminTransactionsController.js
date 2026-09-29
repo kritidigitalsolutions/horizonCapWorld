@@ -336,3 +336,27 @@ exports.clearAllTransactions = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+const { generateMonthlyStatements } = require("../../services/monthlyStatementService");
+
+// @desc    Trigger or Generate Monthly Statements Dispatch
+// @route   POST /api/admin/transactions/send-monthly-statements
+exports.triggerMonthlyStatements = async (req, res) => {
+  try {
+    const { month, year, targetUserId } = req.body || {};
+    const result = await generateMonthlyStatements({
+      month: month !== undefined && month !== "" ? Number(month) : undefined,
+      year: year !== undefined && year !== "" ? Number(year) : undefined,
+      targetUserId: targetUserId || undefined,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Monthly statements dispatched successfully for ${result.periodName}. Sent: ${result.successfulDispatches}, Failed: ${result.failedDispatches}.`,
+      result,
+    });
+  } catch (error) {
+    console.error("[Admin Monthly Statements Error]:", error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

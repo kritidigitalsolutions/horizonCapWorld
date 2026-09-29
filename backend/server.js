@@ -1,6 +1,7 @@
 const app = require("./app");
 const connectDB = require("./configs/db");
 const ReferralSetting = require("./models/ReferralSetting");
+const { initMonthlyStatementCron } = require("./services/monthlyStatementService");
 
 const PORT = process.env.PORT || 5002;
 
@@ -40,6 +41,7 @@ const startServer = async () => {
   try {
     await connectDB();
     await syncReferralSettings();
+    initMonthlyStatementCron();
     app.listen(PORT, () => {
       console.log(`Horizon Capital Backend server is running on port ${PORT}`);
     });

@@ -1,5 +1,10 @@
 import API from "./api";
 
+export const sendWithdrawalOtp = async (data = {}) => {
+  const response = await API.post("/user/withdrawals/send-otp", data);
+  return response.data;
+};
+
 export const createWithdrawal = async (withdrawData) => {
   const response = await API.post("/user/withdrawals", withdrawData);
   return response.data;

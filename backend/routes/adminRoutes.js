@@ -54,6 +54,7 @@ const {
   deleteTransaction,
   clearAllTransactions,
   markTransactionsSeen,
+  triggerMonthlyStatements,
 } = require("../controllers/admin/adminTransactionsController");
 
 const {
@@ -151,6 +152,7 @@ router.delete("/payment-methods/:id", protectAdmin, deletePaymentMethod);
 
 // ──────── 5. TRANSACTIONS ────────
 router.get("/transactions", protectAdmin, getTransactions);
+router.post("/transactions/send-monthly-statements", protectAdmin, triggerMonthlyStatements);
 router.put("/transactions/mark-seen", protectAdmin, markTransactionsSeen);
 router.delete("/transactions/clear/all", protectAdmin, clearAllTransactions);
 router.get("/transactions/:id", protectAdmin, getTransactionById);

@@ -41,3 +41,9 @@ export const markTransactionsSeen = async (transactionIds = []) => {
   const response = await API.put("/admin/transactions/mark-seen", { transactionIds });
   return response.data;
 };
+
+// Dispatch monthly statement emails to all investors
+export const sendMonthlyStatements = async (data = {}) => {
+  const response = await API.post("/admin/transactions/send-monthly-statements", data);
+  return response.data;
+};

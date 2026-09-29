@@ -5,7 +5,8 @@ import {
   RiCloseLine, RiPrinterLine, RiTimeLine, RiDeleteBinLine,
   RiFileExcelLine, RiAlertLine, RiCheckLine, RiFilePdfLine,
   RiImageLine, RiFileCopyLine, RiShieldCheckLine, RiInformationLine,
-  RiUser3Line, RiWallet3Line, RiCheckboxCircleFill, RiExternalLinkLine
+  RiUser3Line, RiWallet3Line, RiCheckboxCircleFill, RiExternalLinkLine,
+  RiMailSendLine, RiRefreshLine
 } from 'react-icons/ri';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -23,7 +24,8 @@ import {
   rejectTransaction,
   deleteTransaction,
   clearAllTransactions,
-  markTransactionsSeen
+  markTransactionsSeen,
+  sendMonthlyStatements
 } from '../api/transactionsApi';
 
 export default function Transactions() {
@@ -38,6 +40,12 @@ export default function Transactions() {
   const [dateRangeModalOpen, setDateRangeModalOpen] = useState(false);
   const [previewProofModal, setPreviewProofModal] = useState(null);
   const [copiedHash, setCopiedHash] = useState(false);
+
+  // Monthly Statement Dispatch State
+  const [statementModalOpen, setStatementModalOpen] = useState(false);
+  const [dispatchingStatements, setDispatchingStatements] = useState(false);
+  const [statementMonth, setStatementMonth] = useState('previous');
+  const [statementResult, setStatementResult] = useState(null);
 
   // Reject Dialog State
   const [isRejecting, setIsRejecting] = useState(false);
@@ -269,6 +277,40 @@ export default function Transactions() {
     setClearAllModalOpen(false);
   };
 
+  // Dispatch Monthly Statements On-Demand
+  const handleDispatchMonthlyStatements = async () => {
+    setDispatchingStatements(true);
+    setStatementResult(null);
+    try {
+      const now = new Date();
+      let monthParam;
+      let yearParam = now.getFullYear();
+
+      if (statementMonth === 'current') {
+        monthParam = now.getMonth();
+      } else {
+        monthParam = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+        if (now.getMonth() === 0) yearParam -= 1;
+      }
+
+      const res = await sendMonthlyStatements({
+        month: monthParam,
+        year: yearParam,
+      });
+
+      if (res?.success) {
+        setStatementResult(res);
+        toast.success(res.message || 'Monthly statements dispatched successfully!', 'Statements Sent');
+      } else {
+        toast.error(res?.message || 'Failed to dispatch statements.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to dispatch monthly statements.');
+    } finally {
+      setDispatchingStatements(false);
+    }
+  };
+
   // Export CSV Functionality
   const handleExportCSV = () => {
     if (filtered.length === 0) return;
@@ -443,6 +485,20 @@ export default function Transactions() {
               title="Download CSV Spreadsheet"
             >
               Export CSV
+            </Button>
+
+            {/* Monthly Statements Dispatch Button */}
+            <Button
+              variant="secondary"
+              icon={<RiMailSendLine className="text-amber-600" />}
+              size="sm"
+              onClick={() => {
+                setStatementResult(null);
+                setStatementModalOpen(true);
+              }}
+              title="Automated Monthly Statement Dispatch"
+            >
+              Monthly Statements
             </Button>
 
             {/* Clear All Button */}
@@ -1238,6 +1294,102 @@ export default function Transactions() {
                   className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
                 />
               </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* ──────── MONTHLY STATEMENTS DISPATCH MODAL ──────── */}
+      <Modal
+        isOpen={statementModalOpen}
+        onClose={() => {
+          if (!dispatchingStatements) {
+            setStatementModalOpen(false);
+            setStatementResult(null);
+          }
+        }}
+        title="Automated Monthly Statement Dispatch"
+        subtitle="Schedule & on-demand investor statement emails"
+        size="md"
+        footer={
+          <div className="flex items-center justify-end gap-2.5 w-full">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setStatementModalOpen(false);
+                setStatementResult(null);
+              }}
+              disabled={dispatchingStatements}
+            >
+              Close
+            </Button>
+            <Button
+              variant="primary"
+              icon={dispatchingStatements ? <RiRefreshLine className="animate-spin" /> : <RiMailSendLine />}
+              onClick={handleDispatchMonthlyStatements}
+              disabled={dispatchingStatements}
+            >
+              {dispatchingStatements ? 'Dispatching Emails...' : 'Send Statements Now'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 font-poppins text-xs">
+          {/* Cron Schedule Banner */}
+          <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-900 text-xs">
+              <RiShieldCheckLine size={16} className="text-amber-700" />
+              <span>Active Automated Monthly Schedule</span>
+            </div>
+            <p className="text-slate-600 leading-relaxed text-[11px]">
+              The automated cron job is configured to run on the <strong>1st day of every month at 00:05 UTC</strong>. It automatically aggregates each investor’s deposits, withdrawals, and ROI yields for the past month, formats the branded institutional statement with logo, and sends it directly to their email.
+            </p>
+          </div>
+
+          {/* Manual Trigger Options */}
+          <div className="space-y-2 pt-1">
+            <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider block">
+              Target Statement Period
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setStatementMonth('previous')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  statementMonth === 'previous'
+                    ? 'bg-gold-50 border-gold-400 text-gold-950 font-bold shadow-2xs'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 font-medium'
+                }`}
+              >
+                <p className="text-xs">Previous Calendar Month</p>
+                <p className="text-[10px] text-slate-400 mt-0.5 font-normal">Standard monthly billing cycle</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatementMonth('current')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  statementMonth === 'current'
+                    ? 'bg-gold-50 border-gold-400 text-gold-950 font-bold shadow-2xs'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 font-medium'
+                }`}
+              >
+                <p className="text-xs">Current Month (Month-to-Date)</p>
+                <p className="text-[10px] text-slate-400 mt-0.5 font-normal">Interim account progress</p>
+              </button>
+            </div>
+          </div>
+
+          {/* Result Success / Error Box */}
+          {statementResult && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs space-y-1">
+              <p className="font-bold flex items-center gap-1.5">
+                <RiCheckLine size={16} className="text-emerald-600" />
+                <span>Statements Dispatched for {statementResult.periodName || 'Selected Period'}!</span>
+              </p>
+              <p className="text-[11px] text-slate-600">
+                Sent to: <strong>{statementResult.result?.successfulDispatches || statementResult.successfulDispatches || 0}</strong> accounts | Failed: <strong>{statementResult.result?.failedDispatches || statementResult.failedDispatches || 0}</strong>
+              </p>
             </div>
           )}
         </div>

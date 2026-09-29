@@ -39,6 +39,7 @@ const {
   getDepositGateways,
   createDeposit,
   createWithdrawal,
+  sendWithdrawalOtp,
   getWithdrawalSettings,
   getTransactions,
   getTransactionById,
@@ -101,6 +102,7 @@ router.get("/deposits/tutorial-video", getDepositVideo);
 router.post("/deposits", protectUser, createDeposit);
 router.get("/withdrawals/settings", getWithdrawalSettings);
 router.get("/withdrawals/tutorial-video", getWithdrawalVideo);
+router.post("/withdrawals/send-otp", protectUser, sendWithdrawalOtp);
 router.post("/withdrawals", protectUser, createWithdrawal);
 router.get("/transactions", protectUser, getTransactions);
 router.get("/transactions/:id", protectUser, getTransactionById);

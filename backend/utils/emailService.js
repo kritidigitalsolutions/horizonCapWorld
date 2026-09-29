@@ -536,6 +536,226 @@ ${COMPANY_NAME} Security
   }
 };
 
+// ==========================================
+// 7. MONTHLY TRANSACTION STATEMENT EMAIL
+// ==========================================
+
+const sendMonthlyStatementEmail = async ({
+  to,
+  name,
+  customId,
+  periodName,
+  startDate,
+  endDate,
+  summary = {},
+  transactions = [],
+}) => {
+  try {
+    const sender = process.env.EMAIL_USER || SENDER_EMAIL;
+    const recipient = to.trim();
+    const subject = `Monthly Transaction Statement: ${periodName} - ${COMPANY_NAME}`;
+
+    const {
+      totalDeposits = 0,
+      totalWithdrawals = 0,
+      totalEarnings = 0,
+      endingBalance = 0,
+      transactionCount = 0,
+    } = summary;
+
+    const text = `Dear ${name || "Investor"},
+
+Please find your official Monthly Transaction Statement for ${periodName} (${startDate} to ${endDate}) with ${COMPANY_NAME}.
+
+Account Summary:
+- Investor: ${name || "Investor"}
+- Account ID: ${customId || "N/A"}
+- Statement Period: ${periodName} (${startDate} - ${endDate})
+- Total Deposits: $${Number(totalDeposits).toLocaleString("en-US", { minimumFractionDigits: 2 })} USD
+- Total Withdrawals: $${Number(totalWithdrawals).toLocaleString("en-US", { minimumFractionDigits: 2 })} USD
+- Total Returns / Yield: $${Number(totalEarnings).toLocaleString("en-US", { minimumFractionDigits: 2 })} USD
+- Current Balance: $${Number(endingBalance).toLocaleString("en-US", { minimumFractionDigits: 2 })} USD
+- Recorded Transactions: ${transactionCount}
+
+To review your complete real-time ledger, please sign in to your dashboard:
+https://horizoncapworlds.com/transactions
+
+Sincerely,
+${COMPANY_NAME} Treasury & Accounting Desk
+`;
+
+    // Construct transaction table rows
+    let tableRowsHtml = "";
+    if (transactions && transactions.length > 0) {
+      // Limit to 40 in email to ensure it stays well under 100KB email size limit
+      const displayedTx = transactions.slice(0, 40);
+      tableRowsHtml = displayedTx
+        .map((t, idx) => {
+          const isDeposit = t.type === "Deposit";
+          const isWithdrawal = t.type === "Withdrawal";
+          const isReturn = t.type === "ROI Return" || t.type?.includes("Bonus");
+          const amtColor = isDeposit ? "#059669" : isWithdrawal ? "#dc2626" : isReturn ? "#d97706" : "#0f172a";
+          const prefix = isDeposit ? "+" : isWithdrawal ? "-" : isReturn ? "+" : "";
+          const statusBg =
+            t.status === "Approved" || t.status === "Completed"
+              ? "#dcfce7; color: #166534;"
+              : t.status === "Pending"
+              ? "#fef3c7; color: #92400e;"
+              : "#fee2e2; color: #991b1b;";
+
+          const bg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
+          return `
+            <tr style="background-color: ${bg}; border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 8px; font-size: 11px; color: #64748b; font-family: monospace;">${t.date || "N/A"}</td>
+              <td style="padding: 10px 8px; font-size: 11px; font-weight: 600; color: #0f172a; font-family: monospace;">${t.customId || "TRX"}</td>
+              <td style="padding: 10px 8px; font-size: 11px; color: #334155;">${t.type}</td>
+              <td align="right" style="padding: 10px 8px; font-size: 11px; font-weight: 700; color: ${amtColor}; font-family: monospace;">
+                ${prefix}$${Number(t.amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              </td>
+              <td align="right" style="padding: 10px 8px;">
+                <span style="display: inline-block; padding: 2px 7px; border-radius: 9999px; font-size: 10px; font-weight: 700; background-color: ${statusBg}">
+                  ${t.status || "Completed"}
+                </span>
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      if (transactions.length > 40) {
+        tableRowsHtml += `
+          <tr>
+            <td colspan="5" align="center" style="padding: 12px; font-size: 11px; color: #64748b; background-color: #f8fafc;">
+              Showing 40 of ${transactions.length} transactions for this period. View complete history on your dashboard.
+            </td>
+          </tr>
+        `;
+      }
+    } else {
+      tableRowsHtml = `
+        <tr>
+          <td colspan="5" align="center" style="padding: 24px; font-size: 12px; color: #94a3b8; font-style: italic;">
+            No transaction records were logged during this monthly period. Your portfolio balance remains secured.
+          </td>
+        </tr>
+      `;
+    }
+
+    const bodyHtml = `
+      <div style="border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
+        <span style="display: inline-block; padding: 4px 10px; border-radius: 6px; background-color: #fef3c7; color: #92400e; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">
+          Official Monthly Statement
+        </span>
+        <h2 style="margin: 8px 0 4px; font-size: 20px; font-weight: 800; color: #0f172a;">
+          Account Statement: ${periodName}
+        </h2>
+        <p style="margin: 0; font-size: 12px; color: #64748b;">
+          Statement Period: <strong>${startDate}</strong> &ndash; <strong>${endDate}</strong>
+        </p>
+      </div>
+
+      <!-- Account Details Grid -->
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; font-size: 12px;">
+        <tr>
+          <td style="padding: 4px 0; color: #64748b;">Account Holder:</td>
+          <td align="right" style="padding: 4px 0; font-weight: 700; color: #0f172a;">${name || "Investor"}</td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 0; color: #64748b;">Account ID:</td>
+          <td align="right" style="padding: 4px 0; font-weight: 700; color: #0f172a; font-family: monospace;">${customId || "N/A"}</td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 0; color: #64748b;">Registered Email:</td>
+          <td align="right" style="padding: 4px 0; font-weight: 600; color: #0f172a;">${recipient}</td>
+        </tr>
+      </table>
+
+      <!-- 4 Financial Summary Cards -->
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+        <tr>
+          <td width="48%" style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px; vertical-align: top;">
+            <p style="margin: 0; font-size: 11px; font-weight: 600; color: #065f46; text-transform: uppercase;">Total Deposits</p>
+            <p style="margin: 4px 0 0; font-size: 17px; font-weight: 800; color: #059669; font-family: monospace;">
+              +$${Number(totalDeposits).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </p>
+          </td>
+          <td width="4%"></td>
+          <td width="48%" style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; vertical-align: top;">
+            <p style="margin: 0; font-size: 11px; font-weight: 600; color: #991b1b; text-transform: uppercase;">Total Withdrawals</p>
+            <p style="margin: 4px 0 0; font-size: 17px; font-weight: 800; color: #dc2626; font-family: monospace;">
+              -$${Number(totalWithdrawals).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </p>
+          </td>
+        </tr>
+        <tr><td colspan="3" height="8"></td></tr>
+        <tr>
+          <td width="48%" style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px; vertical-align: top;">
+            <p style="margin: 0; font-size: 11px; font-weight: 600; color: #92400e; text-transform: uppercase;">Yield & Bonuses</p>
+            <p style="margin: 4px 0 0; font-size: 17px; font-weight: 800; color: #d97706; font-family: monospace;">
+              +$${Number(totalEarnings).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </p>
+          </td>
+          <td width="4%"></td>
+          <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; vertical-align: top;">
+            <p style="margin: 0; font-size: 11px; font-weight: 600; color: #475569; text-transform: uppercase;">Earning Wallet</p>
+            <p style="margin: 4px 0 0; font-size: 17px; font-weight: 800; color: #0f172a; font-family: monospace;">
+              $${Number(endingBalance).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </p>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Itemized Ledger -->
+      <h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 700; color: #0f172a;">
+        Monthly Activity Ledger (${transactionCount} transactions)
+      </h3>
+
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+        <thead>
+          <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; text-align: left;">
+            <th style="padding: 10px 8px; font-size: 11px; font-weight: 700; color: #475569;">Date</th>
+            <th style="padding: 10px 8px; font-size: 11px; font-weight: 700; color: #475569;">Ref</th>
+            <th style="padding: 10px 8px; font-size: 11px; font-weight: 700; color: #475569;">Type</th>
+            <th align="right" style="padding: 10px 8px; font-size: 11px; font-weight: 700; color: #475569;">Amount</th>
+            <th align="right" style="padding: 10px 8px; font-size: 11px; font-weight: 700; color: #475569;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRowsHtml}
+        </tbody>
+      </table>
+
+      <!-- Call to Action -->
+      <div style="text-align: center; margin: 28px 0 16px;">
+        <a href="https://horizoncapworlds.com/transactions" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 8px; box-shadow: 0 4px 12px rgba(15,23,42,0.15);">
+          View Complete Live Ledger &rarr;
+        </a>
+      </div>
+
+      <p style="margin: 16px 0 0; font-size: 11px; color: #94a3b8; text-align: center; line-height: 1.5;">
+        This statement is generated automatically by Horizon Cap World Treasury Systems on the 1st of each month.
+        Please retain this notice for your permanent accounting records.
+      </p>
+    `;
+
+    const html = wrapCleanHtml({ title: subject, bodyHtml });
+
+    const info = await transporter.sendMail({
+      from: `"${COMPANY_NAME}" <${sender}>`,
+      to: recipient,
+      subject,
+      text,
+      html,
+    });
+
+    console.log(`[Email Service] Monthly statement delivered to ${recipient} (Message ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[Email Service] Failed to send monthly statement to ${to}:`, error.message);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendOtpEmail,
   sendWelcomeEmail,
@@ -543,4 +763,5 @@ module.exports = {
   sendWithdrawalEmail,
   sendTicketEmail,
   sendPasswordResetConfirmation,
+  sendMonthlyStatementEmail,
 };
