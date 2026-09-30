@@ -61,6 +61,34 @@ exports.getReferralOverview = async (req, res) => {
       })) !== null
     );
 
+    // Calculate total team downlines count & total volume dynamically across all 10 tiers
+    let allDownlinesCount = 0;
+    let allDownlinesVolume = 0;
+    let currentTierParents = [user.customId, String(user._id)].filter(Boolean);
+
+    for (let l = 1; l <= 10; l++) {
+      if (!currentTierParents || currentTierParents.length === 0) break;
+      const tierUsers = await User.find({
+        $or: [
+          { sponsorId: { $in: currentTierParents } },
+          { sponsorCustomId: { $in: currentTierParents } },
+        ],
+      }).select("_id customId totalInvested");
+
+      if (tierUsers.length === 0) break;
+      allDownlinesCount += tierUsers.length;
+      allDownlinesVolume += tierUsers.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+      currentTierParents = tierUsers.map((u) => u.customId).filter(Boolean);
+    }
+
+    const calculatedTotalTeamCount = allDownlinesCount;
+    const calculatedTotalTeamVolume = allDownlinesVolume;
+
+    user.teamTurnover = calculatedTotalTeamVolume;
+    user.totalReferrals = calculatedTotalTeamCount;
+    user.directReferrals = directUsers.length;
+    await user.save();
+
     res.status(200).json({
       success: true,
       data: {
@@ -70,9 +98,9 @@ exports.getReferralOverview = async (req, res) => {
         sponsorId: user.sponsorId,
         directReferralsCount: activeDirectCount,
         totalRegisteredDirects: directUsers.length,
-        totalTeamCount: user.totalReferrals || directUsers.length,
+        totalTeamCount: calculatedTotalTeamCount,
         directTeamVolume: directInvestedTotal,
-        totalTeamVolume: user.teamTurnover || directInvestedTotal,
+        totalTeamVolume: calculatedTotalTeamVolume,
         commissions: {
           totalEarned: totalCommission,
           directCommission,
@@ -135,14 +163,27 @@ exports.getReferralCommissions = async (req, res) => {
     // Dynamic downline statistics calculation across all tiers
     const levelStats = {};
     tiers.forEach((t) => {
-      const lvl = t.levelNumber || 1;
+      const lvl = t.levelNumber !== undefined ? t.levelNumber : 1;
       levelStats[lvl] = { count: 0, volume: 0 };
     });
 
-    if (req.user && req.user.customId) {
-      let currentParentIds = [req.user.customId];
+    let totalDownlinesCount = 0;
+    let totalDownlinesVolume = 0;
+    let directActiveCount = 0;
 
-      for (const tier of tiers) {
+    if (req.user && req.user.customId) {
+      // Level 0 is Self Investment
+      const selfInvested = Number(req.user.totalInvested || 0);
+      levelStats[0] = {
+        count: selfInvested > 0 ? 1 : 0,
+        volume: selfInvested,
+      };
+
+      // Traverse downline levels strictly from Level 1 to 10
+      let currentParentIds = [req.user.customId, String(req.user._id)].filter(Boolean);
+      const downlineTiers = tiers.filter((t) => (t.levelNumber || 0) >= 1 && (t.levelNumber || 0) <= 10);
+
+      for (const tier of downlineTiers) {
         const lvl = tier.levelNumber;
         if (!currentParentIds || currentParentIds.length === 0) {
           levelStats[lvl] = { count: 0, volume: 0 };
@@ -150,12 +191,24 @@ exports.getReferralCommissions = async (req, res) => {
         }
 
         const downlineUsers = await User.find({
-          sponsorId: { $in: currentParentIds },
-        }).select("customId totalInvested");
+          $or: [
+            { sponsorId: { $in: currentParentIds } },
+            { sponsorCustomId: { $in: currentParentIds } },
+          ],
+        }).select("_id customId totalInvested depositWallet hasDeposited status");
 
         const count = downlineUsers.length;
         const volume = downlineUsers.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
         levelStats[lvl] = { count, volume };
+
+        if (lvl === 1) {
+          directActiveCount = downlineUsers.filter(
+            (u) => Boolean(u.hasDeposited) || Number(u.totalInvested || 0) > 0 || Number(u.depositWallet || 0) > 0
+          ).length;
+        }
+
+        totalDownlinesCount += count;
+        totalDownlinesVolume += volume;
 
         currentParentIds = downlineUsers.map((u) => u.customId).filter(Boolean);
       }
@@ -163,7 +216,7 @@ exports.getReferralCommissions = async (req, res) => {
 
     const dynamicTiers = tiers.map((t) => {
       const plain = t.toObject ? t.toObject() : { ...t };
-      const lvl = plain.levelNumber || 1;
+      const lvl = plain.levelNumber !== undefined ? plain.levelNumber : 1;
       const stats = levelStats[lvl] || { count: 0, volume: 0 };
       return {
         ...plain,
@@ -178,6 +231,14 @@ exports.getReferralCommissions = async (req, res) => {
       success: true,
       count: dynamicTiers.length,
       tiers: dynamicTiers,
+      userStats: {
+        activeDirects: directActiveCount,
+        totalDirects: levelStats[1]?.count || 0,
+        totalDownlines: totalDownlinesCount,
+        totalTeamVolume: totalDownlinesVolume,
+        directTeamVolume: levelStats[1]?.volume || 0,
+        selfInvested: levelStats[0]?.volume || 0,
+      },
       toggles: {
         referralDepositCommissionEnabled: adminSettings.referralDepositCommissionEnabled !== false,
         referralRoiShareEnabled: adminSettings.referralRoiShareEnabled !== false,
@@ -437,6 +498,7 @@ exports.getReferralNetwork = async (req, res) => {
           }
         }
 
+        const partnerStats = getPartnerDownlineBreakdown(kid.customId);
         const childNodes = buildTreeNodes(kid.customId, currentLevel + 1, visited);
 
         return {
@@ -453,6 +515,10 @@ exports.getReferralNetwork = async (req, res) => {
           commissionRate: rate,
           commissionEarned: comm,
           invested,
+          personalVolume: invested,
+          groupVolume: partnerStats.teamVolume,
+          teamVolume: partnerStats.teamVolume,
+          totalTeamCount: partnerStats.totalTeamCount,
           depositWallet: depositW,
           status: getDownlineStatus(kid),
           joined: kid.createdAt ? kid.createdAt.toISOString().split("T")[0] : "",
@@ -461,6 +527,8 @@ exports.getReferralNetwork = async (req, res) => {
         };
       }).filter(Boolean);
     };
+
+    const totalDownlineVolume = formattedNetwork.reduce((sum, m) => sum + Number(m.invested || 0), 0);
 
     const tree = {
       id: user.customId,
@@ -476,6 +544,9 @@ exports.getReferralNetwork = async (req, res) => {
       commissionRate: 0,
       commissionEarned: 0,
       invested: user.totalInvested || 0,
+      personalVolume: user.totalInvested || 0,
+      groupVolume: totalDownlineVolume,
+      teamVolume: totalDownlineVolume,
       depositWallet: user.depositWallet || 0,
       status: getDownlineStatus(user),
       totalEarnedCommission: parseFloat(totalTreeCommissionsEarned.toFixed(2)),
@@ -561,7 +632,28 @@ exports.getMyRankStatus = async (req, res) => {
 
     const legsCount = directUsers.length;
 
-    const turnover = Number(user.teamTurnover || 0);
+    // Calculate live downline volume across 10 tiers dynamically
+    let liveTurnover = 0;
+    let currentTierParents = [user.customId, String(user._id)].filter(Boolean);
+
+    for (let l = 1; l <= 10; l++) {
+      if (!currentTierParents || currentTierParents.length === 0) break;
+      const tierUsers = await User.find({
+        $or: [
+          { sponsorId: { $in: currentTierParents } },
+          { sponsorCustomId: { $in: currentTierParents } },
+        ],
+      }).select("_id customId totalInvested");
+
+      if (tierUsers.length === 0) break;
+      liveTurnover += tierUsers.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+      currentTierParents = tierUsers.map((u) => u.customId).filter(Boolean);
+    }
+
+    const turnover = liveTurnover;
+    user.teamTurnover = turnover;
+    await user.save();
+
     const ownInvested = Number(user.totalInvested || 0);
 
     // Evaluate qualification for each rank
@@ -589,6 +681,14 @@ exports.getMyRankStatus = async (req, res) => {
 
     const isQualified = qualifiedLevel > 0;
     const currentRank = isQualified ? ranks.find((r) => r.level === qualifiedLevel) || ranks[0] : null;
+
+    // Auto-sync user rank level & currentRank in database if newly qualified
+    if (isQualified && (user.rankLevel || 0) < qualifiedLevel) {
+      user.currentRank = currentRank.name;
+      user.rankLevel = qualifiedLevel;
+      await user.save();
+    }
+
     const targetLevel = qualifiedLevel + 1;
     const nextRank = ranks.find((r) => r.level === targetLevel) || ranks[ranks.length - 1];
 

@@ -184,27 +184,27 @@ function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilte
           <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Personal Volume</span>
             <span className="text-xs sm:text-sm font-bold font-mono text-slate-900 truncate block">
-              ${Number(node.invested || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              ${Number(node.personalVolume ?? node.invested ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </span>
           </div>
 
-          {/* Commission Earned from this user */}
+          {/* Group Volume */}
           <div className={`p-2 rounded-xl border ${
             isRoot
               ? 'bg-gold-50/80 border-gold-200 text-gold-900'
-              : Number(node.commissionEarned || 0) > 0
+              : Number(node.groupVolume ?? node.teamVolume ?? 0) > 0
               ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
               : 'bg-slate-50 border-slate-100 text-slate-500'
           }`}>
             <span className="text-[10px] font-bold uppercase tracking-wider block">
-              {isRoot ? 'Group Volume' : 'Group Volume'}
+              Group Volume
             </span>
             <span className={`text-xs sm:text-sm font-bold font-mono truncate block ${
-              Number(node.commissionEarned || node.totalEarnedCommission || 0) > 0
+              Number(node.groupVolume ?? node.teamVolume ?? 0) > 0
                 ? 'text-emerald-700 font-extrabold'
                 : 'text-slate-600'
             }`}>
-              +${Number(isRoot ? node.totalEarnedCommission || 0 : node.commissionEarned || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              +${Number(node.groupVolume ?? node.teamVolume ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </span>
           </div>
         </div>

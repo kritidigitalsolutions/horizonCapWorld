@@ -179,7 +179,12 @@ exports.approveTransaction = async (req, res) => {
           ],
         });
 
-        if (has3XCap && user.totalInvested > 0 && user.totalWithdrawn >= user.totalInvested && user.status !== "Blocked") {
+        // Fetch dynamic withdrawal multiplier from AdminSettings
+        let adminSettings = await AdminSettings.findOne();
+        const singleIdMultiplier = adminSettings?.withdrawalSettings?.singleIdMaxWithdrawalMultiplier || 4;
+        const maxAllowedTotalWithdrawal = (user.totalInvested || 0) * singleIdMultiplier;
+
+        if (has3XCap && maxAllowedTotalWithdrawal > 0 && user.totalWithdrawn >= maxAllowedTotalWithdrawal && user.status !== "Blocked") {
           user.status = "Blocked";
           user.dailyEarning = 0;
           user.perSecondRate = 0;
@@ -192,8 +197,8 @@ exports.approveTransaction = async (req, res) => {
 
           await notifyUser({
             userId: user._id,
-            title: "Account Blocked - 3X Cap Full Capital Withdrawn",
-            message: `Your account has been blocked as you have completed full capital withdrawal under the 3X Cap plan. Please register a new account to continue.`,
+            title: "Account Completed - 4X Maximum Withdrawal Limit Reached",
+            message: `Your account contract has completed as you have reached the 4X maximum withdrawal limit ($${user.totalWithdrawn.toLocaleString()} USD on $${user.totalInvested.toLocaleString()} USD invested) combining ROI and Level Income. Please register a new account or contact support to continue.`,
             category: "SYSTEM",
             type: "account_blocked",
             priority: "HIGH",

@@ -123,7 +123,9 @@ export default function Users() {
           _id: u._id,
           id: u.customId || u._id,
           customId: u.customId || '',
-          name: u.name || 'Investor',
+          name: u.name || u.userName || 'Investor',
+          userName: u.userName || '',
+          fullName: u.name || '',
           email: u.email || '',
           phone: u.phone || '',
           country: u.country || 'Global',
@@ -259,34 +261,75 @@ export default function Users() {
     }
   };
 
-  // Comprehensive Search across Name, Email, Phone, Country, ID, Date of Join, and Payout Type
+  // Robust Multi-Field Search across User Name, User ID, Email, and Phone Number
   const filtered = userList.filter(user => {
-    const q = search.trim().toLowerCase();
-    if (!q) {
-      const matchStatus = statusFilter === 'all' || user.status.toLowerCase() === statusFilter.toLowerCase();
+    const rawQ = (search || '').trim();
+    if (!rawQ) {
+      const matchStatus = statusFilter === 'all' || (user.status || '').toLowerCase() === statusFilter.toLowerCase();
       return matchStatus;
     }
 
-    const userIdStr = (user.customId || `HORIZON-USR-0${user.id}`).toLowerCase();
-    const nameStr = user.name.toLowerCase();
-    const emailStr = user.email.toLowerCase();
-    const phoneStr = user.phone.toLowerCase().replace(/[^0-9]/g, '');
-    const searchPhoneNum = q.replace(/[^0-9]/g, '');
-    const countryStr = user.country.toLowerCase();
-    const joinedStr = user.joined.toLowerCase();
-    const payoutStr = (user.payoutType || '').toLowerCase();
-    const referredStr = (user.referredBy || '').toLowerCase();
+    const q = rawQ.toLowerCase();
+
+    // 1. User Name & Username Search (matches name, userName, fullName with substring & multi-token support)
+    const nameStr = String(user.name || '').toLowerCase();
+    const userNameStr = String(user.userName || '').toLowerCase();
+    const fullNameStr = String(user.fullName || '').toLowerCase();
+    const matchName =
+      nameStr.includes(q) ||
+      userNameStr.includes(q) ||
+      fullNameStr.includes(q);
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const matchNameTokens =
+      tokens.length > 1 &&
+      (tokens.every(token => nameStr.includes(token)) ||
+       tokens.every(token => userNameStr.includes(token)) ||
+       tokens.every(token => fullNameStr.includes(token)));
+
+    // 2. User ID Search (customId e.g. HCW-USR-..., user.id, MongoDB _id, fallback formatted ID)
+    const customIdStr = String(user.customId || '').toLowerCase();
+    const idStr = String(user.id || '').toLowerCase();
+    const mongoIdStr = String(user._id || '').toLowerCase();
+    const fallbackIdStr = `horizon-usr-0${idStr}`;
+    const matchId =
+      customIdStr.includes(q) ||
+      idStr.includes(q) ||
+      mongoIdStr.includes(q) ||
+      fallbackIdStr.includes(q);
+
+    // 3. Email Address Search
+    const emailStr = String(user.email || '').toLowerCase();
+    const matchEmail = emailStr.includes(q);
+
+    // 4. Phone Number Search (raw string match + stripped-digits matching)
+    const rawPhone = String(user.phone || '').toLowerCase();
+    const matchRawPhone = rawPhone.length > 0 && rawPhone.includes(q);
+    const userPhoneDigits = rawPhone.replace(/\D/g, '');
+    const queryDigits = q.replace(/\D/g, '');
+    const isStrictPhoneQuery = q.replace(/[\d\s+\-()]/g, '').length === 0 && queryDigits.length > 0;
+    const matchDigitsPhone =
+      userPhoneDigits.length > 0 &&
+      queryDigits.length > 0 &&
+      (queryDigits.length >= 3 || isStrictPhoneQuery) &&
+      (userPhoneDigits.includes(queryDigits) || (queryDigits.length >= 7 && queryDigits.includes(userPhoneDigits)));
+    const matchPhone = matchRawPhone || matchDigitsPhone;
+
+    // 5. Additional contextual matches (Country, Sponsor ID)
+    const countryStr = String(user.country || '').toLowerCase();
+    const sponsorStr = String(user.referredBy || user.sponsorId || '').toLowerCase();
+    const matchCountry = countryStr.includes(q);
+    const matchSponsor = sponsorStr.includes(q);
 
     const matchSearch =
-      nameStr.includes(q) ||
-      emailStr.includes(q) ||
-      userIdStr.includes(q) ||
-      countryStr.includes(q) ||
-      joinedStr.includes(q) ||
-      payoutStr.includes(q) ||
-      (searchPhoneNum && phoneStr.includes(searchPhoneNum));
+      matchName ||
+      matchNameTokens ||
+      matchId ||
+      matchEmail ||
+      matchPhone ||
+      matchCountry ||
+      matchSponsor;
 
-    const matchStatus = statusFilter === 'all' || user.status.toLowerCase() === statusFilter.toLowerCase();
+    const matchStatus = statusFilter === 'all' || (user.status || '').toLowerCase() === statusFilter.toLowerCase();
     return matchSearch && matchStatus;
   });
 
@@ -317,7 +360,7 @@ export default function Users() {
       <div className="card p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <SearchBar
-            placeholder="Search by name, email, phone, country, ID (HORIZON-USR-01), or join date..."
+            placeholder="Search by name, username, user ID, email, or phone number..."
             value={search}
             onChange={setSearch}
             className="flex-1 font-poppins text-xs"
@@ -379,7 +422,7 @@ export default function Users() {
                       <div className="flex items-center gap-3.5 font-poppins">
                         {/* Large Round Circle Avatar */}
                         <div className="w-11 h-11 rounded-full bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 text-slate-900 font-bold flex items-center justify-center flex-shrink-0 shadow-xs ring-2 ring-gold-200/80 text-xs font-poppins">
-                          {user.name.split(' ').map(n => n[0]).join('')}
+                          {(user.name || 'Investor').trim().split(/\s+/).map(n => n[0] || '').join('').toUpperCase().slice(0, 2) || 'U'}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
@@ -392,6 +435,11 @@ export default function Users() {
                               </span>
                             )}
                           </div>
+                          {user.userName && user.userName !== user.name && (
+                            <p className="text-[11px] text-amber-700 font-medium font-mono truncate">
+                              @{user.userName}
+                            </p>
+                          )}
                           <p className="text-[11px] text-slate-400 font-normal font-poppins mt-0.5">
                             Joined {user.joined}
                           </p>
@@ -560,6 +608,21 @@ export default function Users() {
                   </tr>
                 );
               })}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan="8" className="py-12 text-center text-slate-400 font-poppins">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <RiUserLine size={32} className="text-slate-300" />
+                      <p className="text-sm font-semibold text-slate-600">No users found</p>
+                      <p className="text-xs text-slate-400 max-w-sm">
+                        {search.trim()
+                          ? `No matching records found for "${search}". Try searching by user name, ID, phone number, or email.`
+                          : 'No user accounts found under this filter.'}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -579,12 +642,6 @@ export default function Users() {
           }}
           pageSizeOptions={[10, 20, 50, 100]}
         />
-
-        {filtered.length === 0 && (
-          <div className="p-12 text-center font-poppins">
-            <p className="text-slate-400 font-normal">No users found matching your search criteria.</p>
-          </div>
-        )}
       </div>
 
       {/* ──────────────── View User Details & Complete Investment Portfolio Slide-Over Drawer ──────────────── */}

@@ -16,14 +16,33 @@ exports.getAllUsers = async (req, res) => {
       query.status = status;
     }
 
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
-        { customId: { $regex: search, $options: "i" } },
-        { country: { $regex: search, $options: "i" } },
+    if (search && typeof search === "string" && search.trim()) {
+      const trimmed = search.trim();
+      const escaped = trimmed.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+      const digitsOnly = trimmed.replace(/\D/g, "");
+
+      const orConditions = [
+        { name: { $regex: escaped, $options: "i" } },
+        { userName: { $regex: escaped, $options: "i" } },
+        { email: { $regex: escaped, $options: "i" } },
+        { customId: { $regex: escaped, $options: "i" } },
+        { phone: { $regex: escaped, $options: "i" } },
+        { country: { $regex: escaped, $options: "i" } },
+        { sponsorId: { $regex: escaped, $options: "i" } },
       ];
+
+      // If search query contains digits, also match stripped digits against phone
+      if (digitsOnly.length >= 3) {
+        orConditions.push({ phone: { $regex: digitsOnly, $options: "i" } });
+      }
+
+      // If search query is a valid MongoDB ObjectId, allow matching _id directly
+      const mongoose = require("mongoose");
+      if (mongoose.Types.ObjectId.isValid(trimmed)) {
+        orConditions.push({ _id: trimmed });
+      }
+
+      query.$or = orConditions;
     }
 
     const pageNum = parseInt(page, 10) || 1;

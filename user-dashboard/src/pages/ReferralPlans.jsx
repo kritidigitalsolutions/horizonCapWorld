@@ -27,6 +27,7 @@ const defaultTiers = [
 export default function ReferralPlans() {
   const [commissions, setCommissions] = useState(defaultTiers);
   const [overviewData, setOverviewData] = useState(null);
+  const [userStats, setUserStats] = useState(null);
   const [networkList, setNetworkList] = useState([]);
   const [toggles, setToggles] = useState({
     referralDepositCommissionEnabled: true,
@@ -45,6 +46,9 @@ export default function ReferralPlans() {
       if (commsRes.status === 'fulfilled' && commsRes.value?.success) {
         if (Array.isArray(commsRes.value.tiers) && commsRes.value.tiers.length > 0) {
           setCommissions(commsRes.value.tiers);
+        }
+        if (commsRes.value.userStats) {
+          setUserStats(commsRes.value.userStats);
         }
         if (commsRes.value.toggles) {
           setToggles(commsRes.value.toggles);
@@ -93,8 +97,10 @@ export default function ReferralPlans() {
   }, []);
 
   const totalCommissions = Number(overviewData?.commissions?.totalEarned || 0);
-  const directPromoters = Number(overviewData?.directReferralsCount || networkList.filter(u => u.level === 1).length || 0);
-  const totalDownlines = Number(overviewData?.totalTeamCount || networkList.length || 0);
+  const directActiveFromNetwork = networkList.filter(u => u.level === 1 && (u.status === 'Active' || Number(u.invested || 0) > 0)).length;
+  const directPromoters = Number(userStats?.activeDirects ?? overviewData?.directReferralsCount ?? directActiveFromNetwork ?? 0);
+  const totalDownlines = Number(userStats?.totalDownlines ?? overviewData?.totalTeamCount ?? networkList.length ?? 0);
+  const totalTeamVolume = Number(userStats?.totalTeamVolume ?? overviewData?.totalTeamVolume ?? 0);
   const avgAffiliateYield = Number((commissions.reduce((sum, c) => sum + (parseFloat(c.investCommission) || 0), 0) || 15.0).toFixed(1));
 
   const depositEnabled = toggles.referralDepositCommissionEnabled !== false && toggles.referralSystemEnabled !== false;
@@ -103,7 +109,13 @@ export default function ReferralPlans() {
 
   // Dynamic Level Stats Calculation from live network list
   const getDynamicTierStats = (tier) => {
-    const levelNum = tier.levelNumber !== undefined ? tier.levelNumber : (parseInt(String(tier.level).replace('L', ''), 10) || 1);
+    const levelNum = tier.levelNumber !== undefined ? tier.levelNumber : (parseInt(String(tier.level).replace('L', ''), 10) || 0);
+    if (levelNum === 0) {
+      return {
+        promoters: tier.activePromoters !== undefined ? Number(tier.activePromoters) : (userStats?.selfInvested ? 1 : 0),
+        volume: tier.totalVolume || `$${Number(userStats?.selfInvested || 0).toLocaleString()}`,
+      };
+    }
     if (networkList && networkList.length > 0) {
       const tierMembers = networkList.filter(u => Number(u.level) === levelNum);
       const tierVolume = tierMembers.reduce((sum, u) => sum + Number(u.invested || 0), 0);
@@ -228,8 +240,8 @@ export default function ReferralPlans() {
                       : 'No Condition')
                 );
 
-                const userDirects = Number(overviewData?.directReferralsCount || networkList.filter(u => u.level === 1).length || 0);
-                const userVolume = Number(overviewData?.totalTeamVolume || networkList.reduce((sum, u) => sum + Number(u.invested || 0), 0) || 0);
+                const userDirects = Number(userStats?.activeDirects ?? overviewData?.directReferralsCount ?? directActiveFromNetwork ?? 0);
+                const userVolume = Number(userStats?.totalTeamVolume ?? overviewData?.totalTeamVolume ?? 0);
                 const minVol = Number(tier.groupVolumeMin || 0);
                 const minDir = Number(tier.directClientsMin || 0);
 

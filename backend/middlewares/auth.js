@@ -79,7 +79,7 @@ const protectUser = async (req, res, next) => {
     if (user.status === "Blocked") {
       return res.status(403).json({
         success: false,
-        message: "Your account has been blocked after completing full capital withdrawal on 3X Cap plan. Please create a new account to continue.",
+        message: "Your account contract has completed after reaching the 4X maximum withdrawal limit on 3X Cap plan. Please create a new account or contact support to continue.",
       });
     }
 

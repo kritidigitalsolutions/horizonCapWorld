@@ -252,14 +252,10 @@ exports.investInPlan = async (req, res) => {
 
     await user.save();
 
-    // Trigger multi-tier referral deposit commissions ONLY for the 1st investment
-    if (isFirstInvestment) {
-      distributeReferralCommissions(user._id, investAmount, "investment").catch((err) =>
-        console.warn("[Affiliate] Investment commission distribution notice:", err.message)
-      );
-    } else {
-      console.log(`[Affiliate] Subsequent investment by ${user.customId || user.email}. Referral bonus skipped (1st investment only).`);
-    }
+    // Trigger multi-tier referral deposit commissions & downline team turnover distribution
+    distributeReferralCommissions(user._id, investAmount, "investment").catch((err) =>
+      console.warn("[Affiliate] Investment commission distribution notice:", err.message)
+    );
 
     res.status(201).json({
       success: true,

@@ -498,7 +498,7 @@ exports.login = async (req, res) => {
     if (user.status === "Blocked") {
       return res.status(403).json({
         success: false,
-        message: "Your account has been blocked as you have withdrawn your full capital under the 3X Cap Plan. Please create a new account to continue.",
+        message: "Your account contract has completed as you have reached the 4X maximum withdrawal limit under the 3X Cap Plan. Please create a new account or contact support to continue.",
       });
     }
 

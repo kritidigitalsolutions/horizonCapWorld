@@ -614,7 +614,8 @@ export default function Referrals() {
                           : 'No Condition')
                     );
 
-                    const userDirects = Number(overviewData?.directReferralsCount || networkList.filter(u => u.level === 1).length || 0);
+                    const directActiveCount = networkList.filter(u => u.level === 1 && (u.status === 'Active' || Number(u.invested || 0) > 0)).length;
+                    const userDirects = Number(overviewData?.directReferralsCount ?? directActiveCount);
                     const userVolume = Number(overviewData?.totalTeamVolume || networkList.reduce((sum, u) => sum + Number(u.invested || 0), 0) || 0);
                     const minVol = Number(tier.groupVolumeMin || 0);
                     const minDir = Number(tier.directClientsMin || 0);

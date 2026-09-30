@@ -187,10 +187,6 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
         console.log("[Affiliate Engine] Referral system is globally disabled by admin. Skipping distribution.");
         return;
       }
-      if (commissionType === "investment" && settings.referralDepositCommissionEnabled === false) {
-        console.log("[Affiliate Engine] Direct investment deposit commissions are disabled by admin. Skipping.");
-        return;
-      }
       if (commissionType === "earnings" && settings.referralRoiShareEnabled === false) {
         console.log("[Affiliate Engine] ROI profit share commissions are disabled by admin. Skipping.");
         return;
@@ -202,30 +198,10 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
       return;
     }
 
-    // Direct investment referral bonus is ONLY eligible on the user's FIRST investment
-    if (commissionType === "investment") {
-      if (investor.hasReceivedReferralBonus) {
-        console.log(`[Affiliate Engine] Investor ${investor.customId || investor.name} has already received referral bonus for their 1st investment. Skipping subsequent investment.`);
-        return;
-      }
-
-      // Check if investor already has more than 1 investment or previous referral bonus transactions
-      const invCount = await UserInvestment.countDocuments({ user: investor._id });
-      const existingRefTxn = await Transaction.findOne({
-        type: "Referral Bonus",
-        note: { $regex: investor.customId, $options: "i" },
-      });
-
-      if (invCount > 1 || existingRefTxn) {
-        console.log(`[Affiliate Engine] Investor ${investor.customId || investor.name} already completed their 1st investment previously. Skipping.`);
-        investor.hasReceivedReferralBonus = true;
-        if (!investor.firstInvestmentAmount) {
-          investor.firstInvestmentAmount = amount;
-        }
-        await investor.save();
-        return;
-      }
-    }
+    // Direct investment referral bonus is ONLY eligible on user's 1st investment and when enabled by admin
+    const isDepositCommissionEnabled = settings ? (settings.referralDepositCommissionEnabled !== false) : true;
+    const isFirstTimeInvestor = !investor.hasReceivedReferralBonus;
+    const shouldPayDepositBonus = commissionType === "investment" && isDepositCommissionEnabled && isFirstTimeInvestor;
 
     // Load only active referral tiers ordered by levelNumber
     const refSettings = await ReferralSetting.find({ status: { $ne: "Inactive" } }).sort({ levelNumber: 1 });
@@ -245,10 +221,23 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
 
       if (!sponsor) break;
 
+      // Always increment sponsor's team turnover on downline investment
+      if (commissionType === "investment") {
+        sponsor.teamTurnover = parseFloat(((sponsor.teamTurnover || 0) + amount).toFixed(2));
+      }
+
+      // If sponsor account has reached 4X limit / is blocked, skip bonus payout to this closed ID
+      if (sponsor.status === "Blocked" || sponsor.status === "Suspended") {
+        await sponsor.save();
+        currentSponsorId = sponsor.sponsorId;
+        continue;
+      }
+
       // For Level ROI Earnings Profit Share, enforce eligibility conditions (Group Volume & Direct Clients)
       if (commissionType === "earnings") {
         if (tier.levelNumber === 0 || (tier.percentage === 0 && tier.earningsCommissionRate === 0 && tier.roiPerDay === 0)) {
           // Level 0 has No Downline Commission (Self Investment only)
+          await sponsor.save();
           currentSponsorId = sponsor.sponsorId;
           continue;
         }
@@ -256,6 +245,7 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
         if (tier.directClientsMin > 0) {
           const directCount = await User.countDocuments({ sponsorId: sponsor.customId });
           if (directCount < tier.directClientsMin) {
+            await sponsor.save();
             currentSponsorId = sponsor.sponsorId;
             continue;
           }
@@ -264,6 +254,7 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
         if (tier.groupVolumeMin > 0) {
           const turnover = Number(sponsor.teamTurnover || 0);
           if (turnover < tier.groupVolumeMin) {
+            await sponsor.save();
             currentSponsorId = sponsor.sponsorId;
             continue;
           }
@@ -271,15 +262,12 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
       }
 
       const rate = commissionType === "investment" ? (tier.investCommissionRate || 5) : (tier.percentage !== undefined && tier.percentage !== null ? tier.percentage : tier.earningsCommissionRate || 0);
-      const bonus = parseFloat(((amount * rate) / 100).toFixed(2));
+      const isEligibleForBonus = commissionType === "investment" ? shouldPayDepositBonus : true;
+      const bonus = isEligibleForBonus ? parseFloat(((amount * rate) / 100).toFixed(2)) : 0;
 
       if (bonus > 0) {
         sponsor.earningWallet = parseFloat(((sponsor.earningWallet || 0) + bonus).toFixed(2));
         sponsor.totalProfit = parseFloat(((sponsor.totalProfit || 0) + bonus).toFixed(2));
-        if (commissionType === "investment") {
-          sponsor.teamTurnover = parseFloat(((sponsor.teamTurnover || 0) + amount).toFixed(2));
-        }
-        await sponsor.save();
 
         const typeLabel = commissionType === "investment" ? "1st Investment Deposit Commission" : "Daily ROI Profit Share";
 
@@ -301,6 +289,7 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
         });
       }
 
+      await sponsor.save();
       currentSponsorId = sponsor.sponsorId;
     }
 

@@ -364,15 +364,18 @@ exports.createWithdrawal = async (req, res) => {
     user.otpExpires = null;
     user.otpPurpose = null;
 
-    // Check Single ID Maximum Withdrawal Allowed (3X = 4X total invested)
-    if (user.totalInvested && user.totalInvested > 0) {
-      const maxAllowedTotalWithdrawal = user.totalInvested * singleIdMultiplier;
+    // Check Single ID Maximum Withdrawal Allowed (3X Profit + 1X Capital = 4X total invested)
+    const maxAllowedTotalWithdrawal = user.totalInvested && user.totalInvested > 0
+      ? user.totalInvested * singleIdMultiplier
+      : 0;
+
+    if (maxAllowedTotalWithdrawal > 0) {
       const currentTotalWithdrawn = user.totalWithdrawn || 0;
       if (currentTotalWithdrawn + withdrawAmount > maxAllowedTotalWithdrawal) {
         const remainingLimit = Math.max(0, maxAllowedTotalWithdrawal - currentTotalWithdrawn);
         return res.status(400).json({
           success: false,
-          message: `Withdrawal exceeds Single ID maximum limit: 3X ($${maxAllowedTotalWithdrawal.toLocaleString()} USD max allowed for $${user.totalInvested.toLocaleString()} USD invested). You have already withdrawn $${currentTotalWithdrawn.toLocaleString()} USD (Remaining allowed: $${remainingLimit.toLocaleString()} USD).`,
+          message: `Withdrawal exceeds Single ID maximum limit: ${singleIdMultiplier}X ($${maxAllowedTotalWithdrawal.toLocaleString()} USD max allowed for $${user.totalInvested.toLocaleString()} USD invested). You have already withdrawn $${currentTotalWithdrawn.toLocaleString()} USD (Remaining allowed: $${remainingLimit.toLocaleString()} USD).`,
         });
       }
     }
@@ -410,8 +413,8 @@ exports.createWithdrawal = async (req, res) => {
     });
 
     let accountBlocked = false;
-    // 3X Cap Rule: When client withdraws their full capital, their account is blocked
-    if (has3XCap && user.totalInvested > 0 && user.totalWithdrawn >= user.totalInvested) {
+    // Dynamic 4X Cap Rule: When client completes their full 4X withdrawal limit (Capital + 3X ROI & Level Income), their account contract completes (ID band)
+    if (has3XCap && maxAllowedTotalWithdrawal > 0 && user.totalWithdrawn >= maxAllowedTotalWithdrawal) {
       user.status = "Blocked";
       user.dailyEarning = 0;
       user.perSecondRate = 0;
@@ -426,8 +429,8 @@ exports.createWithdrawal = async (req, res) => {
       // Automated alert to user
       await notifyUser({
         userId: user._id,
-        title: "Account Blocked - 3X Cap Full Capital Withdrawn",
-        message: `You have successfully withdrawn your full capital ($${user.totalWithdrawn.toLocaleString()} USD / $${user.totalInvested.toLocaleString()} USD invested) under the 3X Cap Plan. As per platform policy, your account has been blocked. Please create a new account to continue investing.`,
+        title: "Account Completed - 4X Maximum Withdrawal Limit Reached",
+        message: `You have successfully withdrawn your maximum allowed 4X limit ($${user.totalWithdrawn.toLocaleString()} USD on $${user.totalInvested.toLocaleString()} USD invested) combining ROI and Level Income. As per platform policy, your account contract has completed. Please create a new account or contact support to continue investing.`,
         category: "SYSTEM",
         type: "account_blocked",
         priority: "HIGH",
@@ -436,8 +439,8 @@ exports.createWithdrawal = async (req, res) => {
 
       // Automated alert to admin
       await notifyAdmin({
-        title: "Investor Account Blocked (3X Cap Full Capital Withdrawn)",
-        message: `${user.name} (${user.customId || user.email}) has withdrawn their full capital ($${user.totalWithdrawn.toLocaleString()} USD). Account automatically blocked.`,
+        title: "Investor Account Completed (4X Max Limit Reached)",
+        message: `${user.name} (${user.customId || user.email}) has reached their 4X maximum withdrawal limit ($${user.totalWithdrawn.toLocaleString()} USD / $${user.totalInvested.toLocaleString()} USD invested). Account contract completed.`,
         category: "SECURITY",
         type: "user_blocked",
         priority: "HIGH",
@@ -523,7 +526,7 @@ exports.createWithdrawal = async (req, res) => {
       success: true,
       accountBlocked,
       message: accountBlocked
-        ? `Withdrawal request for $${withdrawAmount.toLocaleString()} USD submitted. Note: You have withdrawn your full capital under the 3X Cap plan; your account has now been blocked as per platform terms. Please create a new account to continue.`
+        ? `Withdrawal request for $${withdrawAmount.toLocaleString()} USD submitted. Note: You have reached your maximum allowed 4X withdrawal limit ($${user.totalWithdrawn.toLocaleString()} USD on $${user.totalInvested.toLocaleString()} USD invested); your account contract has now completed as per platform terms.`
         : `Withdrawal request for $${withdrawAmount.toLocaleString()} USD submitted successfully. Net payout: $${netAmount.toLocaleString()}.`,
       transaction: newTrx,
       user: {
