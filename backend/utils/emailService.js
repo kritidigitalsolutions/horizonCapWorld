@@ -1,7 +1,7 @@
 const nodemailer = require("nodemailer");
 
-const SENDER_EMAIL = process.env.EMAIL_USER || "tradex615@gmail.com";
-const SENDER_PASS = process.env.EMAIL_PASS || "wyqxlbtyeucqorle";
+const SENDER_EMAIL = process.env.EMAIL_USER || "";
+const SENDER_PASS = process.env.EMAIL_PASS || "";
 
 const COMPANY_NAME = "Horizon Cap World";
 const COMPANY_LOGO_URL =
@@ -24,13 +24,17 @@ const transporter = nodemailer.createTransport({
 /**
  * Verify transporter connection on startup
  */
-transporter.verify((error) => {
-  if (error) {
-    console.error("[Email Service] Gmail SMTP verification failed:", error.message);
-  } else {
-    console.log(`[Email Service] Gmail SMTP connected as ${SENDER_EMAIL} (Inbox Optimized)`);
-  }
-});
+if (SENDER_EMAIL && SENDER_PASS) {
+  transporter.verify((error) => {
+    if (error) {
+      console.error("[Email Service] Gmail SMTP verification failed:", error.message);
+    } else {
+      console.log(`[Email Service] Gmail SMTP connected as ${SENDER_EMAIL} (Inbox Optimized)`);
+    }
+  });
+} else {
+  console.warn("[Email Service] EMAIL_USER or EMAIL_PASS not configured. Outgoing emails will be skipped.");
+}
 
 /**
  * Clean, lightweight, spam-free HTML email wrapper
@@ -775,7 +779,11 @@ ${COMPANY_NAME} Treasury & Accounting Desk
  */
 const sendContactInquiryEmail = async ({ name, email, sector, message, ip, createdAt }) => {
   try {
-    const adminRecipient = process.env.CONTACT_RECEIVER_EMAIL || process.env.EMAIL_USER || "tradex615@gmail.com";
+    const adminRecipient = process.env.CONTACT_RECEIVER_EMAIL || process.env.EMAIL_USER;
+    if (!adminRecipient) {
+      console.warn("[Email Service] Neither CONTACT_RECEIVER_EMAIL nor EMAIL_USER is defined. Skipping inquiry email.");
+      return { success: false, error: "Receiver email not configured" };
+    }
     const subject = `🔔 [New Inquiry] ${name} - ${sector || "General Inquiry"}`;
     const dateStr = createdAt
       ? new Date(createdAt).toLocaleString("en-US", { timeZone: "UTC", dateStyle: "full", timeStyle: "medium" }) + " (UTC)"

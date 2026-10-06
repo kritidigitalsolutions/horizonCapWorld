@@ -1,3 +1,12 @@
+// Global crypto compatibility polyfill for Node.js 18 with MongoDB Driver
+const nodeCrypto = require("crypto");
+if (!globalThis.crypto) {
+  globalThis.crypto = nodeCrypto.webcrypto || nodeCrypto;
+}
+if (!global.crypto) {
+  global.crypto = nodeCrypto;
+}
+
 const app = require("./app");
 const connectDB = require("./configs/db");
 const ReferralSetting = require("./models/ReferralSetting");

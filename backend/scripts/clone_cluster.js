@@ -1,14 +1,15 @@
+require("dotenv").config();
 const mongoose = require("mongoose");
 
-// SOURCE CLUSTER (Jahan se data sirf READ hoga - Isme se kuch bhi delete ya cut nahi hoga)
-const SOURCE_URI =
-  "mongodb+srv://tradex615_db_user:Wpobpluj3z7XTeqa@cluster0.expwc3u.mongodb.net/horizoncap?retryWrites=true&w=majority&appName=Cluster0";
-
-// TARGET CLUSTER (Jisme data copy/paste hoga testing ke liye)
-const TARGET_URI =
-  "mongodb+srv://kumar041232_db_user:YvRKiVL3WJZbXAHe@cluster0.btrm7wb.mongodb.net/horizoncap?retryWrites=true&w=majority&appName=Cluster0";
+// Read URIs from environment variables to prevent leaking credentials
+const SOURCE_URI = process.env.SOURCE_MONGO_URI;
+const TARGET_URI = process.env.TARGET_MONGO_URI || process.env.MONGO_URI;
 
 async function cloneDatabase() {
+  if (!SOURCE_URI || !TARGET_URI) {
+    console.error("Error: SOURCE_MONGO_URI and TARGET_MONGO_URI must be provided in environment variables.");
+    process.exit(1);
+  }
   console.log("=================================================");
   console.log("   SAFE DATABASE CLONING (COPY ONLY - NO CUT)");
   console.log("=================================================");

@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-require("dotenv").config({ path: "d:/In Progress Projects/horizoncapworld/backend/.env" });
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 const connectDB = require("../configs/db");
 const User = require("../models/User");
 const PaymentMethod = require("../models/PaymentMethod");

@@ -36,7 +36,6 @@ const protectAdmin = async (req, res, next) => {
     return res.status(401).json({
       success: false,
       message: "Invalid or expired admin token.",
-      error: error.message,
     });
   }
 };
@@ -89,7 +88,6 @@ const protectUser = async (req, res, next) => {
     return res.status(401).json({
       success: false,
       message: "Invalid or expired investor session token.",
-      error: error.message,
     });
   }
 };

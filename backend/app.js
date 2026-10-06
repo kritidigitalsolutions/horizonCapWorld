@@ -1,5 +1,16 @@
+// Global crypto compatibility polyfill for Node.js 18 with MongoDB Driver
+const nodeCrypto = require("crypto");
+if (!globalThis.crypto) {
+  globalThis.crypto = nodeCrypto.webcrypto || nodeCrypto;
+}
+if (!global.crypto) {
+  global.crypto = nodeCrypto;
+}
+
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const connectDB = require("./configs/db");
@@ -11,42 +22,66 @@ const errorHandler = require("./middlewares/errorHandler");
 
 const app = express();
 
-// ──────── DYNAMIC CORS ORIGIN CONFIGURATION ────────
-const defaultAllowedOrigins = [
-  "https://horizon-cap-world-client.vercel.app",
-  "https://horizon-cap-world-admin.vercel.app",
-  "https://horizon-cap-world.vercel.app",
+// ──────── PRODUCTION SECURITY HEADERS (HELMET) ────────
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false, // Managed by Nginx / Frontend
+  })
+);
+
+// ──────── PRODUCTION CORS CONFIGURATION ────────
+const isProduction = process.env.NODE_ENV === "production";
+
+const defaultProductionOrigins = [
+  "https://horizoncapworld.com",
+  "https://www.horizoncapworld.com",
+  "https://admin.horizoncapworld.com",
+  "https://investor.horizoncapworld.com",
+  "https://app.horizoncapworld.com",
+  "https://api.horizoncapworld.com",
+];
+
+const defaultDevOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
-  "http://localhost:3000",
   "http://localhost:5000",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "http://127.0.0.1:5175",
+  "http://127.0.0.1:5000",
 ];
 
-// Dynamically parse origins from env (e.g. CORS_ORIGIN or ALLOWED_ORIGINS)
-const envOrigins = (process.env.CORS_ORIGIN || process.env.ALLOWED_ORIGINS || "")
+// Dynamically parse origins from env (CORS_ORIGIN, CORS_ORIGINS, or ALLOWED_ORIGINS)
+const envOrigins = (process.env.CORS_ORIGIN || process.env.CORS_ORIGINS || process.env.ALLOWED_ORIGINS || "")
   .split(",")
-  .map((o) => o.trim())
+  .map((o) => o.trim().replace(/\/+$/, ""))
   .filter(Boolean);
 
-const allowedOriginsSet = new Set([...defaultAllowedOrigins, ...envOrigins]);
+const allowedOriginsSet = new Set([
+  ...defaultProductionOrigins,
+  ...(!isProduction ? defaultDevOrigins : []),
+  ...envOrigins,
+]);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow non-browser requests or same-origin (no origin header, e.g. mobile, curl, Postman)
+    // Allow server-to-server or curl/mobile requests without Origin header
     if (!origin) return callback(null, true);
 
-    if (
-      allowedOriginsSet.has(origin) ||
-      origin.endsWith(".vercel.app") || // Automatically allow all Vercel deployment URLs & preview branches
-      origin.includes("localhost") ||
-      origin.includes("127.0.0.1")
-    ) {
+    const cleanOrigin = origin.trim().replace(/\/+$/, "");
+    if (allowedOriginsSet.has(cleanOrigin)) {
       return callback(null, true);
     }
 
-    // Permissive fallback
-    return callback(null, true);
+    if (!isProduction && (cleanOrigin.includes("localhost") || cleanOrigin.includes("127.0.0.1"))) {
+      return callback(null, true);
+    }
+
+    // Disallow arbitrary origins
+    return callback(new Error("CORS policy: This origin is not allowed access."));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -63,12 +98,33 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Body Parsing Middlewares
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+// ──────── RATE LIMITING (BRUTE-FORCE & DOS PROTECTION) ────────
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many requests from this IP, please try again later." },
+});
+app.use("/api", generalLimiter);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60, // 60 attempts per 15 mins
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many authentication requests, please try again after 15 minutes." },
+});
+app.use("/api/admin/auth/login", authLimiter);
+app.use("/api/user/auth/login", authLimiter);
+app.use("/api/user/auth/register", authLimiter);
+app.use("/api/contact", authLimiter);
+
+// Body Parsing Middlewares with reasonable limits
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // ──────── DATABASE CONNECTION ENSURANCE MIDDLEWARE ────────
-// Essential for Vercel Serverless / Lambda to ensure MongoDB connection is ready before processing routes
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -77,29 +133,24 @@ app.use(async (req, res, next) => {
     console.error("[DB Middleware Error]:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Database connection failed. Please verify MONGO_URI in your environment settings.",
-      error: error.message,
+      message: "Database connection failed. Please contact administrator.",
     });
   }
 });
 
-// ──────── HEALTH CHECK & ROOT ROUTE ────────
+// ──────── HEALTH CHECK ENDPOINTS (SECURE & SAFE) ────────
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
     message: "Horizon Capital Backend API Engine Online",
-    timestamp: new Date().toISOString(),
-    version: "1.0.0",
-    allowedOrigins: Array.from(allowedOriginsSet),
-  });
-});
-
-app.get("/api/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    status: "Healthy",
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
   });
 });
 

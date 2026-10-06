@@ -1,3 +1,11 @@
+const nodeCrypto = require("crypto");
+if (!globalThis.crypto) {
+  globalThis.crypto = nodeCrypto.webcrypto || nodeCrypto;
+}
+if (!global.crypto) {
+  global.crypto = nodeCrypto;
+}
+
 const mongoose = require("mongoose");
 require("dotenv").config();
 
@@ -39,8 +47,9 @@ const connectDB = async () => {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
-    console.error("[MongoDB] Connection Error:", e.message);
-    throw e;
+    const sanitizedMsg = (e.message || "").replace(/\/\/[^:]+:[^@]+@/, "//***:***@");
+    console.error("[MongoDB] Connection Error:", sanitizedMsg);
+    throw new Error(sanitizedMsg);
   }
 
   return cached.conn;
