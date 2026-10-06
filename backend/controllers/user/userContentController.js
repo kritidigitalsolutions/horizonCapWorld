@@ -98,7 +98,7 @@ exports.getSupportChannels = async (req, res) => {
 // @route   POST /api/user/support/tickets
 exports.createSupportTicket = async (req, res) => {
   try {
-    const { subject, category, priority, message, attachmentUrl } = req.body;
+    const { subject, category, priority, message, attachmentUrl, claimedAmount, claimedInvestment } = req.body;
 
     if (!subject || !message) {
       return res.status(400).json({
@@ -112,6 +112,9 @@ exports.createSupportTicket = async (req, res) => {
       return res.status(404).json({ success: false, message: "User account not found." });
     }
 
+    const isRoiClaim = category === "Expired ROI Claim" || Boolean(req.body.isRoiClaimTicket) || subject.toLowerCase().includes("expired roi");
+    const numClaimedAmount = Number(claimedAmount) || (isRoiClaim ? (user.lockedRoiBalance || 0) : 0);
+
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -122,9 +125,12 @@ exports.createSupportTicket = async (req, res) => {
       customId: user.customId || "HORIZON-USR-01",
       userEmail: user.email,
       subject,
-      category: category || "General Inquiry",
-      priority: priority || "Normal",
+      category: category || (isRoiClaim ? "Expired ROI Claim" : "General Inquiry"),
+      priority: priority || (isRoiClaim ? "High" : "Normal"),
       status: "Open",
+      claimedAmount: numClaimedAmount,
+      claimedInvestment: claimedInvestment || undefined,
+      isRoiClaimTicket: isRoiClaim,
       messages: [
         {
           sender: "user",

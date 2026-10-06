@@ -30,6 +30,12 @@ export const adjustUserWallet = async (id, adjustmentData) => {
   return response.data;
 };
 
+// Batch adjust multiple users wallets at once (bulk disbursal)
+export const batchAdjustWallets = async (batchData) => {
+  const response = await API.post("/admin/users/batch-adjust-wallet", batchData);
+  return response.data;
+};
+
 // Delete user
 export const deleteUser = async (id) => {
   const response = await API.delete(`/admin/users/${id}`);

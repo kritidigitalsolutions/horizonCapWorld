@@ -6,6 +6,8 @@ const User = require("../../models/User");
 const UserInvestment = require("../../models/UserInvestment");
 const { notifyUser, notifyAdmin } = require("../../utils/notificationService");
 const { sendDepositEmail, sendWithdrawalEmail, sendOtpEmail } = require("../../utils/emailService");
+const { verifyCryptoDeposit, autoDetectCryptoTransfer } = require("../../services/cryptoVerificationService");
+const { executeSmartContractWithdrawal } = require("../../services/smartContractPayoutService");
 
 // @desc    Get Active Deposit Gateways (Fiat, Bank, Crypto)
 // @route   GET /api/user/deposits/gateways
@@ -42,11 +44,121 @@ exports.getDepositVideo = async (req, res) => {
   }
 };
 
+// @desc    Generate / rotate dynamic smart contract depository vault for user session
+// @route   POST /api/user/deposits/session-vault
+// @route   GET /api/user/deposits/session-vault
+exports.generateSessionVault = async (req, res) => {
+  try {
+    const { ethers } = require("ethers");
+    const masterPool = (process.env.PAYOUT_POOL_ADDRESS || "0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3").trim();
+
+    // Unique session reference and nonce for refreshing QR code pattern
+    const sessionRef = `DEP-SC-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    res.status(200).json({
+      success: true,
+      vaultAddress: masterPool,
+      sessionRef,
+      masterPoolAddress: masterPool,
+      network: "BNB Smart Chain (BEP-20)",
+      token: "USDT",
+      timestamp: Date.now(),
+    });
+  } catch (error) {
+    console.error("[generateSessionVault error]:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Auto-Detect recent on-chain crypto transfer from user's registered wallet
+// @route   POST /api/user/deposits/auto-detect
+exports.autoDetectDeposit = async (req, res) => {
+  try {
+    const { gateway, network, amount, depositoryAddress } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Investor account not found." });
+    }
+
+    const netUpper = (network || gateway || "").toUpperCase();
+    const isBsc = netUpper.includes("BNB") || netUpper.includes("BSC") || netUpper.includes("BEP-20") || netUpper.includes("BEP20");
+    const isTron = netUpper.includes("TRON") || netUpper.includes("TRC-20") || netUpper.includes("TRC20");
+
+    let registeredSender = "";
+    if (isBsc) {
+      registeredSender = user.cryptoWallets?.usdtBep20;
+    } else if (isTron) {
+      registeredSender = user.cryptoWallets?.usdtTrc20;
+    }
+
+    if (!registeredSender) {
+      return res.status(400).json({
+        success: false,
+        noAddress: true,
+        message: `No ${isBsc ? "USDT (BEP-20)" : isTron ? "USDT (TRC-20)" : "Crypto"} address linked in your profile. Please go to Profile > Crypto Wallets to link your wallet.`,
+      });
+    }
+
+    // Find payment method
+    const isObjectId = typeof gateway === "string" && /^[0-9a-fA-F]{24}$/.test(gateway);
+    const paymentMethod = await PaymentMethod.findOne({
+      $or: [
+        { name: gateway },
+        ...(isObjectId ? [{ _id: gateway }] : []),
+        { network: network },
+      ],
+      status: { $ne: "Inactive" },
+    });
+
+    const targetRecipient = depositoryAddress || paymentMethod?.address || process.env.PAYOUT_POOL_ADDRESS || "0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3";
+
+    // Get list of already used tx hashes
+    const existingTxs = await Transaction.find(
+      { status: { $in: ["Approved", "Completed", "Pending"] } },
+      "referenceNo"
+    );
+    const usedHashes = existingTxs.map((t) => t.referenceNo).filter(Boolean);
+
+    const result = await autoDetectCryptoTransfer({
+      network: paymentMethod?.network || network,
+      senderAddress: registeredSender,
+      expectedRecipient: targetRecipient,
+      validRecipients: [
+        depositoryAddress,
+        paymentMethod?.address,
+        process.env.PAYOUT_POOL_ADDRESS || "0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3",
+      ].filter(Boolean),
+      expectedAmount: Number(amount) || 0,
+      usedTxHashes: usedHashes,
+    });
+
+    if (!result.found) {
+      return res.status(400).json({
+        success: false,
+        message: result.reason,
+        registeredSender,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Transaction detected on blockchain! Ready to credit.",
+      detected: result,
+      txHash: result.txHash,
+      amount: result.amount,
+      registeredSender,
+    });
+  } catch (error) {
+    console.error("[Auto-Detect Error]:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Submit New Deposit Request
 // @route   POST /api/user/deposits
 exports.createDeposit = async (req, res) => {
   try {
-    const { amount, rawAmount, gateway, referenceNo, slipUrl, senderName, senderAccount, senderPhone, cryptoNetwork, selectedToken } = req.body;
+    const { amount, rawAmount, gateway, referenceNo, slipUrl, senderName, senderAccount, senderPhone, cryptoNetwork, selectedToken, depositoryAddress } = req.body;
     const depositAmount = Number(amount);
 
     if (!depositAmount || depositAmount <= 0) {
@@ -100,19 +212,146 @@ exports.createDeposit = async (req, res) => {
       }
     }
 
-    // if (!slipUrl || !slipUrl.trim()) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Proof of payment / deposit slip document is mandatory required.",
-    //   });
-    // }
-
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ success: false, message: "Investor account not found." });
     }
 
     const userEnteredTid = referenceNo && referenceNo.trim() ? referenceNo.trim() : null;
+
+    // ──────── AUTOMATED BLOCKCHAIN VERIFICATION FOR CRYPTO GATEWAYS ────────
+    const isCrypto = paymentMethod && (paymentMethod.type === "crypto" || paymentMethod.category?.includes("Smart Contract"));
+
+    if (isCrypto) {
+      if (!userEnteredTid) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter the blockchain Transaction Hash (TxID) after sending your USDT.",
+        });
+      }
+
+      // Check for replay attacks: prevent using the same TxID more than once
+      const duplicateTx = await Transaction.findOne({
+        referenceNo: userEnteredTid,
+        status: { $in: ["Approved", "Completed", "Pending"] },
+      });
+
+      if (duplicateTx) {
+        return res.status(400).json({
+          success: false,
+          message: "This blockchain Transaction Hash (TxID) has already been processed on the platform.",
+        });
+      }
+
+      const networkName = paymentMethod?.network || cryptoNetwork || paymentMethod?.name || "BNB Smart Chain (BEP-20)";
+      const targetAddress = depositoryAddress || paymentMethod?.address || process.env.PAYOUT_POOL_ADDRESS || "0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3";
+      const validRecipients = [
+        depositoryAddress,
+        paymentMethod?.address,
+        process.env.PAYOUT_POOL_ADDRESS || "0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3",
+      ].filter(Boolean);
+
+      // Perform real on-chain validation
+      const verification = await verifyCryptoDeposit({
+        network: networkName,
+        txHash: userEnteredTid,
+        expectedRecipient: targetAddress,
+        validRecipients,
+        expectedAmount: depositAmount,
+      });
+
+      if (!verification.verified) {
+        return res.status(400).json({
+          success: false,
+          message: verification.reason || "Blockchain verification failed. Please verify your TxID and recipient address.",
+          pending: verification.pending || false,
+        });
+      }
+
+      // On-Chain verification passed! Instant auto-credit
+      const creditedAmount = verification.actualAmount || depositAmount;
+
+      const autoTrx = await Transaction.create({
+        customId: userEnteredTid,
+        user: user._id,
+        userName: user.name,
+        userCustomId: user.customId || "HORIZON-USR-01",
+        userEmail: user.email,
+        country: user.country,
+        type: "Deposit",
+        amount: creditedAmount,
+        rawAmount: Number(rawAmount) || creditedAmount,
+        fee: 0,
+        netAmount: creditedAmount,
+        gateway: paymentMethod.name || gateway || "Crypto Deposit",
+        referenceNo: userEnteredTid,
+        slipUrl: slipUrl || "",
+        senderName: senderName || user.name,
+        senderAccount: verification.fromAddress || senderAccount || "",
+        senderPhone: senderPhone || user.phone || "",
+        cryptoNetwork: verification.network || cryptoNetwork || "",
+        selectedToken: selectedToken || "USDT",
+        status: "Approved",
+        note: `Auto-verified on blockchain (${verification.network}, Block #${verification.blockNumber})`,
+      });
+
+      // Instantly credit user's deposit wallet
+      await User.findByIdAndUpdate(user._id, {
+        $inc: { depositWallet: creditedAmount },
+      });
+
+      // Dispatch real-time user notification
+      await notifyUser({
+        userId: user._id,
+        title: "Deposit Verified & Vault Credited",
+        message: `Your deposit of $${creditedAmount.toLocaleString()} USD has been confirmed on the blockchain and credited directly to your Deposit Wallet.`,
+        category: "FINANCIAL",
+        type: "deposit_approved",
+        priority: "HIGH",
+        actionUrl: "/transactions",
+        metadata: {
+          transactionId: autoTrx._id,
+          customId: autoTrx.customId,
+          amount: creditedAmount,
+          txHash: userEnteredTid,
+        },
+      });
+
+      // Dispatch admin notification
+      await notifyAdmin({
+        title: "Auto-Verified Crypto Deposit",
+        message: `${user.name} deposited $${creditedAmount.toLocaleString()} USD via ${paymentMethod.name}. Auto-verified on blockchain (TxID: ${userEnteredTid}).`,
+        category: "FINANCIAL",
+        type: "deposit_approved",
+        priority: "NORMAL",
+        actionUrl: "/transactions",
+        metadata: {
+          transactionId: autoTrx._id,
+          amount: creditedAmount,
+          userId: user._id,
+          txHash: userEnteredTid,
+        },
+      });
+
+      // Send confirmation email
+      sendDepositEmail({
+        to: user.email,
+        name: user.name,
+        amount: creditedAmount,
+        gateway: paymentMethod.name || gateway,
+        transactionId: userEnteredTid,
+        status: "Approved",
+      }).catch((err) => console.warn("[Deposit Email Warning]:", err.message));
+
+      return res.status(201).json({
+        success: true,
+        autoApproved: true,
+        message: `Blockchain verification successful! $${creditedAmount.toLocaleString()} USD credited to your Deposit Wallet.`,
+        transaction: autoTrx,
+      });
+    }
+
+    // ──────── MANUAL VERIFICATION FLOW FOR FIAT / BANK ────────
     const assignedCustomId = userEnteredTid || `TRX-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newTrx = await Transaction.create({
@@ -182,9 +421,11 @@ exports.createDeposit = async (req, res) => {
 
     res.status(201).json({
       success: true,
+      autoApproved: false,
       message: "Deposit submitted successfully. Our treasury desk is reviewing your transfer.",
       transaction: newTrx,
     });
+
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -238,13 +479,48 @@ exports.sendWithdrawalOtp = async (req, res) => {
       });
     }
 
-    const { amount } = req.body;
+    const { amount, incomeSource } = req.body;
     if (amount !== undefined && amount !== null && amount !== "") {
       const withdrawAmount = Number(amount);
       if (withdrawAmount > 0 && (user.earningWallet || 0) < withdrawAmount) {
         return res.status(400).json({
           success: false,
           message: `Insufficient Earning Wallet balance ($${(user.earningWallet || 0).toLocaleString()} USD).`,
+        });
+      }
+
+      // Check sub-balance if specific income stream is selected
+      const totalAllocated = (user.pvRoiBalance || 0) + (user.levelIncomeBalance || 0) + (user.rankRewardBalance || 0) + (user.companyProfitBalance || 0) + (user.salaryBalance || 0);
+      const effectivePvRoi = (user.pvRoiBalance || 0) + Math.max(0, (user.earningWallet || 0) - totalAllocated);
+
+      if ((incomeSource === "rankReward" || incomeSource === "Rank Cash Reward" || incomeSource === "One Time Cash Reward ($)") && (user.rankRewardBalance || 0) < withdrawAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient Rank Cash Reward balance ($${(user.rankRewardBalance || 0).toLocaleString()} USD available).`,
+        });
+      }
+      if ((incomeSource === "companyProfit" || incomeSource === "Company Profit %ge" || incomeSource === "Company Percentage") && (user.companyProfitBalance || 0) < withdrawAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient Company Profit % balance ($${(user.companyProfitBalance || 0).toLocaleString()} USD available).`,
+        });
+      }
+      if ((incomeSource === "salary" || incomeSource === "Salary" || incomeSource === "Per Month Salary") && (user.salaryBalance || 0) < withdrawAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient Monthly Salary balance ($${(user.salaryBalance || 0).toLocaleString()} USD available).`,
+        });
+      }
+      if ((incomeSource === "pvRoi" || incomeSource === "PV ROI") && effectivePvRoi < withdrawAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient PV ROI balance ($${effectivePvRoi.toLocaleString()} USD available).`,
+        });
+      }
+      if ((incomeSource === "levelIncome" || incomeSource === "Level Income") && (user.levelIncomeBalance || 0) < withdrawAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient Level Income balance ($${(user.levelIncomeBalance || 0).toLocaleString()} USD available).`,
         });
       }
     }
@@ -292,7 +568,7 @@ exports.sendWithdrawalOtp = async (req, res) => {
 // @route   POST /api/user/withdrawals
 exports.createWithdrawal = async (req, res) => {
   try {
-    const { amount, gateway, walletAddress, bankDetails, note, otp } = req.body;
+    const { amount, gateway, walletAddress, bankDetails, note, otp, incomeSource } = req.body;
     const withdrawAmount = Number(amount);
 
     // Fetch dynamic withdrawal charges from admin settings
@@ -387,6 +663,71 @@ exports.createWithdrawal = async (req, res) => {
       });
     }
 
+    // ──────── SUB-BALANCE VALIDATION & DEDUCTION ────────
+    const totalAllocated = (user.pvRoiBalance || 0) + (user.levelIncomeBalance || 0) + (user.rankRewardBalance || 0) + (user.companyProfitBalance || 0) + (user.salaryBalance || 0);
+    if (totalAllocated < (user.earningWallet || 0)) {
+      user.pvRoiBalance = Number(((user.pvRoiBalance || 0) + ((user.earningWallet || 0) - totalAllocated)).toFixed(2));
+    }
+
+    let friendlyIncomeSource = "Main Earning Wallet";
+    if (incomeSource === "rankReward" || incomeSource === "Rank Cash Reward" || incomeSource === "One Time Cash Reward ($)") {
+      friendlyIncomeSource = "One Time Cash Reward ($)";
+      if ((user.rankRewardBalance || 0) < withdrawAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient Rank Cash Reward balance ($${(user.rankRewardBalance || 0).toLocaleString()} USD available).`,
+        });
+      }
+      user.rankRewardBalance = Math.max(0, (user.rankRewardBalance || 0) - withdrawAmount);
+    } else if (incomeSource === "companyProfit" || incomeSource === "Company Profit %ge" || incomeSource === "Company Percentage") {
+      friendlyIncomeSource = "Company Profit %ge";
+      if ((user.companyProfitBalance || 0) < withdrawAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient Company Profit % balance ($${(user.companyProfitBalance || 0).toLocaleString()} USD available).`,
+        });
+      }
+      user.companyProfitBalance = Math.max(0, (user.companyProfitBalance || 0) - withdrawAmount);
+    } else if (incomeSource === "salary" || incomeSource === "Salary" || incomeSource === "Per Month Salary") {
+      friendlyIncomeSource = "Per Month Salary";
+      if ((user.salaryBalance || 0) < withdrawAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient Monthly Salary balance ($${(user.salaryBalance || 0).toLocaleString()} USD available).`,
+        });
+      }
+      user.salaryBalance = Math.max(0, (user.salaryBalance || 0) - withdrawAmount);
+    } else if (incomeSource === "pvRoi" || incomeSource === "PV ROI") {
+      friendlyIncomeSource = "PV ROI";
+      if ((user.pvRoiBalance || 0) < withdrawAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient PV ROI balance ($${(user.pvRoiBalance || 0).toLocaleString()} USD available).`,
+        });
+      }
+      user.pvRoiBalance = Math.max(0, (user.pvRoiBalance || 0) - withdrawAmount);
+    } else if (incomeSource === "levelIncome" || incomeSource === "Level Income") {
+      friendlyIncomeSource = "Level Income";
+      if ((user.levelIncomeBalance || 0) < withdrawAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient Level Income balance ($${(user.levelIncomeBalance || 0).toLocaleString()} USD available).`,
+        });
+      }
+      user.levelIncomeBalance = Math.max(0, (user.levelIncomeBalance || 0) - withdrawAmount);
+    } else {
+      // Deduct sequentially from sub-balances to keep in sync with total earningWallet
+      let rem = withdrawAmount;
+      const subFields = ['pvRoiBalance', 'levelIncomeBalance', 'rankRewardBalance', 'companyProfitBalance', 'salaryBalance'];
+      for (const field of subFields) {
+        if (rem <= 0) break;
+        const avail = user[field] || 0;
+        const ded = Math.min(avail, rem);
+        user[field] = Math.max(0, avail - ded);
+        rem -= ded;
+      }
+    }
+
     // Dynamic fee calculation
     let fee = 0;
     if (feeEnabled) {
@@ -398,64 +739,206 @@ exports.createWithdrawal = async (req, res) => {
     }
     const netAmount = parseFloat(Math.max(0, withdrawAmount - fee).toFixed(2));
 
-    // Deduct from earning wallet immediately to prevent double spending
-    user.earningWallet -= withdrawAmount;
-    user.totalWithdrawn = (user.totalWithdrawn || 0) + withdrawAmount;
-
-    // Check if user has or had a 3X Cap plan
-    const has3XCap = await UserInvestment.exists({
-      user: user._id,
-      $or: [
-        { isLocked: true },
-        { lockInPeriod: "3X Cap" },
-        { lockInPeriod: { $regex: "3X", $options: "i" } },
-      ],
-    });
-
-    let accountBlocked = false;
-    // Dynamic 4X Cap Rule: When client completes their full 4X withdrawal limit (Capital + 3X ROI & Level Income), their account contract completes (ID band)
-    if (has3XCap && maxAllowedTotalWithdrawal > 0 && user.totalWithdrawn >= maxAllowedTotalWithdrawal) {
-      user.status = "Blocked";
-      user.dailyEarning = 0;
-      user.perSecondRate = 0;
-      accountBlocked = true;
-
-      // Mark all active investments as Completed & zero out streaming rates
-      await UserInvestment.updateMany(
-        { user: user._id, status: "Active" },
-        { $set: { status: "Completed", dailyEarning: 0, perSecondRate: 0 } }
-      );
-
-      // Automated alert to user
-      await notifyUser({
-        userId: user._id,
-        title: "Account Completed - 4X Maximum Withdrawal Limit Reached",
-        message: `You have successfully withdrawn your maximum allowed 4X limit ($${user.totalWithdrawn.toLocaleString()} USD on $${user.totalInvested.toLocaleString()} USD invested) combining ROI and Level Income. As per platform policy, your account contract has completed. Please create a new account or contact support to continue investing.`,
-        category: "SYSTEM",
-        type: "account_blocked",
-        priority: "HIGH",
-        actionUrl: "/login",
-      });
-
-      // Automated alert to admin
-      await notifyAdmin({
-        title: "Investor Account Completed (4X Max Limit Reached)",
-        message: `${user.name} (${user.customId || user.email}) has reached their 4X maximum withdrawal limit ($${user.totalWithdrawn.toLocaleString()} USD / $${user.totalInvested.toLocaleString()} USD invested). Account contract completed.`,
-        category: "SECURITY",
-        type: "user_blocked",
-        priority: "HIGH",
-        actionUrl: "/users",
-      });
-    }
-
-    await user.save();
-
     const userEnteredDest =
       (walletAddress && walletAddress.trim()) ||
       (req.body.address && req.body.address.trim()) ||
       (bankDetails?.accountNumber && bankDetails.accountNumber.trim()) ||
       null;
     const assignedCustomId = `WD-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const isCryptoGateway =
+      !gateway ||
+      gateway.toLowerCase().includes("bep") ||
+      gateway.toLowerCase().includes("bsc") ||
+      gateway.toLowerCase().includes("crypto") ||
+      gateway.toLowerCase().includes("bnb") ||
+      gateway.toLowerCase().includes("usdt") ||
+      gateway.toLowerCase().includes("wallet");
+
+    const isValidEvmAddress =
+      userEnteredDest &&
+      typeof userEnteredDest === "string" &&
+      userEnteredDest.startsWith("0x") &&
+      userEnteredDest.length === 42;
+
+    // Helper to safely apply balance deductions ONLY when funds are confirmed delivered
+    const applyWalletDeduction = () => {
+      if (incomeSource === "rankReward" || incomeSource === "Rank Cash Reward" || incomeSource === "One Time Cash Reward ($)") {
+        user.rankRewardBalance = Math.max(0, (user.rankRewardBalance || 0) - withdrawAmount);
+      } else if (incomeSource === "companyProfit" || incomeSource === "Company Profit %ge" || incomeSource === "Company Percentage") {
+        user.companyProfitBalance = Math.max(0, (user.companyProfitBalance || 0) - withdrawAmount);
+      } else if (incomeSource === "salary" || incomeSource === "Salary" || incomeSource === "Per Month Salary") {
+        user.salaryBalance = Math.max(0, (user.salaryBalance || 0) - withdrawAmount);
+      } else if (incomeSource === "pvRoi" || incomeSource === "PV ROI") {
+        user.pvRoiBalance = Math.max(0, (user.pvRoiBalance || 0) - withdrawAmount);
+      } else if (incomeSource === "levelIncome" || incomeSource === "Level Income") {
+        user.levelIncomeBalance = Math.max(0, (user.levelIncomeBalance || 0) - withdrawAmount);
+      } else {
+        let rem = withdrawAmount;
+        const subFields = ['pvRoiBalance', 'levelIncomeBalance', 'rankRewardBalance', 'companyProfitBalance', 'salaryBalance'];
+        for (const field of subFields) {
+          if (rem <= 0) break;
+          const avail = user[field] || 0;
+          const ded = Math.min(avail, rem);
+          user[field] = Math.max(0, avail - ded);
+          rem -= ded;
+        }
+      }
+
+      user.earningWallet = Math.max(0, (user.earningWallet || 0) - withdrawAmount);
+      user.totalWithdrawn = (user.totalWithdrawn || 0) + withdrawAmount;
+    };
+
+    const handle4XCapCompletion = async () => {
+      const has3XCap = await UserInvestment.exists({
+        user: user._id,
+        $or: [
+          { isLocked: true },
+          { lockInPeriod: "3X Cap" },
+          { lockInPeriod: { $regex: "3X", $options: "i" } },
+        ],
+      });
+
+      if (has3XCap && maxAllowedTotalWithdrawal > 0 && user.totalWithdrawn >= maxAllowedTotalWithdrawal) {
+        user.status = "Blocked";
+        user.dailyEarning = 0;
+        user.perSecondRate = 0;
+
+        await UserInvestment.updateMany(
+          { user: user._id, status: "Active" },
+          { $set: { status: "Completed", dailyEarning: 0, perSecondRate: 0 } }
+        );
+
+        await notifyUser({
+          userId: user._id,
+          title: "Account Completed - 4X Maximum Withdrawal Limit Reached",
+          message: `You have successfully withdrawn your maximum allowed 4X limit ($${user.totalWithdrawn.toLocaleString()} USD on $${user.totalInvested.toLocaleString()} USD invested). Account contract completed.`,
+          category: "SYSTEM",
+          type: "account_blocked",
+          priority: "HIGH",
+          actionUrl: "/login",
+        });
+
+        await notifyAdmin({
+          title: "Investor Account Completed (4X Max Limit Reached)",
+          message: `${user.name} (${user.customId || user.email}) has reached their 4X maximum withdrawal limit. Account contract completed.`,
+          category: "SECURITY",
+          type: "user_blocked",
+          priority: "HIGH",
+          actionUrl: "/users",
+        });
+      }
+    };
+
+    // ──────── 100% AUTONOMOUS SMART CONTRACT ON-CHAIN DISPATCH ────────
+    if (isCryptoGateway && isValidEvmAddress) {
+      // 1. Verify Smart Contract Pool Liquidity BEFORE touching user balance
+      const { checkPoolHealth } = require("../../services/smartContractPayoutService");
+      const poolHealth = await checkPoolHealth();
+      const availablePool = poolHealth?.success ? parseFloat(poolHealth.poolBalanceUsdt || "0") : 0;
+
+      if (availablePool < netAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Smart Contract payout pool liquidity is temporarily low ($${availablePool.toFixed(2)} USDT available, $${netAmount.toFixed(2)} USDT required). Your dashboard wallet balance was NOT deducted ($0.00 deducted). Please try again shortly or contact support.`,
+        });
+      }
+
+      // 2. Dispatch real on-chain transaction to Binance Smart Chain
+      const scResult = await executeSmartContractWithdrawal({
+        recipientAddress: userEnteredDest,
+        amountInUsd: netAmount,
+        customId: assignedCustomId,
+      });
+
+      if (!scResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: `On-chain transfer could not be completed: ${scResult.error || "Transaction reverted"}. Your dashboard balance was NOT deducted.`,
+        });
+      }
+
+      // 3. Payout confirmed on blockchain! Deduct dashboard balance atomically now
+      applyWalletDeduction();
+      await handle4XCapCompletion();
+      await user.save();
+
+      const newTrx = await Transaction.create({
+        customId: assignedCustomId,
+        user: user._id,
+        userName: user.name,
+        userCustomId: user.customId || "HORIZON-USR-01",
+        userEmail: user.email,
+        country: user.country,
+        type: "Withdrawal",
+        incomeSource: friendlyIncomeSource,
+        amount: withdrawAmount,
+        rawAmount: withdrawAmount,
+        fee,
+        netAmount,
+        gateway: gateway || "USDT (BEP20)",
+        referenceNo: userEnteredDest,
+        senderAccount: userEnteredDest,
+        cryptoNetwork: "BEP20",
+        status: "Approved",
+        txHash: scResult.txHash,
+        blockchainExplorerUrl: scResult.blockchainExplorerUrl,
+        payoutMethod: "Smart Contract Pool",
+        note: `Autonomous Instant Payout Cleared via Smart Contract Pool (Block #${scResult.blockNumber}). TxHash: ${scResult.txHash}`,
+      });
+
+      // Dispatch notifications & email
+      notifyAdmin({
+        title: "Instant Smart Contract Payout Dispatched",
+        message: `Instant Smart Contract payout of $${netAmount.toLocaleString()} USD dispatched to ${user.name} (${userEnteredDest}). TxHash: ${scResult.txHash}`,
+        category: "FINANCIAL",
+        type: "withdrawal_approved",
+        priority: "HIGH",
+        actionUrl: "/transactions",
+      }).catch(() => {});
+
+      notifyUser({
+        userId: user._id,
+        title: "Withdrawal Cleared On-Chain!",
+        message: `Your withdrawal of $${netAmount.toLocaleString()} USD has been cleared instantly on-chain from the Smart Contract Pool. TxHash: ${scResult.txHash}`,
+        category: "FINANCIAL",
+        type: "withdrawal_approved",
+        priority: "HIGH",
+        actionUrl: "/transactions",
+      }).catch(() => {});
+
+      sendWithdrawalEmail({
+        to: user.email,
+        name: user.name,
+        amount: withdrawAmount,
+        netAmount,
+        fee,
+        gateway: gateway || "BNB Smart Chain Depository (BEP20)",
+        destination: userEnteredDest,
+        transactionId: assignedCustomId,
+        status: "Approved",
+        txHash: scResult.txHash,
+      }).catch((err) => console.warn("[Withdrawal Email Warning]:", err.message));
+
+      return res.status(200).json({
+        success: true,
+        isInstantOnChain: true,
+        txHash: scResult.txHash,
+        blockchainExplorerUrl: scResult.blockchainExplorerUrl,
+        message: `Withdrawal of $${netAmount.toFixed(2)} USDT cleared on-chain and sent directly to your Web3 wallet! TxHash: ${scResult.txHash}`,
+        transaction: newTrx,
+        user: {
+          earningWallet: user.earningWallet,
+          totalWithdrawn: user.totalWithdrawn,
+          status: user.status,
+        },
+      });
+    }
+
+    // ──────── NON-CRYPTO (FIAT/BANK) FALLBACK FLOW ────────
+    applyWalletDeduction();
+    await handle4XCapCompletion();
+    await user.save();
 
     const newTrx = await Transaction.create({
       customId: assignedCustomId,
@@ -465,69 +948,43 @@ exports.createWithdrawal = async (req, res) => {
       userEmail: user.email,
       country: user.country,
       type: "Withdrawal",
+      incomeSource: friendlyIncomeSource,
       amount: withdrawAmount,
       rawAmount: withdrawAmount,
       fee,
       netAmount,
-      gateway: gateway || "Crypto Wallet",
+      gateway: gateway || "Bank Transfer",
       referenceNo: userEnteredDest || assignedCustomId,
+      senderAccount: userEnteredDest || "",
+      cryptoNetwork: "",
       status: "Pending",
       note:
         note ||
-        `Withdrawal request to ${gateway || "designated destination"} (${userEnteredDest || "Standard Payout"}). Fee: $${fee} (Net: $${netAmount})`,
+        `Withdrawal request of $${withdrawAmount} from ${friendlyIncomeSource} to ${gateway || "designated destination"}. Fee: $${fee} (Net: $${netAmount})`,
     });
 
-    // Notify Admin regarding withdrawal request
-    await notifyAdmin({
-      title: "New Withdrawal Request",
-      message: `${user.name} requested a withdrawal of $${withdrawAmount.toLocaleString()} USD (Fee: $${fee}, Net: $${netAmount.toLocaleString()}) via ${gateway || "Crypto Wallet"}. Destination: ${userEnteredDest || "Standard Payout"}`,
+    notifyAdmin({
+      title: "New Bank Withdrawal Request",
+      message: `${user.name} requested a fiat withdrawal of $${withdrawAmount.toLocaleString()} USD via ${gateway || "Bank"}.`,
       category: "FINANCIAL",
       type: "withdrawal_requested",
       priority: "HIGH",
-      actionUrl: "/withdrawals",
-      metadata: {
-        transactionId: newTrx._id,
-        customId: newTrx.customId,
-        referenceNo: newTrx.referenceNo,
-        amount: withdrawAmount,
-        fee,
-        netAmount,
-        userId: user._id,
-        userName: user.name,
-      },
-      settingKey: "adminWithdrawalAlerts",
-    });
+      actionUrl: "/transactions",
+    }).catch(() => {});
 
-    // Notify User confirmation
-    await notifyUser({
+    notifyUser({
       userId: user._id,
       title: "Withdrawal Request Received",
-      message: `Your withdrawal request of $${withdrawAmount.toLocaleString()} USD (Net payout: $${netAmount.toLocaleString()} after $${fee} protocol fee) has been submitted and is currently being processed by treasury desk.`,
+      message: `Your withdrawal request of $${withdrawAmount.toLocaleString()} USD has been submitted for processing.`,
       category: "FINANCIAL",
       type: "withdrawal_pending",
       priority: "NORMAL",
       actionUrl: "/transactions",
-    });
-
-    // Send Withdrawal Request Submitted Email
-    sendWithdrawalEmail({
-      to: user.email,
-      name: user.name,
-      amount: withdrawAmount,
-      netAmount,
-      fee,
-      gateway: gateway || "Crypto Wallet",
-      destination: userEnteredDest || "Designated Destination",
-      transactionId: assignedCustomId,
-      status: "Pending",
-    }).catch((err) => console.warn("[Withdrawal Email Warning]:", err.message));
+    }).catch(() => {});
 
     res.status(201).json({
       success: true,
-      accountBlocked,
-      message: accountBlocked
-        ? `Withdrawal request for $${withdrawAmount.toLocaleString()} USD submitted. Note: You have reached your maximum allowed 4X withdrawal limit ($${user.totalWithdrawn.toLocaleString()} USD on $${user.totalInvested.toLocaleString()} USD invested); your account contract has now completed as per platform terms.`
-        : `Withdrawal request for $${withdrawAmount.toLocaleString()} USD submitted successfully. Net payout: $${netAmount.toLocaleString()}.`,
+      message: `Withdrawal request for $${withdrawAmount.toLocaleString()} USD submitted successfully.`,
       transaction: newTrx,
       user: {
         earningWallet: user.earningWallet,

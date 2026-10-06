@@ -23,7 +23,8 @@ import {
   createSupportTicket,
   replyTicket,
   updateTicketStatus,
-  deleteTicket
+  deleteTicket,
+  releaseExpiredRoi,
 } from '../api/supportApi';
 import { getAllUsers } from '../api/usersApi';
 import { uploadFileToCloudinary, deleteFileFromCloudinary } from '../api/uploadApi';
@@ -55,6 +56,9 @@ export default function SupportTickets() {
 
   // Delete Ticket State
   const [deletingTicket, setDeletingTicket] = useState(null);
+
+  // Expired ROI Release Loading State
+  const [releasingRoi, setReleasingRoi] = useState(false);
 
   // New Ticket Drawer State
   const [isNewTicketOpen, setIsNewTicketOpen] = useState(false);
@@ -93,6 +97,9 @@ export default function SupportTickets() {
             category: t.category || 'General Support',
             priority: t.priority || 'Medium',
             status: t.status || 'Open',
+            claimedAmount: t.claimedAmount || 0,
+            isRoiClaimTicket: Boolean(t.isRoiClaimTicket || t.category === 'Expired ROI Claim'),
+            roiReleaseProcessed: Boolean(t.roiReleaseProcessed),
             createdAt: t.createdAt ? t.createdAt.split('T')[0] : 'Just now',
             lastActivity: t.lastUpdated || 'Just now',
             messages: Array.isArray(t.messages) ? t.messages.map(m => ({
@@ -204,6 +211,46 @@ export default function SupportTickets() {
     setTickets(tickets.map(t => t.id === activeTicket.id ? updated : t));
     setActiveTicket(updated);
     toast.info(`Ticket ${activeTicket.id} status updated to ${newStatus}.`, 'Status Updated');
+  };
+
+  // Approve & Release Expired 3X ROI Action
+  const handleReleaseRoi = async (ticket) => {
+    if (!ticket) return;
+    const amountToRelease = ticket.claimedAmount || 0;
+    if (!window.confirm(`Are you sure you want to approve and release $${amountToRelease.toLocaleString()} USD expired 3X ROI to ${ticket.userName}'s Earning Wallet?`)) {
+      return;
+    }
+
+    setReleasingRoi(true);
+    try {
+      const res = await releaseExpiredRoi(ticket._id || ticket.id, { amount: amountToRelease });
+      if (res?.success) {
+        toast.success(`Successfully released $${amountToRelease.toLocaleString()} USD expired ROI to ${ticket.userName}!`, 'ROI Released');
+        const resolvedTicket = {
+          ...ticket,
+          status: 'Resolved',
+          roiReleaseProcessed: true,
+          messages: [
+            ...(ticket.messages || []),
+            {
+              id: `msg-${Date.now()}`,
+              sender: 'admin',
+              senderName: 'Administrative Financial Desk',
+              time: 'Just now',
+              text: `Administrative Approval: Your expired 3X ROI claim of $${amountToRelease.toLocaleString()} USD has been approved and credited back to your Earning Wallet.`,
+            },
+          ],
+        };
+        setActiveTicket(resolvedTicket);
+        setTickets(tickets.map((t) => (t.id === ticket.id ? resolvedTicket : t)));
+      } else {
+        toast.error(res?.message || 'Failed to release ROI.', 'Release Failed');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Error executing release.', 'Release Error');
+    } finally {
+      setReleasingRoi(false);
+    }
   };
 
   // Delete Ticket Action
@@ -516,9 +563,16 @@ export default function SupportTickets() {
 
                     {/* Category / Dept */}
                     <td className="whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100/90 text-slate-700 text-xs font-medium border border-slate-200/80 whitespace-nowrap font-poppins">
-                        {t.category}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100/90 text-slate-700 text-xs font-medium border border-slate-200/80 whitespace-nowrap font-poppins">
+                          {t.category}
+                        </span>
+                        {t.isRoiClaimTicket && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-950 border border-amber-300 text-[10px] font-black font-mono">
+                            ⚡ 3X ROI: ${(t.claimedAmount || 0).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Subject & Inquiry (Clean single-line truncate) */}
@@ -665,6 +719,46 @@ export default function SupportTickets() {
                 </select>
               </div>
             </div>
+
+            {/* 3X ROI Escrow Claim Approval Banner (If Expired ROI Claim ticket) */}
+            {(activeTicket.isRoiClaimTicket || activeTicket.category === 'Expired ROI Claim') && (
+              <div className="p-4 bg-gradient-to-r from-amber-50 via-white to-amber-50 rounded-2xl border-2 border-amber-300 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shrink-0 shadow-2xs">
+                    <RiCoinsLine size={20} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase text-amber-950">
+                        Expired 3X ROI Claim: ${(activeTicket.claimedAmount || 0).toLocaleString()} USD
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                        activeTicket.roiReleaseProcessed
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                          : 'bg-amber-200 text-amber-950 border-amber-400'
+                      }`}>
+                        {activeTicket.roiReleaseProcessed ? 'Released & Credited' : 'Awaiting Approval'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                      Investor is requesting release of expired 3X ROI from Administrative Escrow past the 15-day withdrawal window.
+                    </p>
+                  </div>
+                </div>
+
+                {!activeTicket.roiReleaseProcessed && (
+                  <button
+                    type="button"
+                    onClick={() => handleReleaseRoi(activeTicket)}
+                    disabled={releasingRoi}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-gold-500 hover:from-amber-600 hover:to-gold-600 text-slate-950 font-black text-xs shadow-gold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0 whitespace-nowrap active:scale-95"
+                  >
+                    <RiCoinsLine size={15} />
+                    <span>{releasingRoi ? 'Releasing Funds...' : `Approve & Release $${(activeTicket.claimedAmount || 0).toLocaleString()}`}</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Ticket Metadata Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">

@@ -37,6 +37,8 @@ const {
 
 const {
   getDepositGateways,
+  generateSessionVault,
+  autoDetectDeposit,
   createDeposit,
   createWithdrawal,
   sendWithdrawalOtp,
@@ -98,7 +100,10 @@ router.put("/investments/:id/toggle-auto-renewal", protectUser, toggleAutoRenewa
 
 // ──────── 4. DEPOSITS & WITHDRAWALS ────────
 router.get("/deposits/gateways", protectUser, getDepositGateways);
+router.post("/deposits/session-vault", protectUser, generateSessionVault);
+router.get("/deposits/session-vault", protectUser, generateSessionVault);
 router.get("/deposits/tutorial-video", getDepositVideo);
+router.post("/deposits/auto-detect", protectUser, autoDetectDeposit);
 router.post("/deposits", protectUser, createDeposit);
 router.get("/withdrawals/settings", getWithdrawalSettings);
 router.get("/withdrawals/tutorial-video", getWithdrawalVideo);

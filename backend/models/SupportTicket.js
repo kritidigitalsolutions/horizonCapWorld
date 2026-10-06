@@ -75,6 +75,23 @@ const supportTicketSchema = new mongoose.Schema(
       type: String,
       default: "Just now",
     },
+    // 3X ROI Escrow Claim Fields
+    claimedInvestment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "UserInvestment",
+    },
+    claimedAmount: {
+      type: Number,
+      default: 0,
+    },
+    isRoiClaimTicket: {
+      type: Boolean,
+      default: false,
+    },
+    roiReleaseProcessed: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

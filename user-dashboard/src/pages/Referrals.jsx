@@ -153,9 +153,11 @@ export default function Referrals() {
 
   const currentNetwork = networkList;
 
-  // Extract distinct levels from commissions or network
-  const allLevels = commissions.map(c => c.levelNumber || parseInt(String(c.level).replace('L', ''), 10) || 1).sort((a, b) => a - b);
-  const distinctLevels = Array.from(new Set(allLevels.length > 0 ? allLevels : [1, 2, 3, 4, 5]));
+  // Extract distinct levels from commissions and network
+  const networkLevels = networkList.map(n => Number(n.level)).filter(l => l > 0);
+  const commissionLevels = commissions.map(c => c.levelNumber || parseInt(String(c.level).replace('L', ''), 10) || 0).filter(l => l > 0);
+  const allLevels = Array.from(new Set([...commissionLevels, ...networkLevels])).sort((a, b) => a - b);
+  const distinctLevels = allLevels.length > 0 ? allLevels : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
   const filteredNetwork = currentNetwork.filter(item => {
     const q = search.trim().toLowerCase();
@@ -174,8 +176,8 @@ export default function Referrals() {
       {/* ──────── PAGE HEADER ──────── */}
       <PageHeader
         title="Level Network"
-        subtitle={depositEnabled ? "Grow your multi-tier downline team and earn direct deposit & daily ROI profit-sharing commissions" : "Grow your multi-tier downline team and earn daily ROI profit-sharing commissions"}
-        badge="10-Tier Active Network"
+        subtitle={depositEnabled ? "Grow your multi-tier downline team and earn direct deposit & daily ROI profit-sharing commissions (Capped at Level 10)" : "Grow your multi-tier downline team and earn daily ROI profit-sharing commissions (Capped at Level 10)"}
+        badge={networkList.some(u => u.level > 10) ? "Infinite Downline Network (L10 Commission Cap)" : "Multi-Tier Active Network"}
         actions={
           (depositEnabled || roiShareEnabled) ? (
             <button
@@ -215,7 +217,7 @@ export default function Referrals() {
           numericValue={overviewData?.totalTeamCount || networkList.length || 0}
           prefix=""
           decimals={0}
-          change="10 Tiers Active"
+          change={networkList.length > 0 ? `${Math.max(...networkList.map(u => u.level || 1), 10)} Levels Active` : "Active"}
           positive={true}
           icon="chart"
         />
@@ -278,7 +280,7 @@ export default function Referrals() {
             Sponsor ID: <strong className="text-slate-700">{user?.customId || user?.id || '—'}</strong>
           </span>
           <span className="text-emerald-700 font-bold flex items-center gap-1">
-            <RiShieldCheckLine size={14} /> Active Downline Referral Structure (10-Levels)
+            <RiShieldCheckLine size={14} /> Active Downline Referral Network (Infinite Levels • L10 Commission Cap)
           </span>
         </div>
       </div>
@@ -458,8 +460,15 @@ export default function Referrals() {
 
                       {/* Tier Level */}
                       <td>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 font-bold text-xs font-poppins shadow-2xs">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border font-bold text-xs font-poppins shadow-2xs ${
+                          u.level <= 10
+                            ? 'bg-blue-50 text-blue-800 border-blue-200'
+                            : 'bg-slate-100 text-slate-700 border-slate-300'
+                        }`}>
                           Tier L{u.level}
+                          {u.level > 10 && (
+                            <span className="text-[10px] text-slate-500 font-normal ml-0.5">(No Comm)</span>
+                          )}
                         </span>
                       </td>
 
@@ -474,7 +483,12 @@ export default function Referrals() {
                       {/* Total Commissions Paid */}
                       {depositEnabled && (
                         <td>
-                          {Number(u.totalComm || u.directComm || 0) > 0 ? (
+                          {u.level > 10 ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 text-slate-400 text-xs font-medium border border-slate-200 whitespace-nowrap font-poppins shadow-2xs font-mono" title="Commissions are capped at Level 10">
+                              <RiMoneyDollarCircleLine size={14} className="text-slate-400" />
+                              $0.00 <span className="text-[10px] text-slate-400 font-normal">(L10 Cap)</span>
+                            </span>
+                          ) : Number(u.totalComm || u.directComm || 0) > 0 ? (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800 text-xs font-extrabold border border-emerald-300 whitespace-nowrap font-poppins shadow-2xs font-mono">
                               <RiMoneyDollarCircleLine size={14} className="text-emerald-600" />
                               +${Number(u.totalComm || u.directComm || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -834,9 +848,13 @@ export default function Referrals() {
                 </div>
 
                 <div>
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold shadow-2xs">
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-xl text-xs font-bold shadow-2xs border ${
+                    selectedPartner.level <= 10
+                      ? 'bg-blue-50 text-blue-800 border-blue-200'
+                      : 'bg-slate-100 text-slate-700 border-slate-300'
+                  }`}>
                     <RiGroupLine size={13} />
-                    Tier Level {selectedPartner.level}
+                    Tier Level {selectedPartner.level} {selectedPartner.level > 10 ? '(Beyond L10)' : ''}
                   </span>
                 </div>
               </div>
@@ -880,7 +898,7 @@ export default function Referrals() {
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
               <div className="flex items-center justify-between">
                 <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                  <RiNodeTree className="text-emerald-600" /> Multi-Tier Downline Network Tree (10 Levels)
+                  <RiNodeTree className="text-emerald-600" /> Multi-Tier Downline Network Tree ({selectedPartner.levelBreakdown?.length || 10} Levels)
                 </h5>
                 <span className="text-[11px] font-bold text-slate-600">
                   Total Downline: <strong>{selectedPartner.totalTeamCount || 0} Members</strong> (${(selectedPartner.teamVolume || 0).toLocaleString()} Volume)
@@ -888,34 +906,48 @@ export default function Referrals() {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 text-center text-xs">
-                {commissions.map((tier) => {
-                  const lvlData = selectedPartner.levelBreakdown?.find(
-                    (lb) => lb.levelNumber === tier.levelNumber || lb.level === tier.level
-                  );
-                  const memberCount = lvlData?.count ?? 0;
-                  const memberVolume = lvlData?.volume ?? 0;
+                {(() => {
+                  const breakdownList = selectedPartner.levelBreakdown && selectedPartner.levelBreakdown.length > 0
+                    ? selectedPartner.levelBreakdown
+                    : commissions.map((c) => ({
+                        level: c.level,
+                        levelNumber: c.levelNumber,
+                        investCommission: c.investCommission,
+                        count: 0,
+                        volume: 0,
+                      }));
 
-                  return (
-                    <div
-                      key={tier.level}
-                      className={`p-2.5 rounded-xl border shadow-2xs transition-colors ${memberCount > 0
-                          ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-200'
-                          : 'bg-white border-slate-200 opacity-60'
-                        }`}
-                    >
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-0.5">
-                        <span>{tier.level}</span>
-                        {depositEnabled && <span className="text-emerald-700 font-mono font-semibold">{tier.investCommission}</span>}
+                  return breakdownList.map((tier) => {
+                    const memberCount = tier.count ?? 0;
+                    const memberVolume = tier.volume ?? 0;
+                    const lvlNum = tier.levelNumber !== undefined ? tier.levelNumber : (parseInt(String(tier.level).replace('L', ''), 10) || 1);
+
+                    return (
+                      <div
+                        key={tier.level}
+                        className={`p-2.5 rounded-xl border shadow-2xs transition-colors ${memberCount > 0
+                            ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-200'
+                            : 'bg-white border-slate-200 opacity-60'
+                          }`}
+                      >
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-0.5">
+                          <span>{tier.level}</span>
+                          {depositEnabled && (
+                            <span className={`font-mono font-semibold ${lvlNum > 10 ? 'text-slate-400 text-[9px]' : 'text-emerald-700'}`}>
+                              {lvlNum > 10 ? '0% (Capped)' : (tier.investCommission || `${tier.investCommissionRate || 0}%`)}
+                            </span>
+                          )}
+                        </div>
+                        <span className={`font-black block text-sm ${memberCount > 0 ? 'text-slate-950 font-mono' : 'text-slate-400'}`}>
+                          {memberCount} {memberCount === 1 ? 'User' : 'Users'}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono block">
+                          ${Number(memberVolume).toLocaleString()}
+                        </span>
                       </div>
-                      <span className={`font-black block text-sm ${memberCount > 0 ? 'text-slate-950 font-mono' : 'text-slate-400'}`}>
-                        {memberCount} {memberCount === 1 ? 'User' : 'Users'}
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-mono block">
-                        ${Number(memberVolume).toLocaleString()}
-                      </span>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
 
               {/* Downline Members List Breakdown if any exist */}
@@ -983,7 +1015,9 @@ export default function Referrals() {
                 <div className="flex justify-between py-1 border-b border-slate-200/60">
                   <span className="text-slate-500 font-medium">Direct Deposit Commission Rate:</span>
                   <span className="font-bold text-slate-900 font-mono">
-                    {commissions.find(c => c.level === `L${selectedPartner.level}` || c.level === String(selectedPartner.level))?.investCommission || '5%'}
+                    {selectedPartner.level > 10
+                      ? '0% (Exceeds L10 Commission Cap)'
+                      : (commissions.find(c => c.level === `L${selectedPartner.level}` || c.level === String(selectedPartner.level))?.investCommission || '5%')}
                   </span>
                 </div>
               )}

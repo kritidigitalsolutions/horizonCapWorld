@@ -335,6 +335,7 @@ const sendWithdrawalEmail = async ({
   destination,
   transactionId,
   status = "Pending",
+  txHash = "",
 }) => {
   try {
     const sender = process.env.EMAIL_USER || SENDER_EMAIL;
@@ -389,6 +390,18 @@ ${COMPANY_NAME} Team
           <td style="padding: 6px 0; color: #64748b;">Status:</td>
           <td align="right" style="padding: 6px 0; font-weight: 700; color: ${isApproved ? "#059669" : "#d97706"};">${statusText}</td>
         </tr>
+        ${
+          txHash
+            ? `<tr>
+          <td style="padding: 6px 0; color: #64748b;">Blockchain Hash:</td>
+          <td align="right" style="padding: 6px 0; font-weight: 600; color: #2563eb; font-family: monospace; font-size: 11px;">
+            <a href="https://bscscan.com/tx/${txHash}" target="_blank" style="color: #2563eb; text-decoration: underline;">
+              ${txHash.slice(0, 10)}...${txHash.slice(-8)}
+            </a>
+          </td>
+        </tr>`
+            : ""
+        }
       </table>
     `;
 
@@ -756,6 +769,137 @@ ${COMPANY_NAME} Treasury & Accounting Desk
   }
 };
 
+/**
+ * Send Contact / Institutional Inquiry Notification to Admin
+ * Recipient: tradex615@gmail.com
+ */
+const sendContactInquiryEmail = async ({ name, email, sector, message, ip, createdAt }) => {
+  try {
+    const adminRecipient = process.env.CONTACT_RECEIVER_EMAIL || process.env.EMAIL_USER || "tradex615@gmail.com";
+    const subject = `🔔 [New Inquiry] ${name} - ${sector || "General Inquiry"}`;
+    const dateStr = createdAt
+      ? new Date(createdAt).toLocaleString("en-US", { timeZone: "UTC", dateStyle: "full", timeStyle: "medium" }) + " (UTC)"
+      : new Date().toUTCString();
+
+    const bodyHtml = `
+      <div style="margin-bottom: 24px; text-align: center;">
+        <span style="display: inline-block; padding: 4px 14px; font-size: 11px; font-weight: 800; color: #92400e; background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 9999px; text-transform: uppercase; letter-spacing: 1px;">
+          Institutional Inquiry Received
+        </span>
+        <h2 style="margin: 12px 0 4px; font-size: 20px; font-weight: 700; color: #0f172a;">
+          Connect with Horizon Form
+        </h2>
+        <p style="margin: 0; font-size: 13px; color: #64748b;">
+          A visitor has submitted a direct contact inquiry from the official website.
+        </p>
+      </div>
+
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 24px; font-size: 13px;">
+        <tr>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #64748b; width: 35%;">Inquirer Name:</td>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0f172a;">${name}</td>
+        </tr>
+        <tr>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #64748b;">Institutional Email:</td>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #2563eb;">
+            <a href="mailto:${email}" style="color: #2563eb; text-decoration: underline;">${email}</a>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #64748b;">Sector of Interest:</td>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #d97706;">${sector || "Renewable Energy"}</td>
+        </tr>
+        <tr>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #64748b;">Submission Time:</td>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #334155;">${dateStr}</td>
+        </tr>
+        ${ip ? `
+        <tr>
+          <td style="padding: 12px 16px; font-weight: 600; color: #64748b;">Origin IP:</td>
+          <td style="padding: 12px 16px; color: #64748b; font-family: monospace;">${ip}</td>
+        </tr>` : ""}
+      </table>
+
+      <div style="margin-bottom: 24px;">
+        <span style="display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+          Inquiry Note / Message:
+        </span>
+        <div style="background-color: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #d97706; border-radius: 8px; padding: 16px; font-size: 13.5px; color: #1e293b; line-height: 1.6; white-space: pre-wrap;">
+          ${message && message.trim() ? message : "(No additional message provided)"}
+        </div>
+      </div>
+
+      <div style="text-align: center; margin: 28px 0 16px;">
+        <a href="mailto:${email}?subject=RE: Horizon Capital World Institutional Inquiry&body=Dear ${encodeURIComponent(name)},%0D%0A%0D%0AThank you for reaching out to Horizon Capital World regarding ${encodeURIComponent(sector || "our investment sectors")}.%0D%0A%0D%0A" style="display: inline-block; background-color: #d97706; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 8px; box-shadow: 0 4px 12px rgba(217,119,6,0.25);">
+          Reply to ${name} &rarr;
+        </a>
+      </div>
+    `;
+
+    const text = `New Institutional Inquiry:\n\nName: ${name}\nEmail: ${email}\nSector: ${sector}\nMessage: ${message || "N/A"}\nTime: ${dateStr}\nIP: ${ip || "N/A"}`;
+    const html = wrapCleanHtml({ title: subject, bodyHtml });
+
+    const info = await transporter.sendMail({
+      from: `"${COMPANY_NAME} Inquiries" <${SENDER_EMAIL}>`,
+      to: adminRecipient,
+      replyTo: email,
+      subject,
+      text,
+      html,
+    });
+
+    console.log(`[Email Service] Contact inquiry delivered to ${adminRecipient} (Message ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error("[Email Service] Failed to send contact inquiry email:", error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Send acknowledgment email to user confirming receipt
+ */
+const sendInquiryConfirmationEmail = async ({ name, email, sector }) => {
+  try {
+    const subject = `Inquiry Received - ${COMPANY_NAME}`;
+    const bodyHtml = `
+      <div style="margin-bottom: 20px; text-align: center;">
+        <h2 style="margin: 0 0 6px; font-size: 19px; font-weight: 700; color: #0f172a;">
+          Thank You, ${name}
+        </h2>
+        <p style="margin: 0; font-size: 13px; color: #64748b;">
+          We have received your inquiry regarding <strong>${sector || "Renewable Energy"}</strong>.
+        </p>
+      </div>
+
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 20px; font-size: 13px; color: #334155; line-height: 1.6;">
+        Our institutional partnerships and investor relations desk will review your submission and connect with you at this email address within 24 business hours.
+      </div>
+
+      <p style="margin: 0; font-size: 12px; color: #64748b; text-align: center;">
+        If you have urgent questions, you can also reach us through your investor dashboard ticket system.
+      </p>
+    `;
+
+    const text = `Dear ${name},\n\nThank you for connecting with Horizon Capital World. Your inquiry regarding ${sector || "our investment sectors"} has been received. Our team will review your message and reply promptly.\n\nBest regards,\nHorizon Capital World`;
+    const html = wrapCleanHtml({ title: subject, bodyHtml });
+
+    const info = await transporter.sendMail({
+      from: `"${COMPANY_NAME}" <${SENDER_EMAIL}>`,
+      to: email,
+      subject,
+      text,
+      html,
+    });
+
+    console.log(`[Email Service] Confirmation auto-responder delivered to ${email} (Message ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.warn(`[Email Service] Confirmation email to ${email} skipped or failed:`, error.message);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendOtpEmail,
   sendWelcomeEmail,
@@ -764,4 +908,6 @@ module.exports = {
   sendTicketEmail,
   sendPasswordResetConfirmation,
   sendMonthlyStatementEmail,
+  sendContactInquiryEmail,
+  sendInquiryConfirmationEmail,
 };

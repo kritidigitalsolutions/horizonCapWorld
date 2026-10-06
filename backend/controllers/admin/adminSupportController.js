@@ -1,6 +1,8 @@
 const SupportTicket = require("../../models/SupportTicket");
 const SupportChannel = require("../../models/SupportChannel");
 const User = require("../../models/User");
+const UserInvestment = require("../../models/UserInvestment");
+const Transaction = require("../../models/Transaction");
 const { notifyUser } = require("../../utils/notificationService");
 const { sendTicketEmail } = require("../../utils/emailService");
 
@@ -462,6 +464,117 @@ exports.deleteChannel = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Support channel deleted successfully.",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Approve and Release Expired 3X ROI from Admin Escrow to User Earning Wallet
+// @route   PUT /api/admin/support/tickets/:id/release-roi
+exports.releaseExpiredRoi = async (req, res) => {
+  try {
+    const ticket = await SupportTicket.findById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ success: false, message: "Support ticket not found." });
+    }
+
+    if (ticket.roiReleaseProcessed) {
+      return res.status(400).json({
+        success: false,
+        message: "This expired ROI release has already been processed and credited.",
+      });
+    }
+
+    const user = await User.findById(ticket.user);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Investor account not found." });
+    }
+
+    const releaseAmount = Number(ticket.claimedAmount) || Number(req.body.amount) || Number(user.lockedRoiBalance) || 0;
+    if (releaseAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or zero release amount for expired ROI.",
+      });
+    }
+
+    if ((user.lockedRoiBalance || 0) < releaseAmount) {
+      return res.status(400).json({
+        success: false,
+        message: `Requested release amount ($${releaseAmount}) exceeds user escrow locked balance ($${user.lockedRoiBalance || 0} USD).`,
+      });
+    }
+
+    // Deduct from lockedRoiBalance and credit back to earningWallet & pvRoiBalance
+    user.lockedRoiBalance = Number(Math.max(0, (user.lockedRoiBalance || 0) - releaseAmount).toFixed(2));
+    user.earningWallet = Number(((user.earningWallet || 0) + releaseAmount).toFixed(2));
+    user.pvRoiBalance = Number(((user.pvRoiBalance || 0) + releaseAmount).toFixed(2));
+    await user.save();
+
+    // Update investment status if linked
+    if (ticket.claimedInvestment) {
+      await UserInvestment.findByIdAndUpdate(ticket.claimedInvestment, {
+        roiClaimStatus: "Released",
+      });
+    }
+
+    // Mark ticket as resolved & release processed
+    ticket.roiReleaseProcessed = true;
+    ticket.status = "Resolved";
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    ticket.messages.push({
+      sender: "admin",
+      senderName: "Administrative Financial Desk",
+      text: `Administrative Approval: Your expired 3X ROI claim of $${releaseAmount.toLocaleString()} USD has been approved and successfully credited back to your Earning Wallet (PV ROI). You may now withdraw or re-invest these funds.`,
+      time: timeStr,
+      createdAt: now,
+    });
+    ticket.lastUpdated = "Just now";
+    await ticket.save();
+
+    // Create audit transaction record
+    await Transaction.create({
+      user: user._id,
+      userName: user.name,
+      userCustomId: user.customId || "HORIZON-USR-01",
+      userEmail: user.email,
+      country: user.country,
+      type: "ROI Return",
+      amount: releaseAmount,
+      rawAmount: releaseAmount,
+      fee: 0,
+      netAmount: releaseAmount,
+      gateway: "Administrative Escrow Release",
+      incomeSource: "PV ROI",
+      referenceNo: ticket.ticketId,
+      status: "Approved",
+      note: `3X Expired ROI of $${releaseAmount} released from Admin Escrow back to Earning Wallet via Ticket #${ticket.ticketId}.`,
+    });
+
+    // Notify user
+    await notifyUser({
+      userId: user._id,
+      title: `3X Expired ROI Released ($${releaseAmount.toLocaleString()} USD)`,
+      message: `Your expired 3X ROI claim has been approved by Admin and $${releaseAmount.toLocaleString()} USD is now available in your Earning Wallet.`,
+      category: "FINANCIAL",
+      type: "roi_released",
+      priority: "HIGH",
+      actionUrl: "/withdraw",
+      metadata: { ticketId: ticket.ticketId, amount: releaseAmount },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully released $${releaseAmount.toLocaleString()} USD expired ROI to ${user.name}'s Earning Wallet.`,
+      ticket,
+      user: {
+        _id: user._id,
+        earningWallet: user.earningWallet,
+        pvRoiBalance: user.pvRoiBalance,
+        lockedRoiBalance: user.lockedRoiBalance,
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

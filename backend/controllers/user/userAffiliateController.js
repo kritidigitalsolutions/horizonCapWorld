@@ -61,13 +61,13 @@ exports.getReferralOverview = async (req, res) => {
       })) !== null
     );
 
-    // Calculate total team downlines count & total volume dynamically across all 10 tiers
+    // Calculate total team downlines count & total volume dynamically across all infinite downlines
     let allDownlinesCount = 0;
     let allDownlinesVolume = 0;
     let currentTierParents = [user.customId, String(user._id)].filter(Boolean);
+    const visitedOverviewUsers = new Set(currentTierParents);
 
-    for (let l = 1; l <= 10; l++) {
-      if (!currentTierParents || currentTierParents.length === 0) break;
+    while (currentTierParents && currentTierParents.length > 0) {
       const tierUsers = await User.find({
         $or: [
           { sponsorId: { $in: currentTierParents } },
@@ -75,10 +75,15 @@ exports.getReferralOverview = async (req, res) => {
         ],
       }).select("_id customId totalInvested");
 
-      if (tierUsers.length === 0) break;
-      allDownlinesCount += tierUsers.length;
-      allDownlinesVolume += tierUsers.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
-      currentTierParents = tierUsers.map((u) => u.customId).filter(Boolean);
+      if (!tierUsers || tierUsers.length === 0) break;
+      const unvisited = tierUsers.filter(u => !visitedOverviewUsers.has(u.customId));
+      if (unvisited.length === 0) break;
+      unvisited.forEach(u => visitedOverviewUsers.add(u.customId));
+
+      allDownlinesCount += unvisited.length;
+      allDownlinesVolume += unvisited.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+      currentTierParents = unvisited.map((u) => u.customId).filter(Boolean);
+      if (visitedOverviewUsers.size > 20000) break; // safety
     }
 
     const calculatedTotalTeamCount = allDownlinesCount;
@@ -347,27 +352,37 @@ exports.getReferralNetwork = async (req, res) => {
       }
     });
 
-    // Helper to dynamically calculate recursive multi-tier downline structure for any partner
+    // Helper to dynamically calculate recursive multi-tier downline structure for any partner (Infinite Levels, L10 Commission Cap)
     const getPartnerDownlineBreakdown = (partnerCustomId) => {
       const breakdown = [];
       let currentUsers = childrenMap.get(partnerCustomId) || [];
       let totalTeamVolume = 0;
       let totalTeamCount = 0;
+      let lvl = 1;
+      const visitedPartnerKids = new Set([partnerCustomId]);
 
-      for (const tier of downlineTiers) {
-        const lvl = tier.levelNumber;
-        const count = currentUsers.length;
-        const volume = currentUsers.reduce((sum, ch) => sum + (ch.totalInvested || 0), 0);
+      while (currentUsers && currentUsers.length > 0 && lvl <= 500) {
+        const unvisitedKids = currentUsers.filter((k) => !visitedPartnerKids.has(k.customId));
+        if (unvisitedKids.length === 0) break;
+        unvisitedKids.forEach((k) => visitedPartnerKids.add(k.customId));
+
+        const count = unvisitedKids.length;
+        const volume = unvisitedKids.reduce((sum, ch) => sum + (ch.totalInvested || 0), 0);
         totalTeamCount += count;
         totalTeamVolume += volume;
+
+        const tierObj = tiers.find((t) => t.levelNumber === lvl);
+        const rateLabel = lvl <= 10
+          ? (tierObj?.investCommission || `${getRateForLevel(lvl)}%`)
+          : "0% (No Comm)";
 
         breakdown.push({
           level: `L${lvl}`,
           levelNumber: lvl,
           count,
           volume,
-          investCommission: tier.investCommission || `${tier.investCommissionRate || 0}%`,
-          members: currentUsers.map((m) => ({
+          investCommission: rateLabel,
+          members: unvisitedKids.map((m) => ({
             id: m.customId,
             name: m.name,
             email: m.email,
@@ -379,11 +394,12 @@ exports.getReferralNetwork = async (req, res) => {
         });
 
         const nextUsers = [];
-        currentUsers.forEach((ch) => {
+        unvisitedKids.forEach((ch) => {
           const nextKids = childrenMap.get(ch.customId);
           if (nextKids) nextUsers.push(...nextKids);
         });
         currentUsers = nextUsers;
+        lvl++;
       }
 
       return {
@@ -401,27 +417,37 @@ exports.getReferralNetwork = async (req, res) => {
     }
 
     let currentParentIds = [user.customId, String(user._id)].filter(Boolean);
+    let currentLvl = 1;
+    const visitedUserIds = new Set([user.customId, String(user._id)]);
 
-    for (const tier of downlineTiers) {
-      const lvl = tier.levelNumber;
+    while (currentParentIds && currentParentIds.length > 0 && currentLvl <= 500) {
+      const lvl = currentLvl;
       levelCounts[`level${lvl}`] = 0;
-
-      if (!currentParentIds || currentParentIds.length === 0) continue;
 
       const downlines = await User.find({
         sponsorId: { $in: currentParentIds },
       }).select("_id customId name email phone country avatar currentRank rankLevel totalInvested depositWallet firstInvestmentAmount hasReceivedReferralBonus sponsorId createdAt status");
 
-      levelCounts[`level${lvl}`] = downlines.length;
-      const rate = getRateForLevel(lvl);
+      if (!downlines || downlines.length === 0) {
+        break;
+      }
 
-      downlines.forEach((u) => {
+      const unvisitedDownlines = downlines.filter((u) => !visitedUserIds.has(u.customId));
+      if (unvisitedDownlines.length === 0) break;
+      unvisitedDownlines.forEach((u) => visitedUserIds.add(u.customId));
+
+      levelCounts[`level${lvl}`] = unvisitedDownlines.length;
+      // Benefit / commission calculation is strictly capped at Level 10
+      const rate = lvl <= 10 ? getRateForLevel(lvl) : 0;
+
+      unvisitedDownlines.forEach((u) => {
         const invested = u.totalInvested || 0;
         const depositW = u.depositWallet || 0;
         const eligibleBaseAmount = u.firstInvestmentAmount || (u.hasReceivedReferralBonus ? u.firstInvestmentAmount || invested : (invested > 0 ? invested : depositW));
 
         let comm = 0;
-        if (isDepositCommEnabled) {
+        // Calculation & commission ONLY up to Level 10 (L10 ke baad no commission / benefit)
+        if (lvl <= 10 && isDepositCommEnabled) {
           const matchedTxns = bonusTxns.filter((t) =>
             (t.note && (t.note.includes(u.customId) || (u.name && t.note.includes(u.name)))) ||
             (t.referenceNo && t.referenceNo.includes(u.customId))
@@ -452,7 +478,7 @@ exports.getReferralNetwork = async (req, res) => {
           levelBreakdown: partnerStats.levelBreakdown,
           firstInvestmentAmount: eligibleBaseAmount,
           directComm: lvl === 1 ? comm : 0,
-          multiTierComm: lvl > 1 ? comm : 0,
+          multiTierComm: (lvl > 1 && lvl <= 10) ? comm : 0,
           totalComm: comm,
           commissionEarned: comm,
           joined: u.createdAt ? u.createdAt.toISOString().split("T")[0] : "",
@@ -463,19 +489,20 @@ exports.getReferralNetwork = async (req, res) => {
         });
       });
 
-      currentParentIds = downlines.map((u) => u.customId).filter(Boolean);
+      currentParentIds = unvisitedDownlines.map((u) => u.customId).filter(Boolean);
+      currentLvl++;
     }
 
-    // Build the complete hierarchical referral tree (Root is Level 0, children down to Tier 10)
+    // Build the complete hierarchical referral tree (Root is Level 0, children down to infinite levels, commission capped at L10)
     let totalTreeCommissionsEarned = 0;
     formattedNetwork.forEach((m) => {
       totalTreeCommissionsEarned += Number(m.totalComm || 0);
     });
 
     const buildTreeNodes = (parentId, currentLevel, visited) => {
-      if (currentLevel > 10) return [];
+      if (currentLevel > 500) return [];
       const kids = childrenMap.get(parentId) || [];
-      const rate = getRateForLevel(currentLevel);
+      const rate = currentLevel <= 10 ? getRateForLevel(currentLevel) : 0;
 
       return kids.map((kid) => {
         if (visited.has(kid.customId)) return null;
@@ -486,7 +513,8 @@ exports.getReferralNetwork = async (req, res) => {
         const eligibleBaseAmount = kid.firstInvestmentAmount || (kid.hasReceivedReferralBonus ? kid.firstInvestmentAmount || invested : (invested > 0 ? invested : depositW));
 
         let comm = 0;
-        if (isDepositCommEnabled) {
+        // Calculation & commission strictly up to Level 10
+        if (currentLevel <= 10 && isDepositCommEnabled) {
           const matchedTxns = bonusTxns.filter((t) =>
             (t.note && (t.note.includes(kid.customId) || (kid.name && t.note.includes(kid.name)))) ||
             (t.referenceNo && t.referenceNo.includes(kid.customId))

@@ -260,12 +260,27 @@ exports.rejectTransaction = async (req, res) => {
       });
     }
 
-    // If pending withdrawal was rejected, refund earningWallet & restore totalWithdrawn
-    if (transaction.type === "Withdrawal" && transaction.status === "Pending" && transaction.user) {
+    // If withdrawal was rejected (either Pending OR Approved without finalized on-chain txHash), refund earningWallet, specific sub-balance & restore totalWithdrawn
+    const isUndispatchedWithdrawal = transaction.type === "Withdrawal" && (!transaction.txHash || transaction.status === "Pending");
+    if (isUndispatchedWithdrawal && transaction.user) {
       const user = await User.findById(transaction.user);
       if (user) {
         user.earningWallet = (user.earningWallet || 0) + transaction.amount;
         user.totalWithdrawn = Math.max(0, (user.totalWithdrawn || 0) - transaction.amount);
+
+        const src = (transaction.incomeSource || "").toLowerCase();
+        if (src.includes("rank") || src.includes("reward")) {
+          user.rankRewardBalance = (user.rankRewardBalance || 0) + transaction.amount;
+        } else if (src.includes("profit") || src.includes("company")) {
+          user.companyProfitBalance = (user.companyProfitBalance || 0) + transaction.amount;
+        } else if (src.includes("salary")) {
+          user.salaryBalance = (user.salaryBalance || 0) + transaction.amount;
+        } else if (src.includes("level")) {
+          user.levelIncomeBalance = (user.levelIncomeBalance || 0) + transaction.amount;
+        } else {
+          user.pvRoiBalance = (user.pvRoiBalance || 0) + transaction.amount;
+        }
+
         // If user was blocked solely due to this withdrawal and totalWithdrawn is now less than totalInvested
         if (user.status === "Blocked" && user.totalWithdrawn < user.totalInvested) {
           user.status = "Active";
@@ -362,6 +377,110 @@ exports.triggerMonthlyStatements = async (req, res) => {
     });
   } catch (error) {
     console.error("[Admin Monthly Statements Error]:", error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Dispatch Pending Withdrawal via Smart Contract Pool
+// @route   POST /api/admin/transactions/:id/dispatch-onchain
+exports.dispatchOnChainPayout = async (req, res) => {
+  try {
+    const transaction = await Transaction.findById(req.params.id);
+    if (!transaction) {
+      return res.status(404).json({ success: false, message: "Transaction not found." });
+    }
+
+    if (transaction.type !== "Withdrawal") {
+      return res.status(400).json({ success: false, message: "Transaction is not a withdrawal." });
+    }
+
+    if (transaction.txHash) {
+      return res.status(400).json({
+        success: false,
+        message: `Withdrawal has already been dispatched on-chain. TxHash: ${transaction.txHash}`,
+      });
+    }
+
+    const recipientAddress = transaction.referenceNo || transaction.senderAccount;
+    if (!recipientAddress || !recipientAddress.startsWith("0x") || recipientAddress.length !== 42) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid EVM/BEP-20 destination address: ${recipientAddress}`,
+      });
+    }
+
+    const { executeSmartContractWithdrawal } = require("../../services/smartContractPayoutService");
+    const scResult = await executeSmartContractWithdrawal({
+      recipientAddress,
+      amountInUsd: transaction.netAmount || transaction.amount,
+      customId: transaction.customId,
+    });
+
+    if (!scResult.success) {
+      transaction.payoutError = scResult.error || "Dispatch failed";
+      await transaction.save();
+      return res.status(400).json({
+        success: false,
+        message: `On-chain dispatch failed: ${scResult.error}`,
+      });
+    }
+
+    transaction.status = "Approved";
+    transaction.txHash = scResult.txHash;
+    transaction.blockchainExplorerUrl = scResult.blockchainExplorerUrl;
+    transaction.payoutMethod = "Smart Contract Pool";
+    transaction.payoutError = "";
+    transaction.note = `Dispatched by Admin via Smart Contract Pool. Block #${scResult.blockNumber}. TxHash: ${scResult.txHash}`;
+    await transaction.save();
+
+    // Notify user
+    notifyUser({
+      userId: transaction.user,
+      title: "Withdrawal Approved & Dispatched On-Chain",
+      message: `Your withdrawal of $${transaction.netAmount.toLocaleString()} USD has been cleared on-chain via Smart Contract. TxHash: ${scResult.txHash}`,
+      category: "FINANCIAL",
+      type: "withdrawal_approved",
+      priority: "HIGH",
+      actionUrl: "/transactions",
+    }).catch(() => {});
+
+    // Send email
+    if (transaction.userEmail) {
+      sendWithdrawalEmail({
+        to: transaction.userEmail,
+        name: transaction.userName,
+        amount: transaction.amount,
+        netAmount: transaction.netAmount,
+        fee: transaction.fee,
+        gateway: transaction.gateway || "BNB Smart Chain Depository (BEP20)",
+        destination: recipientAddress,
+        transactionId: transaction.customId,
+        status: "Approved",
+        txHash: scResult.txHash,
+      }).catch(() => {});
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `On-chain payout successfully dispatched! TxHash: ${scResult.txHash}`,
+      txHash: scResult.txHash,
+      explorerUrl: scResult.blockchainExplorerUrl,
+      transaction,
+    });
+  } catch (error) {
+    console.error("[Dispatch Onchain Error]:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get Real-Time Smart Contract Pool Health & Balance
+// @route   GET /api/admin/transactions/pool-status
+exports.getSmartContractPoolStatus = async (req, res) => {
+  try {
+    const { checkPoolHealth } = require("../../services/smartContractPayoutService");
+    const health = await checkPoolHealth();
+    res.status(200).json(health);
+  } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };

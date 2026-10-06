@@ -6,7 +6,9 @@ import Transactions from '../pages/Transactions';
 import NewsMedia from '../pages/NewsMedia';
 import Settings from '../pages/Settings';
 import PaymentSettings from '../pages/PaymentSettings';
+import SmartContractVault from '../pages/SmartContractVault';
 import Ranks from '../pages/Ranks';
+import DisburseEarnings from '../pages/DisburseEarnings';
 import Referrals from '../pages/Referrals';
 import SupportTickets from '../pages/SupportTickets';
 import SupportChannels from '../pages/SupportChannels';
@@ -26,6 +28,7 @@ const AdminRoutes = () => {
                  <Route index element={<Dashboard />} />
                  <Route path="investment-plans" element={<InvestmentPlans />} />
                  <Route path="users" element={<Users />} />
+                 <Route path="disburse" element={<DisburseEarnings />} />
                  <Route path="ranks" element={<Ranks />} />
                  <Route path="referrals" element={<Referrals />} />
                  <Route path="transactions" element={<Transactions />} />
@@ -34,6 +37,7 @@ const AdminRoutes = () => {
                  <Route path="support-channels" element={<SupportChannels />} />
                  <Route path="news-media" element={<NewsMedia />} />
                  <Route path="payment-settings" element={<PaymentSettings />} />
+                 <Route path="smart-contract-vault" element={<SmartContractVault />} />
                  <Route path="settings" element={<Settings />} />
                  <Route path="*" element={<Navigate to="/admin" replace />} />
 

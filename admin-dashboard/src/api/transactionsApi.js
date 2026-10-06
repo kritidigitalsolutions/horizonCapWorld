@@ -47,3 +47,16 @@ export const sendMonthlyStatements = async (data = {}) => {
   const response = await API.post("/admin/transactions/send-monthly-statements", data);
   return response.data;
 };
+
+// Dispatch on-chain payout via Smart Contract Pool
+export const dispatchOnChainPayout = async (id) => {
+  const response = await API.post(`/admin/transactions/${id}/dispatch-onchain`);
+  return response.data;
+};
+
+// Get Smart Contract Pool status & health
+export const getSmartContractPoolStatus = async () => {
+  const response = await API.get("/admin/transactions/pool-status");
+  return response.data;
+};
+

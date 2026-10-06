@@ -3,7 +3,7 @@ const connectDB = require("./configs/db");
 const ReferralSetting = require("./models/ReferralSetting");
 const { initMonthlyStatementCron } = require("./services/monthlyStatementService");
 
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT || 5000;
 
 const LEVEL_ROI_DATA = [
   { level: "L0", levelNumber: 0, name: "Self Investment (Level 0)", depositAmount: 1000, profitAmount: 8, percentage: 0, roiPerDay: 0, eligibleConditions: "NA", groupVolumeMin: 0, directClientsMin: 0, investCommission: "0%", earningsCommission: "0%", investCommissionRate: 0, earningsCommissionRate: 0 },

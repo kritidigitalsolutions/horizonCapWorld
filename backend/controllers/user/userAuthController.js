@@ -586,6 +586,7 @@ exports.login = async (req, res) => {
         dailyEarning: user.dailyEarning,
         perSecondRate: user.perSecondRate,
         is2FAEnabled: user.is2FAEnabled,
+        cryptoWallets: user.cryptoWallets || {},
         status: user.status,
         createdAt: user.createdAt,
       },
@@ -667,7 +668,7 @@ const {
 // @route   PUT /api/user/profile
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, email, phone, country, city, address, dob, timezone, avatar } = req.body;
+    const { name, email, phone, country, city, address, dob, timezone, avatar, cryptoWallets } = req.body;
 
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -681,6 +682,25 @@ exports.updateProfile = async (req, res) => {
     if (address !== undefined) user.address = address;
     if (dob !== undefined) user.dob = dob;
     if (timezone !== undefined) user.timezone = timezone;
+
+    // Update Crypto Wallets
+    if (cryptoWallets && typeof cryptoWallets === "object") {
+      if (!user.cryptoWallets) {
+        user.cryptoWallets = {};
+      }
+      if (cryptoWallets.usdtBep20 !== undefined) {
+        user.cryptoWallets.usdtBep20 = cryptoWallets.usdtBep20.trim();
+      }
+      if (cryptoWallets.usdtTrc20 !== undefined) {
+        user.cryptoWallets.usdtTrc20 = cryptoWallets.usdtTrc20.trim();
+      }
+      if (cryptoWallets.solana !== undefined) {
+        user.cryptoWallets.solana = cryptoWallets.solana.trim();
+      }
+      if (cryptoWallets.polygon !== undefined) {
+        user.cryptoWallets.polygon = cryptoWallets.polygon.trim();
+      }
+    }
 
     if (avatar !== undefined) {
       const oldAvatar = user.avatar;
@@ -726,6 +746,7 @@ exports.updateProfile = async (req, res) => {
         totalInvested: user.totalInvested,
         totalProfit: user.totalProfit,
         totalWithdrawn: user.totalWithdrawn,
+        cryptoWallets: user.cryptoWallets || {},
         is2FAEnabled: user.is2FAEnabled,
       },
     });

@@ -162,7 +162,7 @@ exports.createPlan = async (req, res) => {
       minAmount: numMin,
       maxAmount: finalMaxAmount,
       noMaxLimit: hasNoMaxLimit,
-      payoutInterval: payoutInterval || "Per Second (Live)",
+      payoutInterval: "Per Second (Live)",
       status: status || "Active",
       description: description || "",
     });
@@ -295,7 +295,7 @@ exports.updatePlan = async (req, res) => {
     if (minAmount !== undefined) plan.minAmount = Number(minAmount);
     if (maxAmount !== undefined) plan.maxAmount = noMaxLimit ? null : Number(maxAmount);
     if (noMaxLimit !== undefined) plan.noMaxLimit = !!noMaxLimit;
-    if (payoutInterval !== undefined) plan.payoutInterval = payoutInterval;
+    plan.payoutInterval = "Per Second (Live)";
     if (status !== undefined) plan.status = status;
     if (description !== undefined) plan.description = description;
 

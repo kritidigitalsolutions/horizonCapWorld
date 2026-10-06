@@ -95,50 +95,37 @@ const syncUserStreamingEarnings = async (user) => {
 
       inv.dailyRoi = dynamicDailyRoi;
       const invDaily = inv.amount * (dynamicDailyRoi / 100);
-      const isDailyPlan = (inv.payoutInterval || "").toLowerCase().includes("daily");
 
       currentDailyEarning += invDaily;
       inv.dailyEarning = invDaily;
 
-      if (isDailyPlan) {
-        // ── Daily Payout Mode: ROI is counted day-wise every 24 hours from investment start time (does NOT stream per-second) ──
-        inv.perSecondRate = 0;
+      // ── Real-Time Per Second Mode: All investments stream live per second (no daily delays) ──
+      const invPerSec = invDaily / 86400;
+      inv.perSecondRate = invPerSec;
+      currentPerSecondRate += invPerSec;
+      inv.payoutInterval = "Per Second (Live)";
 
-        const CYCLE_MS = 24 * 60 * 60 * 1000;
-        const refTime = inv.lastSettlementAt
-          ? new Date(inv.lastSettlementAt).getTime()
-          : new Date(inv.startDate || inv.createdAt || now).getTime();
-
-        const msElapsed = Math.max(0, now.getTime() - refTime);
-        const elapsedDays = Math.floor(msElapsed / CYCLE_MS);
-
-        if (elapsedDays >= 1) {
-          const dailyYield = Number((elapsedDays * invDaily).toFixed(8));
-          totalAccruedYield += dailyYield;
-          inv.totalProfitEarned = Number(((inv.totalProfitEarned || 0) + dailyYield).toFixed(8));
-          inv.lastSettlementAt = new Date(refTime + elapsedDays * CYCLE_MS);
-        }
-      } else {
-        // ── Real-Time Per Second Mode: ROI accrues and streams live per second ──
-        const invPerSec = invDaily / 86400;
-        inv.perSecondRate = invPerSec;
-        currentPerSecondRate += invPerSec;
-
-        const contractYield = elapsedSeconds * invPerSec;
-        totalAccruedYield += contractYield;
-        inv.totalProfitEarned = Number(((inv.totalProfitEarned || 0) + contractYield).toFixed(8));
-        inv.lastSettlementAt = now;
-      }
+      const contractYield = elapsedSeconds * invPerSec;
+      totalAccruedYield += contractYield;
+      inv.totalProfitEarned = Number(((inv.totalProfitEarned || 0) + contractYield).toFixed(8));
+      inv.lastSettlementAt = now;
 
       // Check if 3X Cap contract has reached 300% profit
       if (isLocked) {
         if (inv.totalProfitEarned >= inv.amount * 3) {
           inv.status = "Completed";
+          if (!inv.completedAt) {
+            inv.completedAt = now;
+            inv.roiExpiryDate = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000); // 15-day withdrawal window
+          }
           inv.dailyEarning = 0;
           inv.perSecondRate = 0;
         }
       } else if (!inv.isInfinite && inv.endDate && now >= new Date(inv.endDate)) {
         inv.status = "Completed";
+        if (!inv.completedAt) {
+          inv.completedAt = now;
+        }
       }
 
       await inv.save();
@@ -148,19 +135,58 @@ const syncUserStreamingEarnings = async (user) => {
     if (totalAccruedYield > 0) {
       userDoc.earningWallet = Number(((userDoc.earningWallet || 0) + totalAccruedYield).toFixed(8));
       userDoc.totalProfit = Number(((userDoc.totalProfit || 0) + totalAccruedYield).toFixed(8));
+      userDoc.pvRoiBalance = Number(((userDoc.pvRoiBalance || 0) + totalAccruedYield).toFixed(8));
     }
 
-    // Set user payoutType indicator
-    const hasPerSec = activeInvestments.some((inv) => !((inv.payoutInterval || "").toLowerCase().includes("daily")));
-    const hasDaily = activeInvestments.some((inv) => (inv.payoutInterval || "").toLowerCase().includes("daily"));
-    if (hasPerSec && hasDaily) {
-      userDoc.payoutType = "Hybrid (Per Second & Daily)";
-    } else if (hasDaily) {
-      userDoc.payoutType = "Daily Payout";
-    } else {
-      userDoc.payoutType = "Per Second (Live)";
+    // Check 15-day ROI expiry for completed 3X Cap contracts
+    const expired3XInvs = await UserInvestment.find({
+      user: userDoc._id,
+      status: "Completed",
+      lockInPeriod: "3X Cap",
+      isRoiExpired: { $ne: true },
+      roiExpiryDate: { $exists: true, $lte: now },
+    });
+
+    for (const expInv of expired3XInvs) {
+      const maxRoi = expInv.amount * 3;
+      const unwithdrawn = Math.min(userDoc.pvRoiBalance || 0, maxRoi);
+      if (unwithdrawn > 0) {
+        userDoc.pvRoiBalance = Number(Math.max(0, (userDoc.pvRoiBalance || 0) - unwithdrawn).toFixed(2));
+        userDoc.earningWallet = Number(Math.max(0, (userDoc.earningWallet || 0) - unwithdrawn).toFixed(2));
+        userDoc.lockedRoiBalance = Number(((userDoc.lockedRoiBalance || 0) + unwithdrawn).toFixed(2));
+
+        expInv.isRoiExpired = true;
+        expInv.expiredRoiAmount = unwithdrawn;
+        expInv.roiClaimStatus = "Pending Claim";
+        await expInv.save();
+
+        await Transaction.create({
+          user: userDoc._id,
+          userName: userDoc.name,
+          userCustomId: userDoc.customId || "HORIZON-USR-01",
+          userEmail: userDoc.email,
+          country: userDoc.country,
+          type: "ROI Return",
+          amount: unwithdrawn,
+          rawAmount: unwithdrawn,
+          fee: 0,
+          netAmount: unwithdrawn,
+          gateway: "Admin Escrow (15-Day Expired)",
+          incomeSource: "PV ROI (Expired)",
+          referenceNo: expInv.customId,
+          status: "Pending",
+          note: `3X ROI ($${unwithdrawn}) expired after 15 days window without withdrawal. Transferred to Administrative Escrow. Claim via Support Ticket.`,
+        });
+      } else {
+        expInv.isRoiExpired = true;
+        expInv.expiredRoiAmount = 0;
+        expInv.roiClaimStatus = "Released";
+        await expInv.save();
+      }
     }
 
+    // Payout mode is ALWAYS Real-Time Per Second (Live)
+    userDoc.payoutType = "Per Second (Live)";
     userDoc.dailyEarning = Number(currentDailyEarning.toFixed(4));
     userDoc.perSecondRate = Number(currentPerSecondRate.toFixed(8));
     userDoc.lastYieldSync = now;
@@ -268,6 +294,7 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
       if (bonus > 0) {
         sponsor.earningWallet = parseFloat(((sponsor.earningWallet || 0) + bonus).toFixed(2));
         sponsor.totalProfit = parseFloat(((sponsor.totalProfit || 0) + bonus).toFixed(2));
+        sponsor.levelIncomeBalance = parseFloat(((sponsor.levelIncomeBalance || 0) + bonus).toFixed(2));
 
         const typeLabel = commissionType === "investment" ? "1st Investment Deposit Commission" : "Daily ROI Profit Share";
 
@@ -278,6 +305,7 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
           userEmail: sponsor.email,
           country: sponsor.country,
           type: "Referral Bonus",
+          incomeSource: "Level Income",
           amount: bonus,
           rawAmount: bonus,
           fee: 0,

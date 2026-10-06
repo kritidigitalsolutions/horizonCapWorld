@@ -38,6 +38,12 @@ export const deleteTicket = async (id) => {
   return response.data;
 };
 
+// Release Expired 3X ROI from Escrow to Investor Earning Wallet
+export const releaseExpiredRoi = async (id, data = {}) => {
+  const response = await API.put(`/admin/support/tickets/${id}/release-roi`, data);
+  return response.data;
+};
+
 // ──────── OFFICIAL CHANNELS ────────
 
 // Get all support channels

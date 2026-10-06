@@ -25,7 +25,8 @@ import {
   deleteTransaction,
   clearAllTransactions,
   markTransactionsSeen,
-  sendMonthlyStatements
+  sendMonthlyStatements,
+  dispatchOnChainPayout
 } from '../api/transactionsApi';
 
 export default function Transactions() {
@@ -95,6 +96,9 @@ export default function Transactions() {
             gatewayType: t.gatewayType || (t.gateway?.toLowerCase().includes('usdt') || t.gateway?.toLowerCase().includes('btc') ? 'crypto' : 'fiat'),
             gatewayAccount: t.gatewayAccount || t.address || '',
             referenceNo: t.referenceNo || 'N/A',
+            txHash: t.txHash || '',
+            blockchainExplorerUrl: t.blockchainExplorerUrl || '',
+            cryptoNetwork: t.cryptoNetwork || '',
             date: t.date || (t.createdAt ? t.createdAt.split('T')[0] : '2026-08-20'),
             time: t.time || (t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12:00'),
             status: t.status || 'Pending',
@@ -105,6 +109,9 @@ export default function Transactions() {
             proofOfPayment: t.slipUrl ? { dataUrl: t.slipUrl, isImage: true } : null,
             clientNote: t.clientNote || (t.gateway ? `Processed via ${t.gateway}` : ''),
             rejectReason: t.rejectReason || '',
+            payoutError: t.payoutError || '',
+            payoutMethod: t.payoutMethod || '',
+            note: t.note || '',
           };
         });
         setTxnList(formatted);
@@ -174,6 +181,46 @@ export default function Transactions() {
     return parseFloat(String(amt).replace(/[^0-9.]/g, '')) || 0;
   };
 
+  const getExplorerUrl = (txn) => {
+    if (!txn) return null;
+    if (txn.blockchainExplorerUrl) return txn.blockchainExplorerUrl;
+    const hash = (txn.txHash || txn.referenceNo || '').trim();
+    const gateway = (txn.gateway || '').toLowerCase();
+    const network = (txn.cryptoNetwork || '').toLowerCase();
+
+    // TRON
+    if (gateway.includes('tron') || gateway.includes('trc') || network.includes('tron') || network.includes('trc')) {
+      if (hash && hash !== 'N/A' && !hash.startsWith('TRX-') && !hash.startsWith('REF-')) {
+        return `https://tronscan.org/#/transaction/${hash}`;
+      }
+      return `https://tronscan.org`;
+    }
+
+    // BSC / EVM 66-character tx hash
+    if (hash && hash.startsWith('0x') && hash.length === 66) {
+      return `https://bscscan.com/tx/${hash}`;
+    }
+
+    // BSC 42-character address
+    if (hash && hash.startsWith('0x') && hash.length === 42) {
+      return `https://bscscan.com/address/${hash}#tokentxns`;
+    }
+
+    // Smart Contract gateway fallback
+    if (gateway.includes('smart contract') || gateway.includes('bep-20') || gateway.includes('bsc') || network.includes('bsc')) {
+      if (hash && hash.startsWith('0x') && hash.length >= 40) {
+        return `https://bscscan.com/tx/${hash}`;
+      }
+      return `https://bscscan.com/address/0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3#tokentxns`;
+    }
+
+    if (hash && hash.startsWith('0x')) {
+      return `https://bscscan.com/tx/${hash}`;
+    }
+
+    return null;
+  };
+
   // ──────────────── ADMIN APPROVE DEPOSIT ACTION ────────────────
   const handleApproveDeposit = async (txn) => {
     if (!txn || isActionLoading) return;
@@ -206,11 +253,11 @@ export default function Transactions() {
     setTimeout(() => setActionSuccessMsg(''), 4000);
   };
 
-  // ──────────────── ADMIN REJECT DEPOSIT ACTION ────────────────
-  const handleRejectDeposit = async (txn, reason) => {
+  // ──────────────── ADMIN REJECT / REFUND TRANSACTION ACTION ────────────────
+  const handleRejectTransaction = async (txn, reason) => {
     if (!txn || isActionLoading) return;
     setIsActionLoading(true);
-    const finalReason = reason || customRejectReason || 'Payment verification failed / Transaction hash invalid';
+    const finalReason = reason || customRejectReason || (txn.type === 'Withdrawal' ? 'Withdrawal cancelled / refunded by admin' : 'Payment verification failed / Transaction hash invalid');
 
     try {
       if (txn._id) {
@@ -220,23 +267,42 @@ export default function Transactions() {
       console.warn('API reject error:', err.message);
     }
 
-    // Instantly refresh the entire transactions table & metrics from backend
     await fetchTxns();
-
-    // Close review modal and reset state
     setSelectedTxn(null);
     setIsRejecting(false);
     setCustomRejectReason('');
     setIsActionLoading(false);
 
-    // Sync admin sidebar counters
     window.dispatchEvent(new CustomEvent('admin-counters-update'));
     window.dispatchEvent(new CustomEvent('horizon-transactions-change'));
 
-    const rejectMessage = `Deposit request ${txn.id} marked as Rejected. Reason: ${finalReason}`;
+    const rejectMessage = `${txn.type || 'Transaction'} ${txn.id} marked as Rejected. ${txn.type === 'Withdrawal' ? 'Balance refunded to client dashboard.' : ''} Reason: ${finalReason}`;
     setActionSuccessMsg(rejectMessage);
-    toast.warning(rejectMessage, 'Deposit Rejected');
+    toast.warning(rejectMessage, `${txn.type || 'Transaction'} Rejected`);
     setTimeout(() => setActionSuccessMsg(''), 4000);
+  };
+  const handleRejectDeposit = handleRejectTransaction;
+
+  // ──────────────── ADMIN DISPATCH ON-CHAIN PAYOUT ACTION ────────────────
+  const handleDispatchPayout = async (txn) => {
+    if (!txn || isActionLoading) return;
+    setIsActionLoading(true);
+    try {
+      const res = await dispatchOnChainPayout(txn._id);
+      if (res?.success) {
+        toast.success(res.message || `On-chain payout dispatched! TxHash: ${res.txHash || ''}`, 'Payout Dispatched');
+        setActionSuccessMsg(`Withdrawal ${txn.id} cleared on-chain via Smart Contract! TxHash: ${res.txHash || ''}`);
+      } else {
+        toast.error(res?.message || 'On-chain payout failed.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'On-chain payout dispatch failed.');
+    } finally {
+      await fetchTxns();
+      setSelectedTxn(null);
+      setIsActionLoading(false);
+      setTimeout(() => setActionSuccessMsg(''), 5000);
+    }
   };
 
   // Delete Individual Transaction
@@ -644,6 +710,17 @@ export default function Transactions() {
                             >
                               <RiFileCopyLine size={13} />
                             </button>
+                            {getExplorerUrl(txn) && (
+                              <a
+                                href={getExplorerUrl(txn)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 hover:bg-gold-100 rounded-full text-slate-400 hover:text-gold-800 transition-colors"
+                                title="Open & Verify on BscScan / Blockchain Explorer"
+                              >
+                                <RiExternalLinkLine size={13} />
+                              </a>
+                            )}
                           </div>
                           {txn.referenceNo && txn.id && txn.referenceNo !== txn.id && (
                             <span className="text-[10px] text-slate-400 font-mono mt-0.5 pl-0.5">
@@ -715,6 +792,16 @@ export default function Transactions() {
                           </button>
                         ) : (
                           <>
+                            {txn.type === 'Withdrawal' && !txn.txHash && txn.status !== 'Rejected' && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedTxn(txn)}
+                                className="px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-400 to-gold-500 hover:from-amber-500 hover:to-gold-600 text-slate-950 text-[11px] font-black flex items-center gap-1 shadow-xs cursor-pointer animate-pulse"
+                                title="Pending On-Chain Dispatch via Smart Contract"
+                              >
+                                <RiFlashlightLine size={13} /> Dispatch Payout
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => setSelectedTxn(txn)}
@@ -789,7 +876,60 @@ export default function Transactions() {
             </div>
 
             <div className="flex items-center gap-2">
-              {selectedTxn?.status === 'Pending' ? (
+              {selectedTxn?.type === 'Withdrawal' ? (
+                <div className="flex items-center gap-2">
+                  {!selectedTxn.txHash && selectedTxn.status !== 'Rejected' ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={isActionLoading}
+                        onClick={() => setIsRejecting(true)}
+                        className="btn px-4 py-2.5 rounded-xl border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <RiCloseLine size={16} /> Reject & Refund User
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isActionLoading}
+                        onClick={() => handleDispatchPayout(selectedTxn)}
+                        className="btn btn-primary px-5 py-2.5 rounded-xl text-xs font-black shadow-gold flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-amber-500 via-gold-500 to-emerald-600 text-slate-950 disabled:opacity-60"
+                      >
+                        {isActionLoading ? (
+                          <>
+                            <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                            <span>Dispatching On-Chain...</span>
+                          </>
+                        ) : (
+                          <>
+                            <RiFlashlightLine size={16} />
+                            <span>Dispatch On-Chain via Smart Contract</span>
+                          </>
+                        )}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {selectedTxn.txHash && (
+                        <a
+                          href={selectedTxn.blockchainExplorerUrl || `https://bscscan.com/tx/${selectedTxn.txHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1.5"
+                        >
+                          <RiShieldCheckLine size={16} /> View on BscScan <RiExternalLinkLine size={12} />
+                        </a>
+                      )}
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => { setSelectedTxn(null); setIsRejecting(false); }}
+                      >
+                        Close Audit
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ) : selectedTxn?.status === 'Pending' ? (
                 <>
                   <button
                     type="button"
@@ -857,17 +997,40 @@ export default function Transactions() {
               </div>
             </div>
 
+            {/* On-Chain Payout Status / Error Notification */}
+            {selectedTxn.payoutError && (
+              <div className="p-4 rounded-2xl bg-red-50/90 border border-red-300 text-red-900 text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[11px] text-red-700">
+                  <RiAlertLine size={15} /> Smart Contract Payout Status / Error
+                </div>
+                <div className="font-mono text-xs text-red-800 break-words">
+                  {selectedTxn.payoutError}
+                </div>
+                {!selectedTxn.txHash && (
+                  <p className="text-[11px] text-red-600 font-medium mt-1">
+                    Funds were NOT deducted from the Smart Contract Pool. Once pool is funded with USDT, click &ldquo;Dispatch On-Chain via Smart Contract&rdquo; or click &ldquo;Reject &amp; Refund User&rdquo; to restore funds to investor&apos;s dashboard.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Rejection Prompt Box (When Admin clicks Reject) */}
-            {isRejecting && selectedTxn.status === 'Pending' && (
+            {isRejecting && (selectedTxn.status === 'Pending' || (selectedTxn.type === 'Withdrawal' && !selectedTxn.txHash)) && (
               <div className="p-5 rounded-2xl bg-red-50 border-2 border-red-300 space-y-3 animate-fade-in">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-red-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <RiAlertLine size={16} /> Enter Rejection Reason
+                    <RiAlertLine size={16} /> {selectedTxn.type === 'Withdrawal' ? 'Cancel & Refund Withdrawal to Investor' : 'Enter Rejection Reason'}
                   </h4>
                   <button onClick={() => setIsRejecting(false)} className="text-red-600 hover:text-red-900 text-xs font-bold">
                     Cancel
                   </button>
                 </div>
+
+                {selectedTxn.type === 'Withdrawal' && (
+                  <p className="text-xs text-red-800 font-medium">
+                    Rejecting this withdrawal will immediately return <strong>${selectedTxn.rawAmount || selectedTxn.amount} USD</strong> back to the investor&apos;s Earning Wallet.
+                  </p>
+                )}
 
                 <div className="flex flex-wrap gap-1.5">
                   {rejectPresets.map(preset => (
@@ -986,6 +1149,63 @@ export default function Transactions() {
                     )}
                   </div>
                 </div>
+
+                {/* ── LIVE BLOCKCHAIN EXPLORER / BSCSCAN VERIFICATION URL ── */}
+                {(() => {
+                  const explorerUrl = getExplorerUrl(selectedTxn);
+                  const isCryptoOrContract = selectedTxn.type === 'Deposit' && (
+                    selectedTxn.gateway?.toLowerCase().includes('smart contract') ||
+                    selectedTxn.gateway?.toLowerCase().includes('bep') ||
+                    selectedTxn.gateway?.toLowerCase().includes('usdt') ||
+                    selectedTxn.gateway?.toLowerCase().includes('crypto') ||
+                    (selectedTxn.referenceNo && selectedTxn.referenceNo.startsWith('0x'))
+                  );
+
+                  if (!explorerUrl && !isCryptoOrContract) return null;
+                  const targetUrl = explorerUrl || `https://bscscan.com/address/0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3#tokentxns`;
+                  const isTxSpecific = targetUrl.includes('/tx/');
+
+                  return (
+                    <div className="p-3.5 bg-gradient-to-r from-amber-500/10 via-gold-500/5 to-transparent rounded-xl border border-gold-300 space-y-2 mt-2">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-xs font-bold text-slate-900 uppercase tracking-wider font-poppins">
+                            On-Chain Blockchain Verification
+                          </span>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300">
+                          {isTxSpecific ? 'Direct Transaction Link' : 'Smart Contract Protocol'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-gold-200/60">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] text-slate-600 font-medium">
+                            {isTxSpecific 
+                              ? 'Verify transaction confirmations, gas, and USDT token transfer on BscScan:' 
+                              : 'Verify incoming smart contract liquidity pool & sub-vault deposits on BscScan:'}
+                          </p>
+                          <p className="text-[10px] font-mono text-slate-700 truncate select-all mt-0.5">
+                            {targetUrl}
+                          </p>
+                        </div>
+                        <a
+                          href={targetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-gold-500 to-amber-500 hover:from-gold-600 hover:to-amber-600 text-slate-950 font-extrabold text-xs rounded-xl shadow-gold transition-all cursor-pointer flex-shrink-0"
+                          title="Open BscScan to verify transaction on blockchain"
+                        >
+                          <RiShieldCheckLine size={15} />
+                          <span>Verify On BscScan</span>
+                          <RiExternalLinkLine size={13} />
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Submission Timestamp</span>
                   <span className="font-mono text-slate-700">{selectedTxn.date} {selectedTxn.time ? `• ${selectedTxn.time}` : ''}</span>

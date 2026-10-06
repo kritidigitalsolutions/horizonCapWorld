@@ -61,8 +61,8 @@ export default function ReferralTreeModal({ isOpen, onClose }) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Referral Network Tree (Tier 0 – 10)"
-      subtitle="Interactive genealogy tree showing all downline partners, investment volumes & earned commissions"
+      title="Referral Network Tree (Infinite Levels)"
+      subtitle="Interactive genealogy tree showing all downline partners, investment volumes & earned commissions (Capped at Level 10)"
       size="xl"
       footer={
         <div className="flex items-center justify-between w-full">
@@ -93,7 +93,7 @@ export default function ReferralTreeModal({ isOpen, onClose }) {
               <RiNodeTree size={24} />
             </div>
             <p className="text-sm font-bold text-slate-800">Constructing Your Multi-Tier Referral Tree...</p>
-            <p className="text-xs text-slate-400">Traversing Downlines across Tiers 1 through 10</p>
+            <p className="text-xs text-slate-400">Traversing All Downlines across Multi-Tier Network (Commission Capped at L10)</p>
             <div className="skeleton h-48 w-full rounded-2xl mt-4" />
           </div>
         ) : error ? (

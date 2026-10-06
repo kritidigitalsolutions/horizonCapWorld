@@ -272,7 +272,6 @@ export default function MyInvestments() {
         {filteredInvestments.map((inv, i) => {
           const isActive = inv.status === 'Active';
           const isRenewable = inv.planName?.toLowerCase().includes('solar') || inv.planName?.toLowerCase().includes('hydrogen') || inv.planName?.toLowerCase().includes('wind');
-          const isDailyPlan = (inv.payoutInterval || '').toLowerCase().includes('daily');
 
           // Progress calculation: 3X Cap is based on 300% profit cap; standard plan is based on days
           const progressPercent = inv.isInfinite
@@ -335,12 +334,8 @@ export default function MyInvestments() {
                           3X Cap Plan
                         </span>
                       )}
-                      <span className={`badge text-[10px] font-bold ${
-                        isDailyPlan
-                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      }`}>
-                        {isDailyPlan ? '24h Daily Payout' : 'Live Per Second'}
+                      <span className="badge text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Live Per Second
                       </span>
                       {inv.investedTimeStr && (
                         <span className="text-[10px] font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
@@ -361,19 +356,10 @@ export default function MyInvestments() {
                       <span className="text-slate-500">
                         Daily: <strong className="text-slate-700 font-mono">${inv.dailyEarning.toFixed(2)}</strong>
                       </span>
-                      {isDailyPlan ? (
-                        <>
-                          <span>·</span>
-                          <span className="text-blue-700 font-semibold">24h Day-Wise Payout</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>·</span>
-                          <span className="text-emerald-700 font-mono font-semibold">+${(inv.perSecondRate || 0).toFixed(7)}/sec</span>
-                          <span>·</span>
-                          <span className="text-slate-500 font-mono font-medium">Active: {elapsedText}</span>
-                        </>
-                      )}
+                      <span>·</span>
+                      <span className="text-emerald-700 font-mono font-semibold">+${(inv.perSecondRate || (inv.dailyEarning / 86400) || 0).toFixed(7)}/sec</span>
+                      <span>·</span>
+                      <span className="text-slate-500 font-mono font-medium">Active: {elapsedText}</span>
                     </div>
                   </div>
                 </div>
@@ -417,50 +403,6 @@ export default function MyInvestments() {
                 </div>
               </div>
 
-              {/* ──────── DAILY ROI INVESTED ELAPSED TIMER & 24H PAYOUT COUNTDOWN ──────── */}
-              {isDailyPlan && isActive && (
-                <div className="mt-4 p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/90 via-sky-50/50 to-amber-50/60 border border-blue-200 shadow-2xs font-poppins">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    {/* Left: Active Invested Elapsed Time Live Counter */}
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs flex-shrink-0">
-                        <RiTimeLine size={20} className="animate-pulse" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-900">
-                            Time Elapsed Since Investment
-                          </span>
-                          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                        </div>
-                        <div className="flex items-baseline gap-2 mt-0.5 flex-wrap">
-                          <span className="font-mono text-base sm:text-lg font-black text-blue-950 tracking-tight">
-                            {elapsedText}
-                          </span>
-                          <span className="text-[11px] font-semibold text-slate-500">
-                            (Invested: {inv.investedTimeStr || inv.startDate})
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: Next 24h Settlement Countdown */}
-                    <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-blue-200/80 sm:pl-4">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                          Next 24h Settlement In
-                        </span>
-                        <span className="font-mono text-base sm:text-lg font-black text-emerald-700">
-                          {remainingText}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full border border-blue-200 shrink-0">
-                        24h Rolling Cycle
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Progress Bar & Contract Dates */}
               <div className="mt-5 pt-3.5 border-t border-gray-100 font-poppins">

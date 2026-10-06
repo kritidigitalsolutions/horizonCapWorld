@@ -223,11 +223,11 @@ exports.updateUserStatus = async (req, res) => {
   }
 };
 
-// @desc    Adjust User Wallet Balance (Credit / Debit)
+// @desc    Adjust User Wallet Balance (Credit / Debit / Disburse Rank Earnings)
 // @route   PUT /api/admin/users/:id/adjust-wallet
 exports.adjustUserWallet = async (req, res) => {
   try {
-    const { walletType, action, amount, reason } = req.body; // walletType: 'depositWallet' | 'earningWallet', action: 'credit' | 'debit'
+    const { walletType, action, amount, reason } = req.body;
 
     if (!walletType || !action || !amount || Number(amount) <= 0) {
       return res.status(400).json({
@@ -244,10 +244,70 @@ exports.adjustUserWallet = async (req, res) => {
     const numAmount = Number(amount);
     const adjustment = action === "credit" ? numAmount : -numAmount;
 
+    let transactionType = action === "credit" ? "Deposit" : "Withdrawal";
+    let incomeSource = "Main Earning Wallet";
+    let friendlyName = walletType;
+
     if (walletType === "depositWallet") {
       user.depositWallet = Math.max(0, (user.depositWallet || 0) + adjustment);
+      friendlyName = "Deposit Wallet";
     } else if (walletType === "earningWallet") {
       user.earningWallet = Math.max(0, (user.earningWallet || 0) + adjustment);
+      if (action === "credit") {
+        user.totalProfit = Math.max(0, (user.totalProfit || 0) + numAmount);
+      }
+      friendlyName = "Main Earning Wallet";
+      incomeSource = "Main Earning Wallet";
+    } else if (walletType === "rankReward" || walletType === "rankRewardBalance") {
+      user.rankRewardBalance = Math.max(0, (user.rankRewardBalance || 0) + adjustment);
+      user.earningWallet = Math.max(0, (user.earningWallet || 0) + adjustment);
+      if (action === "credit") {
+        user.totalProfit = Math.max(0, (user.totalProfit || 0) + numAmount);
+        transactionType = "Rank Bonus";
+      }
+      friendlyName = "One Time Cash Reward ($)";
+      incomeSource = "Rank Cash Reward";
+    } else if (walletType === "companyProfit" || walletType === "companyProfitBalance") {
+      user.companyProfitBalance = Math.max(0, (user.companyProfitBalance || 0) + adjustment);
+      user.earningWallet = Math.max(0, (user.earningWallet || 0) + adjustment);
+      if (action === "credit") {
+        user.totalProfit = Math.max(0, (user.totalProfit || 0) + numAmount);
+        transactionType = "Company Bonus";
+      }
+      friendlyName = "Company Profit %ge";
+      incomeSource = "Company Profit %ge";
+    } else if (walletType === "salary" || walletType === "salaryBalance") {
+      user.salaryBalance = Math.max(0, (user.salaryBalance || 0) + adjustment);
+      user.earningWallet = Math.max(0, (user.earningWallet || 0) + adjustment);
+      if (action === "credit") {
+        user.totalProfit = Math.max(0, (user.totalProfit || 0) + numAmount);
+        transactionType = "Salary Income";
+      }
+      friendlyName = "Per Month Salary";
+      incomeSource = "Salary";
+    } else if (walletType === "pvRoi" || walletType === "pvRoiBalance") {
+      user.pvRoiBalance = Math.max(0, (user.pvRoiBalance || 0) + adjustment);
+      user.earningWallet = Math.max(0, (user.earningWallet || 0) + adjustment);
+      if (action === "credit") {
+        user.totalProfit = Math.max(0, (user.totalProfit || 0) + numAmount);
+        transactionType = "ROI Return";
+      }
+      friendlyName = "PV ROI";
+      incomeSource = "PV ROI";
+    } else if (walletType === "levelIncome" || walletType === "levelIncomeBalance") {
+      user.levelIncomeBalance = Math.max(0, (user.levelIncomeBalance || 0) + adjustment);
+      user.earningWallet = Math.max(0, (user.earningWallet || 0) + adjustment);
+      if (action === "credit") {
+        user.totalProfit = Math.max(0, (user.totalProfit || 0) + numAmount);
+        transactionType = "Referral Bonus";
+      }
+      friendlyName = "Level Income";
+      incomeSource = "Level Income";
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: `Unknown wallet type: ${walletType}`,
+      });
     }
 
     await user.save();
@@ -260,25 +320,176 @@ exports.adjustUserWallet = async (req, res) => {
       userCustomId: user.customId,
       userEmail: user.email,
       country: user.country,
-      type: action === "credit" ? "Deposit" : "Withdrawal",
+      type: transactionType,
+      incomeSource,
       amount: numAmount,
-      gateway: "Admin Adjustment",
-      referenceNo: reason || "Manual Admin Adjustment",
+      rawAmount: numAmount,
+      fee: 0,
+      netAmount: numAmount,
+      gateway: "Admin Disbursal",
+      referenceNo: reason || `Manual Admin ${action === "credit" ? "Disbursal" : "Adjustment"}`,
       status: "Approved",
+      note: `${action === "credit" ? "Disbursed" : "Debited"} $${numAmount} to ${friendlyName}. ${reason || ""}`.trim(),
     });
 
     res.status(200).json({
       success: true,
-      message: `Successfully ${action}ed $${numAmount} to ${walletType}.`,
+      message: `Successfully ${action}ed $${numAmount} to ${friendlyName}.`,
       user: {
         id: user._id,
+        _id: user._id,
         name: user.name,
         depositWallet: user.depositWallet,
         earningWallet: user.earningWallet,
+        pvRoiBalance: user.pvRoiBalance || 0,
+        levelIncomeBalance: user.levelIncomeBalance || 0,
+        rankRewardBalance: user.rankRewardBalance || 0,
+        companyProfitBalance: user.companyProfitBalance || 0,
+        salaryBalance: user.salaryBalance || 0,
       },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Batch Adjust Multiple User Wallets (Disburse to multiple eligible users in one click)
+// @route   POST /api/admin/users/batch-adjust-wallet
+exports.batchAdjustWallets = async (req, res) => {
+  try {
+    const { adjustments, userIds, walletType, action = "credit", amount, reason } = req.body;
+
+    let itemsToProcess = [];
+
+    if (Array.isArray(adjustments) && adjustments.length > 0) {
+      itemsToProcess = adjustments;
+    } else if (Array.isArray(userIds) && userIds.length > 0 && walletType && Number(amount) > 0) {
+      itemsToProcess = userIds.map((uid) => ({
+        userId: uid,
+        walletType,
+        action: action || "credit",
+        amount: Number(amount),
+        reason,
+      }));
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payload. Provide 'adjustments' array or 'userIds' array with valid walletType and amount.",
+      });
+    }
+
+    const results = [];
+    let totalDisbursed = 0;
+    let successfulCount = 0;
+
+    for (const item of itemsToProcess) {
+      const { userId, walletType: itemWalletType, action: itemAction = "credit", amount: itemAmount, reason: itemReason } = item;
+      const numAmount = Number(itemAmount);
+
+      if (!userId || !itemWalletType || numAmount <= 0) {
+        results.push({ userId, success: false, message: "Missing required fields or invalid amount." });
+        continue;
+      }
+
+      try {
+        const user = await User.findById(userId);
+        if (!user) {
+          results.push({ userId, success: false, message: "User not found." });
+          continue;
+        }
+
+        const adjustment = itemAction === "credit" ? numAmount : -numAmount;
+        let transactionType = itemAction === "credit" ? "Deposit" : "Withdrawal";
+        let incomeSource = "Main Earning Wallet";
+        let friendlyName = itemWalletType;
+
+        if (itemWalletType === "depositWallet") {
+          user.depositWallet = Math.max(0, (user.depositWallet || 0) + adjustment);
+          friendlyName = "Deposit Wallet";
+        } else if (itemWalletType === "earningWallet") {
+          user.earningWallet = Math.max(0, (user.earningWallet || 0) + adjustment);
+          if (itemAction === "credit") user.totalProfit = Math.max(0, (user.totalProfit || 0) + numAmount);
+          friendlyName = "Main Earning Wallet";
+          incomeSource = "Main Earning Wallet";
+        } else if (itemWalletType === "rankReward" || itemWalletType === "rankRewardBalance") {
+          user.rankRewardBalance = Math.max(0, (user.rankRewardBalance || 0) + adjustment);
+          user.earningWallet = Math.max(0, (user.earningWallet || 0) + adjustment);
+          if (itemAction === "credit") {
+            user.totalProfit = Math.max(0, (user.totalProfit || 0) + numAmount);
+            transactionType = "Rank Bonus";
+          }
+          friendlyName = "One Time Cash Reward ($)";
+          incomeSource = "Rank Cash Reward";
+        } else if (itemWalletType === "companyProfit" || itemWalletType === "companyProfitBalance") {
+          user.companyProfitBalance = Math.max(0, (user.companyProfitBalance || 0) + adjustment);
+          user.earningWallet = Math.max(0, (user.earningWallet || 0) + adjustment);
+          if (itemAction === "credit") {
+            user.totalProfit = Math.max(0, (user.totalProfit || 0) + numAmount);
+            transactionType = "Company Bonus";
+          }
+          friendlyName = "Company Profit %ge";
+          incomeSource = "Company Profit %ge";
+        } else if (itemWalletType === "salary" || itemWalletType === "salaryBalance") {
+          user.salaryBalance = Math.max(0, (user.salaryBalance || 0) + adjustment);
+          user.earningWallet = Math.max(0, (user.earningWallet || 0) + adjustment);
+          if (itemAction === "credit") {
+            user.totalProfit = Math.max(0, (user.totalProfit || 0) + numAmount);
+            transactionType = "Salary Income";
+          }
+          friendlyName = "Per Month Salary";
+          incomeSource = "Salary";
+        } else {
+          results.push({ userId, success: false, message: `Unsupported wallet type: ${itemWalletType}` });
+          continue;
+        }
+
+        await user.save();
+
+        await Transaction.create({
+          customId: `TXN-BULK-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 900 + 100)}`,
+          user: user._id,
+          userName: user.name,
+          userCustomId: user.customId,
+          userEmail: user.email,
+          country: user.country,
+          type: transactionType,
+          incomeSource,
+          amount: numAmount,
+          rawAmount: numAmount,
+          fee: 0,
+          netAmount: numAmount,
+          gateway: "Admin Disbursal",
+          referenceNo: itemReason || `Bulk Admin Disbursal (${friendlyName})`,
+          status: "Approved",
+          note: `${itemAction === "credit" ? "Disbursed" : "Debited"} $${numAmount} to ${friendlyName}. ${itemReason || ""}`.trim(),
+        });
+
+        successfulCount += 1;
+        totalDisbursed += numAmount;
+        results.push({
+          userId: user._id,
+          userName: user.name,
+          customId: user.customId,
+          success: true,
+          amount: numAmount,
+          walletType: itemWalletType,
+          newEarningWallet: user.earningWallet,
+        });
+      } catch (err) {
+        results.push({ userId, success: false, message: err.message });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Batch disbursal completed: ${successfulCount} of ${itemsToProcess.length} processed. Total $${totalDisbursed.toLocaleString()} disbursed.`,
+      processedCount: successfulCount,
+      totalCount: itemsToProcess.length,
+      totalDisbursed,
+      results,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

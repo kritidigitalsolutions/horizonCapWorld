@@ -23,6 +23,7 @@ import {
   deleteRank,
   getAchieversLeaderboard
 } from '../api/ranksApi';
+import { adjustUserWallet } from '../api/usersApi';
 
 // Initial 12-Tier Rank Ladder (Spreadsheet Standard)
 const defaultRanksList = [
@@ -208,6 +209,62 @@ const defaultRanksList = [
   },
 ];
 
+const extractRankBenefits = (rankObj) => {
+  if (!rankObj) return { reward: 100, profitPercent: 0, salary: 0 };
+  const reward = Number(rankObj.reward) || 100;
+  
+  let profitPercent = 0;
+  const pctMatch = String(rankObj.companyProfitSharing || '').match(/([\d.]+)%\s*of/i);
+  if (pctMatch) {
+    profitPercent = parseFloat(pctMatch[1]) || 0;
+  }
+
+  let salary = 0;
+  const salaryMatch = String(rankObj.companyProfitSharing || '').match(/(\d+)\s*\$\s*Per Month Salary/i);
+  if (salaryMatch) {
+    salary = parseFloat(salaryMatch[1]) || 0;
+  }
+
+  return { reward, profitPercent, salary };
+};
+
+const checkLeaderRankEligibility = (leader, rankObj) => {
+  if (!leader || !rankObj) {
+    return { isEligible: false, isOwnMet: false, isTurnoverMet: false, isDirectsMet: false, userOwnDeposit: 0, userTurnover: 0, userDirects: 0 };
+  }
+
+  const userTurnover = Number(leader.teamTurnover || leader.teamVolume || leader.turnover || 0);
+  const userOwnDeposit = Number(leader.totalInvested || leader.depositWallet || 0);
+  const userDirects = Number(leader.directReferrals || leader.directRefs || leader.totalReferrals || 0);
+
+  const ownReq = Number(rankObj.ownDeposit || 0);
+  const turnoverReq = Number(rankObj.totalClientDeposit || rankObj.minInvest || 0);
+  const reqDirectsMatch = (rankObj.downlineStructureRequired || '').match(/\d+/);
+  const directsReq = reqDirectsMatch ? parseInt(reqDirectsMatch[0], 10) : 2;
+
+  const isOwnMet = userOwnDeposit >= ownReq;
+  const isTurnoverMet = userTurnover >= turnoverReq;
+  const isDirectsMet = userDirects >= directsReq;
+
+  const userLvl = Number(leader.level || leader.rankLevel || 0);
+  const passedHigherTier = userLvl > Number(rankObj.level || 0);
+
+  const isEligible = passedHigherTier || (isOwnMet && isTurnoverMet && isDirectsMet);
+
+  return {
+    isEligible,
+    isOwnMet,
+    isTurnoverMet,
+    isDirectsMet,
+    userOwnDeposit,
+    userTurnover,
+    userDirects,
+    ownReq,
+    turnoverReq,
+    directsReq
+  };
+};
+
 export default function Ranks() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -246,6 +303,129 @@ export default function Ranks() {
 
   // Leader Calculation Breakdown Drawer State
   const [selectedLeader, setSelectedLeader] = useState(null);
+
+  // Disburse Reward / Income Modal State
+  const [disburseModalLeader, setDisburseModalLeader] = useState(null);
+  const [disburseIncomeType, setDisburseIncomeType] = useState('rankReward');
+  const [companyProfitInput, setCompanyProfitInput] = useState('');
+  const [disburseAmount, setDisburseAmount] = useState('');
+  const [disburseReason, setDisburseReason] = useState('');
+  const [disbursing, setDisbursing] = useState(false);
+
+  const openDisburseModal = (leader, defaultType = 'rankReward') => {
+    setDisburseModalLeader(leader);
+    setDisburseIncomeType(defaultType);
+    setCompanyProfitInput('');
+
+    const matchingRank = ranks.find(r => 
+      (r.name && leader.rank && r.name.toLowerCase() === leader.rank.toLowerCase()) ||
+      (r.level && leader.level && Number(r.level) === Number(leader.level))
+    ) || ranks[0];
+
+    const benefits = extractRankBenefits(matchingRank);
+    const eligibility = checkLeaderRankEligibility(leader, matchingRank);
+
+    let defaultAmt = '';
+    let defaultReason = '';
+    if (defaultType === 'rankReward') {
+      if (eligibility.isEligible) {
+        defaultAmt = String(benefits.reward);
+        defaultReason = `One Time Cash Reward ($${benefits.reward.toLocaleString()}) - ${matchingRank.name} Rank (Eligible)`;
+      } else {
+        defaultAmt = '';
+        defaultReason = `One Time Cash Reward - ${matchingRank.name} Rank`;
+      }
+    } else if (defaultType === 'salary') {
+      if (eligibility.isEligible && benefits.salary > 0) {
+        defaultAmt = String(benefits.salary);
+        defaultReason = `Per Month Salary ($${benefits.salary.toLocaleString()}) - ${matchingRank.name} Rank (Eligible)`;
+      } else {
+        defaultAmt = '';
+        defaultReason = `Per Month Salary - ${matchingRank.name} Rank`;
+      }
+    } else if (defaultType === 'companyProfit') {
+      defaultAmt = '';
+      defaultReason = `Company Profit %ge - ${matchingRank.name} Rank`;
+    }
+
+    setDisburseAmount(defaultAmt);
+    setDisburseReason(defaultReason);
+  };
+
+  const handleIncomeTypeChange = (type) => {
+    setDisburseIncomeType(type);
+    if (!disburseModalLeader) return;
+    const matchingRank = ranks.find(r => 
+      (r.name && disburseModalLeader.rank && r.name.toLowerCase() === disburseModalLeader.rank.toLowerCase()) ||
+      (r.level && disburseModalLeader.level && Number(r.level) === Number(disburseModalLeader.level))
+    ) || ranks[0];
+
+    const benefits = extractRankBenefits(matchingRank);
+    const eligibility = checkLeaderRankEligibility(disburseModalLeader, matchingRank);
+    let defaultAmt = '';
+    let defaultReason = '';
+
+    if (type === 'rankReward') {
+      if (eligibility.isEligible) {
+        defaultAmt = String(benefits.reward);
+        defaultReason = `One Time Cash Reward ($${benefits.reward.toLocaleString()}) - ${matchingRank.name} Rank (Eligible)`;
+      } else {
+        defaultAmt = '';
+        defaultReason = `One Time Cash Reward - ${matchingRank.name} Rank`;
+      }
+    } else if (type === 'salary') {
+      if (eligibility.isEligible && benefits.salary > 0) {
+        defaultAmt = String(benefits.salary);
+        defaultReason = `Per Month Salary ($${benefits.salary.toLocaleString()}) - ${matchingRank.name} Rank (Eligible)`;
+      } else {
+        defaultAmt = '';
+        defaultReason = `Per Month Salary - ${matchingRank.name} Rank`;
+      }
+    } else if (type === 'companyProfit') {
+      const numProfit = parseFloat(companyProfitInput) || 0;
+      if (numProfit > 0 && benefits.profitPercent > 0 && eligibility.isEligible) {
+        const calculated = ((numProfit * benefits.profitPercent) / 100).toFixed(2);
+        defaultAmt = String(Number(calculated));
+        defaultReason = `Company Profit Share (${benefits.profitPercent}% of $${numProfit.toLocaleString()}) - ${matchingRank.name} Rank`;
+      } else {
+        defaultAmt = '';
+        defaultReason = `Company Profit Share (${benefits.profitPercent}%) - ${matchingRank.name} Rank`;
+      }
+    }
+
+    setDisburseAmount(defaultAmt);
+    setDisburseReason(defaultReason);
+  };
+
+  const handleDisburseSubmit = async (e) => {
+    e?.preventDefault();
+    if (!disburseModalLeader || !disburseAmount || Number(disburseAmount) <= 0) return;
+    setDisbursing(true);
+    try {
+      const res = await adjustUserWallet(disburseModalLeader.id, {
+        walletType: disburseIncomeType,
+        action: 'credit',
+        amount: Number(disburseAmount),
+        reason: disburseReason.trim() || `Manual Rank Disbursal - ${disburseIncomeType}`,
+      });
+      if (res?.success) {
+        toast.success(
+          res.message || `Successfully disbursed $${disburseAmount} to ${disburseModalLeader.name}!`,
+          'Disbursal Completed'
+        );
+        setDisburseModalLeader(null);
+        setDisburseAmount('');
+        setDisburseReason('');
+        fetchRanksData();
+      } else {
+        toast.error(res?.message || 'Failed to disburse income.', 'Disbursal Failed');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Error processing disbursal.', 'Disbursal Failed');
+    } finally {
+      setDisbursing(false);
+    }
+  };
 
   const fetchRanksData = useCallback(async () => {
     try {
@@ -846,15 +1026,17 @@ export default function Ranks() {
                         </td>
 
                         {/* Action: Audit Button */}
-                        <td className="text-right pr-6">
-                          <button
-                            onClick={() => setSelectedLeader(u)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins cursor-pointer"
-                            title="Audit rank milestone progress"
-                          >
-                            <RiCalculatorLine size={14} className="text-slate-900" />
-                            <span>Audit</span>
-                          </button>
+                        <td className="text-right pr-6 whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => setSelectedLeader(u)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-semibold transition-all border border-gold-400 hover:border-gold-500 active:scale-95 shadow-gold font-poppins cursor-pointer"
+                              title="Audit rank milestone progress"
+                            >
+                              <RiCalculatorLine size={14} className="text-slate-900" />
+                              <span>Audit</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1270,6 +1452,435 @@ export default function Ranks() {
                   +${selectedLeader.rankCashBonus.toLocaleString()}.00
                 </span>
               </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const target = selectedLeader;
+                  setSelectedLeader(null);
+                  openDisburseModal(target);
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+              >
+                <RiCoinsLine size={16} />
+                <span>Disburse Reward / Salary to this Achiever</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ──────────────── DISBURSE RANK REWARD / SALARY / PROFIT MODAL ──────────────── */}
+      <Modal
+        isOpen={!!disburseModalLeader}
+        onClose={() => {
+          if (!disbursing) setDisburseModalLeader(null);
+        }}
+        title="Disburse Rank Earnings & Rewards"
+        subtitle={disburseModalLeader ? `${disburseModalLeader.name} (${disburseModalLeader.customId}) • Rank: ${disburseModalLeader.rank}` : ''}
+        size="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDisburseModalLeader(null)} disabled={disbursing}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              icon={<RiCoinsLine />}
+              onClick={handleDisburseSubmit}
+              loading={disbursing}
+            >
+              Confirm Disbursal
+            </Button>
+          </>
+        }
+      >
+        {disburseModalLeader && (
+          <div className="space-y-4 font-poppins">
+            {/* Achiever Info Banner */}
+            <div className="p-3.5 bg-gradient-to-r from-amber-50 to-gold-50/50 rounded-2xl border border-gold-300 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-900">{disburseModalLeader.name}</p>
+                <p className="text-[11px] text-slate-500">{disburseModalLeader.email}</p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-gold-400 text-slate-950 text-xs font-bold shadow-2xs">
+                {disburseModalLeader.rank}
+              </span>
+            </div>
+
+            {/* Income Stream / Reward Type Selection */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Select Reward / Income Stream *
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {[
+                  { id: 'rankReward', label: 'Cash Reward ($)', desc: 'One-Time Rank Bonus' },
+                  { id: 'companyProfit', label: 'Company Profit %', desc: 'Profit Share Dividend' },
+                  { id: 'salary', label: 'Monthly Salary', desc: 'Leadership Allowance' },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => handleIncomeTypeChange(st.id)}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      disburseIncomeType === st.id
+                        ? 'border-gold-500 bg-gold-50/80 ring-2 ring-gold-200 text-slate-950 font-bold'
+                        : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
+                    }`}
+                  >
+                    <p className="text-xs font-bold">{st.label}</p>
+                    <p className="text-[10px] text-slate-400 font-normal">{st.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 🎯 Stream Calculation & Eligibility Cards */}
+
+            {/* 1. One Time Cash Reward Card */}
+            {disburseIncomeType === 'rankReward' && (() => {
+              const matchingRank = ranks.find(r => 
+                (r.name && disburseModalLeader.rank && r.name.toLowerCase() === disburseModalLeader.rank.toLowerCase()) ||
+                (r.level && disburseModalLeader.level && Number(r.level) === Number(disburseModalLeader.level))
+              ) || ranks[0];
+              const benefits = extractRankBenefits(matchingRank);
+              const eligibility = checkLeaderRankEligibility(disburseModalLeader, matchingRank);
+
+              return (
+                <div className={`p-3.5 rounded-xl border text-xs space-y-2.5 font-poppins transition-all ${
+                  eligibility.isEligible
+                    ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
+                    : 'bg-amber-50/90 border-amber-300 text-amber-950'
+                }`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold flex items-center gap-1.5 text-xs">
+                      <RiAwardLine className={eligibility.isEligible ? 'text-emerald-700' : 'text-amber-700'} size={17} />
+                      <span>One Time Cash Reward Entitlement</span>
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-white border border-slate-300 text-slate-800">
+                        Tier {matchingRank.level}: {matchingRank.name}
+                      </span>
+                      {eligibility.isEligible ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-200 text-emerald-900 border border-emerald-400 flex items-center gap-1">
+                          <RiCheckLine size={12} /> Eligible (Rank Active)
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
+                          <RiCloseLine size={12} /> Not Eligible (In Progress)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/80 text-xs">
+                    <span className="text-slate-600 font-medium">Standard Ladder Reward:</span>
+                    <span className="font-extrabold font-mono text-sm">
+                      {eligibility.isEligible ? (
+                        <span className="text-emerald-800 font-black">
+                          ${benefits.reward.toLocaleString()} USD (Auto-filled)
+                        </span>
+                      ) : (
+                        <span className="text-rose-700 font-black">
+                          ${benefits.reward.toLocaleString()} USD (Not Auto-filled)
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  {eligibility.isEligible ? (
+                    <div className="p-2 rounded-lg bg-emerald-100/70 border border-emerald-300 text-[11px] text-emerald-900 space-y-0.5">
+                      <p className="font-bold flex items-center gap-1">
+                        <RiCheckLine className="text-emerald-700" size={14} />
+                        Rank qualification active! Criteria fulfilled.
+                      </p>
+                      <p className="text-[10.5px] text-emerald-800">
+                        Turnover: ${eligibility.userTurnover.toLocaleString()} / ${Number(matchingRank.totalClientDeposit || matchingRank.minInvest || 0).toLocaleString()} • Directs: {eligibility.userDirects} Directs
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-2.5 rounded-lg bg-white/90 border border-amber-300 text-[11px] text-amber-950 space-y-1.5 shadow-2xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-bold text-rose-800 flex items-center gap-1">
+                          <RiAlertLine className="text-rose-600 flex-shrink-0" size={14} />
+                          <span>Rank qualification criteria pending (Reward not auto-filled):</span>
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDisburseAmount(String(benefits.reward));
+                            setDisburseReason(`One Time Cash Reward ($${benefits.reward.toLocaleString()}) - ${matchingRank.name} Rank (Admin Override)`);
+                          }}
+                          className="text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-2 py-0.5 rounded cursor-pointer transition-colors whitespace-nowrap"
+                        >
+                          ⚡ Force Fill ${benefits.reward.toLocaleString()}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 border-t border-amber-100 text-[10px] font-mono">
+                        <div className={`px-2 py-1 rounded border ${eligibility.isTurnoverMet ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'}`}>
+                          <div className="text-[9px] uppercase font-bold text-slate-500">Client Turnover</div>
+                          <div className="font-bold">${eligibility.userTurnover.toLocaleString()} / ${Number(matchingRank.totalClientDeposit || matchingRank.minInvest || 0).toLocaleString()}</div>
+                          <div>{eligibility.isTurnoverMet ? '✔ Met' : '❌ Pending'}</div>
+                        </div>
+                        <div className={`px-2 py-1 rounded border ${eligibility.isDirectsMet ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'}`}>
+                          <div className="text-[9px] uppercase font-bold text-slate-500">Direct Clients</div>
+                          <div className="font-bold">{eligibility.userDirects} Directs</div>
+                          <div>{eligibility.isDirectsMet ? '✔ Met' : '❌ Pending'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* 2. Company Profit Share Live Calculator */}
+            {disburseIncomeType === 'companyProfit' && (() => {
+              const matchingRank = ranks.find(r => 
+                (r.name && disburseModalLeader.rank && r.name.toLowerCase() === disburseModalLeader.rank.toLowerCase()) ||
+                (r.level && disburseModalLeader.level && Number(r.level) === Number(disburseModalLeader.level))
+              ) || ranks[0];
+              const benefits = extractRankBenefits(matchingRank);
+              const eligibility = checkLeaderRankEligibility(disburseModalLeader, matchingRank);
+              const isProfitRankEligible = benefits.profitPercent > 0;
+
+              return (
+                <div className="p-3.5 rounded-xl bg-purple-50/80 border border-purple-200 text-xs space-y-2.5 font-poppins">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-bold text-purple-950 flex items-center gap-1.5">
+                      <RiPercentLine className="text-purple-700" size={16} />
+                      <span>Company Profit Share Calculation</span>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-200 text-purple-900 border border-purple-300">
+                        {matchingRank.name}: {benefits.profitPercent}%
+                      </span>
+                      {!isProfitRankEligible ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                          Tier 6+ Required
+                        </span>
+                      ) : eligibility.isEligible ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          ✔ Eligible
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                          ❌ Not Eligible (In Progress)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-purple-900 uppercase tracking-wider mb-1">
+                      Enter Total Company Profit ($ USD)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-xs text-purple-400 font-mono">$</span>
+                      <input
+                        type="number"
+                        step="any"
+                        value={companyProfitInput}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCompanyProfitInput(val);
+                          const num = parseFloat(val) || 0;
+                          if (num > 0 && benefits.profitPercent > 0 && eligibility.isEligible) {
+                            const calculated = ((num * benefits.profitPercent) / 100).toFixed(2);
+                            setDisburseAmount(String(Number(calculated)));
+                            setDisburseReason(`Company Profit Share (${benefits.profitPercent}% of $${num.toLocaleString()}) - ${matchingRank.name} Rank`);
+                          } else if (num > 0 && benefits.profitPercent > 0 && !eligibility.isEligible) {
+                            setDisburseAmount('');
+                            setDisburseReason(`Company Profit Share (${benefits.profitPercent}% of $${num.toLocaleString()}) - Rank Criteria In Progress`);
+                          } else if (num > 0 && benefits.profitPercent === 0) {
+                            setDisburseAmount('0');
+                            setDisburseReason(`Company Profit Share (0%) - ${matchingRank.name} Rank`);
+                          } else {
+                            setDisburseAmount('');
+                          }
+                        }}
+                        placeholder="e.g. 100000"
+                        className="w-full pl-7 pr-3 py-2 bg-white rounded-lg border border-purple-300 text-xs font-bold text-purple-950 font-mono outline-none focus:border-purple-500 shadow-2xs"
+                      />
+                    </div>
+                    {/* Quick presets */}
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      <span className="text-[10px] text-purple-600 font-medium">Quick presets:</span>
+                      {[25000, 50000, 100000, 250000, 500000].map(amt => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => {
+                            const val = String(amt);
+                            setCompanyProfitInput(val);
+                            if (benefits.profitPercent > 0 && eligibility.isEligible) {
+                              const calculated = ((amt * benefits.profitPercent) / 100).toFixed(2);
+                              setDisburseAmount(String(Number(calculated)));
+                              setDisburseReason(`Company Profit Share (${benefits.profitPercent}% of $${amt.toLocaleString()}) - ${matchingRank.name} Rank`);
+                            }
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-white hover:bg-purple-100 text-purple-900 border border-purple-200 text-[10px] font-mono font-semibold cursor-pointer"
+                        >
+                          ${amt.toLocaleString()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {companyProfitInput && Number(companyProfitInput) > 0 && (
+                    <div className="p-2 rounded-lg bg-white border border-purple-200 text-[11px] space-y-0.5">
+                      <div className="flex justify-between text-slate-600">
+                        <span>Calculation Formula:</span>
+                        <span className="font-mono text-purple-900 font-bold">
+                          ${Number(companyProfitInput).toLocaleString()} × {benefits.profitPercent}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-slate-800 font-bold pt-1 border-t border-purple-100">
+                        <span>Calculated Disbursal:</span>
+                        <span className="font-mono text-emerald-700 text-xs font-black">
+                          ${((Number(companyProfitInput) * benefits.profitPercent) / 100).toFixed(2)} USD {eligibility.isEligible ? '(Auto-filled below)' : '(Criteria pending - Not auto-filled)'}
+                        </span>
+                      </div>
+                      {!eligibility.isEligible && isProfitRankEligible && (
+                        <div className="pt-1.5 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const calculated = ((Number(companyProfitInput) * benefits.profitPercent) / 100).toFixed(2);
+                              setDisburseAmount(String(Number(calculated)));
+                              setDisburseReason(`Company Profit Share (${benefits.profitPercent}% of $${Number(companyProfitInput).toLocaleString()}) - ${matchingRank.name} Rank (Admin Override)`);
+                            }}
+                            className="text-[10px] font-bold text-purple-900 bg-purple-100 hover:bg-purple-200 border border-purple-300 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                          >
+                            ⚡ Force Fill Calculated Amount (${((Number(companyProfitInput) * benefits.profitPercent) / 100).toFixed(2)})
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!isProfitRankEligible && (
+                    <p className="text-[10.5px] text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200 leading-relaxed">
+                      ⚠️ Note: Rank "{matchingRank.name}" has <strong>0%</strong> profit share on the rank ladder (Profit sharing starts at Executive Director Tier 6 with 0.20%).
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* 3. Monthly Salary Card */}
+            {disburseIncomeType === 'salary' && (() => {
+              const matchingRank = ranks.find(r => 
+                (r.name && disburseModalLeader.rank && r.name.toLowerCase() === disburseModalLeader.rank.toLowerCase()) ||
+                (r.level && disburseModalLeader.level && Number(r.level) === Number(disburseModalLeader.level))
+              ) || ranks[0];
+              const benefits = extractRankBenefits(matchingRank);
+              const eligibility = checkLeaderRankEligibility(disburseModalLeader, matchingRank);
+              const isSalaryEligible = benefits.salary > 0;
+
+              return (
+                <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200 text-xs space-y-1.5 font-poppins">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-semibold text-blue-950 flex items-center gap-1.5">
+                      <RiBriefcaseLine className="text-blue-700" size={16} />
+                      <span>Monthly Leadership Salary Entitlement</span>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-200 text-blue-900 border border-blue-300">
+                        Tier {matchingRank.level}: {matchingRank.name}
+                      </span>
+                      {!isSalaryEligible ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                          Tier 6+ Required
+                        </span>
+                      ) : eligibility.isEligible ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          ✔ Eligible
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                          ❌ Not Eligible (In Progress)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-blue-200/60 text-xs">
+                    <span className="text-slate-600">Designated Monthly Salary:</span>
+                    <span className="font-extrabold text-blue-900 font-mono text-sm">
+                      {isSalaryEligible ? (
+                        eligibility.isEligible ? (
+                          `$${benefits.salary.toLocaleString()} USD / Month (Auto-filled)`
+                        ) : (
+                          `$${benefits.salary.toLocaleString()} USD / Month (Not Auto-filled)`
+                        )
+                      ) : (
+                        '$0 USD (Not eligible on rank ladder)'
+                      )}
+                    </span>
+                  </div>
+                  {!isSalaryEligible && (
+                    <p className="text-[10.5px] text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200 leading-relaxed">
+                      ⚠️ Note: Rank "{matchingRank.name}" has no fixed monthly salary on the ladder (Salary starts from Executive Director Tier 6 at $500/month).
+                    </p>
+                  )}
+                  {isSalaryEligible && !eligibility.isEligible && (
+                    <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-between gap-2">
+                      <span className="text-[10.5px] text-amber-800">
+                        User rank criteria is pending. Salary is not auto-filled.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDisburseAmount(String(benefits.salary));
+                          setDisburseReason(`Per Month Salary ($${benefits.salary.toLocaleString()}) - ${matchingRank.name} Rank (Admin Override)`);
+                        }}
+                        className="text-[10px] font-bold text-blue-900 bg-blue-100 hover:bg-blue-200 border border-blue-300 px-2 py-0.5 rounded cursor-pointer transition-colors whitespace-nowrap"
+                      >
+                        ⚡ Force Fill ${benefits.salary.toLocaleString()}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Amount Input ($) */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Disbursal Amount ($ USD) *
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-mono">$</span>
+                <input
+                  type="number"
+                  step="any"
+                  value={disburseAmount}
+                  onChange={(e) => setDisburseAmount(e.target.value)}
+                  placeholder="e.g. 500"
+                  className="w-full pl-7 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 font-mono outline-none focus:border-gold-400 shadow-2xs"
+                  required
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Amount will be instantly credited to the user&apos;s selected stream and liquid Earning Wallet.
+              </p>
+            </div>
+
+            {/* Reason / Remarks */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Reason / Note (Visible in User Transactions)
+              </label>
+              <input
+                type="text"
+                value={disburseReason}
+                onChange={(e) => setDisburseReason(e.target.value)}
+                placeholder="e.g. Rank Milestone Cash Reward / Monthly Salary"
+                className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+              />
             </div>
           </div>
         )}

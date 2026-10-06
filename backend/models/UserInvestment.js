@@ -136,6 +136,26 @@ const userInvestmentSchema = new mongoose.Schema(
       enum: ["Active", "Completed", "Cancelled"],
       default: "Active",
     },
+    // 3X Cap 15-day ROI Withdrawal Window Tracking
+    completedAt: {
+      type: Date,
+    },
+    roiExpiryDate: {
+      type: Date,
+    },
+    isRoiExpired: {
+      type: Boolean,
+      default: false,
+    },
+    expiredRoiAmount: {
+      type: Number,
+      default: 0,
+    },
+    roiClaimStatus: {
+      type: String,
+      enum: ["None", "Pending Claim", "Released", "Forfeited"],
+      default: "None",
+    },
   },
   { timestamps: true }
 );

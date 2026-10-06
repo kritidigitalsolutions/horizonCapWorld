@@ -31,8 +31,20 @@ const transactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["Deposit", "Withdrawal", "ROI Return", "Referral Bonus", "Rank Bonus"],
+      enum: [
+        "Deposit",
+        "Withdrawal",
+        "ROI Return",
+        "Referral Bonus",
+        "Rank Bonus",
+        "Company Bonus",
+        "Salary Income",
+      ],
       required: true,
+    },
+    incomeSource: {
+      type: String,
+      default: "Main Earning Wallet",
     },
     amount: {
       type: Number,
@@ -107,6 +119,29 @@ const transactionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
       index: true,
+    },
+    // On-Chain Smart Contract Payout Tracking
+    txHash: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    blockchainExplorerUrl: {
+      type: String,
+      default: "",
+    },
+    payoutMethod: {
+      type: String,
+      enum: ["Manual", "Smart Contract Pool", "System Gateway"],
+      default: "Smart Contract Pool",
+    },
+    payoutPoolAddress: {
+      type: String,
+      default: "",
+    },
+    payoutError: {
+      type: String,
+      default: "",
     },
   },
   { timestamps: true }

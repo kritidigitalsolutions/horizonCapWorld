@@ -46,13 +46,17 @@ const getInitialStreamingState = () => {
     const savedUser = localStorage.getItem('horizon_user');
     const userObj = savedUser ? JSON.parse(savedUser) : null;
 
-    let baseProfit = Number(userObj?.totalProfit || userObj?.totalEarned || 0);
+    let baseProfit = Number(
+      userObj?.streamingProfit !== undefined
+        ? userObj.streamingProfit
+        : (userObj?.earningWallet !== undefined ? userObj.earningWallet : (userObj?.totalProfit || 0))
+    );
     let rate = Number(userObj?.perSecondRate || 0);
     let baseTime = Date.now();
 
     // If user has NO active streaming rate, don't accrue fake earnings
     if (rate <= 0) {
-      return { baseValue: baseProfit, baseTime, rate: 0 };
+      return { baseValue: baseProfit, baseTime, rate: 0, totalWithdrawn: Number(userObj?.totalWithdrawn || 0) };
     }
 
     const savedStream = localStorage.getItem('horizon_streaming_state');
@@ -63,7 +67,13 @@ const getInitialStreamingState = () => {
         if (streamRate > 0) {
           const elapsedSec = Math.max(0, (Date.now() - streamObj.timestamp) / 1000);
           const accruedSinceSave = streamObj.baseProfit + (elapsedSec * streamRate);
-          if (accruedSinceSave >= baseProfit) {
+
+          // If user withdrew funds or if cached stream is significantly higher than baseProfit,
+          // discard stale cache so counter immediately reflects withdrawal deductions!
+          const isStaleDueToWithdrawal = streamObj.baseProfit > (baseProfit + 0.1) ||
+            (streamObj.totalWithdrawn !== undefined && Number(userObj?.totalWithdrawn || 0) > streamObj.totalWithdrawn);
+
+          if (!isStaleDueToWithdrawal && accruedSinceSave >= baseProfit) {
             baseProfit = accruedSinceSave;
             rate = streamRate;
             baseTime = Date.now();
@@ -74,15 +84,15 @@ const getInitialStreamingState = () => {
 
     if (userObj && userObj.lastYieldSync && rate > 0) {
       const syncElapsedSec = Math.max(0, (Date.now() - new Date(userObj.lastYieldSync).getTime()) / 1000);
-      const userAccrued = Number(userObj.totalProfit || userObj.totalEarned || 0) + (syncElapsedSec * rate);
-      if (userAccrued > baseProfit) {
+      const userAccrued = baseProfit + (syncElapsedSec * rate);
+      if (userAccrued > baseProfit && (userAccrued - baseProfit < 100)) {
         baseProfit = userAccrued;
       }
     }
 
-    return { baseValue: baseProfit, baseTime, rate };
+    return { baseValue: baseProfit, baseTime, rate, totalWithdrawn: Number(userObj?.totalWithdrawn || 0) };
   } catch (e) {
-    return { baseValue: 0, baseTime: Date.now(), rate: 0 };
+    return { baseValue: 0, baseTime: Date.now(), rate: 0, totalWithdrawn: 0 };
   }
 };
 
@@ -145,10 +155,8 @@ export default function UserDashboard() {
 
   const hasPerSecStream = Number(user?.perSecondRate || 0) > 0;
   const hasActiveInvestments = Number(user?.activeInvestments || 0) > 0;
-  const isDailyOnly = hasActiveInvestments && !hasPerSecStream;
-  const isHybrid = hasPerSecStream && (user?.hasDailyPlan || (user?.payoutType && user.payoutType.toLowerCase().includes('hybrid')));
   const hasActivePlan = hasPerSecStream || hasActiveInvestments;
-  const activeRate = hasPerSecStream ? Number(user?.perSecondRate || 0) : 0;
+  const activeRate = Number(user?.perSecondRate || 0);
 
   // Dynamic greeting based on time of day
   const getGreeting = () => {
@@ -222,15 +230,21 @@ export default function UserDashboard() {
     streamAnchorRef.current.rate = currentRate;
 
     if (currentRate <= 0) {
-      const baseProfit = Number(user?.totalProfit || user?.totalEarned || 0);
+      const baseProfit = Number(
+        user?.streamingProfit !== undefined
+          ? user.streamingProfit
+          : (user?.earningWallet !== undefined ? user.earningWallet : (user?.totalProfit || 0))
+      );
       streamAnchorRef.current.baseValue = baseProfit;
       streamAnchorRef.current.baseTime = Date.now();
+      streamAnchorRef.current.totalWithdrawn = Number(user?.totalWithdrawn || 0);
       setStreamingValue(baseProfit);
       try {
         localStorage.setItem('horizon_streaming_state', JSON.stringify({
           baseProfit,
           timestamp: Date.now(),
           rate: 0,
+          totalWithdrawn: Number(user?.totalWithdrawn || 0),
         }));
       } catch (err) { }
       return;
@@ -255,6 +269,7 @@ export default function UserDashboard() {
           baseProfit: liveVal,
           timestamp: now,
           rate: streamAnchorRef.current.rate,
+          totalWithdrawn: Number(user?.totalWithdrawn || 0),
         }));
       } catch (err) { }
     };
@@ -274,21 +289,26 @@ export default function UserDashboard() {
       window.removeEventListener('pagehide', persistStreamState);
       document.removeEventListener('visibilitychange', persistStreamState);
     };
-  }, [user?.perSecondRate, user?.totalProfit, user?.totalEarned]);
+  }, [user?.perSecondRate, user?.streamingProfit, user?.earningWallet, user?.totalProfit, user?.totalWithdrawn]);
 
-  // Synchronize when backend user data updates (monotonically progressive)
+  // Synchronize when backend user data updates (monotonically progressive unless withdrawal/deduction occurs)
   useEffect(() => {
     if (!user) return;
     const currentRate = (user?.perSecondRate !== undefined && user?.perSecondRate !== null && Number(user.perSecondRate) > 0)
       ? Number(user.perSecondRate)
       : 0;
-    const backendProfit = Number(user?.totalProfit || user?.totalEarned || 0);
+    const backendProfit = Number(
+      user?.streamingProfit !== undefined
+        ? user.streamingProfit
+        : (user?.earningWallet !== undefined ? user.earningWallet : (user?.totalProfit || 0))
+    );
 
     if (currentRate <= 0) {
       streamAnchorRef.current = {
         baseValue: backendProfit,
         baseTime: Date.now(),
         rate: 0,
+        totalWithdrawn: Number(user?.totalWithdrawn || 0),
       };
       setStreamingValue(backendProfit);
       try {
@@ -296,6 +316,7 @@ export default function UserDashboard() {
           baseProfit: backendProfit,
           timestamp: Date.now(),
           rate: 0,
+          totalWithdrawn: Number(user?.totalWithdrawn || 0),
         }));
       } catch (err) { }
       return;
@@ -308,13 +329,19 @@ export default function UserDashboard() {
     const currentLocal = streamAnchorRef.current.baseValue +
       (Math.max(0, (Date.now() - streamAnchorRef.current.baseTime) / 1000) * streamAnchorRef.current.rate);
 
-    // Monotonic progression: take maximum so counter never restarts or jumps backward
-    const newBaseline = Math.max(currentLocal, backendAccrued, backendProfit);
+    // If balance was reduced (e.g. withdrawal, re-investment, or admin adjustment), reset immediately to backendAccrued!
+    const isBalanceReduced = (currentLocal - backendAccrued) > 0.05 ||
+      (user?.totalWithdrawn !== undefined && streamAnchorRef.current.totalWithdrawn !== undefined && user.totalWithdrawn > streamAnchorRef.current.totalWithdrawn);
+
+    const newBaseline = isBalanceReduced
+      ? backendAccrued
+      : Math.max(currentLocal, backendAccrued, backendProfit);
 
     streamAnchorRef.current = {
       baseValue: newBaseline,
       baseTime: Date.now(),
       rate: currentRate,
+      totalWithdrawn: Number(user?.totalWithdrawn || 0),
     };
     setStreamingValue(newBaseline);
 
@@ -323,9 +350,10 @@ export default function UserDashboard() {
         baseProfit: newBaseline,
         timestamp: Date.now(),
         rate: currentRate,
+        totalWithdrawn: Number(user?.totalWithdrawn || 0),
       }));
     } catch (err) { }
-  }, [user?.totalProfit, user?.totalEarned, user?.perSecondRate, user?.lastYieldSync]);
+  }, [user?.streamingProfit, user?.earningWallet, user?.totalWithdrawn, user?.perSecondRate, user?.lastYieldSync]);
 
   // Countdown to next daily settlement - 24 hours rolling from the time investment started
   useEffect(() => {
@@ -613,98 +641,40 @@ export default function UserDashboard() {
           <div className="flex-1 space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
               <div className={
-                isDailyOnly
-                  ? "w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"
-                  : hasPerSecStream
+                hasActivePlan
                   ? "live-dot"
                   : "w-2.5 h-2.5 rounded-full bg-slate-400"
               }></div>
               <span className={`text-xs font-extrabold uppercase tracking-[0.14em] font-poppins ${
-                isDailyOnly
-                  ? 'text-blue-900'
-                  : hasPerSecStream
+                hasActivePlan
                   ? 'text-emerald-800'
                   : 'text-slate-700'
               }`}>
-                {isDailyOnly
-                  ? 'Daily 24-Hour Settlement Profit (Day-Wise Payout)'
-                  : isHybrid
-                  ? 'Live Real-Time Streaming & 24h Daily Payout Portfolio'
-                  : hasPerSecStream
+                {hasActivePlan
                   ? 'Live Real-Time Investment Profit Streaming'
                   : 'Live Real-Time Investment Profit Streaming (Idle)'}
               </span>
-              {isDailyOnly && (
-                <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full border border-blue-200">
-                  24h Settlement
-                </span>
-              )}
-              {isHybrid && (
-                <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-300">
-                  Hybrid Mode
-                </span>
-              )}
             </div>
 
-            {/* Value Display */}
-            {isDailyOnly ? (
-              /* Daily Payout: Day-Wise Static Settled Display (Does NOT tick per second) */
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <RiTimeLine size={32} className="text-blue-600 flex-shrink-0" />
-                <span className="streaming-value text-3xl sm:text-5xl 2xl:text-6xl font-black text-slate-950 font-poppins">
-                  ${Number(user?.totalProfit || user?.totalEarned || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-                <span className="text-xs font-bold text-blue-700 font-poppins self-end mb-1 sm:mb-2 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg">
-                  Settled Day-Wise
-                </span>
-              </div>
-            ) : (
-              /* Real-time Streaming Ticker (Ticks Live Per Second) */
-              <div className="flex items-baseline gap-1 flex-wrap">
-                <UilBolt size={32} className={`${hasPerSecStream ? 'text-gold-500' : 'text-slate-400'} flex-shrink-0`} />
-                <span className="streaming-value text-3xl sm:text-5xl 2xl:text-6xl font-black text-slate-950 font-poppins">
-                  ${streamingValue.toFixed(7).split('.')[0]}
-                </span>
-                <span className="streaming-value text-3xl sm:text-5xl 2xl:text-6xl font-black text-slate-950">.</span>
-                <span className="streaming-value text-2xl sm:text-4xl 2xl:text-5xl font-black text-gold-600 font-poppins">
-                  {streamingValue.toFixed(7).split('.')[1]}
-                </span>
-              </div>
-            )}
+            {/* Real-time Streaming Ticker (Ticks Live Per Second) */}
+            <div className="flex items-baseline gap-1 flex-wrap">
+              <UilBolt size={32} className={`${hasActivePlan ? 'text-gold-500' : 'text-slate-400'} flex-shrink-0`} />
+              <span className="streaming-value text-3xl sm:text-5xl 2xl:text-6xl font-black text-slate-950 font-poppins">
+                ${streamingValue.toFixed(7).split('.')[0]}
+              </span>
+              <span className="streaming-value text-3xl sm:text-5xl 2xl:text-6xl font-black text-slate-950">.</span>
+              <span className="streaming-value text-2xl sm:text-4xl 2xl:text-5xl font-black text-gold-600 font-poppins">
+                {streamingValue.toFixed(7).split('.')[1]}
+              </span>
+            </div>
 
             {/* Subtext info */}
             <p className="text-xs sm:text-sm text-slate-700 font-poppins font-medium">
-              {isDailyOnly ? (
-                <>
-                  Daily Payout: <span className="font-extrabold font-mono text-blue-700">+${Number(user?.dailyEarning || 0).toFixed(2)}/day</span>
-                  {' · '}
-                  <span className="text-slate-600">
-                    Payout Mode: <strong>Day-Wise 24h Settlement</strong>
-                  </span>
-                  {' · '}
-                  <span className="text-slate-600">
-                    Active Assets: {user?.activeAssetNames || 'Active Portfolio'}
-                  </span>
-                </>
-              ) : isHybrid ? (
-                <>
-                  Streaming: <span className="font-extrabold font-mono text-emerald-700">+${activeRate.toFixed(7)}/sec</span>
-                  {' + Daily: '}
-                  <span className="font-extrabold font-mono text-blue-700">+${Number(user?.dailyEarning || 0).toFixed(2)}/day</span>
-                  {' · '}
-                  <span className="text-slate-600">
-                    Active Assets: {user?.activeAssetNames || 'Active Portfolio'}
-                  </span>
-                </>
-              ) : (
-                <>
-                  Streaming rate: <span className={`font-extrabold font-mono ${hasPerSecStream ? 'text-emerald-700' : 'text-slate-600'}`}>+${activeRate.toFixed(7)}/sec</span>
-                  {' · '}
-                  <span className="text-slate-600">
-                    Active Assets: {user?.activeAssetNames || (hasPerSecStream ? 'Active Portfolio' : 'None (No Active Investments)')}
-                  </span>
-                </>
-              )}
+              Streaming rate: <span className={`font-extrabold font-mono ${hasActivePlan ? 'text-emerald-700' : 'text-slate-600'}`}>+${activeRate.toFixed(7)}/sec</span>
+              {' · '}
+              <span className="text-slate-600">
+                Active Assets: {user?.activeAssetNames || (hasActivePlan ? 'Active Portfolio' : 'None (No Active Investments)')}
+              </span>
             </p>
 
             <div className="flex items-center gap-2.5 sm:gap-3 pt-2 flex-wrap">
@@ -725,44 +695,22 @@ export default function UserDashboard() {
             </div>
           </div>
 
-          {/* Right: Countdown to next settlement */}
+          {/* Right: Live Streaming Status */}
           <div className="flex flex-col items-center gap-2 bg-white/90 p-4 sm:p-5 rounded-2xl border border-gold-200 shadow-sm flex-shrink-0 min-w-[200px] self-start xl:self-center">
             <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-600 font-poppins">
-              {isDailyOnly ? 'Next 24h Settlement' : 'Next Daily Settlement'}
+              Live ROI Stream
             </span>
             {hasActivePlan ? (
-              <div className="flex flex-col items-center gap-1">
-                <div className="flex items-center gap-2.5">
-                  <div className="text-center">
-                    <div className="countdown-digit text-xl font-bold font-mono">{countdown.hours}</div>
-                    <div className="countdown-label text-[10px]">HR</div>
-                  </div>
-                  <span className="text-xl font-bold text-slate-400 mb-4">:</span>
-                  <div className="text-center">
-                    <div className="countdown-digit text-xl font-bold font-mono">{countdown.minutes}</div>
-                    <div className="countdown-label text-[10px]">MIN</div>
-                  </div>
-                  <span className="text-xl font-bold text-slate-400 mb-4">:</span>
-                  <div className="text-center">
-                    <div className="countdown-digit text-xl font-bold font-mono">{countdown.seconds}</div>
-                    <div className="countdown-label text-[10px]">SEC</div>
-                  </div>
-                </div>
-                {isDailyOnly && (
-                  <span className="text-[10px] text-slate-500 font-medium text-center">
-                    Accrues every 24 hours
-                  </span>
-                )}
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_2px_rgba(16,185,129,0.5)] animate-pulse" />
+                <span className="text-[13px] font-bold text-emerald-600">Streaming Now</span>
+                <span className="text-[10px] text-slate-500 font-medium text-center">
+                  Earning every second, live
+                </span>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-1">
-                <div className="flex items-center gap-2 text-slate-300 font-mono text-xl font-bold">
-                  <span>00</span>
-                  <span>:</span>
-                  <span>00</span>
-                  <span>:</span>
-                  <span>00</span>
-                </div>
+                <div className="w-3 h-3 rounded-full bg-slate-300 mb-1.5" />
                 <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full mt-1.5 shadow-2xs">
                   Awaiting Investment
                 </span>

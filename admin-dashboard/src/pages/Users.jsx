@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   RiEyeLine, RiDeleteBinLine, RiMailLine, RiPhoneLine,
   RiGlobalLine, RiCalendarEventLine, RiUserLine, RiAlertLine,
@@ -8,7 +9,8 @@ import {
   RiCalendarCheckLine, RiGroupLine, RiCheckLine, RiCloseLine,
   RiKeyLine, RiNodeTree, RiFileCopyLine, RiShieldCheckLine, RiShieldLine,
   RiExchangeLine, RiEyeOffLine, RiLockPasswordLine, RiSparklingLine,
-  RiEditLine
+  RiEditLine, RiAwardLine, RiBriefcaseLine, RiCalculatorLine,
+  RiMore2Fill
 } from 'react-icons/ri';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -29,8 +31,126 @@ import {
   shiftUserSponsor
 } from '../api/usersApi';
 
+// 12-Tier Rank Configuration with Cash Rewards, Company Profit %, Monthly Salaries, and Qualification Targets
+const RANK_LADDER_CONFIG = [
+  { level: 1, name: 'Associate', reward: 100, profitPercent: 0, salary: 0, ownDeposit: 50, totalClientDeposit: 5000, requiredDirects: 2 },
+  { level: 2, name: 'Senior Associate', reward: 300, profitPercent: 0, salary: 0, ownDeposit: 100, totalClientDeposit: 10000, requiredDirects: 3 },
+  { level: 3, name: 'Team Leader', reward: 875, profitPercent: 0, salary: 0, ownDeposit: 250, totalClientDeposit: 25000, requiredDirects: 3 },
+  { level: 4, name: 'Director', reward: 2000, profitPercent: 0, salary: 0, ownDeposit: 500, totalClientDeposit: 50000, requiredDirects: 4 },
+  { level: 5, name: 'Regional Director', reward: 5000, profitPercent: 0, salary: 0, ownDeposit: 1000, totalClientDeposit: 10000, requiredDirects: 4 },
+  { level: 6, name: 'Executive Director', reward: 10000, profitPercent: 0.20, salary: 500, ownDeposit: 1500, totalClientDeposit: 200000, requiredDirects: 5 },
+  { level: 7, name: 'Diamond', reward: 15000, profitPercent: 0.50, salary: 1000, ownDeposit: 2000, totalClientDeposit: 300000, requiredDirects: 6 },
+  { level: 8, name: 'Crown Diamond', reward: 30000, profitPercent: 0.75, salary: 1500, ownDeposit: 3000, totalClientDeposit: 600000, requiredDirects: 8 },
+  { level: 9, name: 'Global Ambassador', reward: 50000, profitPercent: 1.00, salary: 3000, ownDeposit: 5000, totalClientDeposit: 1000000, requiredDirects: 10 },
+  { level: 10, name: 'Titan', reward: 250000, profitPercent: 1.25, salary: 5000, ownDeposit: 0, totalClientDeposit: 5000000, requiredDirects: 15 },
+  { level: 11, name: 'Crown Titan', reward: 500000, profitPercent: 1.50, salary: 7500, ownDeposit: 0, totalClientDeposit: 10000000, requiredDirects: 20 },
+  { level: 12, name: 'Global Titan', reward: 1250000, profitPercent: 2.00, salary: 10000, ownDeposit: 0, totalClientDeposit: 25000000, requiredDirects: 25 },
+];
+
+const getUserRankConfig = (user) => {
+  if (!user) return RANK_LADDER_CONFIG[0];
+  const rankStr = (
+    user.currentRank ||
+    user.rank?.name ||
+    user.rank ||
+    ''
+  ).toString().toLowerCase().trim();
+
+  let found = RANK_LADDER_CONFIG.find(r => r.name.toLowerCase() === rankStr);
+  if (found) return found;
+
+  const lvl = Number(user.level || user.rankLevel || user.rank?.level);
+  if (lvl) {
+    found = RANK_LADDER_CONFIG.find(r => r.level === lvl);
+    if (found) return found;
+  }
+
+  if (rankStr) {
+    found = RANK_LADDER_CONFIG.find(r => rankStr.includes(r.name.toLowerCase()));
+    if (found) return found;
+  }
+
+  return RANK_LADDER_CONFIG[0]; // fallback Associate
+};
+
+// Check if user is actively eligible for their rank milestone reward & disbursals
+const checkUserRankEligibility = (user, rankConfig) => {
+  if (!user || !rankConfig) {
+    return {
+      isEligible: false,
+      reason: 'No user or rank configuration found.',
+      pendingDetails: [],
+      userOwnDeposit: 0,
+      userTurnover: 0,
+      userDirects: 0,
+      isOwnMet: false,
+      isTurnoverMet: false,
+      isDirectsMet: false
+    };
+  }
+
+  // If user object has an explicit rank active verification flag
+  if (user.isRankActive === true || user.isRankQualified === true) {
+    return {
+      isEligible: true,
+      reason: 'Rank is actively confirmed by system.',
+      pendingDetails: [],
+      userOwnDeposit: Number(user.totalInvested || user.depositWallet || 0),
+      userTurnover: Number(user.teamTurnover || user.turnover || user.teamVolume || 0),
+      userDirects: Number(user.directReferrals || user.totalReferrals || user.directRefs || 0),
+      isOwnMet: true,
+      isTurnoverMet: true,
+      isDirectsMet: true
+    };
+  }
+
+  const userOwnDeposit = Number(user.totalInvested || user.depositWallet || 0);
+  const userTurnover = Number(user.teamTurnover || user.turnover || user.teamVolume || 0);
+  const userDirects = Number(user.directReferrals || user.totalReferrals || user.directRefs || 0);
+
+  const ownReq = Number(rankConfig.ownDeposit || 0);
+  const turnoverReq = Number(rankConfig.totalClientDeposit || 0);
+  const directsReq = Number(rankConfig.requiredDirects || 2);
+
+  const isOwnMet = userOwnDeposit >= ownReq;
+  const isTurnoverMet = userTurnover >= turnoverReq;
+  const isDirectsMet = userDirects >= directsReq;
+
+  // If user has already achieved a higher rank level than this tier
+  const userLvl = Number(user.rankLevel || user.rank?.level || 0);
+  const passedHigherTier = userLvl > rankConfig.level;
+
+  const isEligible = passedHigherTier || (isOwnMet && isTurnoverMet && isDirectsMet);
+
+  const pendingDetails = [];
+  if (!isOwnMet) {
+    pendingDetails.push(`Own Deposit: $${userOwnDeposit.toLocaleString()} / $${ownReq.toLocaleString()} ($${(ownReq - userOwnDeposit).toLocaleString()} needed)`);
+  }
+  if (!isTurnoverMet) {
+    pendingDetails.push(`Client Turnover: $${userTurnover.toLocaleString()} / $${turnoverReq.toLocaleString()} ($${(turnoverReq - userTurnover).toLocaleString()} needed)`);
+  }
+  if (!isDirectsMet) {
+    pendingDetails.push(`Direct Referrals: ${userDirects} / ${directsReq} (${directsReq - userDirects} needed)`);
+  }
+
+  return {
+    isEligible,
+    isOwnMet,
+    isTurnoverMet,
+    isDirectsMet,
+    userOwnDeposit,
+    userTurnover,
+    userDirects,
+    ownReq,
+    turnoverReq,
+    directsReq,
+    pendingDetails,
+  };
+};
+
 export default function Users() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [userList, setUserList] = useState([]);
   const [search, setSearch] = useState('');
@@ -40,6 +160,14 @@ export default function Users() {
   const [userToDelete, setUserToDelete] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [activeActionMenu, setActiveActionMenu] = useState(null);
+
+  // Close floating 3-dots action menu when clicking anywhere else
+  useEffect(() => {
+    const handleCloseMenu = () => setActiveActionMenu(null);
+    window.addEventListener('click', handleCloseMenu);
+    return () => window.removeEventListener('click', handleCloseMenu);
+  }, []);
 
   // Shift Sponsor Modal State
   const [shiftModalUser, setShiftModalUser] = useState(null);
@@ -56,6 +184,171 @@ export default function Users() {
   const [editModalUser, setEditModalUser] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', country: '' });
   const [savingUserEdit, setSavingUserEdit] = useState(false);
+
+  // Adjust / Disburse Wallet Modal State
+  const [adjustModalUser, setAdjustModalUser] = useState(null);
+  const [companyProfitInput, setCompanyProfitInput] = useState('');
+  const [adjustForm, setAdjustForm] = useState({
+    walletType: 'rankReward',
+    action: 'credit',
+    amount: '',
+    reason: '',
+  });
+  const [adjustingWallet, setAdjustingWallet] = useState(false);
+
+  const handleOpenAdjustModal = (user, defaultType = 'rankReward') => {
+    setAdjustModalUser(user);
+    const rankInfo = getUserRankConfig(user);
+    const eligibility = checkUserRankEligibility(user, rankInfo);
+    setCompanyProfitInput('');
+
+    let initAmount = '';
+    let initReason = '';
+
+    if (defaultType === 'rankReward') {
+      if (eligibility.isEligible) {
+        initAmount = String(rankInfo.reward || 100);
+        initReason = `One Time Cash Reward ($${(rankInfo.reward || 100).toLocaleString()}) - ${rankInfo.name} Rank (Eligible)`;
+      } else {
+        initAmount = '';
+        initReason = `One Time Cash Reward - ${rankInfo.name} Rank`;
+      }
+    } else if (defaultType === 'salary') {
+      if (eligibility.isEligible && rankInfo.salary > 0) {
+        initAmount = String(rankInfo.salary);
+        initReason = `Per Month Salary ($${rankInfo.salary.toLocaleString()}) - ${rankInfo.name} Rank (Eligible)`;
+      } else {
+        initAmount = '';
+        initReason = `Per Month Salary - ${rankInfo.name} Rank`;
+      }
+    } else if (defaultType === 'companyProfit') {
+      initAmount = '';
+      initReason = `Company Profit %ge - ${rankInfo.name} Rank`;
+    } else {
+      initAmount = '';
+      initReason = 'Capital Balance Adjustment (Deposit Wallet)';
+    }
+
+    setAdjustForm({
+      walletType: defaultType,
+      action: 'credit',
+      amount: initAmount,
+      reason: initReason,
+    });
+  };
+
+  const handleWalletTypeChange = (newType) => {
+    if (!adjustModalUser) return;
+    const rankInfo = getUserRankConfig(adjustModalUser);
+    const eligibility = checkUserRankEligibility(adjustModalUser, rankInfo);
+    let newAmount = '';
+    let newReason = '';
+
+    if (newType === 'rankReward') {
+      if (eligibility.isEligible) {
+        newAmount = String(rankInfo.reward || 100);
+        newReason = `One Time Cash Reward ($${(rankInfo.reward || 100).toLocaleString()}) - ${rankInfo.name} Rank (Eligible)`;
+      } else {
+        newAmount = '';
+        newReason = `One Time Cash Reward - ${rankInfo.name} Rank`;
+      }
+    } else if (newType === 'salary') {
+      if (eligibility.isEligible && rankInfo.salary > 0) {
+        newAmount = String(rankInfo.salary);
+        newReason = `Per Month Salary ($${rankInfo.salary.toLocaleString()}) - ${rankInfo.name} Rank (Eligible)`;
+      } else {
+        newAmount = '';
+        newReason = `Per Month Salary - ${rankInfo.name} Rank`;
+      }
+    } else if (newType === 'companyProfit') {
+      const numProfit = parseFloat(companyProfitInput) || 0;
+      if (numProfit > 0 && rankInfo.profitPercent > 0 && eligibility.isEligible) {
+        const calculated = ((numProfit * rankInfo.profitPercent) / 100).toFixed(2);
+        newAmount = String(Number(calculated));
+        newReason = `Company Profit Share (${rankInfo.profitPercent}% of $${numProfit.toLocaleString()}) - ${rankInfo.name} Rank`;
+      } else {
+        newAmount = '';
+        newReason = `Company Profit Share (${rankInfo.profitPercent}%) - ${rankInfo.name} Rank`;
+      }
+    } else if (newType === 'depositWallet') {
+      newAmount = '';
+      newReason = 'Capital Balance Adjustment (Deposit Wallet)';
+    }
+
+    setAdjustForm(prev => ({
+      ...prev,
+      walletType: newType,
+      amount: newAmount,
+      reason: newReason,
+    }));
+  };
+
+  const handleCompanyProfitInputChange = (profitValStr) => {
+    setCompanyProfitInput(profitValStr);
+    if (!adjustModalUser) return;
+    const rankInfo = getUserRankConfig(adjustModalUser);
+    const eligibility = checkUserRankEligibility(adjustModalUser, rankInfo);
+    const numProfit = parseFloat(profitValStr) || 0;
+
+    if (numProfit > 0 && rankInfo.profitPercent > 0 && eligibility.isEligible) {
+      const calculated = ((numProfit * rankInfo.profitPercent) / 100).toFixed(2);
+      setAdjustForm(prev => ({
+        ...prev,
+        amount: String(Number(calculated)),
+        reason: `Company Profit Share (${rankInfo.profitPercent}% of $${numProfit.toLocaleString()}) - ${rankInfo.name} Rank`,
+      }));
+    } else if (numProfit > 0 && rankInfo.profitPercent > 0 && !eligibility.isEligible) {
+      setAdjustForm(prev => ({
+        ...prev,
+        amount: '',
+        reason: `Company Profit Share (${rankInfo.profitPercent}% of $${numProfit.toLocaleString()}) - Criteria Pending`,
+      }));
+    } else if (numProfit > 0 && rankInfo.profitPercent === 0) {
+      setAdjustForm(prev => ({
+        ...prev,
+        amount: '0',
+        reason: `Company Profit Share (0%) - ${rankInfo.name} Rank`,
+      }));
+    } else {
+      setAdjustForm(prev => ({
+        ...prev,
+        amount: '',
+      }));
+    }
+  };
+
+  const handleSaveWalletAdjustment = async (e) => {
+    e?.preventDefault();
+    if (!adjustModalUser || !adjustForm.amount || Number(adjustForm.amount) <= 0) {
+      toast.error('Please enter a valid positive amount.', 'Validation Error');
+      return;
+    }
+    setAdjustingWallet(true);
+    try {
+      const res = await adjustUserWallet(adjustModalUser._id || adjustModalUser.id, {
+        walletType: adjustForm.walletType,
+        action: adjustForm.action,
+        amount: Number(adjustForm.amount),
+        reason: adjustForm.reason.trim() || `Manual adjustment by Admin (${adjustForm.walletType})`,
+      });
+
+      if (res?.success) {
+        toast.success(res.message || 'Wallet adjusted successfully.', 'Balance Updated');
+        const updatedUser = res.user;
+        setUserList(prev => prev.map(u => (u._id === adjustModalUser._id || u.id === adjustModalUser.id) ? { ...u, ...updatedUser } : u));
+        if (selectedUser && (selectedUser._id === adjustModalUser._id || selectedUser.id === adjustModalUser.id)) {
+          setSelectedUser(prev => ({ ...prev, ...updatedUser }));
+        }
+        setAdjustModalUser(null);
+      } else {
+        toast.error(res?.message || 'Failed to adjust wallet.', 'Adjustment Failed');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Error processing wallet adjustment.', 'Adjustment Failed');
+    } finally {
+      setAdjustingWallet(false);
+    }
+  };
 
   const handleOpenEditModal = (user) => {
     setEditModalUser(user);
@@ -120,6 +413,7 @@ export default function Users() {
 
       if (res?.success && Array.isArray(res.users)) {
         const formatted = res.users.map(u => ({
+          ...u,
           _id: u._id,
           id: u.customId || u._id,
           customId: u.customId || '',
@@ -142,6 +436,9 @@ export default function Users() {
           referredBy: u.sponsorId || 'HORIZON-HQ',
           totalReferrals: u.totalReferrals || 0,
           directReferrals: u.directReferrals || 0,
+          teamTurnover: Number(u.teamTurnover || 0),
+          rankLevel: Number(u.rankLevel || 1),
+          currentRank: u.currentRank || 'Associate',
           rank: {
             level: u.rankLevel || 1,
             name: u.currentRank || 'Starter',
@@ -546,63 +843,110 @@ export default function Users() {
                       </Badge>
                     </td>
 
-                    {/* Actions: View, Shift, Password Reset & Delete */}
+                    {/* Actions: Compact 3-Dots Dropdown Menu */}
                     <td className="text-right pr-6 whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5 font-poppins">
-                        {/* View Button */}
+                      <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
                         <button
-                          onClick={() => handleViewUser(user)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-gold-50 text-slate-700 hover:text-gold-800 text-xs font-semibold transition-all border border-slate-200/80 hover:border-gold-300 active:scale-95 shadow-2xs"
-                          title="View user details & investment portfolio"
+                          type="button"
+                          onClick={() => setActiveActionMenu(activeActionMenu === (user._id || user.id) ? null : (user._id || user.id))}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-2xs border ${
+                            activeActionMenu === (user._id || user.id)
+                              ? 'bg-gold-400 text-slate-950 border-gold-500 shadow-gold ring-2 ring-gold-200'
+                              : 'bg-slate-100 hover:bg-gold-50 text-slate-600 hover:text-slate-900 border-slate-200/80 hover:border-gold-300'
+                          }`}
+                          title="Investor actions menu"
                         >
-                          <RiEyeLine size={14} />
-                          <span>View</span>
+                          <RiMore2Fill size={18} />
                         </button>
 
-                        {/* Edit Contact Button */}
-                        <button
-                          onClick={() => handleOpenEditModal(user)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-all border border-blue-200 hover:border-blue-300 active:scale-95 shadow-2xs cursor-pointer"
-                          title="Edit user email, phone number, and name"
-                        >
-                          <RiEditLine size={13} />
-                          <span>Edit</span>
-                        </button>
+                        {/* Floating Action Dropdown Menu */}
+                        {activeActionMenu === (user._id || user.id) && (
+                          <div className="absolute right-0 mt-1.5 w-52 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-50 animate-fade-in font-poppins text-xs divide-y divide-slate-100 text-left">
+                            <div className="py-1">
+                              {/* 1. View Details */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionMenu(null);
+                                  handleViewUser(user);
+                                }}
+                                className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-gold-50 hover:text-gold-950 transition-colors cursor-pointer font-medium"
+                              >
+                                <RiEyeLine size={15} className="text-slate-400" />
+                                <span>View Details</span>
+                              </button>
 
-                        {/* Shift Hierarchy Button */}
-                        <button
-                          onClick={() => {
-                            setShiftModalUser(user);
-                            setTargetSponsorInput(user.referredBy || 'HORIZON-HQ');
-                          }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold transition-all border border-amber-200 hover:border-amber-300 active:scale-95 shadow-2xs"
-                          title="Shift user hierarchy position internally"
-                        >
-                          <RiNodeTree size={14} />
-                          <span>Shift</span>
-                        </button>
+                              {/* 2. Disburse Earnings (Redirects to Dedicated Page) */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionMenu(null);
+                                  navigate(`/admin/disburse?userId=${user._id || user.id}`);
+                                }}
+                                className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-950 transition-colors cursor-pointer font-bold"
+                              >
+                                <RiCoinsLine size={15} className="text-emerald-600" />
+                                <span>Disburse Earnings</span>
+                              </button>
 
-                        {/* View Password & Credentials Button */}
-                        <button
-                          onClick={() => {
-                            setPasswordModalUser(user);
-                            setModalShowPassword(false);
-                          }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition-all border border-indigo-200 hover:border-indigo-300 active:scale-95 shadow-2xs cursor-pointer"
-                          title="View user login password and account credentials"
-                        >
-                          <RiKeyLine size={14} />
-                          <span>Password</span>
-                        </button>
+                              {/* 3. Edit User Info */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionMenu(null);
+                                  handleOpenEditModal(user);
+                                }}
+                                className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-blue-50 hover:text-blue-900 transition-colors cursor-pointer font-medium"
+                              >
+                                <RiEditLine size={15} className="text-blue-500" />
+                                <span>Edit User</span>
+                              </button>
 
-                        {/* Delete Button */}
-                        <button
-                          onClick={() => setUserToDelete(user)}
-                          className="inline-flex items-center p-1.5 rounded-full bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-semibold transition-all border border-red-200/70 hover:border-red-300 active:scale-95 shadow-2xs"
-                          title="Delete user"
-                        >
-                          <RiDeleteBinLine size={14} />
-                        </button>
+                              {/* 4. Shift Sponsor */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionMenu(null);
+                                  setShiftModalUser(user);
+                                  setTargetSponsorInput(user.referredBy || 'HORIZON-HQ');
+                                }}
+                                className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-amber-50 hover:text-amber-900 transition-colors cursor-pointer font-medium"
+                              >
+                                <RiNodeTree size={15} className="text-amber-600" />
+                                <span>Shift Sponsor</span>
+                              </button>
+
+                              {/* 5. View Password */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionMenu(null);
+                                  setPasswordModalUser(user);
+                                  setModalShowPassword(false);
+                                }}
+                                className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 transition-colors cursor-pointer font-medium"
+                              >
+                                <RiKeyLine size={15} className="text-indigo-500" />
+                                <span>View Password</span>
+                              </button>
+                            </div>
+
+                            {/* 6. Delete Action */}
+                            <div className="py-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionMenu(null);
+                                  setUserToDelete(user);
+                                }}
+                                className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer font-medium"
+                              >
+                                <RiDeleteBinLine size={15} className="text-rose-500" />
+                                <span>Delete User</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -891,12 +1235,22 @@ export default function Users() {
               </div>
             </div>
 
-            {/* ──────────────── INVESTMENT PORTFOLIO METRICS ──────────────── */}
-            <div>
-              <h4 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3 flex items-center gap-1.5 font-poppins">
-                <RiMoneyDollarCircleLine className="text-gold-600" size={16} />
-                Financial Portfolio Summary
-              </h4>
+            {/* ──────────────── INVESTMENT PORTFOLIO & WALLET BREAKDOWN ──────────────── */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-1.5 font-poppins">
+                  <RiMoneyDollarCircleLine className="text-gold-600" size={16} />
+                  Financial Portfolio & Earning Streams
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => handleOpenAdjustModal(selectedUser)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-950 font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                >
+                  <RiCoinsLine size={14} />
+                  <span>Disburse / Adjust Wallet</span>
+                </button>
+              </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-poppins">
                 {/* Total Invested */}
@@ -915,20 +1269,62 @@ export default function Users() {
                   </p>
                 </div>
 
-                {/* Wallet Balance */}
-                <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs text-center">
-                  <p className="text-[11px] text-slate-400 font-normal">Wallet Balance</p>
-                  <p className="text-base font-semibold text-gold-600 font-poppins mt-0.5">
-                    ${Number((selectedUser.depositWallet || 0) + (selectedUser.earningWallet || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {/* Total Earning Wallet */}
+                <div className="p-3.5 bg-white rounded-xl border border-gold-300 shadow-2xs text-center">
+                  <p className="text-[11px] text-slate-500 font-bold">Total Earning Wallet</p>
+                  <p className="text-base font-bold text-emerald-700 font-poppins mt-0.5">
+                    ${Number(selectedUser.earningWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
 
-                {/* Active Plans Count */}
+                {/* Deposit Wallet */}
                 <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs text-center">
-                  <p className="text-[11px] text-slate-400 font-normal">Active Plans</p>
-                  <p className="text-base font-semibold text-slate-700 font-poppins mt-0.5">
-                    {selectedUser.activePlans?.length || selectedUser.activeContracts || 0} Holdings
+                  <p className="text-[11px] text-slate-400 font-normal">Deposit Wallet</p>
+                  <p className="text-base font-semibold text-slate-800 font-poppins mt-0.5">
+                    ${Number(selectedUser.depositWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
+                </div>
+              </div>
+
+              {/* 5 Earning Stream Sub-balances Box */}
+              <div className="p-4 bg-gradient-to-br from-amber-50/50 via-white to-gold-50/30 rounded-2xl border border-gold-200 space-y-2.5 font-poppins">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                    Earning Wallet Sub-Balances Breakdown
+                  </span>
+                  <span className="text-[10px] text-slate-400">Available for User Withdrawal</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+                  <div className="p-2 bg-white rounded-xl border border-slate-200">
+                    <span className="text-[10px] text-slate-400 block">PV ROI (Auto)</span>
+                    <span className="font-extrabold text-slate-900 font-mono mt-0.5 block">
+                      ${Number(selectedUser.pvRoiBalance || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="p-2 bg-white rounded-xl border border-slate-200">
+                    <span className="text-[10px] text-slate-400 block">Level Income (Auto)</span>
+                    <span className="font-extrabold text-slate-900 font-mono mt-0.5 block">
+                      ${Number(selectedUser.levelIncomeBalance || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="p-2 bg-white rounded-xl border border-amber-200 bg-amber-50/30">
+                    <span className="text-[10px] text-amber-800 font-bold block">Cash Reward</span>
+                    <span className="font-extrabold text-slate-900 font-mono mt-0.5 block">
+                      ${Number(selectedUser.rankRewardBalance || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="p-2 bg-white rounded-xl border border-purple-200 bg-purple-50/30">
+                    <span className="text-[10px] text-purple-800 font-bold block">Company Profit %</span>
+                    <span className="font-extrabold text-slate-900 font-mono mt-0.5 block">
+                      ${Number(selectedUser.companyProfitBalance || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="p-2 bg-white rounded-xl border border-blue-200 bg-blue-50/30">
+                    <span className="text-[10px] text-blue-800 font-bold block">Monthly Salary</span>
+                    <span className="font-extrabold text-slate-900 font-mono mt-0.5 block">
+                      ${Number(selectedUser.salaryBalance || 0).toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1427,6 +1823,460 @@ export default function Users() {
             </div>
           </form>
         )}
+      </Modal>
+
+      {/* ──────────────── DISBURSE / ADJUST WALLET MODAL ──────────────── */}
+      <Modal
+        isOpen={!!adjustModalUser}
+        onClose={() => {
+          if (!adjustingWallet) setAdjustModalUser(null);
+        }}
+        title="Disburse Earnings / Adjust Wallet Balance"
+        subtitle={adjustModalUser ? `${adjustModalUser.name} (${adjustModalUser.customId || adjustModalUser.email})` : ''}
+        size="md"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setAdjustModalUser(null)}
+              disabled={adjustingWallet}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              icon={<RiCoinsLine />}
+              onClick={handleSaveWalletAdjustment}
+              loading={adjustingWallet}
+            >
+              Confirm Adjustment
+            </Button>
+          </>
+        }
+      >
+        {adjustModalUser && (() => {
+          const rankInfo = getUserRankConfig(adjustModalUser);
+          return (
+            <form onSubmit={handleSaveWalletAdjustment} className="space-y-4 font-poppins">
+              {/* User Balances Strip */}
+              <div className="p-3.5 bg-gradient-to-r from-amber-50 to-gold-50/50 rounded-2xl border border-gold-300 text-xs space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Investor:</span>
+                  <span className="font-bold text-slate-800">{adjustModalUser.name}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Current Rank:</span>
+                  <span className="font-bold text-gold-900 bg-gold-200/80 px-2 py-0.5 rounded-md border border-gold-300 text-[11px]">
+                    Tier {rankInfo.level}: {rankInfo.name}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Total Earning Wallet:</span>
+                  <span className="font-extrabold text-emerald-700 font-mono">
+                    ${Number(adjustModalUser.earningWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Deposit Wallet:</span>
+                  <span className="font-extrabold text-slate-800 font-mono">
+                    ${Number(adjustModalUser.depositWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Wallet / Income Stream Selection */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Target Wallet / Income Stream *
+                </label>
+                <select
+                  value={adjustForm.walletType}
+                  onChange={(e) => handleWalletTypeChange(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold text-slate-800 outline-none focus:border-gold-400 shadow-2xs cursor-pointer"
+                >
+                  <optgroup label="Rank-Based Income Streams (Manual Admin Disbursal)">
+                    <option value="rankReward">One Time Cash Reward ($)</option>
+                    <option value="companyProfit">Company Profit %ge</option>
+                    <option value="salary">Per Month Salary</option>
+                  </optgroup>
+                  <optgroup label="Capital Balance">
+                    <option value="depositWallet">Deposit Wallet (Capital Balance)</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* 🎯 RANK-BASED AUTO-CALCULATION CARDS */}
+
+              {/* 1. One Time Cash Reward Card */}
+              {adjustForm.walletType === 'rankReward' && (() => {
+                const eligibility = checkUserRankEligibility(adjustModalUser, rankInfo);
+                return (
+                  <div className={`p-3.5 rounded-xl border text-xs space-y-2.5 font-poppins transition-all ${
+                    eligibility.isEligible
+                      ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
+                      : 'bg-amber-50/90 border-amber-300 text-amber-950'
+                  }`}>
+                    {/* Header */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold flex items-center gap-1.5 text-xs">
+                        <RiAwardLine className={eligibility.isEligible ? 'text-emerald-700' : 'text-amber-700'} size={17} />
+                        <span>One Time Cash Reward Entitlement</span>
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-white border border-slate-300 text-slate-800">
+                          Tier {rankInfo.level}: {rankInfo.name}
+                        </span>
+                        {eligibility.isEligible ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-200 text-emerald-900 border border-emerald-400 flex items-center gap-1">
+                            <RiCheckLine size={12} /> Eligible (Rank Active)
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
+                            <RiCloseLine size={12} /> Not Eligible (In Progress)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Standard Ladder Reward Line */}
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200/80 text-xs">
+                      <span className="text-slate-600 font-medium">Standard Ladder Reward:</span>
+                      <span className="font-extrabold font-mono text-sm">
+                        {eligibility.isEligible ? (
+                          <span className="text-emerald-800 font-black">
+                            ${rankInfo.reward.toLocaleString()} USD (Auto-filled)
+                          </span>
+                        ) : (
+                          <span className="text-rose-700 font-black">
+                            ${rankInfo.reward.toLocaleString()} USD (Not Auto-filled)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+
+                    {/* Details / Checklist Box */}
+                    {eligibility.isEligible ? (
+                      <div className="p-2 rounded-lg bg-emerald-100/70 border border-emerald-300 text-[11px] text-emerald-900 space-y-0.5">
+                        <p className="font-bold flex items-center gap-1">
+                          <RiCheckLine className="text-emerald-700" size={14} />
+                          Rank qualification confirmed! Criteria fulfilled:
+                        </p>
+                        <p className="text-[10.5px] text-emerald-800">
+                          Own Deposit: ${eligibility.userOwnDeposit.toLocaleString()} / ${rankInfo.ownDeposit.toLocaleString()} • Turnover: ${eligibility.userTurnover.toLocaleString()} / ${rankInfo.totalClientDeposit.toLocaleString()} • Directs: {eligibility.userDirects} / {rankInfo.requiredDirects}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-2.5 rounded-lg bg-white/90 border border-amber-300 text-[11px] text-amber-950 space-y-1.5 shadow-2xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-bold text-rose-800 flex items-center gap-1">
+                            <RiAlertLine className="text-rose-600 flex-shrink-0" size={14} />
+                            <span>Rank qualification criteria pending (Reward not auto-filled):</span>
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAdjustForm(prev => ({
+                                ...prev,
+                                amount: String(rankInfo.reward || 100),
+                                reason: `One Time Cash Reward ($${(rankInfo.reward || 100).toLocaleString()}) - ${rankInfo.name} Rank (Admin Override)`
+                              }));
+                            }}
+                            className="text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-2 py-0.5 rounded cursor-pointer transition-colors whitespace-nowrap"
+                            title="Force fill ladder reward anyway"
+                          >
+                            ⚡ Force Fill ${rankInfo.reward.toLocaleString()}
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 pt-1 border-t border-amber-100 text-[10px] font-mono">
+                          <div className={`px-2 py-1 rounded border ${eligibility.isOwnMet ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'}`}>
+                            <div className="text-[9px] uppercase font-bold text-slate-500">Own Deposit</div>
+                            <div className="font-bold">${eligibility.userOwnDeposit.toLocaleString()} / ${rankInfo.ownDeposit.toLocaleString()}</div>
+                            <div>{eligibility.isOwnMet ? '✔ Met' : '❌ Pending'}</div>
+                          </div>
+                          <div className={`px-2 py-1 rounded border ${eligibility.isTurnoverMet ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'}`}>
+                            <div className="text-[9px] uppercase font-bold text-slate-500">Client Turnover</div>
+                            <div className="font-bold">${eligibility.userTurnover.toLocaleString()} / ${rankInfo.totalClientDeposit.toLocaleString()}</div>
+                            <div>{eligibility.isTurnoverMet ? '✔ Met' : '❌ Pending'}</div>
+                          </div>
+                          <div className={`px-2 py-1 rounded border ${eligibility.isDirectsMet ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'}`}>
+                            <div className="text-[9px] uppercase font-bold text-slate-500">Direct Clients</div>
+                            <div className="font-bold">{eligibility.userDirects} / {rankInfo.requiredDirects} Directs</div>
+                            <div>{eligibility.isDirectsMet ? '✔ Met' : '❌ Pending'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* 2. Company Profit Share Card & Calculator */}
+              {adjustForm.walletType === 'companyProfit' && (() => {
+                const eligibility = checkUserRankEligibility(adjustModalUser, rankInfo);
+                const isProfitRankEligible = rankInfo.profitPercent > 0;
+                return (
+                  <div className="p-3.5 rounded-xl bg-purple-50/80 border border-purple-200 text-xs space-y-2.5 font-poppins">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="font-bold text-purple-950 flex items-center gap-1.5">
+                        <RiPercentLine className="text-purple-700" size={16} />
+                        <span>Company Profit Share Calculation</span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-200 text-purple-900 border border-purple-300">
+                          {rankInfo.name}: {rankInfo.profitPercent}%
+                        </span>
+                        {!isProfitRankEligible ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                            Tier 6+ Required
+                          </span>
+                        ) : eligibility.isEligible ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ✔ Eligible
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                            ❌ Not Eligible (In Progress)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-purple-900 uppercase tracking-wider mb-1">
+                        Enter Total Company Profit ($ USD)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-xs text-purple-400 font-mono">$</span>
+                        <input
+                          type="number"
+                          step="any"
+                          value={companyProfitInput}
+                          onChange={(e) => handleCompanyProfitInputChange(e.target.value)}
+                          placeholder="e.g. 100000"
+                          className="w-full pl-7 pr-3 py-2 bg-white rounded-lg border border-purple-300 text-xs font-bold text-purple-950 font-mono outline-none focus:border-purple-500 shadow-2xs"
+                        />
+                      </div>
+                      {/* Quick preset buttons */}
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <span className="text-[10px] text-purple-600 font-medium">Quick presets:</span>
+                        {[25000, 50000, 100000, 250000, 500000].map(amt => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => handleCompanyProfitInputChange(String(amt))}
+                            className="px-1.5 py-0.5 rounded bg-white hover:bg-purple-100 text-purple-900 border border-purple-200 text-[10px] font-mono font-semibold cursor-pointer"
+                          >
+                            ${amt.toLocaleString()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Calculation formula display */}
+                    {companyProfitInput && Number(companyProfitInput) > 0 && (
+                      <div className="p-2 rounded-lg bg-white border border-purple-200 text-[11px] space-y-0.5">
+                        <div className="flex justify-between text-slate-600">
+                          <span>Calculation Formula:</span>
+                          <span className="font-mono text-purple-900 font-bold">
+                            ${Number(companyProfitInput).toLocaleString()} × {rankInfo.profitPercent}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-slate-800 font-bold pt-1 border-t border-purple-100">
+                          <span>Calculated Disbursal:</span>
+                          <span className="font-mono text-emerald-700 text-xs font-black">
+                            ${((Number(companyProfitInput) * rankInfo.profitPercent) / 100).toFixed(2)} USD {eligibility.isEligible ? '(Auto-filled below)' : '(Criteria pending - Not auto-filled)'}
+                          </span>
+                        </div>
+                        {!eligibility.isEligible && isProfitRankEligible && (
+                          <div className="pt-1.5 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const calculated = ((Number(companyProfitInput) * rankInfo.profitPercent) / 100).toFixed(2);
+                                setAdjustForm(prev => ({
+                                  ...prev,
+                                  amount: String(Number(calculated)),
+                                  reason: `Company Profit Share (${rankInfo.profitPercent}% of $${Number(companyProfitInput).toLocaleString()}) - ${rankInfo.name} Rank (Admin Override)`
+                                }));
+                              }}
+                              className="text-[10px] font-bold text-purple-900 bg-purple-100 hover:bg-purple-200 border border-purple-300 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                            >
+                              ⚡ Force Fill Calculated Amount (${((Number(companyProfitInput) * rankInfo.profitPercent) / 100).toFixed(2)})
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!isProfitRankEligible && (
+                      <p className="text-[10.5px] text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200 leading-relaxed">
+                        ⚠️ Note: Rank "{rankInfo.name}" has <strong>0%</strong> profit share on the rank ladder (Profit sharing starts at Executive Director Tier 6 with 0.20%).
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* 3. Monthly Salary Card */}
+              {adjustForm.walletType === 'salary' && (() => {
+                const eligibility = checkUserRankEligibility(adjustModalUser, rankInfo);
+                const isSalaryEligible = rankInfo.salary > 0;
+                return (
+                  <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200 text-xs space-y-1.5 font-poppins">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="font-semibold text-blue-950 flex items-center gap-1.5">
+                        <RiBriefcaseLine className="text-blue-700" size={16} />
+                        <span>Monthly Leadership Salary Entitlement</span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-200 text-blue-900 border border-blue-300">
+                          Tier {rankInfo.level}: {rankInfo.name}
+                        </span>
+                        {!isSalaryEligible ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                            Tier 6+ Required
+                          </span>
+                        ) : eligibility.isEligible ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ✔ Eligible
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                            ❌ Not Eligible (In Progress)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-blue-200/60 text-xs">
+                      <span className="text-slate-600">Designated Monthly Salary:</span>
+                      <span className="font-extrabold text-blue-900 font-mono text-sm">
+                        {isSalaryEligible ? (
+                          eligibility.isEligible ? (
+                            `$${rankInfo.salary.toLocaleString()} USD / Month (Auto-filled)`
+                          ) : (
+                            `$${rankInfo.salary.toLocaleString()} USD / Month (Not Auto-filled)`
+                          )
+                        ) : (
+                          '$0 USD (Not eligible on rank ladder)'
+                        )}
+                      </span>
+                    </div>
+                    {!isSalaryEligible && (
+                      <p className="text-[10.5px] text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200 leading-relaxed">
+                        ⚠️ Note: Rank "{rankInfo.name}" has no fixed monthly salary on the ladder (Salary starts from Executive Director Tier 6 at $500/month).
+                      </p>
+                    )}
+                    {isSalaryEligible && !eligibility.isEligible && (
+                      <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-between gap-2">
+                        <span className="text-[10.5px] text-amber-800">
+                          User rank criteria is pending. Salary is not auto-filled.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdjustForm(prev => ({
+                              ...prev,
+                              amount: String(rankInfo.salary),
+                              reason: `Per Month Salary ($${rankInfo.salary.toLocaleString()}) - ${rankInfo.name} Rank (Admin Override)`
+                            }));
+                          }}
+                          className="text-[10px] font-bold text-blue-900 bg-blue-100 hover:bg-blue-200 border border-blue-300 px-2 py-0.5 rounded cursor-pointer transition-colors whitespace-nowrap"
+                        >
+                          ⚡ Force Fill ${rankInfo.salary.toLocaleString()}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Action Type: Credit or Debit */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Operation Action *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdjustForm({ ...adjustForm, action: 'credit' })}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      adjustForm.action === 'credit'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-400 ring-2 ring-emerald-200'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <RiArrowUpCircleLine size={16} className="text-emerald-600" />
+                    <span>Credit (+) Add Funds</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdjustForm({ ...adjustForm, action: 'debit' })}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      adjustForm.action === 'debit'
+                        ? 'bg-red-50 text-red-800 border-red-400 ring-2 ring-red-200'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <RiArrowDownCircleLine size={16} className="text-red-600" />
+                    <span>Debit (-) Deduct Funds</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Amount */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                    Amount ($ USD) *
+                  </label>
+                  {(adjustForm.walletType === 'rankReward' || adjustForm.walletType === 'salary' || adjustForm.walletType === 'companyProfit') && (() => {
+                    const elig = checkUserRankEligibility(adjustModalUser, rankInfo);
+                    return elig.isEligible ? (
+                      <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        ⚡ Auto-filled (Rank Active)
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                        ⚠️ Not Auto-filled (Rank In Progress)
+                      </span>
+                    );
+                  })()}
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-mono">$</span>
+                  <input
+                    type="number"
+                    step="any"
+                    value={adjustForm.amount}
+                    onChange={(e) => setAdjustForm({ ...adjustForm, amount: e.target.value })}
+                    placeholder="e.g. 500"
+                    className="w-full pl-7 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 font-mono outline-none focus:border-gold-400 shadow-2xs"
+                    required
+                  />
+                </div>
+                <p className="text-[10.5px] text-slate-400 mt-1">
+                  Value is auto-filled based on rank rules, but you can manually edit or adjust as needed.
+                </p>
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Reason / Note (Visible to User)
+                </label>
+                <input
+                  type="text"
+                  value={adjustForm.reason}
+                  onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })}
+                  placeholder="e.g. One Time Cash Reward - Team Leader Rank"
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-gold-400 shadow-2xs"
+                />
+              </div>
+            </form>
+          );
+        })()}
       </Modal>
     </div>
   );

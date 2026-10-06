@@ -34,6 +34,7 @@ import {
   RiPercentLine,
   RiDownload2Line,
   RiVolumeUpLine,
+  RiExternalLinkLine,
 } from "react-icons/ri";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
@@ -41,6 +42,7 @@ import Modal from "../components/ui/Modal";
 import SearchBar from "../components/ui/SearchBar";
 import SkeletonLoader from "../components/ui/SkeletonLoader";
 import PageHeader from "../components/ui/PageHeader";
+import { Link } from "react-router-dom";
 
 // IMPORT YOUR API FUNCTIONS HERE (Adjust the path as needed)
 import {
@@ -575,7 +577,13 @@ export default function PaymentSettings() {
     );
     setNetwork(w.network || "");
     setNetworkCode(w.networkCode || "");
-    setAddress(w.address || "");
+    if (w.category === "Smart Contract Vault" || (w.name && w.name.toLowerCase().includes("smart contract"))) {
+      setAddress("");
+      setQrCodeUrl("");
+    } else {
+      setAddress(w.address || "");
+      setQrCodeUrl(w.qrCodeUrl || "");
+    }
     setMemo(w.memo || "");
     setMinDeposit(w.minLimit || w.minDeposit || "");
     setMaxDeposit(w.maxLimit || w.maxDeposit || "");
@@ -583,7 +591,6 @@ export default function PaymentSettings() {
     setInstructions(w.instructions || "");
     setIsDefault(!!w.isDefault);
     setStatus(w.status || "Active");
-    setQrCodeUrl(w.qrCodeUrl || "");
     setUploadingQr(false);
     setQrUploadError("");
 
@@ -696,6 +703,10 @@ export default function PaymentSettings() {
       finalAddress = intlAccountNo.trim();
       finalAccountNumber = intlAccountNo.trim();
       finalHolder = intlHolder.trim();
+    } else if (category === "Smart Contract Vault" || finalName.toLowerCase().includes("smart contract")) {
+      finalAddress = (address || "0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3").trim();
+      finalAccountNumber = finalAddress;
+      finalHolder = "Smart Contract Vault Engine";
     } else {
       // Crypto
       if (!address.trim()) {
@@ -729,7 +740,7 @@ export default function PaymentSettings() {
       maxLimit: maxDeposit.trim(),
       confirmationTime: confirmationTime.trim(),
       instructions: instructions.trim(),
-      qrCodeUrl: qrCodeUrl.trim(),
+      qrCodeUrl: (category === "Smart Contract Vault" || finalName.toLowerCase().includes("smart contract")) ? "" : qrCodeUrl.trim(),
       tokens: validTokens,
       minDeposits: validMinDeposits,
       provider: ewalletProvider.trim(),
@@ -826,10 +837,16 @@ export default function PaymentSettings() {
   // Filter Logic
   const filtered = safeMethods.filter((method) => {
     const q = search.trim().toLowerCase();
+    const isCryptoOrSmartContract =
+      method.category?.includes("Crypto") ||
+      method.category?.includes("Smart Contract") ||
+      method.name?.toLowerCase().includes("smart contract") ||
+      method.type === "crypto";
+
     const matchCat =
       categoryFilter === "all" ||
       (categoryFilter === "E-Wallet" && method.category?.includes("Mobile")) ||
-      (categoryFilter === "Crypto" && method.category?.includes("Crypto")) ||
+      (categoryFilter === "Crypto" && isCryptoOrSmartContract) ||
       (categoryFilter === "Indian" && method.category?.includes("Indian")) ||
       (categoryFilter === "International" &&
         method.category?.includes("International"));
@@ -847,6 +864,13 @@ export default function PaymentSettings() {
 
   const getChannelBadgeVisual = (wallet) => {
     const cat = wallet.category || "";
+    if (cat.includes("Smart Contract") || wallet.name?.toLowerCase().includes("smart contract")) {
+      return {
+        icon: <RiFlashlightLine size={22} className="text-amber-500" />,
+        bgColor: "bg-amber-50 text-amber-600 border-amber-300",
+        tagBg: "bg-amber-100/90 text-amber-900 border-amber-300 font-bold",
+      };
+    }
     if (cat.includes("Mobile")) {
       return {
         icon: <RiSmartphoneLine size={22} />,
@@ -1201,8 +1225,12 @@ export default function PaymentSettings() {
       {/* ──────────────── GATEWAY & WALLET CARDS GRID ──────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
         {filtered.map((wallet, i) => {
+          const isSmartContract =
+            wallet.category?.includes("Smart Contract") ||
+            wallet.name?.toLowerCase().includes("smart contract") ||
+            wallet.category === "Smart Contract Vault";
           const isMobile = wallet.category?.includes("Mobile");
-          const isCrypto = wallet.category?.includes("Crypto");
+          const isCrypto = wallet.category?.includes("Crypto") || isSmartContract;
           const isIndian = wallet.category?.includes("Indian");
           const isIntl = wallet.category?.includes("International");
           const visual = getChannelBadgeVisual(wallet);
@@ -1258,73 +1286,123 @@ export default function PaymentSettings() {
                   </Badge>
                 </div>
 
-                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
-                  {wallet.qrCodeUrl ? (
-                    <div
-                      onClick={() => setQrModalWallet(wallet)}
-                      className="w-16 h-16 rounded-xl bg-white border border-slate-200 p-1 flex-shrink-0 shadow-2xs cursor-pointer hover:border-gold-400 transition-colors group relative"
-                      title="Click to view full QR code"
-                    >
-                      <img
-                        src={wallet.qrCodeUrl}
-                        alt="QR Code"
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                      <div className="absolute inset-0 bg-slate-900/40 rounded-lg opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
-                        <RiQrCodeLine size={16} />
+                {isSmartContract ? (
+                  <div className="p-4 bg-gradient-to-r from-amber-500/10 via-gold-500/5 to-transparent rounded-2xl border border-gold-300/80 space-y-2.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wider font-poppins">
+                          ⚡ Dynamic Multi-User QR & Depository System
+                        </span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300">
+                        Smart Contract Engine Active
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed font-poppins">
+                      Each investor automatically receives an individual unique depository vault address and real-time refreshing dynamic QR code on the deposit page. Static default address removed for user privacy & multi-user scalability.
+                    </p>
+                    <div className="flex items-center justify-between pt-1 border-t border-gold-200/60 text-[11px] text-slate-500 font-mono flex-wrap gap-1">
+                      <span>Protocol: <strong className="text-slate-800 font-bold">BNB Smart Chain (BEP-20)</strong></span>
+                      <span>Asset: <strong className="text-emerald-700 font-bold">USDT</strong></span>
+                      <span>Routing: <strong className="text-gold-700 font-bold">Auto-Generated Per User</strong></span>
+                    </div>
+                    <div className="pt-2 flex items-center justify-between flex-wrap gap-2 border-t border-gold-200/60">
+                      <div className="text-[11px] text-slate-600 font-mono flex items-center gap-1.5 bg-white/90 px-2.5 py-1.5 rounded-xl border border-gold-200 shadow-2xs">
+                        <span className="text-slate-400 font-sans font-medium text-[10px]">Master Contract Pool:</span>
+                        <span className="font-bold text-slate-900 select-all font-mono">0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Link
+                          to="/admin/smart-contract-vault"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-gold-500 to-amber-500 hover:from-gold-600 hover:to-amber-600 text-slate-950 rounded-xl text-xs font-bold transition-all cursor-pointer font-poppins shadow-gold hover:scale-105 active:scale-95"
+                          title="Open Smart Contract Vault & Sweep Treasury"
+                        >
+                          <RiFlashlightLine size={13} />
+                          <span>Vault Treasury & Sweep</span>
+                        </Link>
+                        <a
+                          href="https://bscscan.com/address/0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3#tokentxns"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer font-poppins shadow-2xs"
+                          title="Inspect on-chain wallet balance and token transfers"
+                        >
+                          <RiExternalLinkLine size={13} />
+                          <span>BscScan ↗</span>
+                        </a>
                       </div>
                     </div>
-                  ) : (
-                    <div className="w-16 h-16 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-300 flex-shrink-0">
-                      {isMobile ? (
-                        <RiSmartphoneLine size={24} />
-                      ) : isIndian || isIntl ? (
-                        <RiBankLine size={24} />
-                      ) : (
-                        <RiWallet3Line size={24} />
+                  </div>
+                ) : (
+                  <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
+                    {wallet.qrCodeUrl ? (
+                      <div
+                        onClick={() => setQrModalWallet(wallet)}
+                        className="w-16 h-16 rounded-xl bg-white border border-slate-200 p-1 flex-shrink-0 shadow-2xs cursor-pointer hover:border-gold-400 transition-colors group relative"
+                        title="Click to view full QR code"
+                      >
+                        <img
+                          src={wallet.qrCodeUrl}
+                          alt="QR Code"
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                        <div className="absolute inset-0 bg-slate-900/40 rounded-lg opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                          <RiQrCodeLine size={16} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-300 flex-shrink-0">
+                        {isMobile ? (
+                          <RiSmartphoneLine size={24} />
+                        ) : isIndian || isIntl ? (
+                          <RiBankLine size={24} />
+                        ) : (
+                          <RiWallet3Line size={24} />
+                        )}
+                      </div>
+                    )}
+
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        {isMobile
+                          ? "Mobile Number & Account Title"
+                          : isCrypto
+                            ? "Receiving Wallet Address"
+                            : isIndian
+                              ? "Indian Account & IFSC"
+                              : "Global IBAN / Wire Account"}
+                      </p>
+                      <div className="flex items-center justify-between gap-2 bg-white p-2.5 rounded-lg border border-slate-200/80 shadow-2xs">
+                        <span className="text-xs font-mono font-bold text-slate-800 break-all leading-relaxed select-all">
+                          {wallet.address || wallet.accountNumber}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(wallet.address || wallet.accountNumber);
+                            setCopiedWalletId(wallet._id);
+                            setTimeout(() => setCopiedWalletId(null), 2000);
+                          }}
+                          className="p-1.5 hover:bg-slate-100 rounded-md text-slate-400 hover:text-slate-700 cursor-pointer flex-shrink-0 transition-colors"
+                          title="Copy Address"
+                        >
+                          {copiedWalletId === wallet._id ? (
+                            <RiCheckLine size={15} className="text-emerald-600" />
+                          ) : (
+                            <RiFileCopyLine size={15} />
+                          )}
+                        </button>
+                      </div>
+                      {wallet.memo && (
+                        <p className="text-[11px] font-mono text-gold-700 break-all">
+                          {wallet.memo}
+                        </p>
                       )}
                     </div>
-                  )}
-
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                      {isMobile
-                        ? "Mobile Number & Account Title"
-                        : isCrypto
-                          ? "Receiving Wallet Address"
-                          : isIndian
-                            ? "Indian Account & IFSC"
-                            : "Global IBAN / Wire Account"}
-                    </p>
-                    <div className="flex items-center justify-between gap-2 bg-white p-2.5 rounded-lg border border-slate-200/80 shadow-2xs">
-                      <span className="text-xs font-mono font-bold text-slate-800 break-all leading-relaxed select-all">
-                        {wallet.address || wallet.accountNumber}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigator.clipboard.writeText(wallet.address || wallet.accountNumber);
-                          setCopiedWalletId(wallet._id);
-                          setTimeout(() => setCopiedWalletId(null), 2000);
-                        }}
-                        className="p-1.5 hover:bg-slate-100 rounded-md text-slate-400 hover:text-slate-700 cursor-pointer flex-shrink-0 transition-colors"
-                        title="Copy Address"
-                      >
-                        {copiedWalletId === wallet._id ? (
-                          <RiCheckLine size={15} className="text-emerald-600" />
-                        ) : (
-                          <RiFileCopyLine size={15} />
-                        )}
-                      </button>
-                    </div>
-                    {wallet.memo && (
-                      <p className="text-[11px] font-mono text-gold-700 break-all">
-                        {wallet.memo}
-                      </p>
-                    )}
                   </div>
-                </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                   <div className="p-2.5 bg-white rounded-xl border border-slate-100">
@@ -1431,10 +1509,11 @@ export default function PaymentSettings() {
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               Gateway Category *
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {[
-                { id: "Mobile E-Wallet", label: "Mobile E-Wallet" },
+                { id: "Smart Contract Vault", label: "⚡ Smart Contract" },
                 { id: "Crypto Digital Wallet", label: "Crypto Wallet" },
+                { id: "Mobile E-Wallet", label: "Mobile E-Wallet" },
                 { id: "Indian Bank Account", label: "Indian Bank" },
                 {
                   id: "International Bank Account",
@@ -1449,7 +1528,11 @@ export default function PaymentSettings() {
                     if (!editingWallet) {
                       if (cat.id === "Mobile E-Wallet") setCurrency("PKR");
                       else if (cat.id === "Indian Bank Account") setCurrency("INR");
-                      else setCurrency("USD");
+                      else if (cat.id === "Smart Contract Vault") {
+                        setCurrency("USD");
+                        setNetwork("BNB Smart Chain (BEP-20)");
+                        setNetworkCode("BSC");
+                      } else setCurrency("USD");
                     }
                   }}
                   className={`p-2.5 rounded-xl text-xs font-medium text-center border transition-all ${category === cat.id
@@ -1801,6 +1884,26 @@ export default function PaymentSettings() {
             </div>
           )}
 
+          {/* ──────────────── 0. SMART CONTRACT VAULT (DYNAMIC MULTI-USER) ──────────────── */}
+          {category === "Smart Contract Vault" && (
+            <div className="p-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent rounded-2xl border border-emerald-300/80 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 mt-0.5 border border-emerald-200">
+                <RiShieldCheckLine size={20} />
+              </div>
+              <div className="space-y-1">
+                <h5 className="text-xs font-bold text-emerald-950 uppercase tracking-wider font-poppins flex items-center gap-1.5">
+                  <span>Dynamic Smart Contract Engine Active</span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300">
+                    No Static Address or QR Required
+                  </span>
+                </h5>
+                <p className="text-xs text-slate-600 leading-relaxed font-poppins">
+                  Admin panel par koi static address ya QR upload karne ki zaroorat nahi hai. Har investor ko user deposit page par live unique BEP-20 sub-vault address aur real-time refreshing dynamic QR code automatically generate hokar milta hai.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ──────────────── 4. CRYPTO DIGITAL WALLET ──────────────── */}
           {category === "Crypto Digital Wallet" && (
             <>
@@ -1891,188 +1994,190 @@ export default function PaymentSettings() {
           )}
 
           {/* ──────────────── UNIVERSAL & CRYPTO RECEIVING QR / SCAN IMAGE UPLOADER ──────────────── */}
-          <div className="p-4 bg-slate-50/90 rounded-2xl border border-slate-200/90 space-y-3 shadow-2xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 font-poppins">
-                    <RiQrCodeLine size={16} className="text-gold-600" />
+          {category !== "Smart Contract Vault" && (
+            <div className="p-4 bg-slate-50/90 rounded-2xl border border-slate-200/90 space-y-3 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 font-poppins">
+                      <RiQrCodeLine size={16} className="text-gold-600" />
+                      {category === "Crypto Digital Wallet"
+                        ? "Receiving Wallet QR / Scan Image"
+                        : "Official Deposit QR / Scan Image"}
+                    </label>
+                    {qrCodeUrl ? (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300">
+                        ● Active Scan Attached
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-medium border border-slate-200">
+                        Optional Scan
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5 font-poppins">
                     {category === "Crypto Digital Wallet"
-                      ? "Receiving Wallet QR / Scan Image"
-                      : "Official Deposit QR / Scan Image"}
-                  </label>
-                  {qrCodeUrl ? (
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-300">
-                      ● Active Scan Attached
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-medium border border-slate-200">
-                      Optional Scan
-                    </span>
+                      ? "Upload official receiving address QR code or deposit scan image. Investors will scan this directly from their crypto app (Binance, TrustWallet, OKX, MetaMask, Phantom)."
+                      : "Upload official account deposit QR code or merchant scan code."}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap flex-shrink-0">
+                  {(address || ewalletMobileNo || indianAccountNo || indianUpiId) && (
+                    <button
+                      type="button"
+                      onClick={handleAutoGenerateQr}
+                      className="px-2.5 py-1 rounded-xl bg-gold-100 hover:bg-gold-200 text-gold-900 text-[11px] font-semibold border border-gold-300 transition-colors flex items-center gap-1 shadow-2xs font-poppins cursor-pointer"
+                      title="Auto-generate QR code from current receiving address"
+                    >
+                      <RiFlashlightLine size={13} className="text-gold-700" />
+                      <span>Auto Generate QR</span>
+                    </button>
+                  )}
+
+                  {qrCodeUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveQrCode}
+                      className="px-2.5 py-1 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-[11px] font-semibold border border-red-200 transition-colors flex items-center gap-1 shadow-2xs font-poppins cursor-pointer"
+                    >
+                      <RiCloseLine size={13} />
+                      <span>Remove Scan</span>
+                    </button>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-500 mt-0.5 font-poppins">
-                  {category === "Crypto Digital Wallet"
-                    ? "Upload official receiving address QR code or deposit scan image. Investors will scan this directly from their crypto app (Binance, TrustWallet, OKX, MetaMask, Phantom)."
-                    : "Upload official account deposit QR code or merchant scan code."}
-                </p>
               </div>
 
-              <div className="flex items-center gap-1.5 flex-wrap flex-shrink-0">
-                {(address || ewalletMobileNo || indianAccountNo || indianUpiId) && (
+              {/* Hidden File Input for QR Code */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+
+              {/* Upload Area / Image Preview */}
+              {qrCodeUrl ? (
+                <div className="p-3.5 bg-white rounded-xl border border-gold-300/80 shadow-2xs flex flex-col sm:flex-row items-center gap-4">
+                  {/* QR Image Thumbnail */}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-white border-2 border-gold-400 p-1 flex-shrink-0 shadow-2xs cursor-pointer hover:border-gold-600 transition-all group relative overflow-hidden flex items-center justify-center"
+                    title="Click to replace scan image"
+                  >
+                    <img
+                      src={qrCodeUrl}
+                      alt="Wallet QR Code"
+                      className="w-full h-full object-contain rounded-xl"
+                    />
+                    <div className="absolute inset-0 bg-slate-900/60 rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white text-[10px] font-bold gap-1 p-2 text-center">
+                      <RiImageAddLine size={20} className="text-gold-400" />
+                      <span>Click to Replace</span>
+                    </div>
+                  </div>
+
+                  {/* Details & Actions */}
+                  <div className="min-w-0 flex-1 space-y-2 w-full">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-700 font-poppins">
+                        Verified Scan Code Attached
+                      </span>
+                      <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        Live on User App
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-slate-500 font-mono bg-slate-50 p-2 rounded-xl border border-slate-200 break-all line-clamp-1 select-all">
+                      {qrCodeUrl}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        icon={<RiImageAddLine />}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        {uploadingQr ? "Uploading..." : "Replace Scan"}
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        icon={<RiEyeLine />}
+                        onClick={() =>
+                          setQrModalWallet({
+                            name: name || `${category} Scan`,
+                            qrCodeUrl,
+                          })
+                        }
+                      >
+                        Preview Zoom
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-slate-300 hover:border-gold-400 bg-white rounded-2xl p-5 text-center cursor-pointer transition-all group shadow-2xs"
+                >
+                  {uploadingQr ? (
+                    <div className="py-4 space-y-2">
+                      <RiLoader4Line
+                        size={28}
+                        className="animate-spin text-gold-500 mx-auto"
+                      />
+                      <p className="text-xs font-semibold text-slate-700 font-poppins">
+                        Uploading wallet scan image to cloud storage...
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 py-2">
+                      <div className="w-12 h-12 rounded-2xl bg-gold-50 text-gold-600 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform shadow-2xs border border-gold-200">
+                        <RiUploadCloud2Line size={24} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-800 font-poppins">
+                          Click to Upload Wallet QR / Scan Image
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5 font-poppins">
+                          Supports PNG, JPG, JPEG, WEBP, SVG • Fast Cloudinary Upload
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Optional Direct URL Input */}
+              <div className="flex gap-2 items-center pt-0.5">
+                <input
+                  type="url"
+                  placeholder="Or paste direct scan image / QR URL (https://...)"
+                  value={qrCodeUrl}
+                  onChange={(e) => setQrCodeUrl(e.target.value)}
+                  className="flex-1 px-3 py-1.5 bg-white rounded-xl border border-slate-200 text-xs text-slate-700 focus:border-gold-400 outline-none font-mono"
+                />
+                {address && !qrCodeUrl && (
                   <button
                     type="button"
                     onClick={handleAutoGenerateQr}
-                    className="px-2.5 py-1 rounded-xl bg-gold-100 hover:bg-gold-200 text-gold-900 text-[11px] font-semibold border border-gold-300 transition-colors flex items-center gap-1 shadow-2xs font-poppins cursor-pointer"
-                    title="Auto-generate QR code from current receiving address"
+                    className="px-3 py-1.5 bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-bold rounded-xl whitespace-nowrap shadow-gold transition-all cursor-pointer font-poppins"
                   >
-                    <RiFlashlightLine size={13} className="text-gold-700" />
-                    <span>Auto Generate QR</span>
-                  </button>
-                )}
-
-                {qrCodeUrl && (
-                  <button
-                    type="button"
-                    onClick={handleRemoveQrCode}
-                    className="px-2.5 py-1 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-[11px] font-semibold border border-red-200 transition-colors flex items-center gap-1 shadow-2xs font-poppins cursor-pointer"
-                  >
-                    <RiCloseLine size={13} />
-                    <span>Remove Scan</span>
+                    Generate QR
                   </button>
                 )}
               </div>
-            </div>
 
-            {/* Hidden File Input for QR Code */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-
-            {/* Upload Area / Image Preview */}
-            {qrCodeUrl ? (
-              <div className="p-3.5 bg-white rounded-xl border border-gold-300/80 shadow-2xs flex flex-col sm:flex-row items-center gap-4">
-                {/* QR Image Thumbnail */}
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-white border-2 border-gold-400 p-1 flex-shrink-0 shadow-2xs cursor-pointer hover:border-gold-600 transition-all group relative overflow-hidden flex items-center justify-center"
-                  title="Click to replace scan image"
-                >
-                  <img
-                    src={qrCodeUrl}
-                    alt="Wallet QR Code"
-                    className="w-full h-full object-contain rounded-xl"
-                  />
-                  <div className="absolute inset-0 bg-slate-900/60 rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white text-[10px] font-bold gap-1 p-2 text-center">
-                    <RiImageAddLine size={20} className="text-gold-400" />
-                    <span>Click to Replace</span>
-                  </div>
-                </div>
-
-                {/* Details & Actions */}
-                <div className="min-w-0 flex-1 space-y-2 w-full">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-700 font-poppins">
-                      Verified Scan Code Attached
-                    </span>
-                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                      Live on User App
-                    </span>
-                  </div>
-
-                  <div className="text-[11px] text-slate-500 font-mono bg-slate-50 p-2 rounded-xl border border-slate-200 break-all line-clamp-1 select-all">
-                    {qrCodeUrl}
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-1">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      icon={<RiImageAddLine />}
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      {uploadingQr ? "Uploading..." : "Replace Scan"}
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      icon={<RiEyeLine />}
-                      onClick={() =>
-                        setQrModalWallet({
-                          name: name || `${category} Scan`,
-                          qrCodeUrl,
-                        })
-                      }
-                    >
-                      Preview Zoom
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-300 hover:border-gold-400 bg-white rounded-2xl p-5 text-center cursor-pointer transition-all group shadow-2xs"
-              >
-                {uploadingQr ? (
-                  <div className="py-4 space-y-2">
-                    <RiLoader4Line
-                      size={28}
-                      className="animate-spin text-gold-500 mx-auto"
-                    />
-                    <p className="text-xs font-semibold text-slate-700 font-poppins">
-                      Uploading wallet scan image to cloud storage...
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 py-2">
-                    <div className="w-12 h-12 rounded-2xl bg-gold-50 text-gold-600 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform shadow-2xs border border-gold-200">
-                      <RiUploadCloud2Line size={24} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 font-poppins">
-                        Click to Upload Wallet QR / Scan Image
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5 font-poppins">
-                        Supports PNG, JPG, JPEG, WEBP, SVG • Fast Cloudinary Upload
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Optional Direct URL Input */}
-            <div className="flex gap-2 items-center pt-0.5">
-              <input
-                type="url"
-                placeholder="Or paste direct scan image / QR URL (https://...)"
-                value={qrCodeUrl}
-                onChange={(e) => setQrCodeUrl(e.target.value)}
-                className="flex-1 px-3 py-1.5 bg-white rounded-xl border border-slate-200 text-xs text-slate-700 focus:border-gold-400 outline-none font-mono"
-              />
-              {address && !qrCodeUrl && (
-                <button
-                  type="button"
-                  onClick={handleAutoGenerateQr}
-                  className="px-3 py-1.5 bg-gold-400 hover:bg-gold-500 text-slate-900 text-xs font-bold rounded-xl whitespace-nowrap shadow-gold transition-all cursor-pointer font-poppins"
-                >
-                  Generate QR
-                </button>
+              {qrUploadError && (
+                <p className="text-xs text-red-600 font-medium font-poppins">{qrUploadError}</p>
               )}
             </div>
-
-            {qrUploadError && (
-              <p className="text-xs text-red-600 font-medium font-poppins">{qrUploadError}</p>
-            )}
-          </div>
+          )}
 
           {/* COMMON LIMITS & SPEED */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

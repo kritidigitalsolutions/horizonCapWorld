@@ -305,8 +305,7 @@ export default function InvestmentPlans() {
       minAmount: plan.minAmount ? plan.minAmount.toString() : "10",
       maxAmount: plan.maxAmount ? plan.maxAmount.toString() : "",
       noMaxLimit: plan.noMaxLimit || !plan.maxAmount,
-      payoutInterval:
-        plan.payoutInterval === "Daily Payout" ? "daily" : "per_second",
+      payoutInterval: "per_second",
       status: plan.status || "Active",
       description: plan.description || "",
     });
@@ -444,10 +443,7 @@ export default function InvestmentPlans() {
       minAmount: minVal,
       maxAmount: isNoMax ? null : maxVal,
       noMaxLimit: isNoMax,
-      payoutInterval:
-        formData.payoutInterval === "per_second"
-          ? "Per Second (Live)"
-          : "Daily Payout",
+      payoutInterval: "Per Second (Live)",
       status: formData.status,
       description: formData.description,
     };
@@ -1301,67 +1297,6 @@ export default function InvestmentPlans() {
             )}
           </div>
 
-          {/* Yield Payout Mode Selector */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-              Yield Payout Mode *
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <label
-                className={`p-3 rounded-2xl border cursor-pointer flex items-center gap-2.5 transition-all ${formData.payoutInterval === "per_second"
-                    ? "border-gold-400 bg-gold-50/80 shadow-xs ring-1 ring-gold-400"
-                    : "border-gray-200 bg-white hover:bg-gray-50"
-                  }`}
-              >
-                <input
-                  type="radio"
-                  name="payoutInterval"
-                  value="per_second"
-                  checked={formData.payoutInterval === "per_second"}
-                  onChange={() =>
-                    setFormData({ ...formData, payoutInterval: "per_second" })
-                  }
-                  className="text-gold-500 focus:ring-gold-400"
-                />
-                <div>
-                  <p className="text-xs font-bold text-gray-800 flex items-center gap-1">
-                    <RiFlashlightLine className="text-amber-500" /> Real-time
-                    Per Second
-                  </p>
-                  <p className="text-[10px] text-gray-400">
-                    Live per-second stream
-                  </p>
-                </div>
-              </label>
-
-              <label
-                className={`p-3 rounded-2xl border cursor-pointer flex items-center gap-2.5 transition-all ${formData.payoutInterval === "daily"
-                    ? "border-gold-400 bg-gold-50/80 shadow-xs ring-1 ring-gold-400"
-                    : "border-gray-200 bg-white hover:bg-gray-50"
-                  }`}
-              >
-                <input
-                  type="radio"
-                  name="payoutInterval"
-                  value="daily"
-                  checked={formData.payoutInterval === "daily"}
-                  onChange={() =>
-                    setFormData({ ...formData, payoutInterval: "daily" })
-                  }
-                  className="text-gold-500 focus:ring-gold-400"
-                />
-                <div>
-                  <p className="text-xs font-bold text-gray-800 flex items-center gap-1">
-                    <RiCalendarEventLine className="text-blue-500" /> Daily
-                    Payout
-                  </p>
-                  <p className="text-[10px] text-gray-400">
-                    Settled daily at 00:00 UTC
-                  </p>
-                </div>
-              </label>
-            </div>
-          </div>
 
           {/* Status Toggle */}
           <div>

@@ -61,6 +61,28 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    cryptoWallets: {
+      usdtBep20: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      usdtTrc20: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      solana: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      polygon: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+    },
     sponsorId: {
       type: String,
       default: "HORIZON-HQ",
@@ -78,6 +100,32 @@ const userSchema = new mongoose.Schema(
       default: 0,
     },
     earningWallet: {
+      type: Number,
+      default: 0,
+    },
+    // Detailed Income Stream Sub-balances composing Earning Wallet
+    pvRoiBalance: {
+      type: Number,
+      default: 0,
+    },
+    levelIncomeBalance: {
+      type: Number,
+      default: 0,
+    },
+    rankRewardBalance: {
+      type: Number,
+      default: 0,
+    },
+    companyProfitBalance: {
+      type: Number,
+      default: 0,
+    },
+    salaryBalance: {
+      type: Number,
+      default: 0,
+    },
+    // Locked / Expired 3X ROI held in Administrative Escrow after 15-day withdrawal window
+    lockedRoiBalance: {
       type: Number,
       default: 0,
     },

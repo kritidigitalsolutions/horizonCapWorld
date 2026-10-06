@@ -54,7 +54,7 @@ export const getRankBadgeConfig = (rankName = '', rankLevel = 1) => {
   };
 };
 
-// Color & styling tokens per tier level (L0 to L10)
+// Color & styling tokens per tier level (L0 to L10+)
 const TIER_THEMES = {
   0: { badge: 'bg-gradient-to-r from-amber-400 to-gold-500 text-slate-950 border-amber-300', ring: 'ring-gold-400', border: 'border-gold-300' },
   1: { badge: 'bg-emerald-100 text-emerald-800 border-emerald-300', ring: 'ring-emerald-400', border: 'border-emerald-200' },
@@ -69,10 +69,19 @@ const TIER_THEMES = {
   10: { badge: 'bg-fuchsia-100 text-fuchsia-900 border-fuchsia-300', ring: 'ring-fuchsia-400', border: 'border-fuchsia-200' },
 };
 
+export const getTierTheme = (level) => {
+  if (TIER_THEMES[level]) return TIER_THEMES[level];
+  return {
+    badge: 'bg-slate-100 text-slate-800 border-slate-300',
+    ring: 'ring-slate-400',
+    border: 'border-slate-200',
+  };
+};
+
 function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilter, expandedIds, toggleExpand }) {
   const isExpanded = expandedIds.has(node.id);
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
-  const theme = TIER_THEMES[node.level] || TIER_THEMES[1];
+  const theme = getTierTheme(node.level);
   const rankBadge = getRankBadgeConfig(node.rank, node.rankLevel);
 
   const matchesSearch = search && (
@@ -107,7 +116,7 @@ function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilte
               </>
             ) : (
               <>
-                Tier L{node.level} • {node.commissionRate || 0}%
+                Tier L{node.level} • {node.level > 10 ? 'No Comm (L10 Cap)' : `${node.commissionRate || 0}%`}
               </>
             )}
           </span>
@@ -346,6 +355,20 @@ export default function ReferralTreeView({ tree, onSelectPartner, referralLink =
     return { totalMembers, totalVolume, totalComm, maxLevel };
   }, [tree]);
 
+  // Available levels dynamically from tree (L1 to infinite)
+  const availableLevels = useMemo(() => {
+    const levels = new Set();
+    const traverse = (n) => {
+      if (!n) return;
+      if (n.level > 0) levels.add(n.level);
+      if (Array.isArray(n.children)) n.children.forEach(traverse);
+    };
+    if (tree) traverse(tree);
+    const list = Array.from(levels).sort((a, b) => a - b);
+    const standardLevels = Array.from({ length: 10 }, (_, i) => i + 1);
+    return Array.from(new Set([...standardLevels, ...list])).sort((a, b) => a - b);
+  }, [tree]);
+
   const copyLink = () => {
     if (!referralLink) return;
     navigator.clipboard.writeText(referralLink);
@@ -400,7 +423,7 @@ export default function ReferralTreeView({ tree, onSelectPartner, referralLink =
               +${treeStats.totalComm.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </span>
           </div>
-          <span className="text-[11px] text-emerald-600 font-mono mt-0.5 block">Multi-tier verified</span>
+          <span className="text-[11px] text-emerald-600 font-mono mt-0.5 block">Multi-tier verified (L10 Cap)</span>
         </div>
 
         <div className="card p-3.5 sm:p-4 rounded-2xl border border-slate-200">
@@ -408,10 +431,12 @@ export default function ReferralTreeView({ tree, onSelectPartner, referralLink =
           <div className="flex items-center gap-2 mt-0.5">
             <RiNodeTree className="text-blue-600" size={18} />
             <span className="text-lg sm:text-2xl font-black font-display text-slate-950 tabular-nums">
-              {treeStats.maxLevel} <span className="text-xs text-slate-400 font-normal">/ 10 Tiers</span>
+              {treeStats.maxLevel} <span className="text-xs text-slate-400 font-normal">Levels</span>
             </span>
           </div>
-          <span className="text-[11px] text-slate-500 font-mono mt-0.5 block">Indexed Level 0-10</span>
+          <span className="text-[11px] text-slate-500 font-mono mt-0.5 block">
+            {treeStats.maxLevel > 10 ? 'L1-L10 Paid • L11+ View Only' : `Indexed Level 0-${Math.max(treeStats.maxLevel, 10)}`}
+          </span>
         </div>
       </div>
 
@@ -436,17 +461,12 @@ export default function ReferralTreeView({ tree, onSelectPartner, referralLink =
             onChange={(e) => setTierFilter(e.target.value)}
             className="px-3 py-2 text-xs font-bold rounded-xl bg-white border border-slate-200 text-slate-700 outline-none cursor-pointer"
           >
-            <option value="all">All Tiers (Level 0 – 10)</option>
-            <option value="1">Tier 1 (Direct)</option>
-            <option value="2">Tier 2</option>
-            <option value="3">Tier 3</option>
-            <option value="4">Tier 4</option>
-            <option value="5">Tier 5</option>
-            <option value="6">Tier 6</option>
-            <option value="7">Tier 7</option>
-            <option value="8">Tier 8</option>
-            <option value="9">Tier 9</option>
-            <option value="10">Tier 10 (Ambassador)</option>
+            <option value="all">All Tiers (Infinite Levels)</option>
+            {availableLevels.map((lvl) => (
+              <option key={lvl} value={lvl}>
+                {lvl === 1 ? 'Tier 1 (Direct)' : lvl <= 10 ? `Tier ${lvl}` : `Tier ${lvl} (No Commission)`}
+              </option>
+            ))}
           </select>
 
           <button

@@ -47,7 +47,8 @@ exports.getPlanById = async (req, res) => {
 // @route   POST /api/user/investments
 exports.investInPlan = async (req, res) => {
   try {
-    const { planId, amount, autoRenewal, lockInPeriod } = req.body;
+    const { planId, amount, autoRenewal, lockInPeriod, sourceWallet } = req.body;
+    const isReinvest = sourceWallet === "earningWallet" || sourceWallet === "reinvest";
     const investAmount = Number(amount);
     const isAutoRenewal = Boolean(autoRenewal);
     const isLockIn =
@@ -92,16 +93,38 @@ exports.investInPlan = async (req, res) => {
       return res.status(404).json({ success: false, message: "Investor account not found." });
     }
 
-    // Check wallet balance
-    if ((user.depositWallet || 0) < investAmount) {
-      return res.status(400).json({
-        success: false,
-        message: `Insufficient Deposit Wallet balance ($${(user.depositWallet || 0).toLocaleString()} USD). Please deposit funds first.`,
-      });
+    // Check wallet balance based on selected payment source (Deposit Wallet vs Earning Wallet Re-invest)
+    if (isReinvest) {
+      if ((user.earningWallet || 0) < investAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient Earning Wallet balance ($${(user.earningWallet || 0).toLocaleString()} USD) for re-investment.`,
+        });
+      }
+      // Deduct from earningWallet
+      user.earningWallet = Number(((user.earningWallet || 0) - investAmount).toFixed(2));
+      // Deduct sequentially from sub-balances to keep in sync
+      let rem = investAmount;
+      const subFields = ["pvRoiBalance", "levelIncomeBalance", "rankRewardBalance", "companyProfitBalance", "salaryBalance"];
+      for (const field of subFields) {
+        if (rem <= 0) break;
+        const avail = user[field] || 0;
+        const ded = Math.min(avail, rem);
+        user[field] = Math.max(0, Number((avail - ded).toFixed(2)));
+        rem -= ded;
+      }
+    } else {
+      if ((user.depositWallet || 0) < investAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient Deposit Wallet balance ($${(user.depositWallet || 0).toLocaleString()} USD). Please deposit funds first.`,
+        });
+      }
+      // Deduct from depositWallet
+      user.depositWallet = Number(((user.depositWallet || 0) - investAmount).toFixed(2));
     }
 
-    // Deduct from depositWallet and increase totalInvested
-    user.depositWallet -= investAmount;
+    // Deduct / increase totalInvested (this expands the 4X lifetime withdrawal limit!)
     user.totalInvested = (user.totalInvested || 0) + investAmount;
 
     // Check if this is the user's first investment ever (before saving new record)
@@ -147,15 +170,12 @@ exports.investInPlan = async (req, res) => {
       }
     }
 
-    // Dynamic daily & per second calculations based on matched slab ROI and payout mode
-    const isDailyPlan = (plan.payoutInterval || "").toLowerCase().includes("daily");
+    // Dynamic daily & per second calculations: ROI is ALWAYS Real-Time Per Second (Live Streaming)
     const dailyEarning = investAmount * (effectiveDailyRoi / 100);
-    const perSecondRate = isDailyPlan ? 0 : dailyEarning / 86400;
+    const perSecondRate = dailyEarning / 86400;
 
     user.dailyEarning = parseFloat(((user.dailyEarning || 0) + dailyEarning).toFixed(4));
-    if (!isDailyPlan) {
-      user.perSecondRate = parseFloat(((user.perSecondRate || 0) + perSecondRate).toFixed(8));
-    }
+    user.perSecondRate = parseFloat(((user.perSecondRate || 0) + perSecondRate).toFixed(8));
 
     // Create User Investment Record
     const isInfinitePlan = Boolean(
@@ -202,12 +222,12 @@ exports.investInPlan = async (req, res) => {
       autoRenewal: false,
       autoRenewalIncentive: 0,
       isCompounding: false,
-      payoutInterval: isDailyPlan ? "Daily Payout" : "Per Second (Live)",
+      payoutInterval: "Per Second (Live)",
       duration: isInfinitePlan ? "Infinite / Lifetime" : isLockIn ? "3X Cap (~309 Days)" : (plan.duration || "12 Months"),
       durationDays: isInfinitePlan ? 0 : isLockIn ? 309 : (plan.durationDays || 365),
       isInfinite: isInfinitePlan,
       dailyEarning,
-      perSecondRate: isDailyPlan ? 0 : perSecondRate,
+      perSecondRate,
       status: "Active",
       startDate: new Date(),
       lastSettlementAt: new Date(),
@@ -226,30 +246,23 @@ exports.investInPlan = async (req, res) => {
       rawAmount: investAmount,
       fee: 0,
       netAmount: investAmount,
-      gateway: "Deposit Wallet",
+      gateway: isReinvest ? "Earning Wallet (Re-invest)" : "Deposit Wallet",
+      incomeSource: isReinvest ? "Earning Wallet (Re-invest)" : "Deposit Wallet",
       referenceNo: newInvestment.customId,
       status: "Approved",
-      note: `Active contract allocated in ${plan.name} (${plan.category}) @ ${effectiveDailyRoi}% daily ROI${
-        isAutoRenewal ? " (Auto Renewal Mode ON: +0.25%/mo Boost & Compounding)" : ""
-      }`,
+      note: isReinvest
+        ? `Plan Re-investment from Earning Wallet into ${plan.name} (${plan.category}) @ ${effectiveDailyRoi}% daily ROI`
+        : `Active contract allocated in ${plan.name} (${plan.category}) @ ${effectiveDailyRoi}% daily ROI${
+            isAutoRenewal ? " (Auto Renewal Mode ON: +0.25%/mo Boost & Compounding)" : ""
+          }`,
     });
 
     // Increment plan investors count
     plan.investors = (plan.investors || 0) + 1;
     await plan.save();
 
-    // Dynamically derive user's active payout mode
-    const allUserActiveInvs = await UserInvestment.find({ user: user._id, status: "Active" });
-    const hasPerSec = allUserActiveInvs.some((inv) => !((inv.payoutInterval || "").toLowerCase().includes("daily")));
-    const hasDaily = allUserActiveInvs.some((inv) => (inv.payoutInterval || "").toLowerCase().includes("daily"));
-    if (hasPerSec && hasDaily) {
-      user.payoutType = "Hybrid (Per Second & Daily)";
-    } else if (hasDaily) {
-      user.payoutType = "Daily Payout";
-    } else {
-      user.payoutType = "Per Second (Live)";
-    }
-
+    // Payout mode is always Real-Time Per Second (Live)
+    user.payoutType = "Per Second (Live)";
     await user.save();
 
     // Trigger multi-tier referral deposit commissions & downline team turnover distribution

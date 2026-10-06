@@ -9,12 +9,14 @@ import {
   RiSettings3Line, RiSettings3Fill,
   RiBankCardLine, RiBankCardFill,
   RiTrophyLine, RiTrophyFill,
+  RiCoinsLine, RiCoinsFill,
   RiNodeTree,
   RiMenuFoldLine, RiMenuUnfoldLine,
   RiCloseLine,
   RiTicketLine, RiTicketFill,
   RiCustomerService2Line, RiCustomerService2Fill,
   RiNotification3Line, RiNotification3Fill,
+  RiShieldCheckLine, RiShieldCheckFill,
 } from 'react-icons/ri';
 import { UilAngleRight } from '@iconscout/react-unicons';
 import { getSidebarCounters } from '../../api/dashboardApi';
@@ -31,10 +33,12 @@ const navSections = [
   {
     title: 'Financial & Growth',
     items: [
+      { path: '/admin/disburse', label: 'Disburse Earnings', icon: RiCoinsLine, activeIcon: RiCoinsFill },
       { path: '/admin/ranks', label: 'Rank Ladder', icon: RiTrophyLine, activeIcon: RiTrophyFill },
       { path: '/admin/referrals', label: 'Level Plans', icon: RiNodeTree, activeIcon: RiNodeTree },
       { path: '/admin/transactions', label: 'Transactions', icon: RiExchangeDollarLine, activeIcon: RiExchangeDollarFill },
       { path: '/admin/payment-settings', label: 'Payment Settings', icon: RiBankCardLine, activeIcon: RiBankCardFill },
+      { path: '/admin/smart-contract-vault', label: 'Smart Contract Vault', icon: RiShieldCheckLine, activeIcon: RiShieldCheckFill },
     ]
   },
   {

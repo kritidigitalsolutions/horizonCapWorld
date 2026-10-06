@@ -7,7 +7,7 @@ import {
   RiArrowDownCircleLine, RiFlashlightLine, RiGiftLine,
   RiPrinterLine, RiTrophyLine, RiExchangeDollarLine,
   RiFileCopyLine, RiCheckLine, RiFilePdfLine, RiImageLine,
-  RiInformationLine, RiAlertLine
+  RiInformationLine, RiAlertLine, RiExternalLinkLine
 } from 'react-icons/ri';
 import KPICard from '../components/ui/KPICard';
 import SearchBar from '../components/ui/SearchBar';
@@ -80,6 +80,9 @@ export default function Transactions() {
             slipUrl: t.slipUrl || '',
             proofOfPayment: t.slipUrl ? { dataUrl: t.slipUrl, isImage: true } : null,
             clientNote: t.gateway ? `Processed via ${t.gateway}` : '',
+            txHash: t.txHash || '',
+            blockchainExplorerUrl: t.blockchainExplorerUrl || '',
+            payoutMethod: t.payoutMethod || '',
           };
         });
         setTxnList(formatted);
@@ -653,6 +656,25 @@ export default function Transactions() {
                 <span className="text-slate-500">Submission Timestamp</span>
                 <span className="font-mono text-slate-700">{selectedTxn.date} {selectedTxn.time ? `• ${selectedTxn.time}` : ''}</span>
               </div>
+
+              {/* On-Chain Smart Contract Settlement Hash */}
+              {selectedTxn.txHash && (
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
+                  <span className="text-slate-500 font-semibold text-emerald-800 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-ping" />
+                    On-Chain TxHash (BSC)
+                  </span>
+                  <a
+                    href={selectedTxn.blockchainExplorerUrl || `https://bscscan.com/tx/${selectedTxn.txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-mono text-[11px] font-bold transition-colors"
+                  >
+                    <span>{selectedTxn.txHash.slice(0, 8)}...{selectedTxn.txHash.slice(-6)}</span>
+                    <RiExternalLinkLine size={13} />
+                  </a>
+                </div>
+              )}
 
               {/* Proof of Payment Attachment */}
               {selectedTxn.proofOfPayment && (

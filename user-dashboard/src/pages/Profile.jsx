@@ -11,7 +11,7 @@ import {
   RiUpload2Line, RiDeleteBin7Line, RiCameraLine,
   RiCheckLine, RiLockPasswordLine, RiEyeLine, RiEyeOffLine, RiAlertLine,
   RiCheckboxCircleFill, RiAwardLine, RiMailSendLine,
-  RiRefreshLine, RiSaveLine,
+  RiRefreshLine, RiSaveLine, RiCoinsLine, RiShieldCheckLine, RiFileCopyLine,
 } from 'react-icons/ri';
 import PageHeader from '../components/ui/PageHeader';
 
@@ -35,6 +35,16 @@ export default function Profile() {
   });
   const [profileSaved, setProfileSaved] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // ──────── CRYPTO WALLETS STATE ────────
+  const [cryptoWallets, setCryptoWallets] = useState({
+    usdtBep20: user?.cryptoWallets?.usdtBep20 || '',
+    usdtTrc20: user?.cryptoWallets?.usdtTrc20 || '',
+    solana: user?.cryptoWallets?.solana || '',
+    polygon: user?.cryptoWallets?.polygon || '',
+  });
+  const [savingWallets, setSavingWallets] = useState(false);
+  const [walletsSaved, setWalletsSaved] = useState(false);
 
   // ──────── CHANGE PASSWORD STATE ────────
   const [currentPassword, setCurrentPassword] = useState('');
@@ -67,6 +77,14 @@ export default function Profile() {
         dob: user.dob || prev.dob,
         timezone: user.timezone || prev.timezone,
       }));
+      if (user.cryptoWallets) {
+        setCryptoWallets({
+          usdtBep20: user.cryptoWallets.usdtBep20 || '',
+          usdtTrc20: user.cryptoWallets.usdtTrc20 || '',
+          solana: user.cryptoWallets.solana || '',
+          polygon: user.cryptoWallets.polygon || '',
+        });
+      }
       if (user.avatar) setAvatar(user.avatar);
     }
   }, [user]);
@@ -189,6 +207,55 @@ export default function Profile() {
     }
   };
 
+  // Save Crypto Wallets
+  const handleSaveCryptoWallets = async (e) => {
+    e?.preventDefault();
+    setSavingWallets(true);
+
+    const bep20 = (cryptoWallets.usdtBep20 || '').trim();
+    const trc20 = (cryptoWallets.usdtTrc20 || '').trim();
+
+    if (bep20 && (!bep20.startsWith('0x') || bep20.length !== 42)) {
+      triggerToast('Invalid BSC (BEP-20) address format. Must start with 0x and be 42 characters.', 'warning');
+      setSavingWallets(false);
+      return;
+    }
+
+    if (trc20 && (!trc20.startsWith('T') || trc20.length !== 34)) {
+      triggerToast('Invalid TRON (TRC-20) address format. Must start with T and be 34 characters.', 'warning');
+      setSavingWallets(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        cryptoWallets: {
+          usdtBep20: bep20,
+          usdtTrc20: trc20,
+          solana: (cryptoWallets.solana || '').trim(),
+          polygon: (cryptoWallets.polygon || '').trim(),
+        },
+      };
+
+      const res = await apiUpdateProfile(payload);
+      if (res?.success) {
+        updateUser({
+          ...user,
+          cryptoWallets: payload.cryptoWallets,
+        });
+        setWalletsSaved(true);
+        setTimeout(() => setWalletsSaved(false), 3000);
+        triggerToast('Crypto wallet addresses linked & saved successfully!');
+      } else {
+        triggerToast(res?.message || 'Failed to save crypto wallets.', 'error');
+      }
+    } catch (err) {
+      triggerToast(err.response?.data?.message || err.message || 'Failed to update crypto wallets.', 'error');
+    } finally {
+      setSavingWallets(false);
+    }
+  };
+
   // Send Password Change OTP
   const handleSendPasswordOTP = async (e) => {
     e?.preventDefault();
@@ -279,6 +346,7 @@ export default function Profile() {
 
   const sections = [
     { key: 'profile', label: 'Personal Profile', icon: RiUser3Line },
+    { key: 'wallets', label: 'Crypto Wallets & Payouts', icon: RiCoinsLine },
     { key: 'password', label: 'Change Password (Email OTP)', icon: RiLockPasswordLine },
   ];
 
@@ -567,6 +635,180 @@ export default function Profile() {
       )}
 
       {/* ──────────────── TAB 2: CHANGE PASSWORD (WITH EMAIL OTP VERIFICATION) ──────────────── */}
+      {/* ──────────────── TAB 2: CRYPTO WALLETS & PAYOUTS ──────────────── */}
+      {activeSection === 'wallets' && (
+        <div className="card p-4 sm:p-6 md:p-8 space-y-6 max-w-3xl border border-slate-200 font-poppins shadow-sm animate-fade-in">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center flex-shrink-0 shadow-2xs border border-amber-200">
+                <RiCoinsLine size={24} />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 font-display">
+                  Crypto Wallets & Payout Binding
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Bind your personal crypto addresses for 1-Click Auto-Detect deposits and automated withdrawals
+                </p>
+              </div>
+            </div>
+
+            {walletsSaved && (
+              <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full animate-fade-in shrink-0">
+                <RiCheckLine size={14} /> Wallets Saved Successfully
+              </span>
+            )}
+          </div>
+
+          {/* Educational Callout Banner */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-gold-500/5 to-white border border-gold-200/80 shadow-2xs flex items-start gap-3 text-xs text-slate-700">
+            <RiShieldCheckLine size={20} className="text-gold-700 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold text-slate-900">
+                Why link your personal crypto wallet?
+              </p>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                When you transfer USDT from your linked wallet, our on-chain scanner automatically recognizes your transfer — enabling <strong>1-Click Instant Deposit Crediting</strong> without typing TxIDs, and error-free automated withdrawals.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveCryptoWallets} className="space-y-5 text-xs font-poppins">
+            {/* Wallet 1: USDT (BEP-20 / Binance Smart Chain) */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-3 transition-all hover:border-gold-300">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold text-xs border border-amber-300 shadow-2xs">
+                    BSC
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                      USDT (BEP-20) Address — BNB Smart Chain
+                    </h4>
+                    <span className="text-[10px] text-slate-400">MetaMask, Trust Wallet, Binance Web3</span>
+                  </div>
+                </div>
+
+                {cryptoWallets.usdtBep20 && (
+                  cryptoWallets.usdtBep20.startsWith('0x') && cryptoWallets.usdtBep20.length === 42 ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      <RiCheckLine size={12} /> Valid BSC Address
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                      Must start with 0x (42 chars)
+                    </span>
+                  )
+                )}
+              </div>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  value={cryptoWallets.usdtBep20}
+                  onChange={e => setCryptoWallets(prev => ({ ...prev, usdtBep20: e.target.value }))}
+                  placeholder="0x... (Paste your BEP-20 wallet receiving address)"
+                  className="w-full px-3.5 py-3 bg-white rounded-xl border border-slate-200 text-xs font-mono font-medium text-slate-900 outline-none focus:border-gold-400 shadow-2xs pr-10"
+                />
+                {cryptoWallets.usdtBep20 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(cryptoWallets.usdtBep20);
+                      triggerToast('BEP-20 address copied!', 'info');
+                    }}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-700 cursor-pointer"
+                    title="Copy Address"
+                  >
+                    <RiFileCopyLine size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Wallet 2: USDT (TRC-20 / TRON Network) */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-3 transition-all hover:border-gold-300">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-red-100 text-red-800 flex items-center justify-center font-bold text-xs border border-red-300 shadow-2xs">
+                    TRX
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                      USDT (TRC-20) Address — TRON Network
+                    </h4>
+                    <span className="text-[10px] text-slate-400">Trust Wallet, TronLink, SafePal</span>
+                  </div>
+                </div>
+
+                {cryptoWallets.usdtTrc20 && (
+                  cryptoWallets.usdtTrc20.startsWith('T') && cryptoWallets.usdtTrc20.length === 34 ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      <RiCheckLine size={12} /> Valid TRON Address
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                      Must start with T (34 chars)
+                    </span>
+                  )
+                )}
+              </div>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  value={cryptoWallets.usdtTrc20}
+                  onChange={e => setCryptoWallets(prev => ({ ...prev, usdtTrc20: e.target.value }))}
+                  placeholder="T... (Paste your TRC-20 wallet receiving address)"
+                  className="w-full px-3.5 py-3 bg-white rounded-xl border border-slate-200 text-xs font-mono font-medium text-slate-900 outline-none focus:border-gold-400 shadow-2xs pr-10"
+                />
+                {cryptoWallets.usdtTrc20 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(cryptoWallets.usdtTrc20);
+                      triggerToast('TRC-20 address copied!', 'info');
+                    }}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-700 cursor-pointer"
+                    title="Copy Address"
+                  >
+                    <RiFileCopyLine size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="flex justify-end pt-3">
+              <button
+                type="submit"
+                disabled={savingWallets}
+                className="btn btn-primary px-7 py-3 rounded-xl text-xs font-bold shadow-gold cursor-pointer flex items-center gap-2 hover:scale-[1.01] transition-transform"
+              >
+                {savingWallets ? (
+                  <>
+                    <RiRefreshLine size={16} className="animate-spin" />
+                    <span>Saving Wallets...</span>
+                  </>
+                ) : walletsSaved ? (
+                  <>
+                    <RiCheckLine size={16} />
+                    <span>Saved!</span>
+                  </>
+                ) : (
+                  <>
+                    <RiSaveLine size={16} />
+                    <span>Save Crypto Wallets</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ──────────────── TAB 3: CHANGE PASSWORD ──────────────── */}
       {activeSection === 'password' && (
         <div className="card p-4 sm:p-6 md:p-8 space-y-5 sm:space-y-6 max-w-2xl border border-slate-200 font-poppins shadow-sm animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-2">

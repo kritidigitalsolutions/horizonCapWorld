@@ -660,15 +660,21 @@ exports.getPromotersNetwork = async (req, res) => {
       const directUsers = childrenMap.get(uCustomId) || [];
       const directCount = directUsers.length;
 
-      // Compute multi-tier downline structure for this user
+      // Compute multi-tier downline structure for this user (Infinite Levels)
       const levelBreakdown = [];
       let currentLevelUsers = directUsers;
       let totalTeamVolume = 0;
       let totalTeamCount = 0;
+      let lvl = 1;
+      const visitedPromoterKids = new Set([uCustomId, uIdStr]);
 
-      for (let lvl = 1; lvl <= maxLevels; lvl++) {
-        const count = currentLevelUsers.length;
-        const volume = currentLevelUsers.reduce((sum, ch) => sum + (ch.totalInvested || 0), 0);
+      while (currentLevelUsers && currentLevelUsers.length > 0 && lvl <= 500) {
+        const unvisitedKids = currentLevelUsers.filter((k) => !visitedPromoterKids.has(k.customId));
+        if (unvisitedKids.length === 0) break;
+        unvisitedKids.forEach((k) => visitedPromoterKids.add(k.customId));
+
+        const count = unvisitedKids.length;
+        const volume = unvisitedKids.reduce((sum, ch) => sum + (ch.totalInvested || 0), 0);
         totalTeamCount += count;
         totalTeamVolume += volume;
 
@@ -677,7 +683,7 @@ exports.getPromotersNetwork = async (req, res) => {
           levelNumber: lvl,
           count,
           volume,
-          members: currentLevelUsers.map((m) => ({
+          members: unvisitedKids.map((m) => ({
             id: m.customId,
             name: m.name,
             email: m.email,
@@ -691,11 +697,12 @@ exports.getPromotersNetwork = async (req, res) => {
 
         // Next level
         const nextLevelUsers = [];
-        currentLevelUsers.forEach((ch) => {
+        unvisitedKids.forEach((ch) => {
           const nextKids = childrenMap.get(ch.customId);
           if (nextKids) nextLevelUsers.push(...nextKids);
         });
         currentLevelUsers = nextLevelUsers;
+        lvl++;
       }
 
       const bonuses = bonusMap.get(uIdStr) || bonusMap.get(uCustomId) || { direct: 0, multiTier: 0, total: 0 };

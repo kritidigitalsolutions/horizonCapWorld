@@ -92,6 +92,35 @@ const adminSettingsSchema = new mongoose.Schema(
           "Automated clearance turnaround within 12-24 hours. Standard platform protocol fee is applied upon withdrawal submission. Single ID maximum withdrawal allowed is 3X.",
       },
     },
+    smartContractSettings: {
+      enabled: {
+        type: Boolean,
+        default: true,
+      },
+      network: {
+        type: String,
+        enum: ["BSC_TESTNET", "BSC_MAINNET"],
+        default: "BSC_TESTNET",
+      },
+      payoutPoolAddress: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      relayerAddress: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      autoPayoutEnabled: {
+        type: Boolean,
+        default: true,
+      },
+      minPoolAlertThreshold: {
+        type: Number,
+        default: 50,
+      },
+    },
   },
   { timestamps: true }
 );

@@ -27,30 +27,18 @@ exports.getDashboardOverview = async (req, res) => {
     // Calculate aggregated dynamic daily earnings & streaming per-sec rates from active contracts
     let totalDailyEarning = 0;
     let totalPerSecondRate = 0;
-    let hasDailyPlan = false;
-    let hasPerSecondPlan = false;
     const activeAssetNames = [];
 
     activeInvestments.forEach((inv) => {
-      totalDailyEarning += inv.dailyEarning || 0;
-      const isDaily = (inv.payoutInterval || "").toLowerCase().includes("daily");
-      if (isDaily) {
-        hasDailyPlan = true;
-      } else {
-        hasPerSecondPlan = true;
-        totalPerSecondRate += inv.perSecondRate || 0;
-      }
+      const invDaily = inv.dailyEarning || 0;
+      totalDailyEarning += invDaily;
+      // All investments stream per-second in real-time
+      const perSec = inv.perSecondRate || (invDaily > 0 ? invDaily / 86400 : 0);
+      totalPerSecondRate += perSec;
       if (inv.planName) activeAssetNames.push(inv.planName);
     });
 
-    let derivedPayoutType = "Per Second (Live)";
-    if (hasDailyPlan && hasPerSecondPlan) {
-      derivedPayoutType = "Hybrid (Per Second & Daily)";
-    } else if (hasDailyPlan) {
-      derivedPayoutType = "Daily Payout";
-    } else if (hasPerSecondPlan) {
-      derivedPayoutType = "Per Second (Live)";
-    }
+    const derivedPayoutType = "Per Second (Live)";
 
     // If user's stored rate differs, sync it
     if (activeContracts > 0) {
@@ -116,11 +104,9 @@ exports.getDashboardOverview = async (req, res) => {
     const streaming = {
       perSecondRate: user.perSecondRate || 0,
       dailyEarning: user.dailyEarning || 0,
-      streamingProfit: user.totalProfit || user.earningWallet || 0,
+      streamingProfit: user.earningWallet || 0,
       earningWallet: user.earningWallet || 0,
       payoutType: derivedPayoutType,
-      hasDailyPlan,
-      hasPerSecondPlan,
       activeContracts,
       lastYieldSync: user.lastYieldSync || new Date(),
       serverTime: new Date().toISOString(),
@@ -234,10 +220,20 @@ exports.getDashboardOverview = async (req, res) => {
       groupVolume,
     };
 
+    // Sub-balances with backward compatibility for unallocated earningWallet
+    const totalAllocated = (user.pvRoiBalance || 0) + (user.levelIncomeBalance || 0) + (user.rankRewardBalance || 0) + (user.companyProfitBalance || 0) + (user.salaryBalance || 0);
+    const effectivePvRoi = Number(((user.pvRoiBalance || 0) + Math.max(0, (user.earningWallet || 0) - totalAllocated)).toFixed(2));
+
     // Wallets
     const wallets = {
       depositWallet: user.depositWallet || 0,
       earningWallet: user.earningWallet || 0,
+      pvRoiBalance: effectivePvRoi,
+      levelIncomeBalance: user.levelIncomeBalance || 0,
+      rankRewardBalance: user.rankRewardBalance || 0,
+      companyProfitBalance: user.companyProfitBalance || 0,
+      salaryBalance: user.salaryBalance || 0,
+      lockedRoiBalance: user.lockedRoiBalance || 0,
       totalInvested: user.totalInvested || 0,
       totalProfit: user.totalProfit || 0,
       totalWithdrawn: user.totalWithdrawn || 0,
@@ -249,6 +245,12 @@ exports.getDashboardOverview = async (req, res) => {
       success: true,
       user: {
         ...user.toObject(),
+        pvRoiBalance: effectivePvRoi,
+        levelIncomeBalance: user.levelIncomeBalance || 0,
+        rankRewardBalance: user.rankRewardBalance || 0,
+        companyProfitBalance: user.companyProfitBalance || 0,
+        salaryBalance: user.salaryBalance || 0,
+        lockedRoiBalance: user.lockedRoiBalance || 0,
         hasDeposited,
         personalVolume,
         groupVolume,

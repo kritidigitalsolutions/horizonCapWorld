@@ -89,6 +89,7 @@ export default function Plans() {
   const [investSuccess, setInvestSuccess] = useState(false);
   const [investSubmitting, setInvestSubmitting] = useState(false);
   const [investError, setInvestError] = useState('');
+  const [paySourceWallet, setPaySourceWallet] = useState('depositWallet'); // 'depositWallet' | 'earningWallet'
   const [expandedSlabsPlanId, setExpandedSlabsPlanId] = useState(null);
 
   const categories = ['all', 'Renewable Energy', 'Precious Metal', 'Real Estate', 'Venture Capital'];
@@ -177,17 +178,20 @@ export default function Plans() {
     fetchPlans();
   }, []);
 
-  // Auto-open invest modal if navigation came from global calculator
+  // Auto-open invest modal if navigation came from global calculator or reinvest button
   useEffect(() => {
-    if (plansList.length > 0 && location.state?.autoOpenPlanId) {
-      const targetPlan = plansList.find(
-        (p) => p.id === location.state.autoOpenPlanId || p._id === location.state.autoOpenPlanId
-      );
+    if (plansList.length > 0 && (location.state?.autoOpenPlanId || location.state?.reinvest)) {
+      const targetPlan = location.state.autoOpenPlanId
+        ? plansList.find((p) => p.id === location.state.autoOpenPlanId || p._id === location.state.autoOpenPlanId)
+        : plansList[0];
       if (targetPlan) {
         setSelectedPlan(targetPlan);
         setInvestAmount(location.state.amount || targetPlan.minAmountNumeric || 100);
         if (location.state?.lockInPeriod) {
           setLockInPeriod(location.state.lockInPeriod);
+        }
+        if (location.state?.reinvest) {
+          setPaySourceWallet('earningWallet');
         }
         setInvestDrawerOpen(true);
         // Clean up location state so modal does not re-pop on refresh
@@ -196,12 +200,13 @@ export default function Plans() {
     }
   }, [plansList, location.state]);
 
-  const handleOpenInvest = (plan) => {
+  const handleOpenInvest = (plan, defaultWallet = 'depositWallet') => {
     setSelectedPlan(plan);
     setInvestAmount(plan.minAmountNumeric || 10);
     setLockInPeriod('None');
     setSelectedSlabPeriod(0);
     setInvestError('');
+    setPaySourceWallet(defaultWallet);
     setInvestDrawerOpen(true);
   };
 
@@ -229,9 +234,13 @@ export default function Plans() {
 
     setInvestError('');
 
-    // Check wallet balance
-    if ((user?.depositWallet || 0) < numAmount) {
-      const msg = `Insufficient Deposit Wallet balance ($${(user?.depositWallet || 0).toLocaleString()} USD). Please deposit funds first.`;
+    // Check wallet balance based on selected payment source (Deposit Wallet vs Earning Wallet Re-invest)
+    const isReinvesting = paySourceWallet === 'earningWallet';
+    const availableBalance = isReinvesting ? (user?.earningWallet || 0) : (user?.depositWallet || 0);
+
+    if (availableBalance < numAmount) {
+      const walletName = isReinvesting ? 'Earning Wallet' : 'Deposit Wallet';
+      const msg = `Insufficient ${walletName} balance ($${availableBalance.toLocaleString()} USD). ${isReinvesting ? 'Earn more profits to re-invest.' : 'Please deposit funds first.'}`;
       setInvestError(msg);
       toast.error(msg, 'Insufficient Balance');
       return;
@@ -239,17 +248,22 @@ export default function Plans() {
 
     setInvestSubmitting(true);
     try {
-      const res = await investInPlan(selectedPlan._id || selectedPlan.id, numAmount, false, lockInPeriod);
+      const res = await investInPlan(selectedPlan._id || selectedPlan.id, numAmount, false, lockInPeriod, paySourceWallet);
       if (res?.success) {
         setInvestSuccess(true);
         toast.success(
-          `Investment of $${numAmount.toLocaleString()} in ${selectedPlan.name} confirmed successfully! Contract activated.`,
-          'Investment Confirmed',
+          `${isReinvesting ? 'Re-investment' : 'Investment'} of $${numAmount.toLocaleString()} in ${selectedPlan.name} confirmed successfully! Contract activated.`,
+          isReinvesting ? 'Re-investment Confirmed' : 'Investment Confirmed',
           { duration: 6000 }
         );
 
         if (res.user && updateUser) {
           updateUser(res.user);
+        }
+        if (isReinvesting) {
+          try {
+            localStorage.removeItem('horizon_streaming_state');
+          } catch (e) {}
         }
         window.dispatchEvent(new CustomEvent('horizon-transactions-change'));
         window.dispatchEvent(new CustomEvent('horizon-user-update', { detail: res.user }));
@@ -383,11 +397,8 @@ export default function Plans() {
                   </div>
 
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${(plan.payoutInterval || '').toLowerCase().includes('daily')
-                        ? 'bg-blue-50 text-blue-800 border border-blue-200'
-                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                      }`}>
-                      {(plan.payoutInterval || '').toLowerCase().includes('daily') ? '24h Daily Payout' : 'Live Per Second'}
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      Live Per Second
                     </span>
                     <span className="badge badge-success text-[10px] font-bold">
                       {plan.status}
@@ -541,19 +552,73 @@ export default function Plans() {
             </div>
           )}
 
-          {/* Wallet Balance Info */}
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shadow-2xs shrink-0">
-                <RiWalletLine size={20} className="text-blue-600" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase text-slate-400 font-poppins">Deposit Wallet Balance</p>
-                <p className="text-base font-bold text-slate-900 font-display">${(user?.depositWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-              </div>
+          {/* Payment Wallet Selector (Deposit Wallet vs Earning Wallet Re-invest) */}
+          <div className="space-y-1.5 font-poppins">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Payment Source Wallet *
+              </label>
+              <span className="text-[10px] text-slate-400">
+                Choose funding source
+              </span>
             </div>
-            {(user?.depositWallet || 0) < Number(investAmount) && (
-              <span className="badge badge-danger text-[10px]">Low Balance</span>
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setPaySourceWallet('depositWallet');
+                  setInvestError('');
+                }}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  paySourceWallet === 'depositWallet'
+                    ? 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-400/40 shadow-xs'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                    Deposit Wallet
+                  </span>
+                  {paySourceWallet === 'depositWallet' && (
+                    <span className="w-2 h-2 rounded-full bg-blue-600" />
+                  )}
+                </div>
+                <p className="text-base font-extrabold text-slate-900 font-mono">
+                  ${(user?.depositWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </p>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Direct funding</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPaySourceWallet('earningWallet');
+                  setInvestError('');
+                }}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  paySourceWallet === 'earningWallet'
+                    ? 'border-gold-500 bg-amber-50/80 ring-2 ring-gold-400/50 shadow-xs'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900">
+                    Earning (Re-invest)
+                  </span>
+                  {paySourceWallet === 'earningWallet' && (
+                    <span className="w-2 h-2 rounded-full bg-amber-600" />
+                  )}
+                </div>
+                <p className="text-base font-extrabold text-amber-950 font-mono">
+                  ${(user?.earningWallet || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </p>
+                <span className="text-[10px] text-amber-700 font-semibold block mt-0.5">Re-invest balance</span>
+              </button>
+            </div>
+            {((paySourceWallet === 'depositWallet' ? (user?.depositWallet || 0) : (user?.earningWallet || 0)) < Number(investAmount)) && (
+              <p className="text-[11px] text-red-600 font-medium pt-0.5">
+                ⚠️ Low Balance: You need at least ${Number(investAmount).toLocaleString()} USD in {paySourceWallet === 'depositWallet' ? 'Deposit Wallet' : 'Earning Wallet'}.
+              </p>
             )}
           </div>
 
@@ -848,9 +913,7 @@ export default function Plans() {
                       <p className="text-[11px] text-slate-500 font-medium">Standard 24h base return</p>
                     </div>
                     <p className="text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-1.5 truncate">
-                      {(selectedPlan?.payoutInterval || '').toLowerCase().includes('daily')
-                        ? 'Day-wise 24h payout settlement'
-                        : 'Real-time live streaming return'}
+                      Real-time live streaming return
                     </p>
                   </div>
 
@@ -1047,12 +1110,7 @@ export default function Plans() {
                 <div className="text-[11px] text-gray-600 bg-white/70 p-2.5 rounded-lg border border-gold-100 flex items-start gap-1.5 leading-relaxed">
                   <RiFlashlightLine size={14} className="text-amber-500 shrink-0 mt-0.5" />
                   <span>
-                    {selectedPlan?.payoutInterval === "Daily Payout" ? (
-                      <>Settled daily at 00:00 UTC directly into your Earning Wallet.</>
-                    ) : (
-                      <>Live yields stream directly into your wallet every second (<strong>${(calcDailyYield / 86400).toFixed(6)} / sec</strong>).</>
-                    )}{' '}
-                    Live returns stream automatically into your wallet every second.
+                    Live yields stream directly into your wallet every second (<strong>${(calcDailyYield / 86400).toFixed(6)} / sec</strong>). Live returns stream automatically into your wallet.
                   </span>
                 </div>
               </div>

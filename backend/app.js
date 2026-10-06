@@ -6,6 +6,7 @@ const connectDB = require("./configs/db");
 const adminRoutes = require("./routes/adminRoutes");
 const userRoutes = require("./routes/userRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
+const contactRoutes = require("./routes/contactRoutes");
 const errorHandler = require("./middlewares/errorHandler");
 
 const app = express();
@@ -19,7 +20,7 @@ const defaultAllowedOrigins = [
   "http://localhost:5174",
   "http://localhost:5175",
   "http://localhost:3000",
-  "http://localhost:5002",
+  "http://localhost:5000",
 ];
 
 // Dynamically parse origins from env (e.g. CORS_ORIGIN or ALLOWED_ORIGINS)
@@ -106,6 +107,8 @@ app.get("/api/health", (req, res) => {
 app.use("/api/upload", uploadRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/contact", contactRoutes);
+app.use("/api/inquiries", contactRoutes);
 
 // ──────── CENTRALIZED ERROR HANDLER ────────
 app.use(errorHandler);

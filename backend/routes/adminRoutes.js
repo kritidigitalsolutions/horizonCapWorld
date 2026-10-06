@@ -55,6 +55,8 @@ const {
   clearAllTransactions,
   markTransactionsSeen,
   triggerMonthlyStatements,
+  dispatchOnChainPayout,
+  getSmartContractPoolStatus,
 } = require("../controllers/admin/adminTransactionsController");
 
 const {
@@ -63,6 +65,7 @@ const {
   updateUserDetails,
   updateUserStatus,
   adjustUserWallet,
+  batchAdjustWallets,
   deleteUser,
   markUsersSeen,
   shiftUserSponsor,
@@ -104,6 +107,7 @@ const {
   replyTicket,
   updateTicketStatus,
   deleteTicket,
+  releaseExpiredRoi,
   getChannels,
   createChannel,
   updateChannel,
@@ -151,18 +155,21 @@ router.put("/payment-methods/:id", protectAdmin, updatePaymentMethod);
 router.delete("/payment-methods/:id", protectAdmin, deletePaymentMethod);
 
 // ──────── 5. TRANSACTIONS ────────
+router.get("/transactions/pool-status", protectAdmin, getSmartContractPoolStatus);
 router.get("/transactions", protectAdmin, getTransactions);
 router.post("/transactions/send-monthly-statements", protectAdmin, triggerMonthlyStatements);
 router.put("/transactions/mark-seen", protectAdmin, markTransactionsSeen);
 router.delete("/transactions/clear/all", protectAdmin, clearAllTransactions);
 router.get("/transactions/:id", protectAdmin, getTransactionById);
 router.put("/transactions/:id/approve", protectAdmin, approveTransaction);
+router.post("/transactions/:id/dispatch-onchain", protectAdmin, dispatchOnChainPayout);
 router.put("/transactions/:id/reject", protectAdmin, rejectTransaction);
 router.delete("/transactions/:id", protectAdmin, deleteTransaction);
 
 // ──────── 6. USERS MANAGEMENT ────────
 router.get("/users", protectAdmin, getAllUsers);
 router.put("/users/mark-seen", protectAdmin, markUsersSeen);
+router.post("/users/batch-adjust-wallet", protectAdmin, batchAdjustWallets);
 router.get("/users/:id", protectAdmin, getUserById);
 router.put("/users/:id", protectAdmin, updateUserDetails);
 router.put("/users/:id/status", protectAdmin, updateUserStatus);
@@ -202,6 +209,7 @@ router.post("/support/tickets", protectAdmin, createTicket);
 router.get("/support/tickets/:id", protectAdmin, getTicketById);
 router.post("/support/tickets/:id/reply", protectAdmin, replyTicket);
 router.put("/support/tickets/:id/status", protectAdmin, updateTicketStatus);
+router.put("/support/tickets/:id/release-roi", protectAdmin, releaseExpiredRoi);
 router.delete("/support/tickets/:id", protectAdmin, deleteTicket);
 
 router.get("/support/channels", protectAdmin, getChannels);
@@ -230,5 +238,13 @@ const upload = require("../middlewares/upload");
 const { uploadFile, deleteFile } = require("../controllers/uploadController");
 router.post("/upload", protectAdmin, upload.single("file"), uploadFile);
 router.post("/upload/delete", protectAdmin, deleteFile);
+
+// ──────── 13. SMART CONTRACT VAULT & TREASURY ────────
+const {
+  getVaultOverview,
+  executeAdminSweep,
+} = require("../controllers/admin/adminVaultController");
+router.get("/vault/overview", protectAdmin, getVaultOverview);
+router.post("/vault/sweep", protectAdmin, executeAdminSweep);
 
 module.exports = router;
