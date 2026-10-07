@@ -14,7 +14,9 @@ const COMPANY_LOGO_URL =
  * and prevents custom header anomalies that trigger spam filters.
  */
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "mail.privateemail.com",
+  port: 465,
+  secure: true,
   auth: {
     user: SENDER_EMAIL,
     pass: SENDER_PASS,
@@ -27,9 +29,9 @@ const transporter = nodemailer.createTransport({
 if (SENDER_EMAIL && SENDER_PASS) {
   transporter.verify((error) => {
     if (error) {
-      console.error("[Email Service] Gmail SMTP verification failed:", error.message);
+      console.error("[Email Service] SMTP verification failed:", error.message);
     } else {
-      console.log(`[Email Service] Gmail SMTP connected as ${SENDER_EMAIL} (Inbox Optimized)`);
+      console.log(`[Email Service] SMTP connected as ${SENDER_EMAIL}`);
     }
   });
 } else {

@@ -22,6 +22,9 @@ const errorHandler = require("./middlewares/errorHandler");
 
 const app = express();
 
+// Trust the reverse proxy (Nginx)
+app.set("trust proxy", 1);
+
 // ──────── PRODUCTION SECURITY HEADERS (HELMET) ────────
 app.use(
   helmet({

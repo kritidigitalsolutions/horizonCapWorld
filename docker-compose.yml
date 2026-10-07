@@ -1,0 +1,68 @@
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: horizon-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    expose:
+      - "5000"
+    ports:
+      - "127.0.0.1:5000:5000"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    networks:
+      - horizon-network
+
+  website:
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: https://api.horizoncapworld.com/api
+    container_name: horizon-website
+    restart: unless-stopped
+    expose:
+      - "80"
+    ports:
+      - "127.0.0.1:3001:80"
+    networks:
+      - horizon-network
+
+  admin:
+    build:
+      context: ./admin-dashboard
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: https://api.horizoncapworld.com/api
+    container_name: horizon-admin
+    restart: unless-stopped
+    expose:
+      - "80"
+    ports:
+      - "127.0.0.1:3002:80"
+    networks:
+      - horizon-network
+
+  investor:
+    build:
+      context: ./user-dashboard
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: https://api.horizoncapworld.com/api
+    container_name: horizon-investor
+    restart: unless-stopped
+    expose:
+      - "80"
+    ports:
+      - "127.0.0.1:3003:80"
+    networks:
+      - horizon-network
+
+networks:
+  horizon-network:
+    driver: bridge
