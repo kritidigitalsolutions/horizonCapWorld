@@ -211,6 +211,11 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+userSchema.index({ sponsorId: 1 });
+userSchema.index({ sponsorCustomId: 1 });
+userSchema.index({ status: 1 });
+userSchema.index({ sponsorId: 1, totalInvested: 1 });
+
 userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };

@@ -3,6 +3,7 @@ const User = require("../../models/User");
 const UserInvestment = require("../../models/UserInvestment");
 const { notifyUser, notifyAdmin } = require("../../utils/notificationService");
 const { sendDepositEmail, sendWithdrawalEmail } = require("../../utils/emailService");
+const cacheService = require("../../services/cacheService");
 
 // @desc    Get All Transactions with filters (Tab, Search, Date Range, Pagination)
 // @route   GET /api/admin/transactions
@@ -11,7 +12,13 @@ exports.getTransactions = async (req, res) => {
     const { type, status, search, datePreset, startDate, endDate, page = 1, limit = 20 } = req.query;
     let query = {};
 
-    if (type && type !== "all") query.type = type;
+    if (type && type !== "all") {
+      if (type === "Investment") {
+        query.type = { $regex: "^Investment", $options: "i" };
+      } else {
+        query.type = type;
+      }
+    }
     if (status && status !== "all") query.status = status;
 
     // Search query
@@ -23,6 +30,8 @@ exports.getTransactions = async (req, res) => {
         { gateway: { $regex: search, $options: "i" } },
         { referenceNo: { $regex: search, $options: "i" } },
         { country: { $regex: search, $options: "i" } },
+        { type: { $regex: search, $options: "i" } },
+        { note: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -44,6 +53,7 @@ exports.getTransactions = async (req, res) => {
       transactions,
       totalDeposits,
       totalWithdrawals,
+      totalInvestments,
       totalRoi,
       totalReferral,
     ] = await Promise.all([
@@ -59,7 +69,11 @@ exports.getTransactions = async (req, res) => {
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ]),
       Transaction.aggregate([
-        { $match: { type: { $in: ["ROI Return", "ROI Earning"] } } },
+        { $match: { type: { $regex: "^Investment", $options: "i" }, status: "Approved" } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+      Transaction.aggregate([
+        { $match: { type: { $in: ["ROI Return", "ROI Earning"] }, status: "Approved" } },
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ]),
       Transaction.aggregate([
@@ -77,6 +91,7 @@ exports.getTransactions = async (req, res) => {
       kpis: {
         totalDeposits: totalDeposits[0]?.total || 0,
         totalWithdrawals: totalWithdrawals[0]?.total || 0,
+        totalInvestments: totalInvestments[0]?.total || 0,
         totalRoi: totalRoi[0]?.total || 0,
         totalReferral: totalReferral[0]?.total || 0,
       },
@@ -133,6 +148,9 @@ exports.approveTransaction = async (req, res) => {
     transaction.status = "Approved";
     transaction.rejectReason = "";
     await transaction.save();
+
+    // Invalidate referral caches so downlines/deposits reflect immediately for investors
+    cacheService.invalidateAllReferralCaches().catch(() => {});
 
     // If Deposit, credit user depositWallet & trigger automated notification asynchronously
     if (transaction.type === "Deposit" && transaction.user) {

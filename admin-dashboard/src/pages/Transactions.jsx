@@ -6,7 +6,7 @@ import {
   RiFileExcelLine, RiAlertLine, RiCheckLine, RiFilePdfLine,
   RiImageLine, RiFileCopyLine, RiShieldCheckLine, RiInformationLine,
   RiUser3Line, RiWallet3Line, RiCheckboxCircleFill, RiExternalLinkLine,
-  RiMailSendLine, RiRefreshLine
+  RiMailSendLine, RiRefreshLine, RiExchangeDollarLine
 } from 'react-icons/ri';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -168,6 +168,9 @@ export default function Transactions() {
     }
     if (type === 'Withdrawal') {
       return <RiArrowUpCircleLine className="text-amber-500 flex-shrink-0" size={16} />;
+    }
+    if (type?.startsWith('Investment') || type === 'Investment') {
+      return <RiExchangeDollarLine className="text-gold-500 flex-shrink-0" size={16} />;
     }
     if (type === 'ROI Return' || type === 'ROI Earning') {
       return <RiFlashlightLine className="text-gold-500 flex-shrink-0" size={16} />;
@@ -409,6 +412,10 @@ export default function Transactions() {
     let matchTab = true;
     if (activeTab === 'pending') {
       matchTab = txn.status === 'Pending' || txn.status === 'Pending Verification' || txn.status === 'Pending Approval';
+    } else if (activeTab === 'Investment') {
+      matchTab = txn.type?.startsWith('Investment') || txn.type === 'Investment';
+    } else if (activeTab === 'ROI Return') {
+      matchTab = (txn.type === 'ROI Return' || txn.type === 'ROI Earning') && !txn.type?.startsWith('Investment');
     } else if (activeTab !== 'all') {
       matchTab = txn.type === activeTab;
     }
@@ -442,7 +449,8 @@ export default function Transactions() {
   const pendingCount = txnList.filter(t => t.status === 'Pending' || t.status === 'Pending Verification' || t.status === 'Pending Approval').length;
   const totalDeposits = txnList.filter(t => t.type === 'Deposit' && (t.status === 'Approved' || t.status === 'Completed')).reduce((acc, t) => acc + parseAmount(t.rawAmount || t.amount), 0);
   const totalWithdrawals = txnList.filter(t => t.type === 'Withdrawal' && (t.status === 'Approved' || t.status === 'Completed')).reduce((acc, t) => acc + parseAmount(t.rawAmount || t.amount), 0);
-  const totalRoi = txnList.filter(t => t.type === 'ROI Return' || t.type === 'ROI Earning').reduce((acc, t) => acc + parseAmount(t.rawAmount || t.amount), 0);
+  const totalInvestments = txnList.filter(t => t.type?.startsWith('Investment') || t.type === 'Investment').reduce((acc, t) => acc + parseAmount(t.rawAmount || t.amount), 0);
+  const totalRoi = txnList.filter(t => (t.type === 'ROI Return' || t.type === 'ROI Earning') && !t.type?.startsWith('Investment')).reduce((acc, t) => acc + parseAmount(t.rawAmount || t.amount), 0);
   const totalReferral = txnList.filter(t => t.type === 'Referral Bonus' || t.type === 'Rank Bonus').reduce((acc, t) => acc + parseAmount(t.rawAmount || t.amount), 0);
 
   // Single Transaction Receipt Print Generator
@@ -501,7 +509,8 @@ export default function Transactions() {
     { key: 'pending', label: 'Pending Approvals', count: pendingCount, isAlert: pendingCount > 0 },
     { key: 'Deposit', label: 'Deposits', count: txnList.filter(t => t.type === 'Deposit').length },
     { key: 'Withdrawal', label: 'Withdrawals', count: txnList.filter(t => t.type === 'Withdrawal').length },
-    { key: 'ROI Return', label: 'ROI Returns', count: txnList.filter(t => t.type === 'ROI Return' || t.type === 'ROI Earning').length },
+    { key: 'Investment', label: 'Investments', count: txnList.filter(t => t.type?.startsWith('Investment') || t.type === 'Investment').length },
+    { key: 'ROI Return', label: 'ROI Returns', count: txnList.filter(t => (t.type === 'ROI Return' || t.type === 'ROI Earning') && !t.type?.startsWith('Investment')).length },
     { key: 'Referral Bonus', label: 'Referral Bonus', count: txnList.filter(t => t.type === 'Referral Bonus' || t.type === 'Rank Bonus').length },
   ];
 

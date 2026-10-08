@@ -369,7 +369,7 @@ async function seedClientHistories() {
         userCustomId: user.customId,
         userEmail: user.email,
         country: user.country,
-        type: 'ROI Return',
+        type: `Investment - ${config.plan.name}`,
         amount: config.investAmount,
         rawAmount: config.investAmount,
         fee: 0,

@@ -1070,13 +1070,13 @@ export default function Plans() {
                       </div>
                       <p className="text-[11px] text-slate-500 font-medium">
                         {isLocked
-                          ? `Total Contract Return: $${(currentInvestCapital * 4).toFixed(2)}`
+                          ? `Total Contract Return: $${(currentInvestCapital * 3).toFixed(2)}`
                           : `Running at ${tier2DailyPercent}%/day max tier`
                         }
                       </p>
                     </div>
                     <p className="text-[10px] text-amber-900 font-medium border-t border-gold-200 pt-1.5 truncate">
-                      {isLocked ? 'Contract completes upon reaching 300% profit' : 'Continuous real-time streaming annual yield'}
+                      {isLocked ? 'Contract completes upon reaching 300% (3X) cap' : 'Continuous real-time streaming annual yield'}
                     </p>
                   </div>
                 </div>
@@ -1090,7 +1090,7 @@ export default function Plans() {
                     </p>
                     <p className="text-[11px] text-gray-500">
                       {isLocked ? (
-                        <>Principal (${currentInvestCapital.toLocaleString()}) + 300% Max Profit (+${(currentInvestCapital * 3).toFixed(2)})</>
+                        <>Principal (${currentInvestCapital.toLocaleString()}) Included &bull; 3X Max Maturity Cap (${(currentInvestCapital * 3).toFixed(2)})</>
                       ) : (
                         <>Principal (${currentInvestCapital.toLocaleString()}) + 1-Year Projected Return (+${calcAnnualYield.toFixed(2)})</>
                       )}
@@ -1101,7 +1101,7 @@ export default function Plans() {
                       {isLocked ? 'Total 3X Maturity Value' : '1-Year Projected Maturity Value'}
                     </p>
                     <span className="text-base font-extrabold text-emerald-700 font-mono">
-                      ${isLocked ? (currentInvestCapital + (currentInvestCapital * 3)).toFixed(2) : (currentInvestCapital + calcAnnualYield).toFixed(2)}
+                      ${isLocked ? (currentInvestCapital * 3).toFixed(2) : (currentInvestCapital + calcAnnualYield).toFixed(2)}
                     </span>
                   </div>
                 </div>

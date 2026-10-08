@@ -1,17 +1,35 @@
 services:
 
+  redis:
+    image: redis:7-alpine
+    container_name: horizon-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    expose:
+      - "6379"
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - horizon-network
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: horizon-backend
     restart: unless-stopped
+    environment:
+      - REDIS_URL=redis://horizon-redis:6379
     env_file:
       - ./backend/.env
     expose:
       - "5000"
     ports:
       - "127.0.0.1:5000:5000"
+    depends_on:
+      - redis
     dns:
       - 1.1.1.1
       - 8.8.8.8
@@ -22,8 +40,8 @@ services:
     build:
       context: ./website
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: https://api.horizoncapworld.com/api
+    args:
+      VITE_API_URL: https://api.horizoncapworld.com/api
     container_name: horizon-website
     restart: unless-stopped
     expose:
@@ -37,8 +55,8 @@ services:
     build:
       context: ./admin-dashboard
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: https://api.horizoncapworld.com/api
+    args:
+      VITE_API_URL: https://api.horizoncapworld.com/api
     container_name: horizon-admin
     restart: unless-stopped
     expose:
@@ -52,8 +70,8 @@ services:
     build:
       context: ./user-dashboard
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: https://api.horizoncapworld.com/api
+    args:
+      VITE_API_URL: https://api.horizoncapworld.com/api
     container_name: horizon-investor
     restart: unless-stopped
     expose:
@@ -62,6 +80,9 @@ services:
       - "127.0.0.1:3003:80"
     networks:
       - horizon-network
+
+volumes:
+  redis-data:
 
 networks:
   horizon-network:

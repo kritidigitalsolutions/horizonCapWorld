@@ -4,7 +4,7 @@ import {
   RiTeamLine, RiCoinsLine, RiCalculatorLine,
   RiCheckLine, RiNodeTree, RiShieldCheckLine,
   RiGroupLine, RiMoneyDollarCircleLine, RiPercentLine,
-  RiFileCopyLine, RiQrCodeLine, RiUserAddLine
+  RiFileCopyLine, RiQrCodeLine, RiUserAddLine, RiRefreshLine
 } from 'react-icons/ri';
 import { useAuth, getReferralLink } from '../context/AuthContext';
 import { getReferralOverview, getReferralCommissions, getReferralNetwork } from '../api/referralsApi';
@@ -38,6 +38,7 @@ export default function Referrals() {
   const [search, setSearch] = useState('');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [overviewData, setOverviewData] = useState(null);
   const [networkList, setNetworkList] = useState([]);
@@ -56,12 +57,13 @@ export default function Referrals() {
   const [calcDeposit, setCalcDeposit] = useState('10000');
   const [calcYield, setCalcYield] = useState('1500');
 
-  const fetchData = async () => {
+  const fetchData = async (force = false) => {
+    if (force) setRefreshing(true);
     try {
       const [overviewRes, commsRes, netRes] = await Promise.allSettled([
-        getReferralOverview(),
-        getReferralCommissions(),
-        getReferralNetwork(),
+        getReferralOverview(force),
+        getReferralCommissions(force),
+        getReferralNetwork(force),
       ]);
 
       if (overviewRes.status === 'fulfilled' && overviewRes.value?.success) {
@@ -87,20 +89,17 @@ export default function Referrals() {
         if (netRes.value.tree) {
           setTreeData(netRes.value.tree);
         }
-      } else {
-        setNetworkList([]);
-        setTreeData(null);
       }
     } catch (err) {
       console.warn('Error fetching referrals data:', err.message);
-      setNetworkList([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(false);
   }, []);
 
   useEffect(() => {
@@ -114,16 +113,14 @@ export default function Referrals() {
           setToggles(prev => ({ ...prev, ...JSON.parse(saved) }));
         } catch (err) {}
       }
-      fetchData();
+      fetchData(false);
     };
 
     window.addEventListener('horizon-referrals-change', handleSync);
     window.addEventListener('storage', handleSync);
-    window.addEventListener('focus', fetchData);
     return () => {
       window.removeEventListener('horizon-referrals-change', handleSync);
       window.removeEventListener('storage', handleSync);
-      window.removeEventListener('focus', fetchData);
     };
   }, []);
 
@@ -179,16 +176,28 @@ export default function Referrals() {
         subtitle={depositEnabled ? "Grow your multi-tier downline team and earn direct deposit & daily ROI profit-sharing commissions (Capped at Level 10)" : "Grow your multi-tier downline team and earn daily ROI profit-sharing commissions (Capped at Level 10)"}
         badge={networkList.some(u => u.level > 10) ? "Infinite Downline Network (L10 Commission Cap)" : "Multi-Tier Active Network"}
         actions={
-          (depositEnabled || roiShareEnabled) ? (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setCalculatorOpen(true)}
-              className="btn btn-outline-gold text-xs px-4 py-2.5 rounded-xl font-bold shadow-xs flex items-center gap-2 cursor-pointer bg-white"
+              onClick={() => fetchData(true)}
+              disabled={refreshing}
+              className="btn btn-secondary text-xs px-3.5 py-2.5 rounded-xl font-bold shadow-xs flex items-center gap-1.5 cursor-pointer bg-white hover:bg-slate-50 transition-all border border-slate-200"
+              title="Sync live referral network data directly from server"
             >
-              <RiCalculatorLine size={18} className="text-gold-700" />
-              <span>Commission Calculator</span>
+              <RiRefreshLine size={16} className={`text-slate-600 ${refreshing ? 'animate-spin text-gold-600' : ''}`} />
+              <span className="hidden sm:inline">{refreshing ? 'Syncing...' : 'Sync Network'}</span>
             </button>
-          ) : null
+            {(depositEnabled || roiShareEnabled) && (
+              <button
+                type="button"
+                onClick={() => setCalculatorOpen(true)}
+                className="btn btn-outline-gold text-xs px-4 py-2.5 rounded-xl font-bold shadow-xs flex items-center gap-2 cursor-pointer bg-white"
+              >
+                <RiCalculatorLine size={18} className="text-gold-700" />
+                <span>Commission Calculator</span>
+              </button>
+            )}
+          </div>
         }
       />
 
@@ -325,16 +334,16 @@ export default function Referrals() {
       </div>
 
       {/* ──────────────── TAB 1: INTERACTIVE GENEALOGY TREE VIEW ──────────────── */}
-      {activeTab === 'genealogy' && (
+      <div className={activeTab === 'genealogy' ? 'block' : 'hidden'}>
         <ReferralTreeView
           tree={treeData}
           onSelectPartner={setSelectedPartner}
           referralLink={referralLink}
         />
-      )}
+      </div>
 
       {/* ──────────────── TAB 2: ACTIVE DOWNLINE PARTNERS DIRECTORY ──────────────── */}
-      {activeTab === 'tree' && (
+      <div className={activeTab === 'tree' ? 'block' : 'hidden'}>
         <div className="space-y-5">
 
           {/* Dynamic Level Distribution Summary Cards */}
@@ -567,10 +576,10 @@ export default function Referrals() {
             </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ──────────────── TAB 2: MULTI-TIER COMMISSION STRUCTURE & PLANS ──────────────── */}
-      {activeTab === 'plans' && (
+      {/* ──────────────── TAB 3: MULTI-TIER COMMISSION STRUCTURE & PLANS ──────────────── */}
+      <div className={activeTab === 'plans' ? 'block' : 'hidden'}>
         <div className="space-y-6 font-poppins">
           {/* ──────── 1. LEVEL ROI PER DAY INCOME TABLE (LUXURY WHITE & GOLD THEME) ──────── */}
           <div className="card p-5 sm:p-6 space-y-5 shadow-card border border-slate-200/80">
@@ -755,7 +764,7 @@ export default function Referrals() {
             </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* ──────────────── MODAL 1: QR CODE MODAL ──────────────── */}
       <Modal

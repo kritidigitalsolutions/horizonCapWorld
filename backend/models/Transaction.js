@@ -31,16 +31,8 @@ const transactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: [
-        "Deposit",
-        "Withdrawal",
-        "ROI Return",
-        "Referral Bonus",
-        "Rank Bonus",
-        "Company Bonus",
-        "Salary Income",
-      ],
       required: true,
+      trim: true,
     },
     incomeSource: {
       type: String,
@@ -146,6 +138,10 @@ const transactionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+transactionSchema.index({ user: 1, type: 1, status: 1 });
+transactionSchema.index({ type: 1, status: 1 });
+transactionSchema.index({ status: 1 });
 
 // Auto-generate unique customId if missing before save
 transactionSchema.pre("save", function () {

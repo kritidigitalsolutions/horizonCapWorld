@@ -2,6 +2,7 @@ const ReferralSetting = require("../../models/ReferralSetting");
 const User = require("../../models/User");
 const Transaction = require("../../models/Transaction");
 const AdminSettings = require("../../models/AdminSettings");
+const cacheService = require("../../services/cacheService");
 
 const LEVEL_ROI_DATA = [
   {
@@ -314,6 +315,7 @@ exports.updateReferralToggles = async (req, res) => {
     }
 
     await adminSettings.save();
+    await cacheService.invalidateAllReferralCaches();
 
     res.status(200).json({
       success: true,
@@ -390,6 +392,8 @@ exports.createReferralTier = async (req, res) => {
       activePromoters: 0,
       totalVolume: "$0",
     });
+
+    await cacheService.invalidateAllReferralCaches();
 
     res.status(201).json({
       success: true,
@@ -488,6 +492,7 @@ exports.updateReferralSetting = async (req, res) => {
     }
 
     await setting.save();
+    await cacheService.invalidateAllReferralCaches();
 
     res.status(200).json({
       success: true,
@@ -553,6 +558,8 @@ exports.bulkUpdateReferralSettings = async (req, res) => {
       }
     }
 
+    await cacheService.invalidateAllReferralCaches();
+
     res.status(200).json({
       success: true,
       message: `Successfully updated ${updated.length} referral tier settings.`,
@@ -584,6 +591,7 @@ exports.deleteReferralTier = async (req, res) => {
     }
 
     await ReferralSetting.findByIdAndDelete(setting._id);
+    await cacheService.invalidateAllReferralCaches();
 
     res.status(200).json({
       success: true,

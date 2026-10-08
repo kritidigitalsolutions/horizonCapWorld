@@ -792,13 +792,13 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
                 </div>
                 <p className="text-[11px] text-slate-500 font-medium">
                   {calculations.isLockIn
-                    ? `Total Contract Return: $${((Number(amount) || 0) * 4).toFixed(2)}`
+                    ? `Total Contract Return: $${((Number(amount) || 0) * 3).toFixed(2)}`
                     : `Running at ${calculations.tier2DailyPercent}%/day max tier`
                   }
                 </p>
               </div>
               <p className="text-[10px] text-amber-900 font-medium border-t border-gold-200 pt-1.5 truncate">
-                {calculations.isLockIn ? 'Contract completes upon reaching 300% profit' : 'Continuous real-time streaming annual yield'}
+                {calculations.isLockIn ? 'Contract completes upon reaching 300% (3X) cap' : 'Continuous real-time streaming annual yield'}
               </p>
             </div>
           </div>
@@ -812,7 +812,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
               </p>
               <p className="text-[11px] text-gray-500">
                 {calculations.isLockIn ? (
-                  <>Principal (${(Number(amount) || 0).toLocaleString()}) + 300% Max Profit (+${((Number(amount) || 0) * 3).toFixed(2)})</>
+                  <>Principal (${(Number(amount) || 0).toLocaleString()}) Included &bull; 3X Max Maturity Cap (${((Number(amount) || 0) * 3).toFixed(2)})</>
                 ) : (
                   <>Principal (${(Number(amount) || 0).toLocaleString()}) + 1-Year Projected Return (+${calculations.annually})</>
                 )}
@@ -824,7 +824,7 @@ export default function ProfitCalculatorDrawer({ isOpen, onClose, onInvest, init
               </p>
               <span className="text-base font-extrabold text-emerald-700 font-mono">
                 ${calculations.isLockIn
-                  ? ((Number(amount) || 0) + ((Number(amount) || 0) * 3)).toFixed(2)
+                  ? ((Number(amount) || 0) * 3).toFixed(2)
                   : (calculations.isInfinite ? (Number(amount) || 0) + Number(calculations.annually) : Number(calculations.finalReturns)).toFixed(2)
                 }
               </span>

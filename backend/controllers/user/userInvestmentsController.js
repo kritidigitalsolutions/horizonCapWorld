@@ -241,7 +241,7 @@ exports.investInPlan = async (req, res) => {
       userCustomId: user.customId || "HORIZON-USR-01",
       userEmail: user.email,
       country: user.country,
-      type: "ROI Return",
+      type: `Investment - ${plan.name}`,
       amount: investAmount,
       rawAmount: investAmount,
       fee: 0,

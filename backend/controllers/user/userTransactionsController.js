@@ -1005,7 +1005,11 @@ exports.getTransactions = async (req, res) => {
     let query = { user: req.user._id };
 
     if (type && type !== "all") {
-      query.type = type;
+      if (type === "Investment") {
+        query.type = { $regex: "^Investment", $options: "i" };
+      } else {
+        query.type = type;
+      }
     }
 
     if (status && status !== "all") {
@@ -1017,6 +1021,8 @@ exports.getTransactions = async (req, res) => {
         { referenceNo: { $regex: search, $options: "i" } },
         { gateway: { $regex: search, $options: "i" } },
         { customId: { $regex: search, $options: "i" } },
+        { type: { $regex: search, $options: "i" } },
+        { note: { $regex: search, $options: "i" } },
       ];
     }
 

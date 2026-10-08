@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   RiNodeTree, RiUser3Line, RiCoinsLine, RiMoneyDollarCircleLine,
   RiArrowDownSLine, RiArrowRightSLine, RiSearchLine, RiSparklingLine,
@@ -78,7 +78,7 @@ export const getTierTheme = (level) => {
   };
 };
 
-function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilter, expandedIds, toggleExpand }) {
+function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilter, expandedIds, toggleExpand, expandAll }) {
   const isExpanded = expandedIds.has(node.id);
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
   const theme = getTierTheme(node.level);
@@ -218,13 +218,26 @@ function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilte
           </div>
         </div>
 
-        {/* Node Footer: Sponsor & Action / Expand */}
+        {/* Downline Network Summary Bar on Root Card */}
+        {isRoot && (
+          <div className="mt-2.5 px-3 py-1.5 rounded-xl bg-amber-50/80 border border-gold-300 flex items-center justify-between text-xs">
+            <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+              <RiGroupLine className="text-gold-700" size={14} />
+              <span>Downlines:</span>
+            </span>
+            <span className="font-mono font-black text-slate-900 text-xs">
+              {Number(node.totalTeamCount || 0) || (node.children?.length || 0)} Total <span className="text-[10px] text-slate-500 font-semibold font-sans">({node.children?.length || 0} Direct L1)</span>
+            </span>
+          </div>
+        )}
+
+        {/* Node Footer: Action / Expand */}
         <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px]">
-          <span className="text-slate-400 font-mono truncate max-w-[150px]">
-            Sponsor: <strong className="text-slate-700">{node.sponsorId || 'HORIZON-HQ'}</strong>
+          <span className="text-[10px] font-bold text-slate-400 font-poppins tracking-wider uppercase">
+            {isRoot ? "Root Account" : (node.tierName || `Tier L${node.level}`)}
           </span>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 ml-auto">
             {onSelectPartner && !isRoot && (
               <button
                 type="button"
@@ -240,14 +253,22 @@ function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilte
               <button
                 type="button"
                 onClick={() => toggleExpand(node.id)}
-                className={`px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 transition-colors cursor-pointer text-[10px] ${
+                className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition-colors cursor-pointer text-[10px] ${
                   isExpanded
                     ? 'bg-slate-200 text-slate-800 hover:bg-slate-300'
                     : 'bg-gold-400 text-slate-950 hover:bg-gold-500 shadow-2xs'
                 }`}
+                title={isExpanded ? 'Collapse downline tree' : 'Expand downline tree'}
               >
                 {isExpanded ? <RiArrowDownSLine size={14} /> : <RiArrowRightSLine size={14} />}
-                <span>{node.children.length} {node.children.length === 1 ? 'Downline' : 'Downlines'}</span>
+                <span>
+                  {isRoot
+                    ? `${Number(node.totalTeamCount || 0) || node.children.length} Downlines (${node.children.length} Direct)`
+                    : Number(node.totalTeamCount || 0) > node.children.length
+                    ? `${node.totalTeamCount} Team (${node.children.length} Direct)`
+                    : `${node.children.length} ${node.children.length === 1 ? 'Downline' : 'Downlines'}`
+                  }
+                </span>
               </button>
             )}
           </div>
@@ -262,6 +283,21 @@ function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilte
       {/* Children Container with Branch Connectors */}
       {hasChildren && isExpanded && (
         <div className="relative pt-2">
+          {/* Quick full tree expansion button for root node */}
+          {isRoot && Number(node.totalTeamCount || 0) > node.children.length && expandAll && (
+            <div className="mb-3 flex justify-center">
+              <button
+                type="button"
+                onClick={expandAll}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-gold-100 hover:bg-gold-200 text-gold-950 border border-gold-300 font-bold text-[11px] shadow-2xs cursor-pointer transition-colors"
+                title="Expand all downlines across all levels"
+              >
+                <RiNodeTree size={13} className="text-gold-700" />
+                <span>Show All {node.totalTeamCount} Downlines (Full Genealogy)</span>
+              </button>
+            </div>
+          )}
+
           {/* Horizontal connector bar across sibling nodes if more than 1 child */}
           {node.children.length > 1 && (
             <div
@@ -315,8 +351,8 @@ export default function ReferralTreeView({ tree, onSelectPartner, referralLink =
     return ids;
   }, [tree]);
 
-  // Default: start with all branches expanded so user sees the tree immediately
-  const [expandedIds, setExpandedIds] = useState(() => new Set(allNodeIds));
+  // Default: downlines are collapsed/closed by default
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
 
   // Toggle single node
   const toggleExpand = (id) => {
@@ -378,9 +414,17 @@ export default function ReferralTreeView({ tree, onSelectPartner, referralLink =
 
   if (!tree) {
     return (
-      <div className="p-8 text-center space-y-3 font-poppins">
-        <div className="skeleton h-32 w-full rounded-2xl" />
-        <div className="skeleton h-64 w-full rounded-2xl" />
+      <div className="card p-10 text-center flex flex-col items-center justify-center space-y-4 font-poppins min-h-[300px]">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-gold-200 text-gold-600 flex items-center justify-center shadow-xs animate-pulse">
+          <RiNodeTree size={28} />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-base font-bold text-slate-800">Rendering Client Network Tree</h3>
+          <p className="text-xs text-slate-400">Syncing live downline investor nodes and team volume...</p>
+        </div>
+        <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-full bg-gold-400 rounded-full animate-pulse w-3/4" />
+        </div>
       </div>
     );
   }
@@ -534,6 +578,7 @@ export default function ReferralTreeView({ tree, onSelectPartner, referralLink =
               tierFilter={tierFilter}
               expandedIds={expandedIds}
               toggleExpand={toggleExpand}
+              expandAll={expandAll}
             />
           </div>
         )}

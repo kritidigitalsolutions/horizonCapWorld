@@ -4,6 +4,7 @@ const ReferralSetting = require("../models/ReferralSetting");
 const Rank = require("../models/Rank");
 const Transaction = require("../models/Transaction");
 const AdminSettings = require("../models/AdminSettings");
+const cacheService = require("../services/cacheService");
 
 /**
  * Synchronize real-time streaming earnings for an investor
@@ -329,6 +330,8 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
       }
       await investor.save();
     }
+
+    cacheService.invalidateAllReferralCaches().catch(() => {});
   } catch (error) {
     console.error("[Affiliate Engine] distributeReferralCommissions error:", error.message);
   }

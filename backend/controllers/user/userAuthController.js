@@ -6,6 +6,7 @@ const { generateToken } = require("../../utils/jwt");
 const { syncUserStreamingEarnings } = require("../../utils/yieldAndAffiliateEngine");
 const { sendOtpEmail, sendWelcomeEmail, sendPasswordResetConfirmation } = require("../../utils/emailService");
 const { notifyUser } = require("../../utils/notificationService");
+const cacheService = require("../../services/cacheService");
 
 // Helper to escape regex special characters
 const escapeRegex = (str) => {
@@ -397,6 +398,9 @@ exports.register = async (req, res) => {
       is2FAEnabled: initial2FA,
       status: "Active",
     });
+
+    // Invalidate sponsor referral tree & overview cache so real-time network updates immediately
+    cacheService.invalidateUserReferrals(null, null, verifiedSponsorId).catch(() => {});
 
     // Welcome notification to new user
     notifyUser({

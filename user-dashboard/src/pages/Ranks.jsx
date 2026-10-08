@@ -378,7 +378,7 @@ export default function Ranks() {
   return (
     <div className="page-enter space-y-6 pb-8 font-poppins">
       {/* ──────── PAGE HEADER ──────── */}
-      <PageHeader
+      {/* <PageHeader
         title="Rank Progression Ladder"
         subtitle="Climb leadership ranks and unlock instant cash milestone rewards, monthly salary and company profit sharing"
         badge={`${ranks.length}-Tier Ladder`}
@@ -392,7 +392,7 @@ export default function Ranks() {
             <span>Milestone Audit & Calculator</span>
           </button>
         }
-      />
+      /> */}
 
       {/* ──────────────── 6 ROLLING ODOMETER KPI CARDS (3x2 GRID) ──────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 xl:gap-5">

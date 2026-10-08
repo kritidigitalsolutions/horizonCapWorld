@@ -122,11 +122,12 @@ export default function Transactions() {
     };
   }, [fetchTxns, fetchReferralStats, fetchRankData]);
 
-  const types = ['all', 'Deposit', 'Withdrawal', 'ROI Earning', 'Level Income', 'Salary Income', 'Rank Bonus', 'Company Bonus'];
+  const types = ['all', 'Deposit', 'Withdrawal', 'Investment', 'ROI Earning', 'Level Income', 'Salary Income', 'Rank Bonus', 'Company Bonus'];
 
   const typeIcon = (type) => {
     if (type === 'Deposit') return <RiArrowDownCircleLine className="text-emerald-600 flex-shrink-0" size={18} />;
     if (type === 'Withdrawal') return <RiArrowUpCircleLine className="text-amber-500 flex-shrink-0" size={18} />;
+    if (type?.startsWith('Investment') || type === 'Investment') return <RiExchangeDollarLine className="text-gold-600 flex-shrink-0" size={18} />;
     if (type === 'ROI Earning' || type === 'ROI Return' || type === 'Level Income') return <RiFlashlightLine className="text-gold-500 flex-shrink-0" size={18} />;
     if (type === 'Referral Bonus' || type === 'Salary Income') return <RiGiftLine className="text-purple-600 flex-shrink-0" size={18} />;
     if (type === 'Company Bonus' || type?.toLowerCase().includes('company')) return <RiFlashlightLine className="text-emerald-500 flex-shrink-0" size={18} />;
@@ -155,7 +156,7 @@ export default function Transactions() {
     .reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
 
   const totalRoiEarned = txnList
-    .filter(t => (t.type === 'ROI Earning' || t.type === 'ROI Return') && (t.status === 'Completed' || t.status === 'Approved'))
+    .filter(t => (t.type === 'ROI Earning' || (t.type === 'ROI Return' && !t.type?.startsWith('Investment'))) && (t.status === 'Completed' || t.status === 'Approved'))
     .reduce((sum, t) => sum + parseAmount(t.amount || t.rawAmount), 0);
 
   // Dynamic Level Income (Streaming ROI / Multi-tier daily yield)
@@ -177,8 +178,10 @@ export default function Transactions() {
   const filtered = txnList.filter(txn => {
     let matchType = filterType === 'all';
     if (!matchType) {
-      if (filterType === 'Level Income') {
-        matchType = txn.type === 'ROI Earning' || txn.type === 'ROI Return' || txn.type === 'Level Income';
+      if (filterType === 'Investment') {
+        matchType = txn.type?.startsWith('Investment') || txn.type === 'Investment';
+      } else if (filterType === 'Level Income') {
+        matchType = (txn.type === 'ROI Earning' || txn.type === 'ROI Return' || txn.type === 'Level Income') && !txn.type?.startsWith('Investment');
       } else if (filterType === 'Salary Income') {
         matchType = txn.type === 'Referral Bonus' || txn.type === 'Salary Income';
       } else if (filterType === 'Company Bonus') {
@@ -456,7 +459,15 @@ export default function Transactions() {
                       </div>
                     </td>
                     <td>
-                      <span className={`text-xs font-bold font-mono ${txn.type === 'Deposit' ? 'text-emerald-700' : 'text-slate-900'}`}>
+                      <span className={`text-xs font-bold font-mono ${
+                        txn.type === 'Deposit'
+                          ? 'text-emerald-700'
+                          : txn.type?.startsWith('Investment')
+                          ? 'text-amber-800'
+                          : txn.type === 'Withdrawal'
+                          ? 'text-red-600'
+                          : 'text-slate-900'
+                      }`}>
                         {formattedAmt}
                       </span>
                     </td>
