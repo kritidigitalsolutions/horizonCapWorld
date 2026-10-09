@@ -22,22 +22,34 @@ export default function NewsMedia() {
 
       const rawList = res?.articles || res?.news || [];
       if (res?.success && Array.isArray(rawList)) {
-        const formatted = rawList.map(art => ({
-          id: art._id || art.id || art.customId,
-          title: art.title,
-          subtitle: art.subtitle || '',
-          content: art.content || '',
-          category: art.category || 'Company',
-          date: art.createdAt ? art.createdAt.split('T')[0] : '2026-08-20',
-          publishDate: art.date || (art.createdAt ? new Date(art.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'),
-          authorName: typeof art.author === 'object' ? (art.author?.name || 'Super Admin') : (art.author || art.authorName || 'Super Admin'),
-          authorRole: typeof art.author === 'object' ? (art.author?.role || 'Platform Editorial') : 'Platform Editorial',
-          readTime: art.readTime || '3 min read',
-          image: art.bannerUrl || art.image || '',
-          bannerUrl: art.bannerUrl || art.image || '',
-          videoUrl: art.videoUrl || '',
-          tags: Array.isArray(art.tags) ? art.tags : (art.tags ? art.tags.split(',') : []),
-        }));
+        const formatted = rawList.map(art => {
+          const rawDate = art.publishDate || art.date || art.createdAt;
+          let formattedDate = 'Recently';
+          if (rawDate) {
+            const parsed = new Date(rawDate);
+            formattedDate = isNaN(parsed.getTime())
+              ? String(rawDate)
+              : parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          }
+
+          return {
+            id: art._id || art.id || art.customId,
+            title: art.title,
+            subtitle: art.subtitle || '',
+            content: art.content || '',
+            category: art.category || 'Company',
+            date: art.createdAt ? art.createdAt.split('T')[0] : '2026-08-20',
+            publishDate: formattedDate,
+            authorName: art.authorName || (typeof art.author === 'object' ? art.author?.name : art.author) || 'Horizon Research Desk',
+            authorRole: art.authorRole || (typeof art.author === 'object' ? art.author?.role : null) || 'Platform Editorial',
+            authorDesk: art.authorDesk || (typeof art.author === 'object' ? art.author?.desk : null) || 'Horizon Capital Desk',
+            readTime: art.readTime || '3 min read',
+            image: art.bannerUrl || art.image || '',
+            bannerUrl: art.bannerUrl || art.image || '',
+            videoUrl: art.videoUrl || '',
+            tags: Array.isArray(art.tags) ? art.tags : (art.tags ? art.tags.split(',') : []),
+          };
+        });
         setArticles(formatted);
       } else {
         setArticles([]);
@@ -204,10 +216,10 @@ export default function NewsMedia() {
                   </div>
                   <div>
                     <span className="font-bold text-slate-900 text-xs block">
-                      {featuredArticle.authorName || featuredArticle.author?.name || 'Alexander Vance'}
+                      {featuredArticle.authorName || 'Horizon Research Desk'}
                     </span>
                     <span className="text-[11px] text-slate-500 font-medium">
-                      {featuredArticle.authorRole || featuredArticle.author?.role || 'Chief Investment Officer'}
+                      {featuredArticle.authorRole || 'Platform Editorial'} • {featuredArticle.authorDesk || 'Horizon Capital Desk'}
                     </span>
                   </div>
                 </div>
@@ -226,6 +238,7 @@ export default function NewsMedia() {
                   )}
                   <Link
                     to={`/news/${featuredArticle.id}`}
+                    state={{ title: featuredArticle.title }}
                     className="btn btn-primary px-5 py-2.5 text-xs font-bold rounded-xl shadow-gold flex items-center gap-1.5"
                   >
                     <span>Read Article</span>
@@ -254,6 +267,7 @@ export default function NewsMedia() {
             <Link
               key={article.id}
               to={`/news/${article.id}`}
+              state={{ title: article.title }}
               className="card p-0 rounded-3xl overflow-hidden border border-slate-200 hover:border-gold-300 shadow-sm hover:shadow-gold transition-all duration-300 flex flex-col justify-between group bg-white"
             >
               {/* Image Banner */}

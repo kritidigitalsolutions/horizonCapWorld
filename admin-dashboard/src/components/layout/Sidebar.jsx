@@ -56,6 +56,36 @@ const navSections = [
 export default function Sidebar({ isOpen, onToggle, isMobile }) {
   const location = useLocation();
   const [adminAvatar, setAdminAvatar] = useState(() => localStorage.getItem('horizon_admin_avatar') || '');
+  const [adminUser, setAdminUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('admin') || localStorage.getItem('adminUser');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      try {
+        const saved = localStorage.getItem('admin') || localStorage.getItem('adminUser');
+        setAdminUser(saved ? JSON.parse(saved) : null);
+        const av = localStorage.getItem('horizon_admin_avatar');
+        if (av !== null) setAdminAvatar(av);
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('storage', handleProfileUpdate);
+    window.addEventListener('admin-avatar-change', handleProfileUpdate);
+    window.addEventListener('admin-profile-change', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('storage', handleProfileUpdate);
+      window.removeEventListener('admin-avatar-change', handleProfileUpdate);
+      window.removeEventListener('admin-profile-change', handleProfileUpdate);
+    };
+  }, []);
+
   const [counters, setCounters] = useState({
     users: 0,
     transactions: 0,
@@ -303,17 +333,21 @@ export default function Sidebar({ isOpen, onToggle, isMobile }) {
               <div className="flex items-center gap-2.5 min-w-0">
                 {/* Admin Avatar Circle */}
                 <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 ring-2 ring-gold-200 bg-slate-900 shadow-2xs">
-                  {adminAvatar ? (
-                    <img src={adminAvatar} alt="Super Admin" className="w-full h-full object-cover" />
+                  {adminAvatar || adminUser?.avatar ? (
+                    <img src={adminAvatar || adminUser?.avatar} alt={adminUser?.name || "Super Admin"} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 text-slate-950 font-bold flex items-center justify-center text-[11px]">
-                      SA
+                      {(adminUser?.name || 'Super Admin').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'SA'}
                     </div>
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate leading-tight">Super Admin</p>
-                  <span className="text-[10px] text-slate-400 font-normal block truncate">admin@horizoncap.com</span>
+                  <p className="text-xs font-bold text-slate-800 truncate leading-tight">
+                    {adminUser?.name || 'Super Admin'}
+                  </p>
+                  <span className="text-[10px] text-slate-400 font-normal block truncate" title={adminUser?.email || ''}>
+                    {adminUser?.email || localStorage.getItem('horizon_last_admin_email') || 'Super Admin'}
+                  </span>
                 </div>
               </div>
 

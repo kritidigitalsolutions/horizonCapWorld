@@ -32,6 +32,10 @@ const newsArticleSchema = new mongoose.Schema(
       type: String,
       default: "Platform Editorial",
     },
+    authorDesk: {
+      type: String,
+      default: "Horizon Capital Desk",
+    },
     authorAvatar: {
       type: String,
       default: "",

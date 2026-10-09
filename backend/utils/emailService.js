@@ -168,7 +168,7 @@ ${COMPANY_NAME} Team
       html,
     });
 
-    console.log(`[Email Service] OTP email delivered to ${recipient} (Message ID: ${info.messageId})`);
+    console.log(`[Email Service] OTP email sent to ${recipient}: [${otp}] (Message ID: ${info.messageId})`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error(`[Email Service] Failed to send OTP to ${to}:`, error.message);

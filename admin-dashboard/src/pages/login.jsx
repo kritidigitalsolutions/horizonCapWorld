@@ -23,9 +23,22 @@ export default function Login() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const rememberedEmail = (() => {
+    try {
+      const savedUser = localStorage.getItem('adminUser') || localStorage.getItem('admin');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed?.email) return parsed.email;
+      }
+      return localStorage.getItem('horizon_last_admin_email') || '';
+    } catch {
+      return localStorage.getItem('horizon_last_admin_email') || '';
+    }
+  })();
+
   // Login Form Data
   const [formData, setFormData] = useState({
-    email: '',
+    email: rememberedEmail || '',
     password: ''
   });
 
@@ -76,6 +89,10 @@ export default function Login() {
         localStorage.setItem('adminToken', response.data.token);
         localStorage.setItem('admin', JSON.stringify(response.data.admin));
         localStorage.setItem('adminUser', JSON.stringify(response.data.admin));
+        if (response.data.admin?.email) {
+          localStorage.setItem('horizon_last_admin_email', response.data.admin.email);
+        }
+        window.dispatchEvent(new CustomEvent('admin-profile-change', { detail: response.data.admin }));
         navigate('/admin');
       }
     } catch (err) {
@@ -263,7 +280,7 @@ export default function Login() {
                   value={formData.email}
                   onChange={handleChange}
                   autoComplete="username"
-                  placeholder="admin@horizoncap.com"
+                  placeholder={rememberedEmail || "admin@horizoncapworld.com"}
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/20 focus:border-gold-400 transition-all placeholder:text-slate-400 font-medium text-slate-800"
                 />
               </div>
@@ -411,7 +428,7 @@ export default function Login() {
                       required
                       value={forgotEmail}
                       onChange={(e) => setForgotEmail(e.target.value)}
-                      placeholder="admin@horizoncap.com"
+                      placeholder={formData.email || rememberedEmail || "admin@horizoncapworld.com"}
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/20 focus:border-gold-400 transition-all font-medium text-slate-800"
                     />
                   </div>

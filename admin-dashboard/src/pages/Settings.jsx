@@ -35,12 +35,21 @@ export default function Settings() {
   const [signupOtpRequired, setSignupOtpRequired] = useState(false);
   const [savingUserSecurity, setSavingUserSecurity] = useState(false);
 
-  // Profile Form & Avatar State (Synced with Header)
-  const [adminAvatar, setAdminAvatar] = useState(() => localStorage.getItem('horizon_admin_avatar') || '');
+  // Profile Form & Avatar State (Synced with Header & Sidebar)
+  const savedAdmin = (() => {
+    try {
+      const saved = localStorage.getItem('admin') || localStorage.getItem('adminUser');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const [adminAvatar, setAdminAvatar] = useState(() => savedAdmin?.avatar || localStorage.getItem('horizon_admin_avatar') || '');
   const avatarInputRef = useRef(null);
-  const [profileName, setProfileName] = useState('Super Admin');
-  const [profileEmail, setProfileEmail] = useState('admin@horizoncap.com');
-  const [profileRecovery, setProfileRecovery] = useState('recovery@horizoncap.com');
+  const [profileName, setProfileName] = useState(savedAdmin?.name || 'Super Admin');
+  const [profileEmail, setProfileEmail] = useState(savedAdmin?.email || localStorage.getItem('horizon_last_admin_email') || '');
+  const [profileRecovery, setProfileRecovery] = useState(savedAdmin?.recoveryEmail || '');
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
   const [profileSaved, setProfileSaved] = useState(false);
 
@@ -106,6 +115,10 @@ export default function Settings() {
           if (a.recoveryEmail) setProfileRecovery(a.recoveryEmail);
           if (a.avatar) setAdminAvatar(a.avatar);
           if (a.is2FAEnabled !== undefined) setTwoFactorEnabled(a.is2FAEnabled);
+          const updated = { ...(savedAdmin || {}), ...a };
+          localStorage.setItem('admin', JSON.stringify(updated));
+          localStorage.setItem('adminUser', JSON.stringify(updated));
+          window.dispatchEvent(new CustomEvent('admin-profile-change', { detail: updated }));
         }
 
         if (setRes.status === 'fulfilled' && setRes.value?.success && setRes.value.settings) {
@@ -190,6 +203,18 @@ export default function Settings() {
         avatar: adminAvatar,
         is2FAEnabled: twoFactorEnabled
       });
+      const updatedAdmin = {
+        ...(savedAdmin || {}),
+        name: profileName,
+        email: profileEmail,
+        recoveryEmail: profileRecovery,
+        avatar: adminAvatar,
+        is2FAEnabled: twoFactorEnabled
+      };
+      localStorage.setItem('adminUser', JSON.stringify(updatedAdmin));
+      localStorage.setItem('admin', JSON.stringify(updatedAdmin));
+      if (profileEmail) localStorage.setItem('horizon_last_admin_email', profileEmail);
+      window.dispatchEvent(new CustomEvent('admin-profile-change', { detail: updatedAdmin }));
       toast.success('Admin profile credentials updated successfully!', 'Profile Saved');
     } catch (err) {
       console.warn('API update admin profile offline:', err.message);
@@ -254,9 +279,19 @@ export default function Settings() {
         otp: emailOtpCode
       });
       if (res?.success) {
-        setProfileEmail(newEmailAddress.trim());
+        const nextEmail = newEmailAddress.trim();
+        setProfileEmail(nextEmail);
+        const updatedAdmin = {
+          ...(savedAdmin || {}),
+          name: profileName,
+          email: nextEmail,
+        };
+        localStorage.setItem('adminUser', JSON.stringify(updatedAdmin));
+        localStorage.setItem('admin', JSON.stringify(updatedAdmin));
+        localStorage.setItem('horizon_last_admin_email', nextEmail);
+        window.dispatchEvent(new CustomEvent('admin-profile-change', { detail: updatedAdmin }));
         setEmailUpdated(true);
-        toast.success(`Admin official email updated to ${newEmailAddress.trim()}!`, 'Email Updated');
+        toast.success(`Admin official email updated to ${nextEmail}!`, 'Email Updated');
         setTimeout(() => {
           setEmailUpdated(false);
           setEmailOtpSent(false);

@@ -280,7 +280,7 @@ exports.executeAdminSweep = async (req, res) => {
       user: req.admin?._id || null,
       userName: "Super Admin Treasury",
       userCustomId: "SUPER-ADMIN",
-      userEmail: req.admin?.email || "admin@horizoncap.io",
+      userEmail: req.admin?.email || process.env.EMAIL_USER || "admin@horizoncapworld.com",
       country: "Global Treasury",
       type: "Withdrawal",
       incomeSource: "Admin Vault Sweep",

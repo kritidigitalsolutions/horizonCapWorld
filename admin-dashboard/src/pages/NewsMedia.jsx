@@ -21,6 +21,7 @@ import {
 } from '../api/newsApi';
 import { uploadFileToCloudinary, deleteFileFromCloudinary } from '../api/uploadApi';
 import { useToast } from '../context/ToastContext';
+import ArticleContentRenderer from '../components/news/ArticleContentRenderer';
 
 const initialCategories = [
   'Company',
@@ -49,11 +50,14 @@ export default function NewsMedia() {
   const [bannerUrl, setBannerUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [category, setCategory] = useState('Company');
-  const [authorName, setAuthorName] = useState('Super Admin');
+  const [authorName, setAuthorName] = useState('Horizon Research Desk');
   const [authorRole, setAuthorRole] = useState('Platform Editorial');
+  const [authorDesk, setAuthorDesk] = useState('Horizon Capital Desk');
+  const [publishDate, setPublishDate] = useState(new Date().toISOString().slice(0, 10));
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
   const [status, setStatus] = useState('Published');
+  const [editorTab, setEditorTab] = useState('edit'); // 'edit' or 'preview'
 
   // New Category Inline Adding
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -74,23 +78,34 @@ export default function NewsMedia() {
       });
 
       if (res?.success && Array.isArray(res.articles)) {
-        const formatted = res.articles.map(a => ({
-          _id: a._id,
-          id: a.customId || a._id,
-          title: a.title,
-          subtitle: a.subtitle || '',
-          bannerUrl: a.bannerUrl || a.image || '',
-          videoUrl: a.videoUrl || '',
-          category: a.category || 'Company',
-          author: typeof a.author === 'object' ? a.author : { name: a.author || 'Super Admin', role: 'Platform Editorial', avatar: 'SA' },
-          content: a.content || '',
-          excerpt: a.excerpt || a.subtitle || (a.content ? a.content.slice(0, 140) + '...' : ''),
-          tags: Array.isArray(a.tags) ? a.tags : (a.tags ? a.tags.split(',') : []),
-          status: a.status || 'Published',
-          views: String(a.views || '0'),
-          readTime: a.readTime || '3 min read',
-          date: a.date || (a.createdAt ? a.createdAt.split('T')[0] : '2026-08-20'),
-        }));
+        const formatted = res.articles.map(a => {
+          const authName = a.authorName || (typeof a.author === 'object' ? a.author?.name : a.author) || 'Horizon Research Desk';
+          const authRole = a.authorRole || (typeof a.author === 'object' ? a.author?.role : null) || 'Platform Editorial';
+          const authDesk = a.authorDesk || (typeof a.author === 'object' ? a.author?.desk : null) || 'Horizon Capital Desk';
+          const pubDate = a.publishDate || a.date || (a.createdAt ? a.createdAt.split('T')[0] : '2026-08-20');
+
+          return {
+            _id: a._id,
+            id: a.customId || a._id,
+            title: a.title,
+            subtitle: a.subtitle || '',
+            bannerUrl: a.bannerUrl || a.image || '',
+            videoUrl: a.videoUrl || '',
+            category: a.category || 'Company',
+            author: { name: authName, role: authRole, desk: authDesk, avatar: authName.charAt(0) },
+            authorName: authName,
+            authorRole: authRole,
+            authorDesk: authDesk,
+            publishDate: pubDate,
+            date: pubDate,
+            content: a.content || '',
+            excerpt: a.excerpt || a.subtitle || (a.content ? a.content.slice(0, 140) + '...' : ''),
+            tags: Array.isArray(a.tags) ? a.tags : (a.tags ? a.tags.split(',') : []),
+            status: a.status || 'Published',
+            views: String(a.views || '0'),
+            readTime: a.readTime || '3 min read',
+          };
+        });
         setArticles(formatted);
       } else {
         setArticles([]);
@@ -141,8 +156,11 @@ export default function NewsMedia() {
     setBannerUrl('');
     setVideoUrl('');
     setCategory(categories[0] || 'Company');
-    setAuthorName('Super Admin');
+    setAuthorName('Horizon Research Desk');
     setAuthorRole('Platform Editorial');
+    setAuthorDesk('Horizon Capital Desk');
+    setPublishDate(new Date().toISOString().slice(0, 10));
+    setEditorTab('edit');
     setContent(`## Executive Overview & Strategic Announcement\n\nWrite your engaging introduction here explaining the key value to platform investors...\n\n> "Add an impactful quote from the leadership team here to build investor trust."\n\n### Key Highlights & Specifications\n- **Feature / Milestone 1**: High-impact yield or asset detail.\n- **Security & Custody**: Fully audited and backed by institutional depositories.\n- **Next Steps for Investors**: Immediate actions available on the dashboard.`);
     setTags('Horizon, Capital, SustainableYield');
     setStatus('Published');
@@ -159,8 +177,11 @@ export default function NewsMedia() {
     setBannerUrl(article.bannerUrl || article.coverImage || '');
     setVideoUrl(article.videoUrl || '');
     setCategory(article.category || categories[0] || 'Company');
-    setAuthorName(article.author?.name || 'Super Admin');
-    setAuthorRole(article.author?.role || 'Platform Editorial');
+    setAuthorName(article.authorName || article.author?.name || 'Horizon Research Desk');
+    setAuthorRole(article.authorRole || article.author?.role || 'Platform Editorial');
+    setAuthorDesk(article.authorDesk || article.author?.desk || 'Horizon Capital Desk');
+    setPublishDate(article.publishDate || article.date || (article.createdAt ? article.createdAt.split('T')[0] : new Date().toISOString().slice(0, 10)));
+    setEditorTab('edit');
     setContent(article.content || '');
     setTags(Array.isArray(article.tags) ? article.tags.join(', ') : (article.tags || ''));
     setStatus(article.status || 'Published');
@@ -201,7 +222,17 @@ export default function NewsMedia() {
       bannerUrl,
       videoUrl: videoUrl ? videoUrl.trim() : '',
       category,
-      author: { name: authorName, role: authorRole, avatar: authorName.split(' ').map(n => n[0]).join('') },
+      authorName,
+      authorRole,
+      authorDesk,
+      author: {
+        name: authorName,
+        role: authorRole,
+        desk: authorDesk,
+        avatar: authorName.charAt(0) || 'H'
+      },
+      publishDate: publishDate || new Date().toISOString().slice(0, 10),
+      date: publishDate || new Date().toISOString().slice(0, 10),
       content,
       excerpt: subtitle || content.slice(0, 140) + '...',
       tags: tagArray,
@@ -222,10 +253,9 @@ export default function NewsMedia() {
     let updatedArticles;
     if (editingArticle) {
       // Update existing
-      updatedArticles = articles.map(art => art.id === editingArticle.id ? {
+      updatedArticles = articles.map(art => (art.id === editingArticle.id || art._id === editingArticle._id) ? {
         ...art,
         ...articlePayload,
-        date: new Date().toISOString().slice(0, 10),
       } : art);
     } else {
       // Create new
@@ -234,7 +264,6 @@ export default function NewsMedia() {
         id: newId,
         ...articlePayload,
         views: '1',
-        date: new Date().toISOString().slice(0, 10),
       };
       updatedArticles = [newArticle, ...articles];
     }
@@ -282,14 +311,44 @@ export default function NewsMedia() {
     const textarea = textareaRef.current;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const selectedText = content.substring(start, end) || placeholder;
-    const replacement = `${prefix}${selectedText}${suffix}`;
+    const selectedText = content.substring(start, end);
+
+    // If text already has prefix and suffix, toggle it off (unwrap)
+    if (selectedText && prefix && suffix && selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length >= prefix.length + suffix.length) {
+      const unwrapped = selectedText.slice(prefix.length, selectedText.length - suffix.length);
+      const newContent = content.substring(0, start) + unwrapped + content.substring(end);
+      setContent(newContent);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start, start + unwrapped.length);
+      }, 50);
+      return;
+    }
+
+    // Check if characters immediately outside selection match prefix & suffix
+    if (
+      prefix && suffix &&
+      start >= prefix.length &&
+      content.substring(start - prefix.length, start) === prefix &&
+      content.substring(end, end + suffix.length) === suffix
+    ) {
+      const newContent = content.substring(0, start - prefix.length) + selectedText + content.substring(end + suffix.length);
+      setContent(newContent);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start - prefix.length, start - prefix.length + selectedText.length);
+      }, 50);
+      return;
+    }
+
+    const textToInsert = selectedText || placeholder;
+    const replacement = `${prefix}${textToInsert}${suffix}`;
     const newContent = content.substring(0, start) + replacement + content.substring(end);
     setContent(newContent);
 
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
+      textarea.setSelectionRange(start + prefix.length, start + prefix.length + textToInsert.length);
     }, 50);
   };
 
@@ -760,19 +819,6 @@ export default function NewsMedia() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Author Byline
-              </label>
-              <input
-                type="text"
-                placeholder="Author name"
-                value={authorName}
-                onChange={e => setAuthorName(e.target.value)}
-                className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs text-slate-700 focus:border-gold-400 outline-none font-poppins"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Publication Status
               </label>
               <select
@@ -783,6 +829,67 @@ export default function NewsMedia() {
                 <option value="Published">Published (Public)</option>
                 <option value="Draft">Draft (Internal)</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <RiCalendarLine size={13} className="text-gold-600" />
+                Publication Date *
+              </label>
+              <input
+                type="date"
+                value={publishDate}
+                onChange={e => setPublishDate(e.target.value)}
+                className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs text-slate-700 focus:border-gold-400 outline-none font-poppins"
+              />
+            </div>
+          </div>
+
+          {/* ──────────────── EDITORIAL BYLINE & CREDENTIALS ──────────────── */}
+          <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 uppercase tracking-wider">
+              <RiUserLine size={14} className="text-gold-600" />
+              <span>Editorial Byline & Desk Credentials</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  Author Name / Byline
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Horizon Research Desk"
+                  value={authorName}
+                  onChange={e => setAuthorName(e.target.value)}
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs text-slate-700 focus:border-gold-400 outline-none font-poppins"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  Editorial Role / Designation
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Platform Editorial"
+                  value={authorRole}
+                  onChange={e => setAuthorRole(e.target.value)}
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs text-slate-700 focus:border-gold-400 outline-none font-poppins"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  Desk / Organization
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Horizon Capital Desk"
+                  value={authorDesk}
+                  onChange={e => setAuthorDesk(e.target.value)}
+                  className="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs text-slate-700 focus:border-gold-400 outline-none font-poppins"
+                />
+              </div>
             </div>
           </div>
 
@@ -800,121 +907,168 @@ export default function NewsMedia() {
             />
           </div>
 
-          {/* ──────────────── WYSIWYG FORMATTING TOOLBAR ──────────────── */}
+          {/* ──────────────── CONTENT EDITOR WITH TABS & WYSIWYG FORMATTING ──────────────── */}
           <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
-            <div className="p-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-1 text-xs">
-              {/* Headings */}
-              <button
-                type="button"
-                onClick={() => insertFormatting('\n## ', '\n', 'Main Section Heading')}
-                className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 font-bold transition-colors shadow-2xs"
-                title="Insert Heading 2"
-              >
-                H2
-              </button>
-              <button
-                type="button"
-                onClick={() => insertFormatting('\n### ', '\n', 'Sub Section Title')}
-                className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 font-bold transition-colors shadow-2xs"
-                title="Insert Heading 3"
-              >
-                H3
-              </button>
+            {/* Mode Switcher Tabs */}
+            <div className="p-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setEditorTab('edit')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all ${
+                    editorTab === 'edit'
+                      ? 'bg-white text-slate-900 shadow-2xs border border-slate-200'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  <RiEditLine size={14} />
+                  <span>Write Content</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditorTab('preview')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all ${
+                    editorTab === 'preview'
+                      ? 'bg-gold-400 text-slate-950 shadow-gold'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  <RiEyeLine size={14} />
+                  <span>Live Preview</span>
+                </button>
+              </div>
 
-              <span className="h-4 w-px bg-slate-300 mx-1"></span>
-
-              {/* Bold / Italic / Underline */}
-              <button
-                type="button"
-                onClick={() => insertFormatting('**', '**', 'bold text')}
-                className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
-                title="Bold"
-              >
-                <RiBold size={15} />
-              </button>
-              <button
-                type="button"
-                onClick={() => insertFormatting('*', '*', 'italic text')}
-                className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
-                title="Italic"
-              >
-                <RiItalic size={15} />
-              </button>
-              <button
-                type="button"
-                onClick={() => insertFormatting('<u>', '</u>', 'underlined text')}
-                className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
-                title="Underline"
-              >
-                <RiUnderline size={15} />
-              </button>
-
-              <span className="h-4 w-px bg-slate-300 mx-1"></span>
-
-              {/* Quotes & Callouts */}
-              <button
-                type="button"
-                onClick={() => insertFormatting('\n> "', '"\n> — Executive Quote Source', 'Insert inspiring quote here')}
-                className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
-                title="Blockquote"
-              >
-                <RiDoubleQuotesL size={15} />
-              </button>
-              <button
-                type="button"
-                onClick={() => insertFormatting('\n- ', '', 'List item')}
-                className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
-                title="Bullet List"
-              >
-                <RiListUnordered size={15} />
-              </button>
-              <button
-                type="button"
-                onClick={() => insertFormatting('\n1. ', '', 'Numbered step')}
-                className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
-                title="Numbered List"
-              >
-                <RiListOrdered size={15} />
-              </button>
-
-              <span className="h-4 w-px bg-slate-300 mx-1"></span>
-
-              {/* Pro Tip Callout Box */}
-              <button
-                type="button"
-                onClick={() => insertFormatting('\n> **Pro Tip**: ', '\n', 'Crucial guidance for investors')}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-semibold hover:bg-amber-100 transition-colors shadow-2xs text-[11px]"
-                title="Insert Callout"
-              >
-                <RiLightbulbLine size={13} className="text-amber-600" />
-                <span>Callout Box</span>
-              </button>
-
-              {/* Horizontal Divider */}
-              <button
-                type="button"
-                onClick={() => insertFormatting('\n\n---\n\n', '', '')}
-                className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
-                title="Horizontal Divider"
-              >
-                <RiSeparator size={15} />
-              </button>
+              <span className="text-[11px] text-slate-400 font-medium">
+                {wordsCount} Words • {readTimeEstimate}
+              </span>
             </div>
 
-            {/* Article Content Textarea */}
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              placeholder="Write the full article content using headings (##), quotes (>), and bullet points (-)..."
-              className="w-full p-4 min-h-[260px] bg-white text-xs font-mono text-slate-700 leading-relaxed outline-none resize-y"
-            />
+            {editorTab === 'edit' ? (
+              <>
+                <div className="p-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-1 text-xs">
+                  {/* Headings */}
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('\n## ', '\n', 'Main Section Heading')}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 font-bold transition-colors shadow-2xs"
+                    title="Insert Heading 2 (##)"
+                  >
+                    H2
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('\n### ', '\n', 'Sub Section Title')}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 font-bold transition-colors shadow-2xs"
+                    title="Insert Heading 3 (###)"
+                  >
+                    H3
+                  </button>
 
-            {/* Live Stats Footer Bar */}
-            <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-400 font-poppins">
-              <span>{wordsCount} Words • {readTimeEstimate}</span>
-              <span>{content.length} characters</span>
-            </div>
+                  <span className="h-4 w-px bg-slate-300 mx-1"></span>
+
+                  {/* Bold / Italic / Underline */}
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('**', '**', 'bold text')}
+                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
+                    title="Bold (**text**)"
+                  >
+                    <RiBold size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('*', '*', 'italic text')}
+                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
+                    title="Italic (*text*)"
+                  >
+                    <RiItalic size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('<u>', '</u>', 'underlined text')}
+                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
+                    title="Underline (<u>text</u>)"
+                  >
+                    <RiUnderline size={15} />
+                  </button>
+
+                  <span className="h-4 w-px bg-slate-300 mx-1"></span>
+
+                  {/* Quotes & Lists */}
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('\n> "', '"\n> — Executive Quote Source', 'Insert inspiring quote here')}
+                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
+                    title="Blockquote (> quote)"
+                  >
+                    <RiDoubleQuotesL size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('\n- ', '', 'List item')}
+                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
+                    title="Bullet List (- item)"
+                  >
+                    <RiListUnordered size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('\n1. ', '', 'Numbered step')}
+                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
+                    title="Numbered List (1. item)"
+                  >
+                    <RiListOrdered size={15} />
+                  </button>
+
+                  <span className="h-4 w-px bg-slate-300 mx-1"></span>
+
+                  {/* Pro Tip Callout Box */}
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('\n> **Pro Tip**: ', '\n', 'Crucial guidance for investors')}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-semibold hover:bg-amber-100 transition-colors shadow-2xs text-[11px]"
+                    title="Insert Callout Box (> **Pro Tip**: text)"
+                  >
+                    <RiLightbulbLine size={13} className="text-amber-600" />
+                    <span>Callout Box</span>
+                  </button>
+
+                  {/* Horizontal Divider */}
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('\n\n---\n\n', '', '')}
+                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-gold-50 hover:text-gold-800 text-slate-700 transition-colors shadow-2xs"
+                    title="Horizontal Divider (---)"
+                  >
+                    <RiSeparator size={15} />
+                  </button>
+                </div>
+
+                {/* Article Content Textarea */}
+                <textarea
+                  ref={textareaRef}
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  placeholder="Write the full article content using headings (##), bold (**text**), quotes (>), and bullet points (-)..."
+                  className="w-full p-4 min-h-[260px] bg-white text-xs font-mono text-slate-700 leading-relaxed outline-none resize-y"
+                />
+
+                {/* Live Stats Footer Bar */}
+                <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-400 font-poppins">
+                  <span>{wordsCount} Words • {readTimeEstimate}</span>
+                  <span>{content.length} characters</span>
+                </div>
+              </>
+            ) : (
+              /* Live Formatted Preview Tab */
+              <div className="p-6 min-h-[300px] max-h-[500px] overflow-y-auto bg-slate-50/50">
+                {content.trim() ? (
+                  <ArticleContentRenderer content={content} />
+                ) : (
+                  <p className="text-xs text-slate-400 italic">No content typed yet. Switch back to &apos;Write Content&apos; tab to add text.</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </Modal>
@@ -999,55 +1153,20 @@ export default function NewsMedia() {
 
               <div className="flex items-center gap-3 pt-3 border-t border-gold-200/60">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 text-slate-900 font-bold flex items-center justify-center text-xs ring-2 ring-gold-200 shadow-2xs">
-                  {readingArticle.author?.avatar || 'SA'}
+                  {(readingArticle.authorName || readingArticle.author?.name || 'H').charAt(0)}
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-800">{readingArticle.author?.name || 'Super Admin'}</p>
-                  <p className="text-[11px] text-slate-400">{readingArticle.author?.role || 'Platform Contributor'}</p>
+                  <p className="text-xs font-semibold text-slate-800">{readingArticle.authorName || readingArticle.author?.name || 'Horizon Research Desk'}</p>
+                  <p className="text-[11px] text-slate-400">
+                    {readingArticle.authorRole || readingArticle.author?.role || 'Platform Editorial'} • {readingArticle.authorDesk || readingArticle.author?.desk || 'Horizon Capital Desk'}
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Article Body */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4 text-xs text-slate-700 leading-relaxed font-poppins">
-              {(readingArticle.content || readingArticle.excerpt).split('\n\n').map((block, idx) => {
-                if (block.startsWith('## ')) {
-                  return (
-                    <h2 key={idx} className="text-sm font-bold text-slate-900 font-poppins border-b border-slate-100 pb-1.5 mt-3 text-gold-700">
-                      {block.replace('## ', '')}
-                    </h2>
-                  );
-                }
-                if (block.startsWith('### ')) {
-                  return (
-                    <h3 key={idx} className="text-xs font-semibold text-slate-800 font-poppins mt-2">
-                      {block.replace('### ', '')}
-                    </h3>
-                  );
-                }
-                if (block.startsWith('> ')) {
-                  return (
-                    <blockquote key={idx} className="p-3 bg-gold-50/70 border-l-4 border-gold-400 rounded-r-xl text-slate-700 italic my-2 text-xs">
-                      {block.replace('> ', '')}
-                    </blockquote>
-                  );
-                }
-                if (block.startsWith('- ')) {
-                  const items = block.split('\n- ');
-                  return (
-                    <ul key={idx} className="list-disc list-inside space-y-1 text-slate-600 pl-2">
-                      {items.map((it, iIdx) => (
-                        <li key={iIdx}>{it.replace(/^- /, '')}</li>
-                      ))}
-                    </ul>
-                  );
-                }
-                return (
-                  <p key={idx} className="text-slate-600 font-normal leading-relaxed">
-                    {block}
-                  </p>
-                );
-              })}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs font-poppins">
+              <ArticleContentRenderer content={readingArticle.content || readingArticle.excerpt} />
             </div>
 
             {/* Tags Pill Row */}

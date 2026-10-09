@@ -755,7 +755,7 @@ export default function Transactions() {
 
                     {/* 3. Email */}
                     <td className="whitespace-nowrap text-xs text-slate-500">
-                      {txn.userEmail || 'investor@horizoncap.io'}
+                      {txn.userEmail || txn.email || '—'}
                     </td>
 
                     {/* 4. Type */}
@@ -1085,9 +1085,9 @@ export default function Transactions() {
                     {(selectedTxn.user || 'Investor').charAt(0)}
                   </div>
                   <div>
-                    <h5 className="text-sm font-bold text-slate-900">{selectedTxn.user || 'William Max'}</h5>
-                    <p className="font-mono text-gold-700 font-bold">{selectedTxn.userCustomId || 'HORIZON-USR-07'}</p>
-                    <p className="text-slate-400 text-[11px]">{selectedTxn.userEmail || 'william@horizoncap.com'}</p>
+                    <h5 className="text-sm font-bold text-slate-900">{selectedTxn.user || 'Investor'}</h5>
+                    <p className="font-mono text-gold-700 font-bold">{selectedTxn.userCustomId || '—'}</p>
+                    <p className="text-slate-400 text-[11px]">{selectedTxn.userEmail || selectedTxn.email || '—'}</p>
                   </div>
                 </div>
 

@@ -24,8 +24,8 @@ export default function Profile() {
 
   // ──────── EDIT PROFILE STATE ────────
   const [form, setForm] = useState({
-    fullName: user?.fullName || user?.name || 'William Max',
-    email: user?.email || 'william@horizoncap.com',
+    fullName: user?.fullName || user?.name || '',
+    email: user?.email || '',
     phone: user?.phone || 'Phone number',
     country: user?.country || 'India',
     city: user?.city || 'New Delhi',

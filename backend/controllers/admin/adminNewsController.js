@@ -55,9 +55,12 @@ exports.createArticle = async (req, res) => {
       bannerUrl: rawBannerUrl,
       videoUrl,
       category,
-      authorName,
-      authorRole,
+      authorName: rawAuthorName,
+      authorRole: rawAuthorRole,
+      authorDesk: rawAuthorDesk,
       authorAvatar,
+      publishDate: rawPublishDate,
+      author,
       readTime,
       status,
       tags,
@@ -83,15 +86,22 @@ exports.createArticle = async (req, res) => {
     if (Array.isArray(tags)) parsedTags = tags;
     else if (typeof tags === "string") parsedTags = tags.split(",").map((t) => t.trim());
 
+    const authorName = rawAuthorName || (typeof author === "object" ? author?.name : null) || "Horizon Research Desk";
+    const authorRole = rawAuthorRole || (typeof author === "object" ? author?.role : null) || "Platform Editorial";
+    const authorDesk = rawAuthorDesk || (typeof author === "object" ? author?.desk : null) || "Horizon Capital Desk";
+    const publishDate = rawPublishDate ? String(rawPublishDate).trim() : new Date().toISOString().split("T")[0];
+
     const newArticle = await NewsArticle.create({
       title: title.trim(),
       subtitle: subtitle || "",
       bannerUrl,
       videoUrl: videoUrl ? String(videoUrl).trim() : "",
       category: category || "Company",
-      authorName: authorName || "Super Admin",
-      authorRole: authorRole || "Platform Editorial",
+      authorName,
+      authorRole,
+      authorDesk,
       authorAvatar: authorAvatar || "",
+      publishDate,
       readTime: readTime || "4 min read",
       status: status || "Published",
       tags: parsedTags,
@@ -133,6 +143,16 @@ exports.updateArticle = async (req, res) => {
     let updates = { ...req.body };
     if (typeof updates.tags === "string") {
       updates.tags = updates.tags.split(",").map((t) => t.trim());
+    }
+
+    // Support nested author object or flat author fields
+    if (updates.author && typeof updates.author === "object") {
+      if (updates.author.name) updates.authorName = updates.author.name;
+      if (updates.author.role) updates.authorRole = updates.author.role;
+      if (updates.author.desk) updates.authorDesk = updates.author.desk;
+    }
+    if (updates.publishDate) {
+      updates.publishDate = String(updates.publishDate).trim();
     }
 
     // Handle Banner Image Replacement & Auto-deletion of old file

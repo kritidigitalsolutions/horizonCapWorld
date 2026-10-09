@@ -210,7 +210,7 @@ exports.sendRegisterOtp = async (req, res) => {
         otp,
         otpExpires,
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     );
 
     // Send 6-digit verification code to the email the user provided

@@ -245,7 +245,7 @@ export default function UserSidebar({ isOpen, onToggle, isMobile }) {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-slate-800 truncate leading-tight">{user?.fullName || 'Investor'}</p>
-                  <span className="text-[10px] text-slate-400 font-normal block truncate">{user?.email || 'user@horizoncap.com'}</span>
+                  <span className="text-[10px] text-slate-400 font-normal block truncate" title={user?.email || ''}>{user?.email || ''}</span>
                 </div>
               </div>
 

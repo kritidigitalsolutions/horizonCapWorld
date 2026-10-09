@@ -154,9 +154,9 @@ exports.bulkUpdateRanks = async (req, res) => {
 
       let rankDoc;
       if (r._id && /^[0-9a-fA-F]{24}$/.test(r._id)) {
-        rankDoc = await Rank.findByIdAndUpdate(r._id, { $set: updateData }, { new: true });
+        rankDoc = await Rank.findByIdAndUpdate(r._id, { $set: updateData }, { returnDocument: 'after' });
       } else if (r.level !== undefined) {
-        rankDoc = await Rank.findOneAndUpdate({ level: Number(r.level) }, { $set: updateData }, { new: true, upsert: true });
+        rankDoc = await Rank.findOneAndUpdate({ level: Number(r.level) }, { $set: updateData }, { returnDocument: 'after', upsert: true });
       }
 
       if (rankDoc) updatedRanks.push(rankDoc);

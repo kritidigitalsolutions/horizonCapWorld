@@ -30,7 +30,7 @@ exports.loginAdmin = async (req, res) => {
           email: "admin@gmail.com",
           password: hashedPassword,
           avatar: "",
-          recoveryEmail: "recovery@horizoncap.com",
+          recoveryEmail: process.env.ADMIN_RECOVERY_EMAIL || process.env.CONTACT_RECEIVER_EMAIL || "recovery@horizoncapworld.com",
           role: "SUPER_ADMIN",
           twoFactorEnabled: true,
         });

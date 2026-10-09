@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getNewsArticle, getNews } from '../api/newsApi';
+import ArticleContentRenderer from '../components/news/ArticleContentRenderer';
 import {
-  RiArrowLeftLine, RiCalendarLine, RiTimeLine, RiEyeLine, RiShareLine,
+  RiArrowLeftLine, RiCalendarLine, RiTimeLine,
   RiFileCopyLine, RiPriceTag3Line,
   RiLightbulbLine, RiNewspaperLine, RiTelegramLine,
   RiWhatsappLine, RiArrowRightLine, RiYoutubeFill, RiExternalLinkLine
@@ -30,22 +31,41 @@ export default function NewsDetail() {
           : null;
 
         if (art) {
-          setArticle({
+          const rawDate = art.publishDate || art.date || art.createdAt;
+          let formattedDate = 'Recently';
+          if (rawDate) {
+            const parsed = new Date(rawDate);
+            formattedDate = isNaN(parsed.getTime())
+              ? String(rawDate)
+              : parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          }
+
+          const parsedArticle = {
             id: art._id || art.id || art.customId,
             title: art.title,
             subtitle: art.subtitle || '',
             content: art.content || '',
             category: art.category || 'Company',
             date: art.createdAt ? art.createdAt.split('T')[0] : '2026-08-20',
-            publishDate: art.date || (art.createdAt ? new Date(art.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'),
-            authorName: typeof art.author === 'object' ? (art.author?.name || 'Super Admin') : (art.author || art.authorName || 'Super Admin'),
-            authorRole: typeof art.author === 'object' ? (art.author?.role || 'Platform Editorial') : 'Platform Editorial',
+            publishDate: formattedDate,
+            authorName: art.authorName || (typeof art.author === 'object' ? art.author?.name : art.author) || 'Horizon Research Desk',
+            authorRole: art.authorRole || (typeof art.author === 'object' ? art.author?.role : null) || 'Platform Editorial',
+            authorDesk: art.authorDesk || (typeof art.author === 'object' ? art.author?.desk : null) || 'Horizon Capital Desk',
             readTime: art.readTime || '3 min read',
             image: art.bannerUrl || art.image || '',
             bannerUrl: art.bannerUrl || art.image || '',
             videoUrl: art.videoUrl || '',
             tags: Array.isArray(art.tags) ? art.tags : (art.tags ? art.tags.split(',') : []),
-          });
+          };
+
+          setArticle(parsedArticle);
+
+          // Update breadcrumb and document title
+          if (parsedArticle.title) {
+            window.dispatchEvent(new CustomEvent('update-breadcrumb-title', { detail: parsedArticle.title }));
+            sessionStorage.setItem(`news_title_${id}`, parsedArticle.title);
+            document.title = `${parsedArticle.title} | Horizon Capital News`;
+          }
         } else {
           setArticle(null);
         }
@@ -260,14 +280,14 @@ export default function NewsDetail() {
             <div className="flex items-center justify-between gap-4 pt-4 flex-wrap">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-gold-400 bg-gradient-to-tr from-gold-400 to-amber-500 flex items-center justify-center text-slate-950 font-black text-sm shadow-xs flex-shrink-0">
-                  {(article.authorName || article.author?.name || 'Alexander Vance').charAt(0)}
+                  {(article.authorName || 'H').charAt(0)}
                 </div>
                 <div>
                   <span className="font-extrabold text-slate-900 text-sm block">
-                    {article.authorName || article.author?.name || 'Alexander Vance'}
+                    {article.authorName || 'Horizon Research Desk'}
                   </span>
                   <span className="text-xs text-slate-500 font-medium">
-                    {article.authorRole || article.author?.role || 'Chief Investment Officer'} • Horizon Capital Desk
+                    {article.authorRole || 'Platform Editorial'} • {article.authorDesk || 'Horizon Capital Desk'}
                   </span>
                 </div>
               </div>
@@ -338,9 +358,7 @@ export default function NewsDetail() {
           )}
 
           {/* Formatted Article Text */}
-          <div className="prose prose-slate max-w-none text-slate-800">
-            {renderFormattedContent(article.content)}
-          </div>
+          <ArticleContentRenderer content={article.content} />
 
           {/* Tags & Investor Notice Box */}
           <div className="pt-6 border-t border-slate-100 space-y-6">

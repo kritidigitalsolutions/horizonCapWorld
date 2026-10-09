@@ -25,7 +25,7 @@ const adminSchema = new mongoose.Schema(
     },
     recoveryEmail: {
       type: String,
-      default: "recovery@horizoncap.com",
+      default: () => process.env.ADMIN_RECOVERY_EMAIL || process.env.CONTACT_RECEIVER_EMAIL || "recovery@horizoncapworld.com",
     },
     role: {
       type: String,

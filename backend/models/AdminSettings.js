@@ -24,7 +24,7 @@ const adminSettingsSchema = new mongoose.Schema(
     },
     supportEmail: {
       type: String,
-      default: "support@horizoncap.com",
+      default: () => process.env.CONTACT_RECEIVER_EMAIL || process.env.EMAIL_USER || "support@horizoncapworld.com",
     },
     referralDepositCommissionEnabled: {
       type: Boolean,

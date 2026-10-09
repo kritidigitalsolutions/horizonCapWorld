@@ -30,17 +30,17 @@ export default function Header({ onMenuToggle, isSidebarOpen = true }) {
   const profileRef = useRef(null);
 
   // Get Admin Name & Email from localStorage
-  const adminUser = (() => {
+  const [adminUser, setAdminUser] = useState(() => {
     try {
       const saved = localStorage.getItem('admin') || localStorage.getItem('adminUser');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
     }
-  })();
+  });
 
   const adminName = adminUser?.name || 'Super Admin';
-  const adminEmail = adminUser?.email || 'admin@horizoncap.com';
+  const adminEmail = adminUser?.email || localStorage.getItem('horizon_last_admin_email') || '';
   const pageTitle = pageTitles[location.pathname] || 'Dashboard';
 
   useEffect(() => {
@@ -53,17 +53,31 @@ export default function Header({ onMenuToggle, isSidebarOpen = true }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Listen for Avatar changes from Settings page
+  // Listen for Avatar and Profile changes from Settings / Login
   useEffect(() => {
     const handleAvatarUpdate = (e) => {
       const newAvatar = e.detail !== undefined ? e.detail : localStorage.getItem('horizon_admin_avatar');
       setAdminAvatar(newAvatar || '');
     };
+    const handleProfileUpdate = (e) => {
+      if (e.detail) {
+        setAdminUser(e.detail);
+      } else {
+        try {
+          const saved = localStorage.getItem('admin') || localStorage.getItem('adminUser');
+          setAdminUser(saved ? JSON.parse(saved) : null);
+        } catch {}
+      }
+    };
     window.addEventListener('admin-avatar-change', handleAvatarUpdate);
+    window.addEventListener('admin-profile-change', handleProfileUpdate);
     window.addEventListener('storage', handleAvatarUpdate);
+    window.addEventListener('storage', handleProfileUpdate);
     return () => {
       window.removeEventListener('admin-avatar-change', handleAvatarUpdate);
+      window.removeEventListener('admin-profile-change', handleProfileUpdate);
       window.removeEventListener('storage', handleAvatarUpdate);
+      window.removeEventListener('storage', handleProfileUpdate);
     };
   }, []);
 
