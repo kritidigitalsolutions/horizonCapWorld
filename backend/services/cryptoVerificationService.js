@@ -80,6 +80,7 @@ async function verifyEtherscanEvmDeposit({
       ...(Array.isArray(validRecipients) ? validRecipients : []),
       expectedRecipient,
       process.env.PAYOUT_POOL_ADDRESS || "0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3",
+      process.env.RELAYER_ADDRESS || "0x1B892C03E3031288137951693F4E40553Dd2E5f6",
     ].filter(Boolean).map((a) => a.trim().toLowerCase());
     const targetToken = tokenContract.toLowerCase();
 
@@ -192,6 +193,7 @@ async function verifyBscDeposit({ txHash, expectedRecipient, validRecipients, ex
     ...(Array.isArray(validRecipients) ? validRecipients : []),
     expectedRecipient,
     process.env.PAYOUT_POOL_ADDRESS || "0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3",
+    process.env.RELAYER_ADDRESS || "0x1B892C03E3031288137951693F4E40553Dd2E5f6",
   ].filter(Boolean).map((a) => a.trim().toLowerCase());
 
   // Try Etherscan V2 API first if mainnet

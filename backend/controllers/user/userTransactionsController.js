@@ -127,6 +127,7 @@ exports.autoDetectDeposit = async (req, res) => {
         depositoryAddress,
         paymentMethod?.address,
         process.env.PAYOUT_POOL_ADDRESS || "0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3",
+        process.env.RELAYER_ADDRESS || "0x1B892C03E3031288137951693F4E40553Dd2E5f6",
       ].filter(Boolean),
       expectedAmount: Number(amount) || 0,
       usedTxHashes: usedHashes,
@@ -249,6 +250,7 @@ exports.createDeposit = async (req, res) => {
         depositoryAddress,
         paymentMethod?.address,
         process.env.PAYOUT_POOL_ADDRESS || "0x439DBd3A00E41255e0Bd26d8976E67310aDB7fd3",
+        process.env.RELAYER_ADDRESS || "0x1B892C03E3031288137951693F4E40553Dd2E5f6",
       ].filter(Boolean);
 
       // Perform real on-chain validation

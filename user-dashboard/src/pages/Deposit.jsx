@@ -263,14 +263,10 @@ export default function Deposit() {
     }, 3000);
   };
 
-  const getActiveQrCodeUrl = (address, customAmt, nonce, refCode) => {
-    const targetAddress = address || dynamicDepositoryAddress || activeContractAddress;
-    const targetAmount = customAmt || amount || '100';
-    const targetRef = refCode || sessionRef;
-
-    // Standard BEP-20 / EIP-681 payload with target address, token, amount, and unique session reference
-    const payload = `ethereum:${targetAddress}@56?token=USDT&amount=${encodeURIComponent(targetAmount)}&ref=${encodeURIComponent(targetRef)}&nonce=${nonce || qrNonce}`;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=380x380&data=${encodeURIComponent(payload)}&color=0-0-0&bgcolor=255-255-255&margin=10`;
+  const getActiveQrCodeUrl = (address) => {
+    const targetAddress = (address || dynamicDepositoryAddress || activeContractAddress || OFFICIAL_SMART_CONTRACT_ADDRESS).trim();
+    // 100% universal compatibility: Binance, Trust Wallet, OKX, Bybit, MetaMask, etc.
+    return `https://api.qrserver.com/v1/create-qr-code/?size=380x380&data=${encodeURIComponent(targetAddress)}&color=0-0-0&bgcolor=255-255-255&margin=10`;
   };
 
   // 1-Click Direct In-Page Smart Contract Deposit (No External App Required)
@@ -804,6 +800,12 @@ export default function Deposit() {
             {/* QR Code Container Matching User Uploaded Screenshot */}
             <div className="p-6 bg-white flex flex-col items-center gap-5 text-center">
 
+              {/* Universal QR Code Badge */}
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800">
+                <RiShieldCheckLine size={14} className="text-emerald-600 shrink-0" />
+                <span>Universal QR: Works with <strong>Binance, Trust Wallet, OKX, Bybit</strong> & all crypto wallets</span>
+              </div>
+
               {/* Large centered QR with Binance Logo & Verified Badge */}
               <div
                 onClick={() => setIsQrModalOpen(true)}
@@ -830,7 +832,7 @@ export default function Deposit() {
                 )}
 
                 <img
-                  src={getActiveQrCodeUrl(dynamicDepositoryAddress, amount, qrNonce, sessionRef)}
+                  src={getActiveQrCodeUrl(dynamicDepositoryAddress)}
                   alt="Dynamic Smart Contract Vault QR"
                   className={`w-full h-full object-cover rounded-2xl transition-all duration-500 ${
                     refreshingQr ? 'opacity-20 scale-90 blur-xs' : 'opacity-100 scale-100 blur-0'
@@ -867,17 +869,16 @@ export default function Deposit() {
                 <span> Open Full-Screen QR to Scan</span>
               </button>
 
-              {/* Official Depository Vault - Commented out to keep address hidden */}
-              {/*
-              <div className={`w-full max-w-lg p-4 rounded-2xl transition-all duration-500 border text-left flex flex-col gap-2.5 ${
+              {/* Official Depository Vault - FULLY UNCOMMENTED & DISPLAYING SMART CONTRACT ADDRESS */}
+              <div className={`w-full max-w-lg p-4 sm:p-5 rounded-2xl transition-all duration-500 border text-left flex flex-col gap-3 ${
                 justRefreshed
                   ? 'bg-emerald-50/90 border-emerald-400 ring-4 ring-emerald-200/60 shadow-lg'
                   : 'bg-slate-50 border-slate-200 shadow-2xs'
               }`}>
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 font-poppins flex items-center gap-1.5">
-                    <RiShieldCheckLine size={14} className="text-emerald-500" />
-                    OFFICIAL DEPOSITORY VAULT (BNB SMART CHAIN (BEP-20))
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 font-poppins flex items-center gap-1.5">
+                    <RiShieldCheckLine size={15} className="text-emerald-500" />
+                    OFFICIAL SMART CONTRACT DEPOSITORY ADDRESS
                   </span>
                   <div className="flex items-center gap-1.5">
                     {justRefreshed && (
@@ -885,50 +886,75 @@ export default function Deposit() {
                         ✨ Refreshed
                       </span>
                     )}
-                    <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      BEP-20
+                    </span>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-300">
                       {sessionRef}
                     </span>
                   </div>
                 </div>
 
-                <div className={`flex items-center justify-between bg-white px-3.5 py-2.5 rounded-xl border gap-2 shadow-2xs transition-all ${
+                <div className={`flex items-center justify-between bg-white px-3.5 py-3 rounded-xl border gap-2 shadow-2xs transition-all ${
                   justRefreshed ? 'border-emerald-400 ring-2 ring-emerald-200' : 'border-slate-200'
                 }`}>
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
-                      <RiLock2Line size={16} />
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-9 h-9 rounded-xl bg-gold-50 text-gold-600 border border-gold-200 flex items-center justify-center shrink-0">
+                      <RiWallet3Line size={18} />
                     </div>
-                    <div className="min-w-0">
-                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <span>Vault Address Protected</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase tracking-wider">
-                          QR Only
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          Smart Contract (USDT BEP-20)
                         </span>
-                      </span>
-                      <span className="text-[11px] text-slate-500 font-medium block truncate">
-                        🔒 Encrypted in QR Code • Scan with wallet app to pay
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          VERIFIED
+                        </span>
+                      </div>
+                      <span
+                        className="font-mono font-bold text-xs sm:text-[13px] text-slate-900 block truncate select-all cursor-pointer hover:text-gold-700 transition-colors"
+                        title={dynamicDepositoryAddress || OFFICIAL_SMART_CONTRACT_ADDRESS}
+                        onClick={() => copyToClipboard(dynamicDepositoryAddress || OFFICIAL_SMART_CONTRACT_ADDRESS, 'depositoryAddress')}
+                      >
+                        {dynamicDepositoryAddress || OFFICIAL_SMART_CONTRACT_ADDRESS}
                       </span>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleGenerateRefreshQr}
-                    disabled={refreshingQr}
-                    className="px-3.5 py-2 rounded-xl bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-all flex-shrink-0 cursor-pointer shadow-xs active:scale-95 disabled:opacity-60"
-                    title="Refresh QR Scanner with New Session Vault"
-                  >
-                    <RiRefreshLine size={14} className={refreshingQr ? 'animate-spin' : ''} />
-                    <span>{refreshingQr ? 'Refreshing...' : 'Refresh QR'}</span>
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(dynamicDepositoryAddress || OFFICIAL_SMART_CONTRACT_ADDRESS, 'depositoryAddress')}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95 ${
+                        copiedField === 'depositoryAddress'
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-gold-400 hover:bg-gold-500 text-slate-950'
+                      }`}
+                      title="Copy Smart Contract Address"
+                    >
+                      {copiedField === 'depositoryAddress' ? (
+                        <>
+                          <RiCheckLine size={15} />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <RiFileCopyLine size={15} />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5 flex-wrap gap-1">
                   <span>Send only <strong className="text-slate-800">BNB Smart Chain (BEP-20)</strong> USDT.</span>
-                  <span className="text-emerald-700 font-bold text-[10px]">Rotational Smart Contract Vault</span>
+                  <span className="text-emerald-700 font-bold text-[10px] flex items-center gap-1">
+                    <RiShieldCheckLine size={12} />
+                    Instant Automated Credit
+                  </span>
                 </div>
               </div>
-              */}
 
               {/* Simple Network Instruction */}
               <div className="py-1 text-center">
@@ -1085,7 +1111,7 @@ export default function Deposit() {
         <div className="p-4 flex flex-col items-center text-center space-y-4 font-poppins">
           <div className="p-4 bg-white rounded-3xl border-4 border-gold-400 shadow-gold relative">
             <img
-              src={getActiveQrCodeUrl(dynamicDepositoryAddress, amount, qrNonce, sessionRef)}
+              src={getActiveQrCodeUrl(dynamicDepositoryAddress)}
               alt="Official Smart Contract QR"
               className="w-64 h-64 sm:w-72 sm:h-72 object-cover rounded-2xl"
             />
@@ -1102,37 +1128,55 @@ export default function Deposit() {
             </div>
           </div>
 
-          {/* Official Depository Vault in modal - Commented out to keep address hidden */}
-          {/*
+          {/* Official Depository Vault in modal - FULLY UNCOMMENTED & VISIBLE */}
           <div className="w-full p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-left space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
                 <RiShieldCheckLine size={13} className="text-emerald-500" />
-                SECURE SMART CONTRACT VAULT
+                OFFICIAL SMART CONTRACT ADDRESS
               </span>
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                {sessionRef}
+                BEP-20
               </span>
             </div>
-            <div className="flex items-center justify-between bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 gap-2">
-              <div className="flex items-center gap-2">
-                <RiLock2Line size={16} className="text-emerald-600 shrink-0" />
-                <span className="text-xs text-slate-700 font-bold">
-                  Address Protected • Scan QR Code to Deposit
+
+            <div className="flex items-center justify-between bg-white px-3 py-2.5 rounded-xl border border-slate-200 gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <RiWallet3Line size={16} className="text-gold-600 shrink-0" />
+                <span
+                  className="font-mono font-bold text-xs text-slate-900 truncate select-all cursor-pointer hover:text-gold-700"
+                  title={dynamicDepositoryAddress || OFFICIAL_SMART_CONTRACT_ADDRESS}
+                  onClick={() => copyToClipboard(dynamicDepositoryAddress || OFFICIAL_SMART_CONTRACT_ADDRESS, 'modalAddress')}
+                >
+                  {dynamicDepositoryAddress || OFFICIAL_SMART_CONTRACT_ADDRESS}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={handleGenerateRefreshQr}
-                disabled={refreshingQr}
-                className="px-3 py-1.5 rounded-lg bg-gold-400 hover:bg-gold-500 text-slate-950 text-xs font-bold shrink-0 cursor-pointer active:scale-95 flex items-center gap-1.5 disabled:opacity-50"
-              >
-                <RiRefreshLine size={13} className={refreshingQr ? 'animate-spin' : ''} />
-                <span>{refreshingQr ? 'Refreshing...' : 'Refresh QR'}</span>
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(dynamicDepositoryAddress || OFFICIAL_SMART_CONTRACT_ADDRESS, 'modalAddress')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                    copiedField === 'modalAddress'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-gold-400 hover:bg-gold-500 text-slate-950'
+                  }`}
+                  title="Copy Smart Contract Address"
+                >
+                  {copiedField === 'modalAddress' ? (
+                    <>
+                      <RiCheckLine size={13} />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <RiFileCopyLine size={13} />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-          */}
 
           <p className="text-xs text-slate-500 max-w-sm">
             Please transfer only <strong>USDT via BNB Smart Chain (BEP-20)</strong>. Any other asset sent cannot be recovered.
