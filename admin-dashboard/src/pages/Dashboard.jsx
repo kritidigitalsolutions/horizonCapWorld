@@ -20,7 +20,8 @@ const initialKpis = [
   { id: 'total_aum', title: 'Total Platform AUM', value: '$0', numericValue: 0, prefix: '$', change: 'Liquidity', positive: true, icon: 'money', delay: 0 },
   { id: 'registered_clients', title: 'Registered Clients', value: '0', numericValue: 0, prefix: '', change: 'Total Users', positive: true, icon: 'users', delay: 80 },
   { id: 'money_deposited_clients', title: 'Money Deposited Clients', value: '0', numericValue: 0, prefix: '', change: 'Funded', positive: true, icon: 'coins', delay: 160 },
-  { id: 'yield_distributed', title: 'Total ROI', value: '$0', numericValue: 0, prefix: '$', change: 'Per Second', positive: true, icon: 'chart', delay: 240 },
+  { id: 'yield_distributed', title: 'Total ROI', value: '$0', numericValue: 0, prefix: '$', change: 'Live Stream', positive: true, icon: 'chart', delay: 240 },
+  { id: 'roi_disbursed', title: 'ROI Disbursed', value: '$0', numericValue: 0, prefix: '$', change: '0 Clients', positive: true, icon: 'withdrawal', delay: 320 },
 ];
 
 const initialCharts = {
@@ -91,6 +92,17 @@ export default function Dashboard() {
               icon: 'chart',
               delay: 240,
             },
+            {
+              id: 'roi_disbursed',
+              title: 'ROI Disbursed',
+              value: `$${Number(raw.roiDisbursedAmount ?? raw.totalWithdrawals ?? 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`,
+              numericValue: Number(raw.roiDisbursedAmount ?? raw.totalWithdrawals ?? 0),
+              prefix: '$',
+              change: `${raw.roiDisbursedUsers || 0} Clients Withdrawn`,
+              positive: true,
+              icon: 'withdrawal',
+              delay: 320,
+            },
           ]);
         }
 
@@ -157,8 +169,8 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
-          {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4 xl:gap-5">
+          {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {Array.from({ length: 4 }).map((_, i) => <SkeletonChart key={i} />)}
@@ -177,7 +189,7 @@ export default function Dashboard() {
       />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3.5 sm:gap-4 xl:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4 xl:gap-5">
         {kpis.map((kpi, i) => (
           <KPICard key={kpi.id || i} {...kpi} delay={i * 80} />
         ))}

@@ -702,67 +702,6 @@ export default function Referrals() {
             </div>
           </div>
 
-          {commissions.length > 0 && depositEnabled ? (
-            <div className="grid grid-cols-1 gap-6">
-              {/* Direct Investment Deposit Commission Box */}
-              <div className="card p-5 space-y-4 border border-emerald-200/80 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                      <RiTeamLine size={22} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800 font-poppins">
-                        Direct Investment Deposit Commission
-                      </h4>
-                      <p className="text-xs text-slate-400">
-                        Commission credited instantly when downline members deposit into investment plans
-                      </p>
-                    </div>
-                  </div>
-
-                  <Badge variant="success" size="sm">
-                    Active
-                  </Badge>
-                </div>
-
-                <div className="space-y-2.5">
-                  {commissions.map((tier) => (
-                    <div
-                      key={tier._id || tier.level}
-                      className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-emerald-50/30 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="w-9 h-9 rounded-xl bg-white border border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-center shadow-2xs font-mono">
-                          {tier.level}
-                        </span>
-                        <div>
-                          <p className="text-xs font-semibold text-slate-800">{tier.name}</p>
-                          <p className="text-[11px] text-slate-400">
-                            {networkList.filter(u => u.level === Number(String(tier.level).replace('L', ''))).length} Active Team Promoters
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-extrabold font-mono px-3.5 py-1 rounded-xl shadow-2xs text-emerald-600 bg-emerald-50 border border-emerald-200">
-                          {tier.investCommission}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800">
-                  <strong>Formula:</strong> Deposit Commission = Downline Deposit Amount × Tier % (e.g. $10,000 Level 1 deposit = $500 direct commission)
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-8 text-center text-slate-500 bg-slate-50 border border-slate-200 rounded-2xl">
-              Commission plans are currently not available.
-            </div>
-          )}
         </div>
       </div>
 
@@ -1043,7 +982,7 @@ export default function Referrals() {
       <Modal
         isOpen={calculatorOpen}
         onClose={() => setCalculatorOpen(false)}
-        title="Affiliate Commission Calculator"
+        title="Level Income Calculator"
         subtitle={
           depositEnabled && roiShareEnabled
             ? "Simulate direct deposit bonuses & multi-tier daily profit share"

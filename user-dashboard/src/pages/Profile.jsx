@@ -213,16 +213,9 @@ export default function Profile() {
     setSavingWallets(true);
 
     const bep20 = (cryptoWallets.usdtBep20 || '').trim();
-    const trc20 = (cryptoWallets.usdtTrc20 || '').trim();
 
     if (bep20 && (!bep20.startsWith('0x') || bep20.length !== 42)) {
       triggerToast('Invalid BSC (BEP-20) address format. Must start with 0x and be 42 characters.', 'warning');
-      setSavingWallets(false);
-      return;
-    }
-
-    if (trc20 && (!trc20.startsWith('T') || trc20.length !== 34)) {
-      triggerToast('Invalid TRON (TRC-20) address format. Must start with T and be 34 characters.', 'warning');
       setSavingWallets(false);
       return;
     }
@@ -231,7 +224,6 @@ export default function Profile() {
       const payload = {
         cryptoWallets: {
           usdtBep20: bep20,
-          usdtTrc20: trc20,
           solana: (cryptoWallets.solana || '').trim(),
           polygon: (cryptoWallets.polygon || '').trim(),
         },
@@ -727,57 +719,6 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Wallet 2: USDT (TRC-20 / TRON Network) */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-3 transition-all hover:border-gold-300">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-red-100 text-red-800 flex items-center justify-center font-bold text-xs border border-red-300 shadow-2xs">
-                    TRX
-                  </div>
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                      USDT (TRC-20) Address — TRON Network
-                    </h4>
-                    <span className="text-[10px] text-slate-400">Trust Wallet, TronLink, SafePal</span>
-                  </div>
-                </div>
-
-                {cryptoWallets.usdtTrc20 && (
-                  cryptoWallets.usdtTrc20.startsWith('T') && cryptoWallets.usdtTrc20.length === 34 ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                      <RiCheckLine size={12} /> Valid TRON Address
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
-                      Must start with T (34 chars)
-                    </span>
-                  )
-                )}
-              </div>
-
-              <div className="relative">
-                <input
-                  type="text"
-                  value={cryptoWallets.usdtTrc20}
-                  onChange={e => setCryptoWallets(prev => ({ ...prev, usdtTrc20: e.target.value }))}
-                  placeholder="T... (Paste your TRC-20 wallet receiving address)"
-                  className="w-full px-3.5 py-3 bg-white rounded-xl border border-slate-200 text-xs font-mono font-medium text-slate-900 outline-none focus:border-gold-400 shadow-2xs pr-10"
-                />
-                {cryptoWallets.usdtTrc20 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(cryptoWallets.usdtTrc20);
-                      triggerToast('TRC-20 address copied!', 'info');
-                    }}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-700 cursor-pointer"
-                    title="Copy Address"
-                  >
-                    <RiFileCopyLine size={16} />
-                  </button>
-                )}
-              </div>
-            </div>
 
             {/* Save Button */}
             <div className="flex justify-end pt-3">

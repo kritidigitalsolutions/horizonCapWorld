@@ -39,30 +39,40 @@ exports.getDashboardKPIs = async (req, res) => {
       activeInvestors,
       approvedDeposits,
       approvedWithdrawals,
-      totalRoiAgg,
+      totalRoiInvestments,
+      totalRoiTransactions,
+      userTotalProfitAgg,
       totalReferralAgg,
       depositedTxUsers,
       usersWithInvestOrWallet,
+      roiWithdrawnUsersList,
+      usersWithWithdrawnBalance,
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ status: "Active" }),
       Transaction.aggregate([
-        { $match: { type: "Deposit", status: "Approved" } },
+        { $match: { type: "Deposit", status: { $in: ["Approved", "Completed"] } } },
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ]),
       Transaction.aggregate([
-        { $match: { type: "Withdrawal", status: "Approved" } },
+        { $match: { type: "Withdrawal", status: { $in: ["Approved", "Completed"] } } },
         { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+      UserInvestment.aggregate([
+        { $group: { _id: null, total: { $sum: "$totalProfitEarned" } } },
       ]),
       Transaction.aggregate([
         { $match: { type: { $in: ["ROI Return", "ROI Earning"] } } },
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ]),
+      User.aggregate([
+        { $group: { _id: null, total: { $sum: "$totalProfit" }, totalPvRoi: { $sum: "$pvRoiBalance" } } },
+      ]),
       Transaction.aggregate([
         { $match: { type: { $in: ["Referral Bonus", "Rank Bonus"] } } },
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ]),
-      Transaction.distinct("user", { type: "Deposit", status: "Approved" }),
+      Transaction.distinct("user", { type: "Deposit", status: { $in: ["Approved", "Completed"] } }),
       User.find({
         $or: [
           { totalInvested: { $gt: 0 } },
@@ -70,12 +80,18 @@ exports.getDashboardKPIs = async (req, res) => {
           { hasDeposited: true },
         ],
       }).select("_id"),
+      Transaction.distinct("user", { type: "Withdrawal", status: { $in: ["Approved", "Completed"] } }),
+      User.countDocuments({ totalWithdrawn: { $gt: 0 } }),
     ]);
 
     const grossDeposits = approvedDeposits[0]?.total || 0;
     const totalWithdrawals = approvedWithdrawals[0]?.total || 0;
-    const totalYieldDistributed = totalRoiAgg[0]?.total || 0;
-    const totalReferralPaid = totalReferralAgg[0]?.total || 0;
+
+    // Accurate Total ROI: take highest of UserInvestment cumulative yield, User totalProfit, or Transaction ROI
+    const investmentRoi = totalRoiInvestments[0]?.total || 0;
+    const userProfit = userTotalProfitAgg[0]?.total || 0;
+    const txRoi = totalRoiTransactions[0]?.total || 0;
+    const totalYieldDistributed = Math.max(investmentRoi, userProfit, txRoi);
 
     // Platform Total AUM
     const totalAUM = grossDeposits;
@@ -88,6 +104,11 @@ exports.getDashboardKPIs = async (req, res) => {
     ]);
     const moneyDepositedClients = depositedUserIdSet.size;
 
+    // ROI Disbursed / Users who withdrew ROI
+    const distinctWithdrawnUsers = roiWithdrawnUsersList.filter(Boolean).length;
+    const roiDisbursedUsers = Math.max(distinctWithdrawnUsers, usersWithWithdrawnBalance);
+    const roiDisbursedAmount = totalWithdrawals;
+
     res.status(200).json({
       success: true,
       kpis: {
@@ -97,10 +118,12 @@ exports.getDashboardKPIs = async (req, res) => {
         moneyDepositedClients,
         activeInvestors,
         totalYieldDistributed: Math.round(totalYieldDistributed),
+        roiDisbursedAmount: Number(roiDisbursedAmount.toFixed(2)),
+        roiDisbursedUsers,
         platformReserve: Math.round(platformReserve),
         grossDeposits: Math.round(grossDeposits),
-        totalWithdrawals: Math.round(totalWithdrawals),
-        totalReferralPaid: Math.round(totalReferralPaid),
+        totalWithdrawals: Number(totalWithdrawals.toFixed(2)),
+        totalReferralPaid: Math.round(totalReferralAgg[0]?.total || 0),
       },
     });
   } catch (error) {
@@ -128,7 +151,7 @@ exports.getDashboardCharts = async (req, res) => {
       monthRanges.map(async ({ d, nextD, monthLabel }) => {
         const [depositsAgg, yieldAgg, usersCount] = await Promise.all([
           Transaction.aggregate([
-            { $match: { type: "Deposit", status: "Approved", createdAt: { $gte: d, $lt: nextD } } },
+            { $match: { type: "Deposit", status: { $in: ["Approved", "Completed"] }, createdAt: { $gte: d, $lt: nextD } } },
             { $group: { _id: null, total: { $sum: "$amount" } } },
           ]),
           Transaction.aggregate([

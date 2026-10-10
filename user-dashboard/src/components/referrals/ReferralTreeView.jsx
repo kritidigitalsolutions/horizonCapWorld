@@ -115,9 +115,7 @@ function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilte
                 <RiAwardLine size={12} /> Level 0 (Self)
               </>
             ) : (
-              <>
-                Tier L{node.level} • {node.level > 10 ? 'No Comm (L10 Cap)' : `${node.commissionRate || 0}%`}
-              </>
+              String(node.level || '').toUpperCase().startsWith('L') ? node.level : `L${node.level}`
             )}
           </span>
 
@@ -234,7 +232,7 @@ function TreeNodeCard({ node, isRoot = false, onSelectPartner, search, tierFilte
         {/* Node Footer: Action / Expand */}
         <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px]">
           <span className="text-[10px] font-bold text-slate-400 font-poppins tracking-wider uppercase">
-            {isRoot ? "Root Account" : (node.tierName || `Tier L${node.level}`)}
+            {isRoot ? "Root Account" : (node.tierName || (String(node.level || '').toUpperCase().startsWith('L') ? node.level : `L${node.level}`))}
           </span>
 
           <div className="flex items-center gap-1.5 ml-auto">

@@ -14,6 +14,7 @@ import {
   RiAttachment2, RiUploadCloud2Line, RiDeleteBin7Line, RiImageLine, RiFileTextLine,
   RiEyeLine, RiAlertLine
 } from 'react-icons/ri';
+import { SiSignal } from 'react-icons/si';
 import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
 import { useAuth } from '../context/AuthContext';
@@ -162,6 +163,8 @@ export default function Support() {
         return <RiWhatsappLine size={24} className="text-emerald-500" />;
       case 'telegram':
         return <RiTelegramLine size={24} className="text-blue-500" />;
+      case 'signal':
+        return <SiSignal size={24} className="text-[#3A76F0]" />;
       case 'email':
         return <RiMailLine size={24} className="text-amber-500" />;
       case 'phone':
@@ -176,7 +179,7 @@ export default function Support() {
   const filteredChannels = channels.filter(c => {
     const matchCategory = channelCategory === 'all' || 
       c.category === channelCategory || 
-      (channelCategory === 'Instant Chat' && (c.category === 'Instant Chat' || (c.platform || '').toLowerCase() === 'whatsapp')) ||
+      (channelCategory === 'Instant Chat' && (c.category === 'Instant Chat' || (c.platform || '').toLowerCase() === 'whatsapp' || (c.platform || '').toLowerCase() === 'signal')) ||
       (channelCategory === 'Telegram' && (c.category === 'Telegram' || (c.platform || '').toLowerCase() === 'telegram')) ||
       (channelCategory === 'Email Desk' && (c.category === 'Email Desk' || c.category === 'Email Support' || (c.platform || '').toLowerCase() === 'email')) ||
       (channelCategory === 'Telephone' && (c.category === 'Telephone' || c.category === 'Phone' || (c.platform || '').toLowerCase() === 'phone')) ||
@@ -245,7 +248,7 @@ export default function Support() {
 
   const channelCategories = [
     { key: 'all', label: 'All Channels', count: channels.length },
-    { key: 'Instant Chat', label: 'WhatsApp VIP', count: channels.filter(c => c.category === 'Instant Chat' || (c.platform || '').toLowerCase() === 'whatsapp').length },
+    { key: 'Instant Chat', label: 'Instant Chat', count: channels.filter(c => c.category === 'Instant Chat' || (c.platform || '').toLowerCase() === 'whatsapp' || (c.platform || '').toLowerCase() === 'signal').length },
     { key: 'Telegram', label: 'Telegram Desk', count: channels.filter(c => c.category === 'Telegram' || (c.platform || '').toLowerCase() === 'telegram').length },
     { key: 'Email Desk', label: 'Email Helpdesk', count: channels.filter(c => c.category === 'Email Desk' || c.category === 'Email Support' || (c.platform || '').toLowerCase() === 'email').length },
     { key: 'Telephone', label: 'Phone Hotline', count: channels.filter(c => c.category === 'Telephone' || c.category === 'Phone' || (c.platform || '').toLowerCase() === 'phone').length },

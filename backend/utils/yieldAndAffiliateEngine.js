@@ -225,10 +225,9 @@ const distributeReferralCommissions = async (userId, amount, commissionType = "i
       return;
     }
 
-    // Direct investment referral bonus is ONLY eligible on user's 1st investment and when enabled by admin
-    const isDepositCommissionEnabled = settings ? (settings.referralDepositCommissionEnabled !== false) : true;
-    const isFirstTimeInvestor = !investor.hasReceivedReferralBonus;
-    const shouldPayDepositBonus = commissionType === "investment" && isDepositCommissionEnabled && isFirstTimeInvestor;
+    // Direct investment referral bonus is disabled (no commission on direct deposits)
+    const isDepositCommissionEnabled = false;
+    const shouldPayDepositBonus = false;
 
     // Load only active referral tiers ordered by levelNumber
     const refSettings = await ReferralSetting.find({ status: { $ne: "Inactive" } }).sort({ levelNumber: 1 });

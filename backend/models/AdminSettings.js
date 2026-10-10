@@ -28,7 +28,7 @@ const adminSettingsSchema = new mongoose.Schema(
     },
     referralDepositCommissionEnabled: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     referralRoiShareEnabled: {
       type: Boolean,

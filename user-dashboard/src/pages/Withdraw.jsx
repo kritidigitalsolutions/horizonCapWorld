@@ -38,7 +38,6 @@ import Modal from '../components/ui/Modal';
 
 const baseWithdrawMethods = [
   { id: 'usdt-bep20', name: 'USDT (BEP20)', type: 'crypto', network: 'BEP20' },
-  { id: 'usdt-trc20', name: 'USDT (TRC20)', type: 'crypto', network: 'TRC20' },
   // { id: 'btc', name: 'Bitcoin (BTC)', type: 'crypto' },
   // { id: 'bank', name: 'Bank Wire Transfer', type: 'bank' },
 ];
@@ -74,8 +73,6 @@ export default function Withdraw() {
     if (user?.cryptoWallets) {
       if (method.id === 'usdt-bep20' && user.cryptoWallets.usdtBep20) {
         setAddress(user.cryptoWallets.usdtBep20);
-      } else if (method.id === 'usdt-trc20' && user.cryptoWallets.usdtTrc20) {
-        setAddress(user.cryptoWallets.usdtTrc20);
       }
     }
   }, [method.id, user]);
@@ -457,10 +454,6 @@ export default function Withdraw() {
     const cleanAddress = address.trim();
     if (method.id === 'usdt-bep20' && (!cleanAddress.startsWith('0x') || cleanAddress.length !== 42)) {
       setErrorMsg('Invalid BSC (BEP-20) address format. Must start with 0x and be 42 characters.');
-      return;
-    }
-    if (method.id === 'usdt-trc20' && (!cleanAddress.startsWith('T') || cleanAddress.length !== 34)) {
-      setErrorMsg('Invalid TRON (TRC-20) address format. Must start with T and be 34 characters.');
       return;
     }
 
@@ -1124,7 +1117,7 @@ export default function Withdraw() {
                   {method.type === 'crypto' && (() => {
                     const isBsc = method.id === 'usdt-bep20';
                     const isTron = method.id === 'usdt-trc20';
-                    const savedWallet = isBsc ? user?.cryptoWallets?.usdtBep20 : (isTron ? user?.cryptoWallets?.usdtTrc20 : '');
+                    const savedWallet = user?.cryptoWallets?.usdtBep20 || '';
 
                     if (savedWallet) {
                       const isAutoFilled = address === savedWallet;
@@ -1132,7 +1125,7 @@ export default function Withdraw() {
                         <div className="flex items-center gap-2">
                           {isAutoFilled ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                              <RiCheckLine size={12} /> Auto-filled from Profile ({isBsc ? 'BEP-20' : 'TRC-20'})
+                              <RiCheckLine size={12} /> Auto-filled from Profile (BEP-20)
                             </span>
                           ) : (
                             <button
@@ -1154,7 +1147,7 @@ export default function Withdraw() {
                           to="/profile"
                           className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 hover:text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200"
                         >
-                          <span>⚠️ No {isBsc ? 'BEP-20' : 'TRC-20'} wallet linked — Save in Profile →</span>
+                          <span>⚠️ No BEP-20 wallet linked — Save in Profile →</span>
                         </Link>
                       );
                     }
@@ -1167,7 +1160,7 @@ export default function Withdraw() {
                     placeholder={
                       method.id === 'bank'
                         ? 'Bank Name, Account number, IFSC / IBAN / Title...'
-                        : `Enter your external ${method.name} wallet address (e.g. ${method.id === 'usdt-bep20' ? '0x...' : 'T...'})`
+                        : 'Enter your external USDT (BEP20) wallet address (e.g. 0x...)'
                     }
                     className="input font-mono text-xs pr-8"
                     required
@@ -1192,17 +1185,6 @@ export default function Withdraw() {
                   ) : (
                     <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
                       <RiCheckLine size={13} /> Valid BEP-20 format
-                    </p>
-                  )
-                )}
-                {method.id === 'usdt-trc20' && address && (
-                  !address.startsWith('T') || address.length !== 34 ? (
-                    <p className="text-[11px] text-amber-600 mt-1">
-                      ⚠️ TRON (TRC-20) address must start with 'T' and be 34 characters long.
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1">
-                      <RiCheckLine size={13} /> Valid TRC-20 format
                     </p>
                   )
                 )}

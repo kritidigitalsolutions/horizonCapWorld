@@ -6,6 +6,7 @@ import {
   RiCheckLine, RiShieldCheckLine, RiTimeLine, RiGlobalLine, RiSearchLine,
   RiFileCopyLine, RiHeadphoneLine
 } from 'react-icons/ri';
+import { SiSignal } from 'react-icons/si';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import KPICard from '../components/ui/KPICard';
@@ -148,6 +149,8 @@ export default function SupportChannels() {
         return <RiWhatsappLine size={24} className="text-emerald-500" />;
       case 'telegram':
         return <RiTelegramLine size={24} className="text-sky-500" />;
+      case 'signal':
+        return <SiSignal size={24} className="text-[#3A76F0]" />;
       case 'email':
         return <RiMailSendLine size={24} className="text-gold-600" />;
       case 'phone':
@@ -174,7 +177,7 @@ export default function SupportChannels() {
       c.platform.toLowerCase().includes(search.toLowerCase());
 
     const matchesCategory = categoryFilter === 'all' ||
-      (categoryFilter === 'chat' && (c.category === 'Instant Chat' || c.category === 'Telegram' || c.platform === 'WhatsApp' || c.platform === 'Telegram')) ||
+      (categoryFilter === 'chat' && (c.category === 'Instant Chat' || c.category === 'Telegram' || c.platform === 'WhatsApp' || c.platform === 'Telegram' || c.platform === 'Signal')) ||
       (categoryFilter === 'email' && (c.category === 'Email Desk' || c.category === 'Email Support' || c.platform === 'Email')) ||
       (categoryFilter === 'phone' && (c.category === 'Telephone' || c.category === 'Phone' || c.platform === 'Phone')) ||
       (categoryFilter === 'social' && (c.category === 'Community' || c.category === 'Social Media' || ['Discord', 'Twitter', 'YouTube', 'Instagram'].some(p => (c.platform || '').includes(p))));
@@ -190,7 +193,8 @@ export default function SupportChannels() {
     c.category === 'Instant Chat' || 
     c.category === 'Telegram' ||
     c.platform === 'WhatsApp' ||
-    c.platform === 'Telegram'
+    c.platform === 'Telegram' ||
+    c.platform === 'Signal'
   ).length;
 
   const liveActiveCount = channels.filter(c => 
@@ -199,7 +203,8 @@ export default function SupportChannels() {
      c.category === 'Instant Chat' || 
      c.category === 'Telegram' ||
      c.platform === 'WhatsApp' ||
-     c.platform === 'Telegram')
+     c.platform === 'Telegram' ||
+     c.platform === 'Signal')
   ).length;
 
   const avgResponseSpeed = useMemo(() => {
@@ -471,6 +476,7 @@ export default function SupportChannels() {
                   const plat = e.target.value;
                   let cat = 'Instant Chat';
                   if (plat === 'Telegram') cat = 'Telegram';
+                  else if (plat === 'Signal') cat = 'Instant Chat';
                   else if (plat === 'Email') cat = 'Email Desk';
                   else if (plat === 'Phone') cat = 'Telephone';
                   else if (['Discord', 'Twitter / X', 'YouTube', 'Instagram'].includes(plat)) cat = 'Social Media';
@@ -481,6 +487,7 @@ export default function SupportChannels() {
               >
                 <option value="WhatsApp">WhatsApp</option>
                 <option value="Telegram">Telegram</option>
+                <option value="Signal">Signal</option>
                 <option value="Email">Official Email</option>
                 <option value="Phone">Telephone Hotline</option>
                 <option value="Discord">Discord Community</option>
